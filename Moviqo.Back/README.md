@@ -1,0 +1,17 @@
+# Moviqo.Back
+
+Backend spine for Moviqo.
+
+## Local verification
+
+```powershell
+uv sync --frozen
+uv run ruff check src tests
+uv run pytest
+uv run python src/manage.py makemigrations --settings=moviqo.settings.test --check --dry-run
+uv run python src/manage.py migrate --settings=moviqo.settings.test --noinput
+uv run python src/manage.py check --deploy
+uv run python src/manage.py health_start
+```
+
+The project intentionally excludes AI, broker, Redis, Celery, distributed cache, and microservice dependencies.

@@ -1,0 +1,9 @@
+from __future__ import annotations
+
+from django.apps import AppConfig
+
+
+class MessagingConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    label = "messaging"
+    name = "moviqo.modules.messaging"

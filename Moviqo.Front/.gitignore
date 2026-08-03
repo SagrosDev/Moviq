@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.test-build/
+playwright-report/
+test-results/
+*.trace.zip
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.log
+.env
+.env.*
+!.env.example

@@ -1,0 +1,14 @@
+[workflow]
+on_complete = """
+After code review completion, if the reviewed story status is `done` and the user's final review response approves completion with language such as `approve`, `approved`, or `done`, create a pull request for the current story branch.
+
+PR rule:
+- Confirm the current branch is a story branch and is not `main`, `master`, `develop`, or a release branch.
+- Run `git status --short` and include all current story changes.
+- Stage and commit the story changes using a concise story-based commit message.
+- Push the current branch to origin.
+- Create a pull request using the repository PR template.
+- Use this title format: `Story <story-id>: <story title>`.
+- Use the Description section from `.github/pull_request_template.md`, filling in summary, verification, and story references from the completed review/story file.
+- If the user did not approve or say done, if the review status is not `done`, if the branch is unsafe, or if Git/GitHub commands fail, HALT and report the exact reason.
+"""

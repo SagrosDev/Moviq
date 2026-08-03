@@ -1,0 +1,149 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+from dataclasses import dataclass
+from http import HTTPStatus
+from typing import Any
+
+from django.http import Http404
+from rest_framework import serializers, status
+from rest_framework.exceptions import APIException, NotFound, PermissionDenied, ValidationError
+from rest_framework.response import Response
+from rest_framework.views import exception_handler as drf_exception_handler
+
+PROBLEM_BASE_TYPE = "https://api.moviqo.local/problems"
+
+
+class ProblemDetailsSerializer(serializers.Serializer):
+    type = serializers.URLField()
+    title = serializers.CharField()
+    status = serializers.IntegerField()
+    code = serializers.CharField()
+    detail = serializers.CharField(required=False)
+    correlationId = serializers.CharField()
+    invalidParams = serializers.ListField(
+        child=serializers.DictField(child=serializers.CharField()),
+        required=False,
+    )
+
+
+@dataclass(frozen=True)
+class ProblemTemplate:
+    status_code: int
+    code: str
+    title: str
+    detail: str | None = None
+
+
+class Conflict(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "The resource state conflicts with this request."
+    default_code = "conflict"
+
+
+def problem_response(
+    request,
+    template: ProblemTemplate,
+    *,
+    invalid_params: list[dict[str, str]] | None = None,
+    headers: Mapping[str, str] | None = None,
+) -> Response:
+    body: dict[str, Any] = {
+        "type": f"{PROBLEM_BASE_TYPE}/{template.code.replace('_', '-')}",
+        "title": template.title,
+        "status": template.status_code,
+        "code": template.code,
+        "correlationId": getattr(request, "correlation_id", ""),
+    }
+    if template.detail:
+        body["detail"] = template.detail
+    if invalid_params:
+        body["invalidParams"] = invalid_params
+    response = Response(
+        body,
+        status=template.status_code,
+        headers=headers,
+        content_type="application/problem+json",
+    )
+    response["Content-Type"] = "application/problem+json"
+    return response
+
+
+def problem_details_exception_handler(exc: Exception, context: dict[str, Any]) -> Response:
+    request = context.get("request")
+    response = drf_exception_handler(exc, context)
+
+    if isinstance(exc, ValidationError):
+        return problem_response(
+            request,
+            ProblemTemplate(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                code="validation_failed",
+                title="Validation failed",
+            ),
+            invalid_params=_invalid_params_from(exc.detail),
+        )
+
+    if isinstance(exc, PermissionDenied | NotFound | Http404):
+        return problem_response(
+            request,
+            ProblemTemplate(
+                status_code=status.HTTP_404_NOT_FOUND,
+                code="resource_not_found",
+                title="Resource not found",
+            ),
+        )
+
+    if isinstance(exc, Conflict):
+        return problem_response(
+            request,
+            ProblemTemplate(
+                status_code=status.HTTP_409_CONFLICT,
+                code="conflict",
+                title="Conflict",
+            ),
+        )
+
+    if response is not None:
+        code = getattr(exc, "default_code", "api_error")
+        status_code = response.status_code
+        return problem_response(
+            request,
+            ProblemTemplate(
+                status_code=status_code,
+                code=str(code),
+                title=_status_title(status_code),
+            ),
+            headers=_preserved_headers(response.headers),
+        )
+
+    return problem_response(
+        request,
+        ProblemTemplate(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            code="internal_error",
+            title="Internal server error",
+        ),
+    )
+
+
+def _invalid_params_from(detail: Any) -> list[dict[str, str]]:
+    if not isinstance(detail, dict):
+        return [{"name": "nonFieldErrors", "reason": "Invalid request."}]
+
+    invalid_params: list[dict[str, str]] = []
+    for field_name in detail:
+        safe_name = str(field_name)
+        invalid_params.append({"name": safe_name, "reason": "Invalid value."})
+    return invalid_params
+
+
+def _status_title(status_code: int) -> str:
+    try:
+        return HTTPStatus(status_code).phrase
+    except ValueError:
+        return "API error"
+
+
+def _preserved_headers(headers: Mapping[str, str]) -> dict[str, str]:
+    return {key: value for key, value in headers.items() if key.lower() != "content-type"}

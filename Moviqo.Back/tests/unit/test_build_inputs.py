@@ -34,6 +34,13 @@ def test_verification_commands_are_declared() -> None:
 
     assert "uv run pytest" in commands
     assert (
+        "uv run python src/manage.py spectacular --file ../docs/api/openapi-v1.json "
+        "--format openapi-json --validate --fail-on-warn --settings=moviqo.settings.test"
+        in commands
+    )
+    assert "git -C .. ls-files --error-unmatch docs/api/openapi-v1.json" in commands
+    assert "git -C .. diff --exit-code -- docs/api/openapi-v1.json" in commands
+    assert (
         "uv run python src/manage.py check --deploy --settings=moviqo.settings.production"
         in commands
     )
@@ -47,6 +54,7 @@ def test_verification_commands_are_declared() -> None:
         "uv run python src/manage.py migrate --settings=moviqo.settings.test --noinput"
         in commands
     )
+    assert "uv run pytest tests/integration --ds=moviqo.settings.integration" in commands
 
 
 def test_container_build_uses_locked_dependency_inputs() -> None:

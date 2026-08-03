@@ -17,6 +17,7 @@ uv run python src/manage.py migrate --settings=moviqo.settings.test --noinput
 uv run pytest tests/integration --ds=moviqo.settings.integration
 uv run python src/manage.py check --deploy --settings=moviqo.settings.production
 uv run python src/manage.py health_start
+python ../Moviqo.Infrastructure/operations/validate_uat.py
 ```
 
 Run frontend checks from `Moviqo.Front/`:
@@ -29,4 +30,10 @@ npm run test:unit
 npm run typecheck
 npm run build
 npm run test:e2e
+```
+
+Run infrastructure validation from the repository root:
+
+```powershell
+python Moviqo.Infrastructure/operations/validate_uat.py
 ```

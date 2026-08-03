@@ -23,6 +23,14 @@ test("saved language preference wins over browser preference", () => {
 test("Moviqo-owned labels, navigation, statuses, validation, help, and catalog copy localize", () => {
   assert.equal(translate("es", "app.nav.work"), "Mi trabajo");
   assert.equal(translate("en", "app.nav.work"), "My work");
+  assert.equal(
+    translate("es", "environment.banner.title"),
+    "Entorno interno con datos sinteticos"
+  );
+  assert.equal(
+    translate("en", "environment.banner.rule2"),
+    "Do not enter real business data, real personal data, or production files."
+  );
   assert.equal(translate("es", "status.needsAttention"), "Necesita atencion");
   assert.equal(translate("en", "status.needsAttention"), "Needs attention");
   assert.equal(translate("es", "validation.required"), "Completa este campo para continuar.");

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from moviqo.settings.env import env_bool, env_csv, required_env
@@ -74,6 +75,18 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
+MOVIQO_ENVIRONMENT_CLASS = os.getenv("MOVIQO_ENVIRONMENT_CLASS", "local-dev")
+MOVIQO_BUILD_ID = os.getenv("MOVIQO_BUILD_ID", "local-build")
+MOVIQO_SERVICE_CLASS = os.getenv("MOVIQO_SERVICE_CLASS", "application")
+MOVIQO_SERVICE_NAME = os.getenv("MOVIQO_SERVICE_NAME", "moviqo-back")
+MOVIQO_FILE_INSPECTION_ADAPTER = os.getenv("MOVIQO_FILE_INSPECTION_ADAPTER", "disabled")
+MOVIQO_MESSAGE_DELIVERY_ADAPTER = os.getenv("MOVIQO_MESSAGE_DELIVERY_ADAPTER", "console")
+MOVIQO_CACHE_POLICY = os.getenv("MOVIQO_CACHE_POLICY", "local")
+MOVIQO_DISABLED_SERVICES = {
+    "liveMalwareScanning": os.getenv("MOVIQO_LIVE_MALWARE_SCANNING", "disabled-by-gate"),
+    "independentBackups": os.getenv("MOVIQO_INDEPENDENT_BACKUPS", "disabled-by-gate"),
+    "lifecycleSchedules": os.getenv("MOVIQO_LIFECYCLE_SCHEDULES", "disabled-by-gate"),
+}
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",

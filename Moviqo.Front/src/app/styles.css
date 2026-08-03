@@ -89,6 +89,43 @@ select:focus-visible {
   background: var(--surface-base);
 }
 
+.environment-banner {
+  background: #FFF6D8;
+  border-bottom: 1px solid #E1C26B;
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: var(--space-lg) var(--gutter);
+}
+
+.environment-banner__label {
+  align-items: center;
+  background: #8C5A12;
+  border-radius: var(--radius-control);
+  color: #FFFFFF;
+  display: inline-flex;
+  font-size: 0.875rem;
+  font-weight: 700;
+  justify-content: center;
+  min-height: var(--target-min);
+  min-width: 4rem;
+  padding: 0 var(--space-md);
+}
+
+.environment-banner__content {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.environment-banner__content p,
+.environment-banner__content ul {
+  margin: 0;
+}
+
+.environment-banner__content ul {
+  padding-left: 1.25rem;
+}
+
 .app-header {
   align-items: center;
   background: var(--surface-raised);
@@ -353,6 +390,10 @@ p {
 }
 
 @media (max-width: 520px) {
+  .environment-banner {
+    grid-template-columns: 1fr;
+  }
+
   .app-header {
     align-items: stretch;
   }

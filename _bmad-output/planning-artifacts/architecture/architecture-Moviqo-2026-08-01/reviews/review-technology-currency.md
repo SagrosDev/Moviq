@@ -14,7 +14,7 @@ Pass. Every named implementation technology was checked against its official pro
 | Psycopg | 3.3.4 | Current Psycopg 3 driver line |
 | drf-spectacular | 0.30.0 | Current published line and compatible with selected Django/DRF |
 | PostgreSQL | 17.10 | Supported; selected to match Supabase's current default major |
-| Node.js | 24.18.0 LTS | Current LTS seed |
+| Node.js | 26.5.1 | Approved frontend runtime baseline |
 | TypeScript | 6.0.x | Current release line |
 | React | 19.2.7 | Current stable release |
 | Vite | 8.2.x | Current regular patch line |
@@ -38,4 +38,3 @@ None blocking. Package resolution during scaffolding must lock exact transitive 
 - TypeScript 6.0 notes: https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html
 - pytest package history: https://pypi.org/project/pytest/
 - Playwright release notes: https://playwright.dev/docs/release-notes
-

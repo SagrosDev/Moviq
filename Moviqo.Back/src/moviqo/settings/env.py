@@ -41,3 +41,13 @@ def required_env_csv(name: str) -> list[str]:
     if not values:
         raise RuntimeError(f"Missing required environment variable: {name}")
     return values
+
+
+def required_env_choice(name: str, allowed_values: tuple[str, ...]) -> str:
+    value = required_env(name)
+    if value not in allowed_values:
+        allowed = ", ".join(allowed_values)
+        raise RuntimeError(
+            f"Invalid environment variable {name}: expected one of [{allowed}], got {value!r}"
+        )
+    return value

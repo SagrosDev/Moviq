@@ -786,7 +786,7 @@ NFR31: Recovery objectives — Recoverable production-data failures are handled 
 - Keep AI, microservices, distributed caches, brokers, real-time collaboration, and cross-Organization Process Data analytics outside MVP.
 - Follow red → green → refactor for every behavior and defect; use unit/table tests, real PostgreSQL integration tests, architecture tests, OpenAPI contract tests, and Playwright journeys with automated accessibility checks.
 - Apply the Architecture consistency conventions for naming, UUIDv7 identifiers, tenant-scoped keys, UTC/`timestamptz`, ISO dates/currencies, JSON schema versions, `/api/v1`, ETag/`If-Match`, pagination, audit, environment configuration, and localization.
-- Use the pinned stack: Python 3.14.6, Django 5.2.15 LTS, DRF 3.17.1, Psycopg 3.3.4, drf-spectacular 0.30.0, PostgreSQL 17.10, Node.js 24.18.0 LTS, TypeScript 6.0.x, React 19.2.7, Vite 8.2.x, React Flow 12.11.2, ClamAV 1.5.3, pytest 9.1.1, and Playwright 1.62.x.
+- Use the pinned stack: Python 3.14.6, Django 5.2.15 LTS, DRF 3.17.1, Psycopg 3.3.4, drf-spectacular 0.30.0, PostgreSQL 17.10, Node.js 26.5.1, TypeScript 6.0.x, React 19.2.7, Vite 8.2.x, React Flow 12.11.2, ClamAV 1.5.3, pytest 9.1.1, and Playwright 1.62.x.
 
 ## UX Design Requirements
 

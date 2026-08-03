@@ -2,6 +2,7 @@
 id: SPEC-Moviqo
 companions:
   - requirements-map.md
+  - runtime-alignment.md
   - ../../planning-artifacts/prds/prd-Moviqo-2026-07-30/prd.md
   - ../../planning-artifacts/ux-designs/ux-Moviqo-2026-08-01/DESIGN.md
   - ../../planning-artifacts/ux-designs/ux-Moviqo-2026-08-01/EXPERIENCE.md
@@ -88,6 +89,7 @@ Moviqo realizes an opportunity for Spanish- and English-speaking SMEs without au
 - Normal Claim, Save, Complete, and configuration operations target two-second p95; application views target three-second usability under the approved beta profile.
 - Internal E2E is company-only and synthetic-only. Real customer data is forbidden until live inspection, independent backup/restore evidence, lifecycle enforcement, security/isolation gates, and accessibility evidence pass.
 - The finalized architecture companion binds the Python/Django modular monolith, React SPA, PostgreSQL, deployment topology, data boundaries, and integration seams.
+- Project-authored Node.js runtime declarations, guards, and delivery artifacts use Node.js 26.5.1 so local verification, CI expectations, and written implementation guidance agree on one approved runtime.
 - Delivery follows pragmatic TDD with real PostgreSQL, tenant-isolation, contract, architecture, and Playwright evidence; applicable failures block promotion.
 - Free-tier allowances are operating ceilings, not product guarantees; capacity is monitored at 60/80/90%, with paid upgrade before users are impaired.
 
@@ -105,3 +107,6 @@ Moviqo realizes an opportunity for Spanish- and English-speaking SMEs without au
 - Public beta: at least 5 Organizations participate, 20 distinct Workflows publish, 100 Processes complete, 2 of the first 5 Organizations remain active on day 30, one non-technical Owner publishes within 60 minutes, one Organization completes end to end without developer intervention, and one records willingness to consider a paid plan.
 - Trust: no confirmed cross-Organization exposure occurs, no covered customer-data loss remains unrecovered beyond the 24-hour objectives, and every applicable Gate 2 control has retained evidence.
 
+## Assumptions
+
+- Definitions to align means project-authored version declarations and generated project artifacts under source control, not third-party dependency engine metadata embedded inside installed-package records unless regeneration updates those records naturally.

@@ -1,6 +1,6 @@
 ---
 baseline_commit: b63084c0587460bbcbc643ddbe5de57ab7302965
-status: in-review
+status: done
 ---
 
 # Story 1.1: Establish the Backend Modular Spine
@@ -224,3 +224,46 @@ Codex
 
 - 2026-08-02: Started implementation and added the backend modular spine scaffold. Full completion is blocked by missing Python 3.14.6, `uv`, and installed test dependencies.
 - 2026-08-03: Completed story implementation, added lockfile-backed deterministic build inputs, resolved migration drift, and moved story to review.
+
+## Suggested Review Order
+
+**Composition Roots**
+
+- One health seam now verifies every public module contract.
+  [`health.py:11`](../../Moviqo.Back/src/moviqo/jobs/health.py#L11)
+
+- HTTP health delegates to the shared backend health job.
+  [`urls.py:9`](../../Moviqo.Back/src/moviqo/urls.py#L9)
+
+**Production Guardrails**
+
+- Invalid boolean env values fail closed instead of coercing.
+  [`env.py:29`](../../Moviqo.Back/src/moviqo/settings/env.py#L29)
+
+- Production requires explicit host configuration and deploy security defaults.
+  [`production.py:7`](../../Moviqo.Back/src/moviqo/settings/production.py#L7)
+
+**Architecture Enforcement**
+
+- Import parsing now resolves relative imports before boundary checks.
+  [`test_backend_spine_contract.py:47`](../../Moviqo.Back/tests/architecture/test_backend_spine_contract.py#L47)
+
+- Cross-module imports are limited to public application contracts.
+  [`test_backend_spine_contract.py:137`](../../Moviqo.Back/tests/architecture/test_backend_spine_contract.py#L137)
+
+- Direct cross-module table references are now detected.
+  [`test_backend_spine_contract.py:185`](../../Moviqo.Back/tests/architecture/test_backend_spine_contract.py#L185)
+
+- Forbidden dependencies are checked in both declarations and lockfile.
+  [`test_backend_spine_contract.py:105`](../../Moviqo.Back/tests/architecture/test_backend_spine_contract.py#L105)
+
+**Build And Test Evidence**
+
+- Image input hashing includes the copied source tree.
+  [`test_build_inputs.py:20`](../../Moviqo.Back/tests/unit/test_build_inputs.py#L20)
+
+- Git and Docker contexts exclude local secrets.
+  [`test_build_inputs.py:61`](../../Moviqo.Back/tests/unit/test_build_inputs.py#L61)
+
+- ASGI application is imported, not only named in settings.
+  [`test_django_spine.py:13`](../../Moviqo.Back/tests/integration/test_django_spine.py#L13)

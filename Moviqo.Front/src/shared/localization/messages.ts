@@ -17,6 +17,11 @@ export type MessageKey =
   | "home.eyebrow"
   | "home.title"
   | "home.lede"
+  | "environment.banner.title"
+  | "environment.banner.body"
+  | "environment.banner.rule1"
+  | "environment.banner.rule2"
+  | "environment.banner.rule3"
   | "authority.title"
   | "authority.accessDenied"
   | "authority.completionRejected"
@@ -100,6 +105,15 @@ export const spanishMessages: MessageDictionary = {
   "home.title": "Avanza el trabajo con responsables claros.",
   "home.lede":
     "Moviqo mantiene las decisiones del flujo en el servidor mientras esta interfaz prueba la estructura accesible y bilingue.",
+  "environment.banner.title": "Entorno interno con datos sinteticos",
+  "environment.banner.body":
+    "Usa este entorno solo para pruebas internas persistentes. No actives clientes ni registres datos reales.",
+  "environment.banner.rule1":
+    "Prohibido usar onboarding de clientes o afirmaciones de produccion.",
+  "environment.banner.rule2":
+    "Prohibido ingresar datos reales de negocio, datos personales reales o archivos de produccion.",
+  "environment.banner.rule3":
+    "Las funciones de malware en vivo, copias independientes y ciclos de vida siguen deshabilitados por compuerta.",
   "authority.title": "Respuesta del servidor requerida",
   "authority.accessDenied": "No tienes acceso a este elemento de trabajo.",
   "authority.completionRejected":
@@ -185,6 +199,15 @@ export const englishMessages: Partial<MessageDictionary> = {
   "home.title": "Move work forward with clear ownership.",
   "home.lede":
     "Moviqo keeps workflow decisions on the server while this interface proves the accessible bilingual structure.",
+  "environment.banner.title": "Internal synthetic-data environment",
+  "environment.banner.body":
+    "Use this environment for persistent internal testing only. Do not onboard customers or enter real data.",
+  "environment.banner.rule1":
+    "Customer onboarding and production claims are prohibited here.",
+  "environment.banner.rule2":
+    "Do not enter real business data, real personal data, or production files.",
+  "environment.banner.rule3":
+    "Live malware scanning, independent backups, and lifecycle schedules remain disabled by gate.",
   "authority.title": "Server response required",
   "authority.accessDenied": "You do not have access to this work item.",
   "authority.completionRejected":

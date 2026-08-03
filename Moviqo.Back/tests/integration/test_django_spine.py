@@ -32,7 +32,22 @@ def test_health_start_endpoint_is_minimal() -> None:
     response = client.get("/health/start/")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {
+        "status": "ok",
+        "build": "local-build",
+        "environmentClass": "local-dev",
+        "serviceClass": "application",
+        "serviceName": "moviqo-back",
+        "correlationId": "startup-local-build",
+        "cachePolicy": "local",
+        "fileInspection": "disabled",
+        "messageDelivery": "console",
+        "disabledServices": {
+            "liveMalwareScanning": "disabled-by-gate",
+            "independentBackups": "disabled-by-gate",
+            "lifecycleSchedules": "disabled-by-gate",
+        },
+    }
 
 
 @pytest.mark.django_db

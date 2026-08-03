@@ -1,0 +1,32 @@
+{
+  "serviceName": "moviqo-back-uat",
+  "region": "us-east1",
+  "serviceClass": "uat-internal",
+  "serviceAccount": "moviqo-uat-runner@moviqo-uat-synthetic.iam.gserviceaccount.com",
+  "minInstances": 0,
+  "maxInstances": 2,
+  "timeoutSeconds": 60,
+  "secretEnv": [
+    {
+      "secret": "moviqo-uat-django-secret",
+      "env": "MOVIQO_SECRET_KEY"
+    },
+    {
+      "secret": "moviqo-uat-db-password",
+      "env": "MOVIQO_DB_PASSWORD"
+    },
+    {
+      "secret": "moviqo-uat-resend-api-key",
+      "env": "MOVIQO_RESEND_API_KEY"
+    }
+  ],
+  "env": {
+    "MOVIQO_ENVIRONMENT_CLASS": "synthetic-only",
+    "MOVIQO_FILE_INSPECTION_ADAPTER": "synthetic",
+    "MOVIQO_MESSAGE_DELIVERY_ADAPTER": "resend-outbox",
+    "MOVIQO_CACHE_POLICY": "firebase-hosting-no-store",
+    "MOVIQO_LIVE_MALWARE_SCANNING": "disabled-by-gate",
+    "MOVIQO_INDEPENDENT_BACKUPS": "disabled-by-gate",
+    "MOVIQO_LIFECYCLE_SCHEDULES": "disabled-by-gate"
+  }
+}

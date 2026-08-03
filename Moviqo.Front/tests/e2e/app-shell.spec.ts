@@ -8,6 +8,8 @@ test("application shell exposes semantic navigation and keyboard focus", async (
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: /avanza el trabajo/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /entorno interno con datos sinteticos/i })).toBeVisible();
+  await expect(page.getByText(/prohibido ingresar datos reales de negocio/i)).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Principal" })).toBeVisible();
   await expect(page.getByRole("main")).toBeVisible();
 
@@ -36,6 +38,8 @@ test("language selector is keyboard operable and persists locally", async ({ bro
 
   await page.getByLabel("Idioma").selectOption("en");
   await expect(page.getByRole("heading", { name: /move work forward/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /internal synthetic-data environment/i })).toBeVisible();
+  await expect(page.getByText(/do not enter real business data/i)).toBeVisible();
 
   await page.goto("/", { waitUntil: "domcontentloaded" });
 

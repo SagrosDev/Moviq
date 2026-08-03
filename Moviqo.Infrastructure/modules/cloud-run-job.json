@@ -1,0 +1,8 @@
+{
+  "jobName": "moviqo-uat-outbox-drain",
+  "region": "us-east1",
+  "serviceClass": "uat-internal",
+  "serviceAccount": "moviqo-uat-jobs@moviqo-uat-synthetic.iam.gserviceaccount.com",
+  "maxRetries": 0,
+  "maxConcurrentExecutions": 1
+}

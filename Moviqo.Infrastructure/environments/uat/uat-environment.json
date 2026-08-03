@@ -1,0 +1,56 @@
+{
+  "environmentClass": "synthetic-only",
+  "region": "us-east1",
+  "build": {
+    "artifact": "Moviqo.Front/dist",
+    "backendService": "moviqo-back-uat",
+    "serviceClass": "uat-internal"
+  },
+  "identity": {
+    "cloudProjectId": "moviqo-uat-synthetic",
+    "cloudRunServiceAccount": "moviqo-uat-runner@moviqo-uat-synthetic.iam.gserviceaccount.com",
+    "cloudRunJobServiceAccount": "moviqo-uat-jobs@moviqo-uat-synthetic.iam.gserviceaccount.com"
+  },
+  "storage": {
+    "privateBucket": "moviqo-uat-private",
+    "quarantineBucket": "moviqo-uat-quarantine",
+    "cleanBucket": "moviqo-uat-clean",
+    "publicAccess": false
+  },
+  "database": {
+    "provider": "supabase-postgresql",
+    "host": "db.uat.supabase.internal",
+    "runtimeCredentialSecret": "moviqo-uat-db-password",
+    "migrationCredentialSecret": "moviqo-uat-db-password-migrate"
+  },
+  "messaging": {
+    "provider": "resend-outbox",
+    "apiKeySecret": "moviqo-uat-resend-api-key"
+  },
+  "fileInspection": {
+    "adapter": "synthetic",
+    "liveMalwareScanning": "disabled-by-gate"
+  },
+  "disabledServices": {
+    "independentBackups": "disabled-by-gate",
+    "lifecycleSchedules": "disabled-by-gate",
+    "liveMalwareScanning": "disabled-by-gate"
+  },
+  "scaling": {
+    "cloudRun": {
+      "minInstances": 0,
+      "maxInstances": 2
+    },
+    "job": {
+      "maxRetries": 0,
+      "maxConcurrentExecutions": 1
+    }
+  },
+  "capacityAlerts": {
+    "firebaseHostingTransferPercent": [60, 80, 90],
+    "gcsStoragePercent": [60, 80, 90],
+    "supabaseDatabasePercent": [60, 80, 90],
+    "cloudRunUsagePercent": [60, 80, 90],
+    "resendMonthlyEmailPercent": [60, 80, 90]
+  }
+}

@@ -3,12 +3,11 @@ from __future__ import annotations
 from django.http import JsonResponse
 from django.urls import path
 
-from moviqo.modules.organizations.application import module_health
+from moviqo.jobs.health import run
 
 
 def health_start(_request):
-    module_health()
-    return JsonResponse({"status": "ok"})
+    return JsonResponse(run())
 
 
 urlpatterns = [

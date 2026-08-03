@@ -52,6 +52,6 @@ verify_commands = [
   "uv run pytest",
   "uv run python src/manage.py makemigrations --settings=moviqo.settings.test --check --dry-run",
   "uv run python src/manage.py migrate --settings=moviqo.settings.test --noinput",
-  "uv run python src/manage.py check --deploy",
+  "uv run python src/manage.py check --deploy --settings=moviqo.settings.production",
   "uv run python src/manage.py health_start",
 ]

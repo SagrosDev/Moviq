@@ -1,5 +1,6 @@
 ---
 baseline_commit: b63084c0587460bbcbc643ddbe5de57ab7302965
+status: in-review
 ---
 
 # Story 1.1: Establish the Backend Modular Spine
@@ -147,6 +148,13 @@ Codex
 - 2026-08-03: Development and production health-start checks passed; production check used synthetic local environment values only.
 - 2026-08-03: `uv run python src/manage.py check --deploy` exited 0 with expected development-default security warnings.
 - 2026-08-03: Docker client exists but the local Docker daemon is not running, so actual image builds were not executed locally; locked deterministic image inputs are covered by unit tests and `Dockerfile`.
+- 2026-08-03: Quick Dev review ran Blind Hunter and Edge Case Hunter; patch-level findings were applied for architecture guard coverage, deterministic image inputs, forbidden lockfile dependencies, production deploy settings, module health coverage, ASGI coverage, and secret-file ignores.
+- 2026-08-03: `uv run ruff check src tests` passed after review patches.
+- 2026-08-03: `uv run pytest` passed: 19 tests.
+- 2026-08-03: `uv run python src/manage.py makemigrations --settings=moviqo.settings.test --check --dry-run` passed: no changes detected.
+- 2026-08-03: `uv run python src/manage.py migrate --settings=moviqo.settings.test --noinput` passed.
+- 2026-08-03: Production `check --deploy` passed with no issues using synthetic local environment values.
+- 2026-08-03: Production `health_start` passed with synthetic local environment values.
 
 ### Completion Notes List
 
@@ -158,6 +166,7 @@ Codex
 - Added six module packages with public application-contract entry points plus architecture tests for public-contract imports, forbidden internal imports, and dependency cycles.
 - Added locked dependency inputs via `uv.lock` and container build inputs that use `uv sync --frozen --no-dev`.
 - Added verification coverage for dependency constraints, forbidden dependencies, deterministic build inputs, ASGI/custom-user behavior, health-start, and module boundaries.
+- Review patches hardened architecture tests, build-input determinism coverage, production checks, module health coverage, and local secret-file exclusions.
 
 ### File List
 

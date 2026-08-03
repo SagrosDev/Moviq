@@ -7,6 +7,7 @@ from drf_spectacular.views import SpectacularAPIView
 
 from moviqo.building_blocks.api.views import SystemPingView
 from moviqo.jobs.health import run
+from moviqo.modules.organizations.application import ProtectedMembershipDetailView
 
 
 def health_start(_request):
@@ -21,4 +22,9 @@ urlpatterns = [
         name="api-v1-schema",
     ),
     path("api/v1/system/ping/", SystemPingView.as_view(), name="api-v1-system-ping"),
+    path(
+        "api/v1/organizations/protected-memberships/<uuid:membership_id>/",
+        ProtectedMembershipDetailView.as_view(),
+        name="api-v1-organizations-protected-membership-detail",
+    ),
 ]

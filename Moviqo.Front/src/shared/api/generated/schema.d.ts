@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/api/v1/organizations/protected-memberships/{membership_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_protected_membership_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/schema/": {
         parameters: {
             query?: never;
@@ -58,6 +74,13 @@ export interface components {
                 [key: string]: string;
             }[];
         };
+        ProtectedMembership: {
+            /** Format: uuid */
+            membershipId: string;
+            /** Format: uuid */
+            organizationId: string;
+            role: string;
+        };
         SystemPing: {
             status: string;
         };
@@ -70,6 +93,43 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    organizations_protected_membership_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                membership_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProtectedMembership"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     schema_retrieve: {
         parameters: {
             query?: {

@@ -1,0 +1,17 @@
+[workflow]
+activation_steps_append = [
+  """
+  Before beginning Dev Story workflow Step 1 implementation work, perform a Git story-branch preflight.
+
+  Branch rule:
+  - Determine the target story key from the user request when provided, otherwise from the story selected by sprint-status discovery.
+  - Normalize it to `story/<story-key>`, for example `story/1-2-establish-the-frontend-application-spine`.
+  - Run `git status --short` and preserve all current staged and unstaged worktree changes.
+  - If already on the target branch, continue.
+  - If the target branch exists, run `git switch <target-branch>`.
+  - If the target branch does not exist, run `git switch -c <target-branch>`.
+  - Do not stash, reset, checkout, clean, or discard changes. The current worktree changes must remain present on the story branch.
+  - If Git refuses the switch because of conflicts or incompatible local changes, HALT and report the exact Git error before modifying code.
+  - Record the selected branch name in Dev Agent Record -> Debug Log References.
+  """
+]

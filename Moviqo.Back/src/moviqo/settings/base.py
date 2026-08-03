@@ -34,6 +34,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "moviqo.building_blocks.api.correlation.CorrelationIdMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -76,9 +77,13 @@ STATIC_URL = "static/"
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": (
+        "moviqo.building_blocks.api.problem_details.problem_details_exception_handler"
+    ),
 }
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Moviqo API",
     "VERSION": "0.1.0",
+    "SCHEMA_PATH_PREFIX": r"/api/v1",
 }

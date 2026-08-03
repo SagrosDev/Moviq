@@ -22,7 +22,7 @@ development_status:
   epic-1: in-progress
   1-1-establish-the-backend-modular-spine: done
   1-2-establish-the-frontend-application-spine: done
-  1-3-establish-the-api-error-build-and-test-contract: backlog
+  1-3-establish-the-api-error-build-and-test-contract: done
   1-4-establish-the-accessible-bilingual-design-foundation: backlog
   1-5-deploy-the-synthetic-data-internal-environment: backlog
   1-6-establish-tenant-owned-relational-data: backlog

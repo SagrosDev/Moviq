@@ -3,10 +3,12 @@ from __future__ import annotations
 import os
 
 import django
+import pytest
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.handlers.asgi import ASGIHandler
+from django.db import connection
 from django.test import Client
 
 
@@ -31,3 +33,12 @@ def test_health_start_endpoint_is_minimal() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+@pytest.mark.django_db
+def test_integration_suite_uses_real_postgresql() -> None:
+    if settings.SETTINGS_MODULE != "moviqo.settings.integration":
+        pytest.skip("Only the integration settings contract must prove PostgreSQL.")
+
+    assert settings.DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql"
+    assert connection.vendor == "postgresql"

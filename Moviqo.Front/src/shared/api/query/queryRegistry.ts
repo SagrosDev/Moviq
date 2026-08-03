@@ -5,11 +5,11 @@ export type QueryInvalidation = {
   reason: string;
 };
 
-export function createQueryKey(resource: string, identifier?: string): QueryKey {
+export const createQueryKey = (resource: string, identifier?: string): QueryKey => {
   return identifier ? ["api", resource, identifier] : ["api", resource];
-}
+};
 
-export function createQueryRegistry() {
+export const createQueryRegistry = () => {
   const invalidations: QueryInvalidation[] = [];
 
   return {
@@ -20,4 +20,4 @@ export function createQueryRegistry() {
       return [...invalidations];
     }
   };
-}
+};

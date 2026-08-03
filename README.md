@@ -28,4 +28,5 @@ npm run check:api-client
 npm run test:unit
 npm run typecheck
 npm run build
+npm run test:e2e
 ```

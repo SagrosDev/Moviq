@@ -14,16 +14,16 @@ export type ApiClientOptions = {
   fetch?: (input: Request) => Promise<Response>;
 };
 
-export function createApiClient(options: ApiClientOptions) {
+export const createApiClient = (options: ApiClientOptions) => {
   return createClient<paths>({
     baseUrl: normalizeApiBaseUrl(options.baseUrl),
     fetch: options.fetch
   });
-}
+};
 
-function normalizeApiBaseUrl(baseUrl: string): string {
+const normalizeApiBaseUrl = (baseUrl: string): string => {
   const trimmed = baseUrl.replace(/\/+$/, "");
   return trimmed.endsWith(API_PATH_PREFIX)
     ? trimmed.slice(0, -API_PATH_PREFIX.length)
     : trimmed;
-}
+};

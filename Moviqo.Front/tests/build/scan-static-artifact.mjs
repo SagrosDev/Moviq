@@ -14,7 +14,7 @@ const forbiddenPatterns = [
   /SECRET/i
 ];
 
-async function files(root) {
+const files = async (root) => {
   const entries = await readdir(root, { withFileTypes: true });
   const result = [];
 
@@ -28,7 +28,7 @@ async function files(root) {
   }
 
   return result;
-}
+};
 
 const artifactFiles = await files(distRoot);
 assert.ok(artifactFiles.length > 0, "Expected Vite to produce a static dist artifact.");

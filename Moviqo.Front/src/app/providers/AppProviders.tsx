@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
+import { LanguageProvider } from "../../shared/localization";
 
 type AppProvidersProps = {
   children: ReactNode;
 };
 
-export function AppProviders({ children }: AppProvidersProps) {
-  return <>{children}</>;
-}
+export const AppProviders = ({ children }: AppProvidersProps) => {
+  return <LanguageProvider>{children}</LanguageProvider>;
+};

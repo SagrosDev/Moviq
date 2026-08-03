@@ -4,6 +4,10 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
 };
 
-export function Button({ children, ...props }: ButtonProps) {
-  return <button {...props}>{children}</button>;
-}
+export const Button = ({ children, className, ...props }: ButtonProps) => {
+  return (
+    <button className={className ? `button ${className}` : "button"} {...props}>
+      {children}
+    </button>
+  );
+};

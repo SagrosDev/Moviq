@@ -13,7 +13,7 @@ const prohibitedImports = {
   app: []
 };
 
-async function sourceFiles(root) {
+const sourceFiles = async (root) => {
   const entries = await readdir(root, { withFileTypes: true });
   const result = [];
 
@@ -27,13 +27,13 @@ async function sourceFiles(root) {
   }
 
   return result;
-}
+};
 
-function layerFor(file) {
+const layerFor = (file) => {
   return relative(srcRoot, file).split(sep)[0];
-}
+};
 
-function importedSpecifiers(content) {
+const importedSpecifiers = (content) => {
   const specs = [];
   const importPattern = /import\s+(?:type\s+)?(?:[^"';]*?\s+from\s+)?["']([^"']+)["']/g;
   const exportPattern = /export\s+(?:type\s+)?[^"';]*?\s+from\s+["']([^"']+)["']/g;
@@ -47,14 +47,14 @@ function importedSpecifiers(content) {
   }
 
   return specs;
-}
+};
 
-function resolveLayer(importer, specifier) {
+const resolveLayer = (importer, specifier) => {
   const resolved = resolveSrcSegments(importer, specifier);
   return resolved && layers.includes(resolved[0]) ? resolved[0] : null;
-}
+};
 
-function resolveSrcSegments(importer, specifier) {
+const resolveSrcSegments = (importer, specifier) => {
   if (specifier.startsWith("@/")) {
     return specifier.slice(2).split("/");
   }
@@ -64,14 +64,14 @@ function resolveSrcSegments(importer, specifier) {
   }
 
   return relative(srcRoot, join(dirname(importer), specifier)).split(sep);
-}
+};
 
-function featureNameFor(file) {
+const featureNameFor = (file) => {
   const segments = relative(srcRoot, file).split(sep);
   return segments[0] === "features" ? segments[1] : null;
-}
+};
 
-function isFeaturePublicEntryImport(importer, specifier) {
+const isFeaturePublicEntryImport = (importer, specifier) => {
   const resolved = resolveSrcSegments(importer, specifier);
   if (!resolved || resolved[0] !== "features") {
     return true;
@@ -86,7 +86,7 @@ function isFeaturePublicEntryImport(importer, specifier) {
     resolved.length === 2 ||
     (resolved.length === 3 && ["index", "index.ts", "index.tsx"].includes(resolved[2]))
   );
-}
+};
 
 test("import scanner covers static, side-effect, re-export, and dynamic imports", () => {
   assert.deepEqual(

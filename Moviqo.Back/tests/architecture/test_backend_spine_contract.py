@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from moviqo.building_blocks.tenancy import PROTECTED_TENANT_TABLES
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = PROJECT_ROOT / "src"
 PYPROJECT = PROJECT_ROOT / "pyproject.toml"
@@ -204,3 +206,53 @@ def test_modules_do_not_read_other_modules_tables_directly() -> None:
                 )
 
     assert not violations, "\n".join(violations)
+
+
+def test_tenant_owned_tables_are_registered_for_rls_enforcement() -> None:
+    registered_tables = {entry.table_name for entry in PROTECTED_TENANT_TABLES}
+    tenant_owned_tables: set[str] = set()
+    for model_file in SRC_ROOT.glob("moviqo/modules/*/models.py"):
+        tree = ast.parse(model_file.read_text(encoding="utf-8"), filename=str(model_file))
+        db_table_names: dict[str, str] = {}
+
+        for class_node in [node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)]:
+            has_organization_foreign_key = False
+            for statement in class_node.body:
+                if _is_organization_relationship(statement):
+                    has_organization_foreign_key = True
+                if isinstance(statement, ast.ClassDef) and statement.name == "Meta":
+                    for meta_statement in statement.body:
+                        if (
+                            isinstance(meta_statement, ast.Assign)
+                            and any(
+                                isinstance(target, ast.Name) and target.id == "db_table"
+                                for target in meta_statement.targets
+                            )
+                            and isinstance(meta_statement.value, ast.Constant)
+                            and isinstance(meta_statement.value.value, str)
+                        ):
+                            db_table_names[class_node.name] = meta_statement.value.value
+            if has_organization_foreign_key and class_node.name in db_table_names:
+                tenant_owned_tables.add(db_table_names[class_node.name])
+
+    assert tenant_owned_tables <= registered_tables
+
+
+def _is_organization_relationship(statement: ast.stmt) -> bool:
+    if isinstance(statement, ast.Assign):
+        if len(statement.targets) != 1 or not isinstance(statement.targets[0], ast.Name):
+            return False
+        target_name = statement.targets[0].id
+        value = statement.value
+    elif isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
+        target_name = statement.target.id
+        value = statement.value
+    else:
+        return False
+
+    return (
+        target_name == "organization"
+        and isinstance(value, ast.Call)
+        and isinstance(value.func, ast.Attribute)
+        and value.func.attr in {"ForeignKey", "OneToOneField"}
+    )

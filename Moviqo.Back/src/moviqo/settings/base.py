@@ -69,6 +69,8 @@ DATABASES = {
         "PORT": required_env("MOVIQO_DB_PORT"),
     }
 }
+MOVIQO_DB_RUNTIME_ROLE = os.getenv("MOVIQO_DB_RUNTIME_ROLE", "moviqo_runtime")
+MOVIQO_DB_RUNTIME_MEMBER = os.getenv("MOVIQO_DB_RUNTIME_MEMBER", DATABASES["default"]["USER"])
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"

@@ -5,6 +5,7 @@ import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+
 class MoviqoUser(AbstractUser):
     """Minimal custom user model required before the first migration."""
 

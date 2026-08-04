@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PasswordResetForm } from "../../../features/authentication/ui/PasswordResetForm";
+import { PasswordResetForm } from "../../../features/authentication";
 import { LanguageSelector, useLanguage } from "../../../shared/localization";
 
 export const PasswordResetPage = () => {

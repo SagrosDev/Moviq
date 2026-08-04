@@ -1,4 +1,4 @@
-import { PasswordRecoveryForm } from "../../../features/authentication/ui/PasswordRecoveryForm";
+import { PasswordRecoveryForm } from "../../../features/authentication";
 import { LanguageSelector, useLanguage } from "../../../shared/localization";
 
 export const PasswordRecoveryPage = () => {

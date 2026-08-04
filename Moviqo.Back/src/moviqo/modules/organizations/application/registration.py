@@ -10,11 +10,17 @@ from zoneinfo import available_timezones
 
 from django.conf import settings
 from django.core import signing
+from django.core.signing import BadSignature, SignatureExpired
 from django.db import IntegrityError, transaction
 from django.utils import timezone as django_timezone
 from django.utils.text import slugify
 
 from moviqo.building_blocks.commands import IdempotencyKeyReuseConflict
+from moviqo.building_blocks.tenancy.runtime import (
+    TenantContext,
+    apply_tenant_context,
+    registration_verification_bootstrap_context,
+)
 from moviqo.modules.governance.application import (
     append_transactional_audit,
     complete_command_result,
@@ -49,6 +55,15 @@ class RegistrationValidationError(Exception):
     invalid_params: list[dict[str, str]]
     problem_code: str = "registration_invalid"
     title: str = "Registration failed"
+
+    def __post_init__(self) -> None:
+        Exception.__init__(self, self.problem_code)
+
+
+@dataclass(frozen=True)
+class VerificationActivationError(Exception):
+    problem_code: str = "verification_link_invalid"
+    title: str = "Verification failed"
 
     def __post_init__(self) -> None:
         Exception.__init__(self, self.problem_code)
@@ -173,6 +188,13 @@ def register_initial_owner(
                         is_active=False,
                         registration_state=RegistrationWorkflowState.PENDING,
                     )
+                    apply_tenant_context(
+                        TenantContext(
+                            organization_id=organization.id,
+                            membership_id=membership.id,
+                            user_id=user.id,
+                        )
+                    )
                     accepted_at = timezone_now = django_timezone.now()
                     OrganizationRegistrationConsent.objects.create(
                         organization=organization,
@@ -259,6 +281,106 @@ def register_initial_owner(
                 for code, message in zip(exc.codes, exc.messages, strict=False)
             ]
         ) from exc
+
+
+def verify_initial_registration(*, token: str) -> dict[str, str]:
+    verification_id = _verification_id_from_token(token)
+    activated_at = django_timezone.now()
+
+    with transaction.atomic():
+        with registration_verification_bootstrap_context(verification_id=verification_id):
+            verification = RegistrationVerification.objects.filter(id=verification_id).first()
+        if verification is None:
+            raise VerificationActivationError()
+
+        apply_tenant_context(
+            TenantContext(
+                organization_id=verification.organization_id,
+                membership_id=verification.membership_id,
+                user_id=verification.user_id,
+            )
+        )
+        verification = (
+            RegistrationVerification.objects.select_for_update()
+            .select_related("organization", "membership", "user")
+            .filter(id=verification_id)
+            .first()
+        )
+        if verification is None:
+            raise VerificationActivationError()
+
+        membership = (
+            Membership.objects.select_for_update()
+            .select_related("organization", "user")
+            .filter(id=verification.membership_id)
+            .first()
+        )
+        if membership is None:
+            raise VerificationActivationError()
+
+        organization = Organization.objects.select_for_update().filter(
+            id=verification.organization_id
+        ).first()
+        user = MoviqoUser.objects.select_for_update().filter(id=verification.user_id).first()
+        if organization is None or user is None:
+            raise VerificationActivationError()
+
+        if not _verification_rows_match(
+            verification=verification,
+            membership=membership,
+            organization=organization,
+            user=user,
+        ):
+            raise VerificationActivationError()
+
+        if verification.consumed_at is not None or verification.expires_at <= activated_at:
+            raise VerificationActivationError()
+
+        if _has_newer_unconsumed_verification(
+            verification=verification,
+            activated_at=activated_at,
+        ):
+            raise VerificationActivationError()
+
+        if not _pending_activation_state_is_valid(
+            membership=membership,
+            organization=organization,
+            user=user,
+        ):
+            raise VerificationActivationError()
+
+        if _active_organization_count() >= settings.MOVIQO_ACTIVE_ORGANIZATION_CAPACITY:
+            raise VerificationActivationError()
+
+        verification.consumed_at = activated_at
+        verification.save(update_fields=["consumed_at"])
+
+        user.is_active = True
+        user.save(update_fields=["is_active"])
+
+        organization.is_active = True
+        organization.registration_state = RegistrationWorkflowState.ACTIVE
+        organization.save(update_fields=["is_active", "registration_state", "updated_at"])
+
+        membership.is_active = True
+        membership.registration_state = RegistrationWorkflowState.ACTIVE
+        membership.save(update_fields=["is_active", "registration_state", "updated_at"])
+
+        append_transactional_audit(
+            organization_id=organization.id,
+            command_type="organizations.registration.verify-email",
+            event_type="organizations.registration.activated",
+            actor_membership_id=membership.id,
+            actor_user_id=user.id,
+            payload={"outcome": "activated"},
+        )
+
+    return {
+        "status": "activated",
+        "email": user.normalized_email,
+        "language": user.preferred_language,
+        "nextStep": "sign_in",
+    }
 
 
 def _validate_registration_input(
@@ -377,6 +499,65 @@ def _validate_registration_input(
 
     if invalid_params:
         raise RegistrationValidationError(invalid_params=invalid_params)
+
+
+def _verification_id_from_token(token: str) -> uuid.UUID:
+    try:
+        unsigned = signing.TimestampSigner(salt=VERIFICATION_SALT).unsign(
+            token,
+            max_age=timedelta(hours=24),
+        )
+    except (BadSignature, SignatureExpired) as exc:
+        raise VerificationActivationError() from exc
+
+    try:
+        return uuid.UUID(unsigned)
+    except ValueError as exc:
+        raise VerificationActivationError() from exc
+
+
+def _verification_rows_match(
+    *,
+    verification: RegistrationVerification,
+    membership: Membership,
+    organization: Organization,
+    user: MoviqoUser,
+) -> bool:
+    return (
+        membership.organization_id == organization.id
+        and membership.user_id == user.id
+        and verification.organization_id == organization.id
+        and verification.membership_id == membership.id
+        and verification.user_id == user.id
+    )
+
+
+def _has_newer_unconsumed_verification(
+    *,
+    verification: RegistrationVerification,
+    activated_at,
+) -> bool:
+    return RegistrationVerification.objects.filter(
+        user_id=verification.user_id,
+        created_at__gt=verification.created_at,
+        consumed_at__isnull=True,
+        expires_at__gt=activated_at,
+    ).exists()
+
+
+def _pending_activation_state_is_valid(
+    *,
+    membership: Membership,
+    organization: Organization,
+    user: MoviqoUser,
+) -> bool:
+    return (
+        not user.is_active
+        and not membership.is_active
+        and not organization.is_active
+        and membership.registration_state == RegistrationWorkflowState.PENDING
+        and organization.registration_state == RegistrationWorkflowState.PENDING
+    )
 
 
 def _generated_username() -> str:

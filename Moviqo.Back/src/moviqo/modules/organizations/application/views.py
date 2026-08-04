@@ -6,7 +6,7 @@ from uuid import UUID
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -18,12 +18,19 @@ from moviqo.building_blocks.api.problem_details import (
 from moviqo.building_blocks.tenancy.runtime import apply_tenant_context, tenant_bootstrap_context
 from moviqo.modules.organizations.application.registration import (
     RegistrationValidationError,
+    VerificationActivationError,
     register_initial_owner,
+    verify_initial_registration,
 )
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
-from moviqo.modules.organizations.models import Membership
+from moviqo.modules.organizations.models import Membership, RegistrationWorkflowState
 
 request_logger = logging.getLogger("django.request")
+
+
+class AuthenticatedRequestPermission(BasePermission):
+    def has_permission(self, request, view) -> bool:
+        return bool(getattr(request.user, "is_authenticated", False))
 
 
 class ProtectedMembershipSerializer(serializers.Serializer):
@@ -33,7 +40,7 @@ class ProtectedMembershipSerializer(serializers.Serializer):
 
 
 class ProtectedMembershipDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AuthenticatedRequestPermission]
 
     @extend_schema(
         operation_id="organizations_protected_membership_detail",
@@ -52,7 +59,10 @@ class ProtectedMembershipDetailView(APIView):
                 .filter(
                     id=membership_id,
                     is_active=True,
+                    registration_state=RegistrationWorkflowState.ACTIVE,
                     organization_id=tenant_context.organization_id,
+                    organization__is_active=True,
+                    organization__registration_state=RegistrationWorkflowState.ACTIVE,
                 )
                 .first()
             )
@@ -97,6 +107,17 @@ class InitialRegistrationResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
     email = serializers.EmailField()
     language = serializers.CharField()
+
+
+class RegistrationVerificationRequestSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=512, allow_blank=True, required=False)
+
+
+class RegistrationVerificationResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    email = serializers.EmailField()
+    language = serializers.CharField()
+    nextStep = serializers.CharField()
 
 
 class InitialRegistrationView(APIView):
@@ -174,6 +195,47 @@ class InitialRegistrationView(APIView):
             )
 
         return Response(result, status=201)
+
+
+class RegistrationVerificationView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(
+        operation_id="organizations_verify_initial_registration",
+        request=RegistrationVerificationRequestSerializer,
+        responses={
+            200: RegistrationVerificationResponseSerializer,
+            (400, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def post(self, request) -> Response:
+        serializer = RegistrationVerificationRequestSerializer(data=request.data)
+        if not serializer.is_valid() or not serializer.validated_data.get("token", "").strip():
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    status_code=400,
+                    code="verification_link_invalid",
+                    title="Verification failed",
+                ),
+            )
+
+        try:
+            result = verify_initial_registration(
+                token=serializer.validated_data["token"].strip()
+            )
+        except VerificationActivationError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    status_code=400,
+                    code=exc.problem_code,
+                    title=exc.title,
+                ),
+            )
+
+        return Response(result, status=200)
 
 
 def _registration_invalid_params(errors) -> list[dict[str, str]]:

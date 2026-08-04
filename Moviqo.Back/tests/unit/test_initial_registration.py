@@ -3,16 +3,21 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
+from django.core import signing
 from django.test import override_settings
 from django.utils import timezone
 
 from moviqo.building_blocks.commands import IdempotencyKeyReuseConflict
+from moviqo.modules.governance.models import TransactionalAuditRecord
 from moviqo.modules.messaging import application as messaging_application
 from moviqo.modules.messaging.application import drain_outbox_messages
 from moviqo.modules.messaging.models import OutboxMessage
 from moviqo.modules.organizations.application.registration import (
+    VERIFICATION_SALT,
     RegistrationValidationError,
+    VerificationActivationError,
     register_initial_owner,
+    verify_initial_registration,
 )
 from moviqo.modules.organizations.models import (
     Membership,
@@ -43,6 +48,10 @@ def _payload(**overrides):
     }
     payload.update(overrides)
     return payload
+
+
+def _verification_token(verification: RegistrationVerification) -> str:
+    return signing.TimestampSigner(salt=VERIFICATION_SALT).sign(str(verification.id))
 
 
 @pytest.mark.django_db
@@ -280,3 +289,126 @@ def test_outbox_retry_does_not_create_duplicate_registration_business_rows(monke
     assert set(Membership.objects.values_list("id", flat=True)) == membership_ids
     assert set(MoviqoUser.objects.values_list("id", flat=True)) == user_ids
     assert OutboxMessage.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_verify_initial_registration_activates_pending_rows_and_records_audit() -> None:
+    register_initial_owner(
+        **_payload(),
+        idempotency_key="registration-1",
+    )
+    verification = RegistrationVerification.objects.get()
+
+    result = verify_initial_registration(token=_verification_token(verification))
+
+    verification.refresh_from_db()
+    membership = Membership.objects.get()
+    organization = Organization.objects.get()
+    user = MoviqoUser.objects.get()
+    audit_record = TransactionalAuditRecord.objects.get(
+        event_type="organizations.registration.activated"
+    )
+
+    assert result == {
+        "status": "activated",
+        "email": "ana@example.com",
+        "language": "es",
+        "nextStep": "sign_in",
+    }
+    assert verification.consumed_at is not None
+    assert user.is_active is True
+    assert organization.is_active is True
+    assert organization.registration_state == RegistrationWorkflowState.ACTIVE
+    assert membership.is_active is True
+    assert membership.registration_state == RegistrationWorkflowState.ACTIVE
+    assert audit_record.organization_id == organization.id
+    assert audit_record.actor_membership_id == membership.id
+    assert audit_record.actor_user_id == user.id
+    assert audit_record.payload == {"outcome": "activated"}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("token_factory", "setup_mismatch"),
+    [
+        pytest.param(
+            lambda verification: "not-a-valid-token",
+            lambda _verification: None,
+            id="malformed",
+        ),
+        pytest.param(
+            _verification_token,
+            lambda verification: RegistrationVerification.objects.filter(
+                id=verification.id
+            ).update(expires_at=timezone.now() - timedelta(minutes=1)),
+            id="expired",
+        ),
+        pytest.param(
+            _verification_token,
+            lambda verification: RegistrationVerification.objects.filter(
+                id=verification.id
+            ).update(consumed_at=timezone.now()),
+            id="consumed",
+        ),
+        pytest.param(
+            _verification_token,
+            lambda verification: RegistrationVerification.objects.create(
+                organization=verification.organization,
+                user=verification.user,
+                membership=verification.membership,
+                expires_at=timezone.now() + timedelta(hours=24),
+            ),
+            id="superseded",
+        ),
+        pytest.param(
+            _verification_token,
+            lambda verification: RegistrationVerification.objects.filter(
+                id=verification.id
+            ).update(
+                user=MoviqoUser.objects.create_user(
+                    username="mismatch-user",
+                    email="different@example.com",
+                    is_active=False,
+                )
+            ),
+            id="mismatched",
+        ),
+    ],
+)
+def test_verify_initial_registration_rejects_invalid_or_unsafe_tokens_without_state_change(
+    token_factory,
+    setup_mismatch,
+) -> None:
+    register_initial_owner(
+        **_payload(),
+        idempotency_key="registration-1",
+    )
+    verification = RegistrationVerification.objects.get()
+    membership = Membership.objects.get()
+    organization = Organization.objects.get()
+    user = MoviqoUser.objects.get()
+
+    setup_mismatch(verification)
+    expected_consumed_at = (
+        RegistrationVerification.objects.get(id=verification.id).consumed_at
+    )
+    token = token_factory(verification)
+
+    with pytest.raises(VerificationActivationError) as exc_info:
+        verify_initial_registration(token=token)
+
+    verification.refresh_from_db()
+    membership.refresh_from_db()
+    organization.refresh_from_db()
+    user.refresh_from_db()
+
+    assert exc_info.value.problem_code == "verification_link_invalid"
+    assert verification.consumed_at == expected_consumed_at
+    assert user.is_active is False
+    assert organization.is_active is False
+    assert organization.registration_state == RegistrationWorkflowState.PENDING
+    assert membership.is_active is False
+    assert membership.registration_state == RegistrationWorkflowState.PENDING
+    assert not TransactionalAuditRecord.objects.filter(
+        event_type="organizations.registration.activated"
+    ).exists()

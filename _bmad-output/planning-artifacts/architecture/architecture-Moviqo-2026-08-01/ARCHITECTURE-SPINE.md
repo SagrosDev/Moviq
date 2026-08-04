@@ -180,7 +180,7 @@ Moving between gates changes configuration and operational adapters, not domain 
 | Psycopg | 3.3.4 |
 | drf-spectacular | 0.30.0 |
 | PostgreSQL | 17.10 |
-| Node.js | 26.5.1 |
+| Node.js | 26.6.0 |
 | TypeScript | 6.0.x |
 | React | 19.2.7 |
 | Vite | 8.2.x |

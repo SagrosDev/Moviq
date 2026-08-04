@@ -10,6 +10,7 @@ from moviqo.jobs.health import run
 from moviqo.modules.organizations.application import (
     InitialRegistrationView,
     ProtectedMembershipDetailView,
+    RegistrationVerificationView,
 )
 
 
@@ -29,6 +30,11 @@ urlpatterns = [
         "api/v1/organizations/registrations/",
         InitialRegistrationView.as_view(),
         name="api-v1-organizations-registration-create",
+    ),
+    path(
+        "api/v1/organizations/registrations/verify-email/",
+        RegistrationVerificationView.as_view(),
+        name="api-v1-organizations-registration-verify-email",
     ),
     path(
         "api/v1/organizations/protected-memberships/<uuid:membership_id>/",

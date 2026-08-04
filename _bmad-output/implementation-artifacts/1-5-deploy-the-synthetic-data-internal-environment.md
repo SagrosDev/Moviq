@@ -151,7 +151,7 @@ so that the thin Moviqo journey can be tested safely outside a developer worksta
 ### Previous story intelligence
 
 - Story 1.1 established backend module boundaries, deterministic build-input tests, local secret exclusions, `uv` verification, production fail-closed settings, and a minimal `health_start` seam. Reuse these patterns for deployment/startup checks.
-- Story 1.2 established the static React/Vite SPA under `Moviqo.Front/`, feature-sliced architecture checks, one query layer, reducer-based draft primitives, Playwright smoke coverage, and Node 26.5.1 enforcement. Do not weaken the Node guard or introduce a frontend server.
+- Story 1.2 established the static React/Vite SPA under `Moviqo.Front/`, feature-sliced architecture checks, one query layer, reducer-based draft primitives, Playwright smoke coverage, and Node 26.6.0 enforcement. Do not weaken the Node guard or introduce a frontend server.
 - Story 1.3 established `/api/v1`, generated OpenAPI/TypeScript client, RFC 9457 Problem Details, safe correlation IDs, CI, and stale artifact checks. Keep API responses safe and do not hand-maintain duplicate DTOs for deployment checks.
 - Story 1.4 established Spanish-first localization, English support, Spanish fallback, approved tokens, accessible component patterns, browser/viewport checks, and the repo-level frontend arrow-function convention. Environment messaging must reuse those seams.
 - Recent commits show Story 1.4 was merged in `c128498` and implemented in `5d308f6`; expect reviewers to reject work that bypasses established contracts or leaves infrastructure claims unverified.

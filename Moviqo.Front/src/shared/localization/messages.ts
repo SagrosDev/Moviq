@@ -58,6 +58,18 @@ export type MessageKey =
   | "registration.submitting"
   | "registration.success"
   | "registration.failure"
+  | "verification.eyebrow"
+  | "verification.title"
+  | "verification.lede"
+  | "verification.loading.title"
+  | "verification.loading.body"
+  | "verification.success.title"
+  | "verification.success.body"
+  | "verification.success.next"
+  | "verification.invalid.title"
+  | "verification.invalid.body"
+  | "verification.cta.home"
+  | "verification.cta.register"
   | "catalog.title"
   | "catalog.subtitle"
   | "catalog.responsive.title"
@@ -186,6 +198,22 @@ export const spanishMessages: MessageDictionary = {
   "registration.submitting": "Enviando registro",
   "registration.success": "Se envio un enlace de verificacion a",
   "registration.failure": "Corrige los datos marcados y vuelve a enviar.",
+  "verification.eyebrow": "Verificacion de correo",
+  "verification.title": "Activa la organizacion al confirmar el correo.",
+  "verification.lede":
+    "Este paso confirma el control de la cuenta antes de habilitar el acceso protegido de la organizacion.",
+  "verification.loading.title": "Verificando enlace",
+  "verification.loading.body":
+    "Estamos validando el enlace seguro de un solo uso. No cierres esta pagina.",
+  "verification.success.title": "Correo verificado",
+  "verification.success.body": "La organizacion ya puede continuar con acceso protegido para",
+  "verification.success.next":
+    "Conserva este correo. El siguiente paso es iniciar sesion cuando esa ruta quede disponible.",
+  "verification.invalid.title": "No se pudo verificar el enlace",
+  "verification.invalid.body":
+    "El enlace puede haber expirado, haber sido usado o no ser valido. Vuelve al registro para solicitar un acceso nuevo seguro.",
+  "verification.cta.home": "Volver al inicio",
+  "verification.cta.register": "Registrar de nuevo",
   "catalog.title": "Sistema de diseno",
   "catalog.subtitle": "Componentes base para experiencias operativas seguras.",
   "catalog.responsive.title": "Comportamiento responsivo",
@@ -315,6 +343,23 @@ export const englishMessages: Partial<MessageDictionary> = {
   "registration.submitting": "Sending registration",
   "registration.success": "A verification link was sent to",
   "registration.failure": "Correct the marked values and try again.",
+  "verification.eyebrow": "Email verification",
+  "verification.title": "Activate the organization by confirming the email.",
+  "verification.lede":
+    "This step confirms account control before the organization gets protected access.",
+  "verification.loading.title": "Verifying link",
+  "verification.loading.body":
+    "We are validating the secure single-use link. Do not close this page.",
+  "verification.success.title": "Email verified",
+  "verification.success.body":
+    "The organization can now continue toward protected access for",
+  "verification.success.next":
+    "Keep this email ready. The next step is sign-in when that route becomes available.",
+  "verification.invalid.title": "The link could not be verified",
+  "verification.invalid.body":
+    "The link may be expired, already used, or invalid. Return to registration to request a new safe path.",
+  "verification.cta.home": "Return home",
+  "verification.cta.register": "Register again",
   "catalog.title": "Design system",
   "catalog.subtitle": "Base components for safe operational experiences.",
   "catalog.responsive.title": "Responsive behavior",

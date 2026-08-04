@@ -12,6 +12,7 @@ from moviqo.building_blocks.api.problem_details import (
 )
 from moviqo.building_blocks.commands import IdempotencyKeyReuseConflict
 from moviqo.modules.organizations.application.identity_boundary import IdentityBoundaryViolation
+from moviqo.modules.organizations.application.password_policy import CredentialValidationError
 
 FORBIDDEN_FRAGMENTS = [
     "Traceback",
@@ -81,6 +82,24 @@ def test_validation_problem_does_not_echo_unsafe_validator_text() -> None:
 
     body = _assert_problem(response, status=400, code="validation_failed")
     assert body["invalidParams"] == [{"name": "fail", "reason": "Invalid value."}]
+
+
+def test_password_validation_problem_uses_localized_safe_feedback() -> None:
+    request = APIRequestFactory().get("/api/v1/system/ping/")
+    request.correlation_id = "safe-correlation-123"
+
+    response = problem_details_exception_handler(
+        CredentialValidationError.from_codes(("password_blocklisted",), locale="es").as_drf_error(),
+        {"request": request},
+    )
+
+    body = _assert_problem(response, status=400, code="validation_failed")
+    assert body["invalidParams"] == [
+        {
+            "name": "password",
+            "reason": "Elige una contrasena mas dificil de adivinar o que no figure como expuesta."
+        }
+    ]
 
 
 @override_settings(DEBUG=True)

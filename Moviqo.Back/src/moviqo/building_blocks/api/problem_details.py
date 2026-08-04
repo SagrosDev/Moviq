@@ -16,6 +16,11 @@ from moviqo.building_blocks.api.correlation import safe_correlation_id
 
 PROBLEM_BASE_TYPE = "https://api.moviqo.local/problems"
 SAFE_INVALID_PARAM_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
+SAFE_PASSWORD_REASON_CODES = {
+    "password_too_short",
+    "password_too_long",
+    "password_blocklisted",
+}
 
 
 class ProblemDetailsSerializer(serializers.Serializer):
@@ -167,9 +172,14 @@ def _invalid_params_from(detail: Any) -> list[dict[str, str]]:
         return [{"name": "nonFieldErrors", "reason": "Invalid request."}]
 
     invalid_params: list[dict[str, str]] = []
-    for field_name in detail:
+    for field_name, errors in detail.items():
         safe_name = _safe_invalid_param_name(field_name)
-        invalid_params.append({"name": safe_name, "reason": "Invalid value."})
+        invalid_params.append(
+            {
+                "name": safe_name,
+                "reason": _safe_invalid_param_reason(safe_name, errors),
+            }
+        )
     return invalid_params
 
 
@@ -189,3 +199,22 @@ def _safe_invalid_param_name(field_name: Any) -> str:
     if SAFE_INVALID_PARAM_NAME.fullmatch(normalized_name):
         return normalized_name
     return "nonFieldErrors"
+
+
+def _safe_invalid_param_reason(field_name: str, errors: Any) -> str:
+    if field_name != "password":
+        return "Invalid value."
+
+    for error in _flatten_error_details(errors):
+        if getattr(error, "code", None) in SAFE_PASSWORD_REASON_CODES:
+            return str(error)
+    return "Invalid value."
+
+
+def _flatten_error_details(errors: Any) -> list[Any]:
+    if isinstance(errors, list | tuple):
+        flattened: list[Any] = []
+        for item in errors:
+            flattened.extend(_flatten_error_details(item))
+        return flattened
+    return [errors]

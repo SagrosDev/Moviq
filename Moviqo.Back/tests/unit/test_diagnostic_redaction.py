@@ -12,6 +12,8 @@ def test_redact_diagnostic_value_removes_sensitive_process_and_credential_data()
             "process-field-secret hidden-resource-123 "
             "Authorization: Bearer super-secret-token "
             "cookie=sessionid=abc123 "
+            "\"password\": \"plaintext phrase\" "
+            "'secret': 'raw phrase' "
             "https://files.moviqo.test/private/export.csv "
             "MOVIQO_SECRET_KEY"
         ),
@@ -34,7 +36,9 @@ def test_redact_diagnostic_value_removes_sensitive_process_and_credential_data()
         "sessionid=abc123",
         "csrf-123",
         "plaintext",
+        "plaintext phrase",
         "secret=raw",
+        "raw phrase",
         "private/export.csv",
         "MOVIQO_SECRET_KEY",
         "f1bd7d85-8cd8-4a77-a2e0-c6db92a64073",

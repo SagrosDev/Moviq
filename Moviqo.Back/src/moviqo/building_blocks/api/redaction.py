@@ -23,7 +23,15 @@ REDACTION_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
         re.compile(r"(?i)\b(bearer\s+|token=|sessionid=|csrftoken=)[^\s,;]+"),
         "[redacted-token]",
     ),
+    (
+        re.compile(r"(?i)(['\"]?password['\"]?\s*[:=]\s*)(['\"]).*?\2"),
+        "[redacted-password]",
+    ),
     (re.compile(r"(?i)\bpassword=[^\s,;]+"), "[redacted-password]"),
+    (
+        re.compile(r"(?i)(['\"]?secret['\"]?\s*[:=]\s*)(['\"]).*?\2"),
+        "[redacted-secret]",
+    ),
     (re.compile(r"(?i)\bsecret=[^\s,;]+"), "[redacted-secret]"),
     (re.compile(r"(?i)\bprocess-field-[^\s,;]+"), "[redacted-process-data]"),
     (re.compile(r"(?i)\bhidden-resource-[^\s,;]+"), "[redacted-resource]"),

@@ -1,4 +1,4 @@
-import type { ApiProblemDetails } from "../../../shared/api";
+import { readApiProblem } from "../../../shared/api";
 
 export type VerificationResult = {
   status: string;
@@ -28,7 +28,7 @@ export const verifyEmailToken = async (
   );
 
   if (!response.ok) {
-    throw (await response.json()) as ApiProblemDetails;
+    throw await readApiProblem(response);
   }
 
   return (await response.json()) as VerificationResult;

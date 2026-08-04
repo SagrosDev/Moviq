@@ -60,6 +60,34 @@ def test_sign_in_is_generic_and_csrf_protected(active_identity):
 
 
 @pytest.mark.django_db
+def test_sign_in_unknown_and_wrong_credentials_are_existence_neutral(active_identity):
+    client = Client()
+    client.get("/api/v1/auth/csrf/")
+    csrf = client.cookies["csrftoken"].value
+
+    unknown_response = client.post(
+        "/api/v1/auth/sign-in/",
+        {"email": "unknown@example.com", "password": "wrong"},
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=csrf,
+    )
+    wrong_password_response = client.post(
+        "/api/v1/auth/sign-in/",
+        {"email": "ana@example.com", "password": "wrong"},
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=csrf,
+    )
+
+    assert unknown_response.status_code == wrong_password_response.status_code == 401
+    assert (
+        unknown_response.json()["code"]
+        == wrong_password_response.json()["code"]
+        == "authentication_failed"
+    )
+    assert unknown_response.json()["title"] == wrong_password_response.json()["title"]
+
+
+@pytest.mark.django_db
 def test_sign_out_invalidates_current_session(active_identity):
     csrf_client = Client(enforce_csrf_checks=True)
     csrf_client.force_login(active_identity[0])

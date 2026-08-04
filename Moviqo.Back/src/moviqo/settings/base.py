@@ -145,6 +145,11 @@ LOGGING = {
             "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,
-        }
+        },
+        "moviqo.diagnostics": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
     },
 }

@@ -10,6 +10,12 @@ UUID_PATTERN = re.compile(
     r"[0-9a-fA-F]{12}\b"
 )
 
+SENSITIVE_DIAGNOSTIC_PATTERN = re.compile(
+    r"(?i)\b(?:select|insert|update|delete)\b|"
+    r"(?:[A-Za-z]:\\|/)(?:[^\s]+/)+[^\s]*|"
+    r"\b(?:api[_-]?key|access[_-]?key|client[_-]?secret)\b\s*[:=]"
+)
+
 REDACTION_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (UUID_PATTERN, "[redacted-uuid]"),
     (
@@ -46,6 +52,8 @@ def redact_diagnostic_value(value: object) -> object:
         redacted = value
         for pattern, replacement in REDACTION_PATTERNS:
             redacted = pattern.sub(replacement, redacted)
+        if SENSITIVE_DIAGNOSTIC_PATTERN.search(redacted):
+            return "[redacted-diagnostic]"
         return redacted
     if isinstance(value, tuple):
         return tuple(redact_diagnostic_value(item) for item in value)

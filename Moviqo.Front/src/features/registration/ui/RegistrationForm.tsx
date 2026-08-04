@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import type { ApiProblemDetails } from "../../../shared/api";
+import { normalizeApiProblem } from "../../../shared/api";
 import { useLanguage } from "../../../shared/localization";
 import { Button } from "../../../shared/ui/Button";
 import { PasswordField } from "../../../shared/ui/PasswordField";
@@ -55,11 +55,13 @@ export const RegistrationForm = () => {
   const [isPasswordRevealed, setIsPasswordRevealed] = useState(false);
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [problemCorrelationId, setProblemCorrelationId] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
     setSubmitError(null);
+    setProblemCorrelationId(null);
     setSuccessEmail(null);
 
     try {
@@ -71,12 +73,13 @@ export const RegistrationForm = () => {
       }));
       setSuccessEmail(result.email);
     } catch (error) {
-      const problem = error as ApiProblemDetails;
-      setFieldErrors(fieldErrorMapFromProblem(problem));
+      const problem = normalizeApiProblem(error);
+      setFieldErrors(fieldErrorMapFromProblem(problem, t));
       setDraft((currentDraft) =>
         applyRegistrationFailure(currentDraft, problem.invalidParams)
       );
       setSubmitError(t("registration.failure"));
+      setProblemCorrelationId(problem.correlationId || null);
       setIsPasswordRevealed(false);
     } finally {
       setIsSubmitting(false);
@@ -229,8 +232,11 @@ export const RegistrationForm = () => {
         <p>{t("registration.documents.current")}</p>
         <label className="registration-checkbox">
           <input
+            id="registration-terms"
             type="checkbox"
             checked={draft.termsAccepted}
+            aria-invalid={fieldError(fieldErrors, "termsAccepted") ? true : undefined}
+            aria-describedby={fieldError(fieldErrors, "termsAccepted") ? "registration-terms-error" : undefined}
             onChange={(event) =>
               setDraft(updateDraft(draft, "termsAccepted", event.target.checked))
             }
@@ -238,12 +244,17 @@ export const RegistrationForm = () => {
           <span>{t("registration.terms.label")}</span>
         </label>
         {fieldError(fieldErrors, "termsAccepted") ? (
-          <p className="validation-message">{fieldError(fieldErrors, "termsAccepted")}</p>
+          <p id="registration-terms-error" className="validation-message" role="alert">
+            {fieldError(fieldErrors, "termsAccepted")}
+          </p>
         ) : null}
         <label className="registration-checkbox">
           <input
+            id="registration-privacy"
             type="checkbox"
             checked={draft.privacyAccepted}
+            aria-invalid={fieldError(fieldErrors, "privacyAccepted") ? true : undefined}
+            aria-describedby={fieldError(fieldErrors, "privacyAccepted") ? "registration-privacy-error" : undefined}
             onChange={(event) =>
               setDraft(updateDraft(draft, "privacyAccepted", event.target.checked))
             }
@@ -251,12 +262,17 @@ export const RegistrationForm = () => {
           <span>{t("registration.privacy.label")}</span>
         </label>
         {fieldError(fieldErrors, "privacyAccepted") ? (
-          <p className="validation-message">{fieldError(fieldErrors, "privacyAccepted")}</p>
+          <p id="registration-privacy-error" className="validation-message" role="alert">
+            {fieldError(fieldErrors, "privacyAccepted")}
+          </p>
         ) : null}
         <label className="registration-checkbox">
           <input
+            id="registration-prohibited-data"
             type="checkbox"
             checked={draft.prohibitedDataAcknowledged}
+            aria-invalid={fieldError(fieldErrors, "prohibitedDataAcknowledged") ? true : undefined}
+            aria-describedby={fieldError(fieldErrors, "prohibitedDataAcknowledged") ? "registration-prohibited-data-error" : undefined}
             onChange={(event) =>
               setDraft(
                 updateDraft(draft, "prohibitedDataAcknowledged", event.target.checked)
@@ -266,13 +282,18 @@ export const RegistrationForm = () => {
           <span>{t("registration.prohibited.label")}</span>
         </label>
         {fieldError(fieldErrors, "prohibitedDataAcknowledged") ? (
-          <p className="validation-message">
+          <p id="registration-prohibited-data-error" className="validation-message" role="alert">
             {fieldError(fieldErrors, "prohibitedDataAcknowledged")}
           </p>
         ) : null}
       </section>
 
-      {submitError ? <p className="validation-message">{submitError}</p> : null}
+      {submitError ? (
+        <p className="validation-message" role="alert" aria-live="polite">
+          {submitError}
+          {problemCorrelationId ? ` (${problemCorrelationId})` : null}
+        </p>
+      ) : null}
       {successEmail ? (
         <p className="success-message">
           {t("registration.success")} {successEmail}

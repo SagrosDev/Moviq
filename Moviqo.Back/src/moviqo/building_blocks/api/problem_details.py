@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import re
+import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
 from http import HTTPStatus
@@ -13,14 +15,39 @@ from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_exception_handler
 
 from moviqo.building_blocks.api.correlation import safe_correlation_id
+from moviqo.building_blocks.api.redaction import redact_diagnostic_value
 
 PROBLEM_BASE_TYPE = "https://api.moviqo.local/problems"
 SAFE_INVALID_PARAM_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
+SAFE_MACHINE_CODE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+SAFE_VISIBLE_INVALID_PARAM_NAMES = frozenset(
+    {
+        "fail",
+        "email",
+        "password",
+        "ownerName",
+        "organizationName",
+        "language",
+        "region",
+        "timezone",
+        "currency",
+        "termsAccepted",
+        "privacyAccepted",
+        "prohibitedDataAcknowledged",
+        "member_id",
+        "membershipId",
+        "organizationId",
+        "nonFieldErrors",
+    }
+)
 SAFE_PASSWORD_REASON_CODES = {
     "password_too_short",
     "password_too_long",
     "password_blocklisted",
 }
+SAFE_PROTOCOL_HEADERS = frozenset({"allow", "retry-after", "www-authenticate"})
+
+diagnostic_logger = logging.getLogger("moviqo.diagnostics")
 
 
 class ProblemDetailsSerializer(serializers.Serializer):
@@ -142,6 +169,8 @@ def problem_details_exception_handler(exc: Exception, context: dict[str, Any]) -
         )
 
     if response is not None:
+        if response.status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR:
+            _record_unexpected_exception(request, exc)
         code = getattr(exc, "default_code", "api_error")
         status_code = response.status_code
         return problem_response(
@@ -154,6 +183,7 @@ def problem_details_exception_handler(exc: Exception, context: dict[str, Any]) -
             headers=_preserved_headers(response.headers),
         )
 
+    _record_unexpected_exception(request, exc)
     return problem_response(
         request,
         ProblemTemplate(
@@ -161,6 +191,19 @@ def problem_details_exception_handler(exc: Exception, context: dict[str, Any]) -
             code="internal_error",
             title="Internal server error",
         ),
+    )
+
+
+def _record_unexpected_exception(request: Any, exc: Exception) -> None:
+    correlation_id = safe_correlation_id(getattr(request, "correlation_id", None))
+    route = getattr(getattr(request, "resolver_match", None), "route", "unknown")
+    diagnostic_logger.error(
+        "Unhandled API exception correlation_id=%s method=%s route=%s exception=%s traceback=%s",
+        correlation_id,
+        getattr(request, "method", "unknown"),
+        route,
+        type(exc).__name__,
+        redact_diagnostic_value("".join(traceback.format_exception(exc))),
     )
 
 
@@ -188,12 +231,19 @@ def _status_title(status_code: int) -> str:
 
 
 def _preserved_headers(headers: Mapping[str, str]) -> dict[str, str]:
-    return {key: value for key, value in headers.items() if key.lower() != "content-type"}
+    return {
+        key: value
+        for key, value in headers.items()
+        if key.lower() in SAFE_PROTOCOL_HEADERS
+    }
 
 
 def _safe_invalid_param_name(field_name: Any) -> str:
     normalized_name = str(field_name)
-    if SAFE_INVALID_PARAM_NAME.fullmatch(normalized_name):
+    if (
+        normalized_name in SAFE_VISIBLE_INVALID_PARAM_NAMES
+        and SAFE_INVALID_PARAM_NAME.fullmatch(normalized_name)
+    ):
         return normalized_name
     return "nonFieldErrors"
 
@@ -211,12 +261,28 @@ def _safe_invalid_param_reason(field_name: str, errors: Any) -> str:
 def _invalid_param_body(param: Mapping[str, Any]) -> dict[str, str]:
     body = {
         "name": _safe_invalid_param_name(param.get("name")),
-        "reason": str(param.get("reason", "Invalid value.")),
+        "reason": _safe_explicit_reason(param.get("reason")),
     }
     code = param.get("code")
-    if code:
-        body["code"] = str(code)
+    safe_code = _safe_machine_code(code)
+    if safe_code:
+        body["code"] = safe_code
     return body
+
+
+def _safe_machine_code(code: Any) -> str | None:
+    value = str(code or "").strip()
+    return value if SAFE_MACHINE_CODE.fullmatch(value) else None
+
+
+def _safe_explicit_reason(reason: Any) -> str:
+    value = str(reason or "Invalid value.").strip()
+    if not value or len(value) > 240 or any(char in value for char in "\r\n"):
+        return "Invalid value."
+    redacted = redact_diagnostic_value(value)
+    if redacted != value:
+        return "Invalid value."
+    return value
 
 
 def _flatten_error_details(errors: Any) -> list[Any]:

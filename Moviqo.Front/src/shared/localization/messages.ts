@@ -18,6 +18,8 @@ export type MessageKey =
   | "home.title"
   | "home.lede"
   | "home.cta.register"
+  | "auth.signIn"
+  | "auth.signOut"
   | "environment.banner.title"
   | "environment.banner.body"
   | "environment.banner.rule1"
@@ -70,6 +72,14 @@ export type MessageKey =
   | "verification.invalid.body"
   | "verification.cta.home"
   | "verification.cta.register"
+  | "signIn.eyebrow"
+  | "signIn.title"
+  | "signIn.lede"
+  | "signIn.email"
+  | "signIn.password"
+  | "signIn.submit"
+  | "signIn.submitting"
+  | "signIn.failure"
   | "catalog.title"
   | "catalog.subtitle"
   | "catalog.responsive.title"
@@ -145,6 +155,8 @@ export const spanishMessages: MessageDictionary = {
   "home.lede":
     "Moviqo mantiene las decisiones del flujo en el servidor mientras esta interfaz prueba la estructura accesible y bilingue.",
   "home.cta.register": "Registrar organizacion",
+  "auth.signIn": "Ingresar",
+  "auth.signOut": "Salir",
   "environment.banner.title": "Entorno interno con datos sinteticos",
   "environment.banner.body":
     "Usa este entorno solo para pruebas internas persistentes. No actives clientes ni registres datos reales.",
@@ -214,6 +226,14 @@ export const spanishMessages: MessageDictionary = {
     "El enlace puede haber expirado, haber sido usado o no ser valido. Vuelve al registro para solicitar un acceso nuevo seguro.",
   "verification.cta.home": "Volver al inicio",
   "verification.cta.register": "Registrar de nuevo",
+  "signIn.eyebrow": "Acceso seguro",
+  "signIn.title": "Ingresa a Moviqo",
+  "signIn.lede": "Usa tu correo verificado para continuar al espacio de trabajo.",
+  "signIn.email": "Correo electronico",
+  "signIn.password": "Contrasena",
+  "signIn.submit": "Ingresar",
+  "signIn.submitting": "Ingresando",
+  "signIn.failure": "No pudimos autenticarte. Revisa tus datos e intentalo de nuevo.",
   "catalog.title": "Sistema de diseno",
   "catalog.subtitle": "Componentes base para experiencias operativas seguras.",
   "catalog.responsive.title": "Comportamiento responsivo",
@@ -290,6 +310,8 @@ export const englishMessages: Partial<MessageDictionary> = {
   "home.lede":
     "Moviqo keeps workflow decisions on the server while this interface proves the accessible bilingual structure.",
   "home.cta.register": "Register organization",
+  "auth.signIn": "Sign in",
+  "auth.signOut": "Sign out",
   "environment.banner.title": "Internal synthetic-data environment",
   "environment.banner.body":
     "Use this environment for persistent internal testing only. Do not onboard customers or enter real data.",
@@ -360,6 +382,14 @@ export const englishMessages: Partial<MessageDictionary> = {
     "The link may be expired, already used, or invalid. Return to registration to request a new safe path.",
   "verification.cta.home": "Return home",
   "verification.cta.register": "Register again",
+  "signIn.eyebrow": "Secure access",
+  "signIn.title": "Sign in to Moviqo",
+  "signIn.lede": "Use your verified email to continue to the workspace.",
+  "signIn.email": "Email address",
+  "signIn.password": "Password",
+  "signIn.submit": "Sign in",
+  "signIn.submitting": "Signing in",
+  "signIn.failure": "We could not authenticate you. Check your details and try again.",
   "catalog.title": "Design system",
   "catalog.subtitle": "Base components for safe operational experiences.",
   "catalog.responsive.title": "Responsive behavior",

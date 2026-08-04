@@ -4,6 +4,70 @@
  */
 
 export interface paths {
+    "/api/v1/auth/csrf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_csrf_token"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/session/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_current_session"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/sign-in/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_sign_in"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/sign-out/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_sign_out"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/protected-memberships/{membership_id}/": {
         parameters: {
             query?: never;
@@ -94,6 +158,9 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CsrfTokenResponse: {
+            csrfToken: string;
+        };
         InitialRegistrationRequest: {
             ownerName?: string;
             organizationName?: string;
@@ -144,6 +211,20 @@ export interface components {
             language: string;
             nextStep: string;
         };
+        SessionContext: {
+            authenticated: boolean;
+            user: {
+                [key: string]: unknown;
+            };
+            membership: {
+                [key: string]: unknown;
+            };
+        };
+        SignInRequest: {
+            /** Format: email */
+            email: string;
+            password: string;
+        };
         SystemPing: {
             status: string;
         };
@@ -156,6 +237,103 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    organizations_csrf_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsrfTokenResponse"];
+                };
+            };
+        };
+    };
+    organizations_current_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionContext"];
+                };
+            };
+        };
+    };
+    organizations_sign_in: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignInRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SignInRequest"];
+                "multipart/form-data": components["schemas"]["SignInRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionContext"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    organizations_sign_out: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session ended */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     organizations_protected_membership_detail: {
         parameters: {
             query?: never;

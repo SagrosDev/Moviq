@@ -9,17 +9,16 @@ from moviqo.modules.organizations.models import Membership, RegistrationWorkflow
 def resolve_tenant_context(request) -> TenantContext:
     user = request.user
     require_authenticated_user(user)
-
     memberships = Membership.objects.filter(
         user=user,
         is_active=True,
         registration_state=RegistrationWorkflowState.ACTIVE,
+        organization__is_active=True,
+        organization__registration_state=RegistrationWorkflowState.ACTIVE,
     ).order_by("organization_id", "id")
-
     membership_rows = list(memberships.values_list("id", "organization_id"))
     if len(membership_rows) != 1:
         raise PermissionDenied("tenant context unavailable")
-
     membership_id, organization_id = membership_rows[0]
     return TenantContext(
         organization_id=organization_id,

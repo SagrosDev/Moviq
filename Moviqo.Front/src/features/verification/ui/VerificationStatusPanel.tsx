@@ -23,7 +23,10 @@ export const VerificationStatusPanel = ({
         </p>
         <p>{t("verification.success.next")}</p>
         <div className="button-row">
-          <a className="button" href="/">
+          <a className="button" href="/sign-in">
+            {t("signIn.submit")}
+          </a>
+          <a className="button" data-variant="secondary" href="/">
             {t("verification.cta.home")}
           </a>
         </div>

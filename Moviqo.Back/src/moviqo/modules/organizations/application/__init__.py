@@ -12,9 +12,13 @@ from moviqo.modules.organizations.application.registration import (
 )
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.application.views import (
+    CsrfTokenView,
+    CurrentSessionView,
     InitialRegistrationView,
     ProtectedMembershipDetailView,
     RegistrationVerificationView,
+    SignInView,
+    SignOutView,
 )
 
 
@@ -24,6 +28,8 @@ def module_health() -> None:
 
 __all__ = [
     "ProtectedMembershipDetailView",
+    "CsrfTokenView",
+    "CurrentSessionView",
     "CredentialValidationError",
     "InitialRegistrationView",
     "create_user_with_validated_password",
@@ -31,6 +37,8 @@ __all__ = [
     "register_initial_owner",
     "resolve_tenant_context",
     "RegistrationVerificationView",
+    "SignInView",
+    "SignOutView",
     "set_user_password",
     "validate_password_policy",
     "verify_initial_registration",

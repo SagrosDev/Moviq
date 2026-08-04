@@ -15,6 +15,9 @@ ROOT_URLCONF = "moviqo.urls"
 ASGI_APPLICATION = "moviqo.asgi.application"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "organizations.MoviqoUser"
+AUTHENTICATION_BACKENDS = [
+    "moviqo.modules.organizations.authentication.MoviqoEmailBackend",
+]
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
@@ -85,6 +88,8 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
 MOVIQO_ENVIRONMENT_CLASS = os.getenv("MOVIQO_ENVIRONMENT_CLASS", "local-dev")
 MOVIQO_BUILD_ID = os.getenv("MOVIQO_BUILD_ID", "local-build")
 MOVIQO_SERVICE_CLASS = os.getenv("MOVIQO_SERVICE_CLASS", "application")
@@ -107,6 +112,9 @@ MOVIQO_DISABLED_SERVICES = {
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
     "EXCEPTION_HANDLER": (
         "moviqo.building_blocks.api.problem_details.problem_details_exception_handler"
     ),

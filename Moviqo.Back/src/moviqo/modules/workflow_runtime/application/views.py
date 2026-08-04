@@ -8,9 +8,9 @@ from rest_framework.views import APIView
 
 from moviqo.building_blocks.api.problem_details import ProblemDetailsSerializer
 from moviqo.building_blocks.tenancy.runtime import apply_tenant_context, tenant_bootstrap_context
+from moviqo.modules.organizations.application import active_membership_for_user
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.application.views import AuthenticatedRequestPermission
-from moviqo.modules.organizations.models import Organization, RegistrationWorkflowState
 from moviqo.modules.workflow_runtime.application.my_work import read_my_work_dashboard
 
 
@@ -80,11 +80,11 @@ class MyWorkDashboardView(APIView):
         with tenant_bootstrap_context(user_id=request.user.pk):
             tenant_context = resolve_tenant_context(request)
             apply_tenant_context(tenant_context)
-            organization_is_active = Organization.objects.filter(
-                id=tenant_context.organization_id,
-                is_active=True,
-                registration_state=RegistrationWorkflowState.ACTIVE,
-            ).exists()
-            if not organization_is_active:
+            membership = active_membership_for_user(request.user)
+            if (
+                membership is None
+                or membership.id != tenant_context.membership_id
+                or membership.organization_id != tenant_context.organization_id
+            ):
                 raise NotFound("my-work")
             return Response(read_my_work_dashboard(tenant_context))

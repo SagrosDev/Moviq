@@ -82,6 +82,10 @@ def problem_response(
 def problem_details_exception_handler(exc: Exception, context: dict[str, Any]) -> Response:
     request = context.get("request")
     response = drf_exception_handler(exc, context)
+    from moviqo.modules.organizations.application.identity_boundary import (
+        IdentityBoundaryViolation,
+        UnsupportedIdentityState,
+    )
 
     if isinstance(exc, ValidationError):
         return problem_response(
@@ -92,6 +96,16 @@ def problem_details_exception_handler(exc: Exception, context: dict[str, Any]) -
                 title="Validation failed",
             ),
             invalid_params=_invalid_params_from(exc.detail),
+        )
+
+    if isinstance(exc, IdentityBoundaryViolation | UnsupportedIdentityState):
+        return problem_response(
+            request,
+            ProblemTemplate(
+                status_code=status.HTTP_404_NOT_FOUND,
+                code="resource_not_found",
+                title="Resource not found",
+            ),
         )
 
     if isinstance(exc, PermissionDenied | NotFound | Http404):

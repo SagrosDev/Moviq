@@ -28,7 +28,7 @@ development_status:
   1-6-establish-tenant-owned-relational-data: done
   1-7-enforce-the-tenant-isolation-release-gate: done
   1-8-enforce-environment-and-data-protection-boundaries: done
-  1-9-enforce-the-single-organization-identity-boundary: backlog
+  1-9-enforce-the-single-organization-identity-boundary: done
   1-10-establish-atomic-commands-and-leased-background-jobs: backlog
   1-11-enforce-the-password-and-credential-policy: backlog
   1-12-register-the-initial-owner-and-organization: backlog

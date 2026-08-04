@@ -340,9 +340,17 @@
                         "maxLength": 120
                     },
                     "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 254
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "format": "email",
+                                "maxLength": 254
+                            },
+                            {
+                                "type": "string",
+                                "maxLength": 0
+                            }
+                        ]
                     },
                     "password": {
                         "type": "string",
@@ -383,19 +391,7 @@
                     }
                 },
                 "required": [
-                    "currency",
-                    "email",
-                    "language",
-                    "organizationName",
-                    "ownerName",
-                    "password",
-                    "privacyAccepted",
-                    "privacyVersion",
-                    "prohibitedDataAcknowledged",
-                    "region",
-                    "termsAccepted",
-                    "termsVersion",
-                    "timezone"
+                    "prohibitedDataAcknowledged"
                 ]
             },
             "InitialRegistrationResponse": {

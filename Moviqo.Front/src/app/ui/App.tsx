@@ -2,6 +2,7 @@ import { HomePage } from "../../pages/home";
 import { DesignSystemPage } from "../../pages/design-system";
 import { RegistrationPage } from "../../pages/registration";
 import { VerificationPage } from "../../pages/verification";
+import { SignInPage } from "../../pages/sign-in";
 import { AppProviders } from "../providers/AppProviders";
 import { EnvironmentBanner } from "./EnvironmentBanner";
 
@@ -17,6 +18,8 @@ export const App = () => {
         <RegistrationPage />
       ) : path === "/verify-email" ? (
         <VerificationPage />
+      ) : path === "/sign-in" ? (
+        <SignInPage />
       ) : (
         <HomePage />
       )}

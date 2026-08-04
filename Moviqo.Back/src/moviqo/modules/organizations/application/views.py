@@ -3,6 +3,9 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
+from django.middleware.csrf import get_token
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
@@ -22,6 +25,11 @@ from moviqo.modules.organizations.application.registration import (
     register_initial_owner,
     verify_initial_registration,
 )
+from moviqo.modules.organizations.application.session import (
+    authenticate_session,
+    end_session,
+    session_context,
+)
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.models import Membership, RegistrationWorkflowState
 
@@ -31,6 +39,91 @@ request_logger = logging.getLogger("django.request")
 class AuthenticatedRequestPermission(BasePermission):
     def has_permission(self, request, view) -> bool:
         return bool(getattr(request.user, "is_authenticated", False))
+
+
+class SignInRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=254)
+    password = serializers.CharField(max_length=128, trim_whitespace=False)
+
+
+class SessionContextSerializer(serializers.Serializer):
+    authenticated = serializers.BooleanField()
+    user = serializers.DictField()
+    membership = serializers.DictField()
+
+
+class CsrfTokenResponseSerializer(serializers.Serializer):
+    csrfToken = serializers.CharField()
+
+
+class EmptyRequestSerializer(serializers.Serializer):
+    pass
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class SignInView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(
+        operation_id="organizations_sign_in",
+        request=SignInRequestSerializer,
+        responses={
+            200: SessionContextSerializer,
+            400: ProblemDetailsSerializer,
+            401: ProblemDetailsSerializer,
+        },
+    )
+    def post(self, request) -> Response:
+        serializer = SignInRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return problem_response(
+                request,
+                ProblemTemplate(400, "authentication_failed", "Authentication failed"),
+            )
+        membership = authenticate_session(request=request, **serializer.validated_data)
+        if membership is None:
+            return problem_response(
+                request,
+                ProblemTemplate(401, "authentication_failed", "Authentication failed"),
+            )
+        return Response(session_context(request.user))
+
+
+@method_decorator(ensure_csrf_cookie, name="dispatch")
+class CsrfTokenView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(
+        operation_id="organizations_csrf_token", responses={200: CsrfTokenResponseSerializer}
+    )
+    def get(self, request) -> Response:
+        return Response({"csrfToken": get_token(request)})
+
+
+class CurrentSessionView(APIView):
+    permission_classes = [AuthenticatedRequestPermission]
+
+    @extend_schema(
+        operation_id="organizations_current_session", responses={200: SessionContextSerializer}
+    )
+    def get(self, request) -> Response:
+        return Response(session_context(request.user))
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class SignOutView(APIView):
+    permission_classes = [AuthenticatedRequestPermission]
+
+    @extend_schema(
+        operation_id="organizations_sign_out",
+        request=EmptyRequestSerializer,
+        responses={204: OpenApiResponse(description="Session ended")},
+    )
+    def post(self, request) -> Response:
+        end_session(request)
+        return Response(status=204)
 
 
 class ProtectedMembershipSerializer(serializers.Serializer):

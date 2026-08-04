@@ -9,17 +9,18 @@ from moviqo.modules.organizations.models import Membership, RegistrationWorkflow
 def resolve_tenant_context(request) -> TenantContext:
     user = request.user
     require_authenticated_user(user)
-
+    # Before a tenant is selected, membership RLS permits the current user to
+    # discover their own membership, but organization RLS does not permit a
+    # joined organization row. Validate organization state after the caller
+    # applies the returned tenant context.
     memberships = Membership.objects.filter(
         user=user,
         is_active=True,
         registration_state=RegistrationWorkflowState.ACTIVE,
     ).order_by("organization_id", "id")
-
     membership_rows = list(memberships.values_list("id", "organization_id"))
     if len(membership_rows) != 1:
         raise PermissionDenied("tenant context unavailable")
-
     membership_id, organization_id = membership_rows[0]
     return TenantContext(
         organization_id=organization_id,

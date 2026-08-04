@@ -5,6 +5,129 @@
         "version": "0.1.0"
     },
     "paths": {
+        "/api/v1/auth/csrf/": {
+            "get": {
+                "operationId": "organizations_csrf_token",
+                "tags": [
+                    "auth"
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CsrfTokenResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/session/": {
+            "get": {
+                "operationId": "organizations_current_session",
+                "tags": [
+                    "auth"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionContext"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/sign-in/": {
+            "post": {
+                "operationId": "organizations_sign_in",
+                "tags": [
+                    "auth"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SignInRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SignInRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SignInRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionContext"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/sign-out/": {
+            "post": {
+                "operationId": "organizations_sign_out",
+                "tags": [
+                    "auth"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Session ended"
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/protected-memberships/{membership_id}/": {
             "get": {
                 "operationId": "organizations_protected_membership_detail",
@@ -25,9 +148,6 @@
                 "security": [
                     {
                         "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
                     }
                 ],
                 "responses": {
@@ -294,9 +414,6 @@
                     {
                         "cookieAuth": []
                     },
-                    {
-                        "basicAuth": []
-                    },
                     {}
                 ],
                 "responses": {
@@ -377,6 +494,17 @@
     },
     "components": {
         "schemas": {
+            "CsrfTokenResponse": {
+                "type": "object",
+                "properties": {
+                    "csrfToken": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "csrfToken"
+                ]
+            },
             "InitialRegistrationRequest": {
                 "type": "object",
                 "properties": {
@@ -557,6 +685,45 @@
                     "status"
                 ]
             },
+            "SessionContext": {
+                "type": "object",
+                "properties": {
+                    "authenticated": {
+                        "type": "boolean"
+                    },
+                    "user": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    },
+                    "membership": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                },
+                "required": [
+                    "authenticated",
+                    "membership",
+                    "user"
+                ]
+            },
+            "SignInRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 254
+                    },
+                    "password": {
+                        "type": "string",
+                        "maxLength": 128
+                    }
+                },
+                "required": [
+                    "email",
+                    "password"
+                ]
+            },
             "SystemPing": {
                 "type": "object",
                 "properties": {
@@ -570,10 +737,6 @@
             }
         },
         "securitySchemes": {
-            "basicAuth": {
-                "type": "http",
-                "scheme": "basic"
-            },
             "cookieAuth": {
                 "type": "apiKey",
                 "in": "cookie",

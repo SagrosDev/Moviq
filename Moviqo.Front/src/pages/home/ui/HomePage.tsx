@@ -1,9 +1,11 @@
 import { AuthorityPreview } from "../../../features/authority-preview";
+import { useSession } from "../../../features/authentication";
 import { Button } from "../../../shared/ui/Button";
 import { LanguageSelector, useLanguage } from "../../../shared/localization";
 
 export const HomePage = () => {
   const { t } = useLanguage();
+  const { state, signOutCurrentSession } = useSession();
 
   return (
     <div className="app-shell">
@@ -18,6 +20,11 @@ export const HomePage = () => {
           <a href="/design-system">{t("app.nav.designSystem")}</a>
         </nav>
         <LanguageSelector />
+        {state.status === "authenticated" ? (
+          <button type="button" onClick={() => void signOutCurrentSession()}>{t("auth.signOut")}</button>
+        ) : (
+          <a href="/sign-in">{t("auth.signIn")}</a>
+        )}
       </header>
       <main className="app-main">
         <section className="hero" aria-labelledby="page-title">

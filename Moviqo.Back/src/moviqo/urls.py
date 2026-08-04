@@ -8,9 +8,13 @@ from drf_spectacular.views import SpectacularAPIView
 from moviqo.building_blocks.api.views import SystemPingView
 from moviqo.jobs.health import run
 from moviqo.modules.organizations.application import (
+    CsrfTokenView,
+    CurrentSessionView,
     InitialRegistrationView,
     ProtectedMembershipDetailView,
     RegistrationVerificationView,
+    SignInView,
+    SignOutView,
 )
 
 
@@ -26,6 +30,10 @@ urlpatterns = [
         name="api-v1-schema",
     ),
     path("api/v1/system/ping/", SystemPingView.as_view(), name="api-v1-system-ping"),
+    path("api/v1/auth/csrf/", CsrfTokenView.as_view(), name="api-v1-auth-csrf"),
+    path("api/v1/auth/sign-in/", SignInView.as_view(), name="api-v1-auth-sign-in"),
+    path("api/v1/auth/session/", CurrentSessionView.as_view(), name="api-v1-auth-session"),
+    path("api/v1/auth/sign-out/", SignOutView.as_view(), name="api-v1-auth-sign-out"),
     path(
         "api/v1/organizations/registrations/",
         InitialRegistrationView.as_view(),

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { SessionProvider } from "../../features/authentication";
 import { LanguageProvider } from "../../shared/localization";
 
 type AppProvidersProps = {
@@ -6,5 +7,5 @@ type AppProvidersProps = {
 };
 
 export const AppProviders = ({ children }: AppProvidersProps) => {
-  return <LanguageProvider>{children}</LanguageProvider>;
+  return <LanguageProvider><SessionProvider>{children}</SessionProvider></LanguageProvider>;
 };

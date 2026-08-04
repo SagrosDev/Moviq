@@ -19,6 +19,12 @@ from moviqo.building_blocks.api.problem_details import (
     problem_response,
 )
 from moviqo.building_blocks.tenancy.runtime import apply_tenant_context, tenant_bootstrap_context
+from moviqo.modules.organizations.application.password_policy import CredentialValidationError
+from moviqo.modules.organizations.application.password_recovery import (
+    PasswordRecoveryError,
+    request_password_recovery,
+    reset_password,
+)
 from moviqo.modules.organizations.application.registration import (
     RegistrationValidationError,
     VerificationActivationError,
@@ -60,6 +66,19 @@ class EmptyRequestSerializer(serializers.Serializer):
     pass
 
 
+class PasswordRecoveryRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=254)
+
+
+class PasswordRecoveryResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=512, trim_whitespace=False)
+    password = serializers.CharField(max_length=128, trim_whitespace=False)
+
+
 @method_decorator(csrf_protect, name="dispatch")
 class SignInView(APIView):
     authentication_classes = []
@@ -88,6 +107,75 @@ class SignInView(APIView):
                 ProblemTemplate(401, "authentication_failed", "Authentication failed"),
             )
         return Response(session_context(request.user))
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class PasswordRecoveryView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(
+        operation_id="organizations_password_recovery",
+        request=PasswordRecoveryRequestSerializer,
+        responses={200: PasswordRecoveryResponseSerializer, 400: ProblemDetailsSerializer},
+    )
+    def post(self, request) -> Response:
+        serializer = PasswordRecoveryRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return problem_response(
+                request,
+                ProblemTemplate(400, "recovery_invalid", "Recovery request failed"),
+            )
+        result = request_password_recovery(
+            email=serializer.validated_data["email"],
+            remote_address=request.META.get("REMOTE_ADDR", "unknown"),
+            language=request.headers.get("Accept-Language", "es")[:2],
+        )
+        return Response({"status": result.status})
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class PasswordResetView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(
+        operation_id="organizations_password_reset",
+        request=PasswordResetRequestSerializer,
+        responses={
+            200: PasswordRecoveryResponseSerializer,
+            400: ProblemDetailsSerializer,
+        },
+    )
+    def post(self, request) -> Response:
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if not serializer.is_valid() or not serializer.validated_data.get("token", ""):
+            return problem_response(
+                request,
+                ProblemTemplate(400, "password_reset_failed", "Password reset failed"),
+            )
+        language = request.headers.get("Accept-Language", "es")[:2]
+        try:
+            reset_password(
+                token=serializer.validated_data["token"],
+                password=serializer.validated_data["password"],
+                language=language,
+            )
+        except CredentialValidationError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(400, "password_invalid", "Password reset failed"),
+                invalid_params=[
+                    {"name": "password", "code": violation.code, "reason": violation.message}
+                    for violation in exc.violations
+                ],
+            )
+        except PasswordRecoveryError:
+            return problem_response(
+                request,
+                ProblemTemplate(400, "password_reset_failed", "Password reset failed"),
+            )
+        return Response({"status": "password_reset"})
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")

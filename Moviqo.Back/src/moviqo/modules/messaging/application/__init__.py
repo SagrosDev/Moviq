@@ -12,6 +12,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from moviqo.building_blocks.secure_payloads import decrypt_secret_payload
 from moviqo.building_blocks.tenancy import tenant_background_atomic_context
 from moviqo.modules.messaging.models import OutboxMessage
 
@@ -256,9 +257,10 @@ def _deliver_resend_outbox_message(message: OutboxMessage) -> None:
     if not api_key:
         raise RuntimeError("resend-credentials-missing")
 
+    payload = _resend_payload(message)
     request = urllib_request.Request(
         "https://api.resend.com/emails",
-        data=_json_payload(message.payload),
+        data=_json_payload(payload),
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -271,6 +273,35 @@ def _deliver_resend_outbox_message(message: OutboxMessage) -> None:
                 raise RuntimeError("resend-delivery-rejected")
     except urllib_error.URLError as exc:
         raise RuntimeError("resend-delivery-failed") from exc
+
+
+def _resend_payload(message: OutboxMessage) -> dict:
+    if message.message_type != "email.password_recovery":
+        return message.payload
+    envelope = decrypt_secret_payload(message.payload["recoveryEnvelope"])
+    language = message.payload.get("language", "es")
+    token = envelope["token"]
+    recovery_url = (
+        f"{settings.MOVIQO_PUBLIC_APP_BASE_URL.rstrip('/')}/password-reset?token={token}"
+    )
+    localized = {
+        "es": {
+            "subject": "Restablece tu contrasena de Moviqo",
+            "text": f"Usa este enlace de un solo uso para restablecerla: {recovery_url}",
+        },
+        "en": {
+            "subject": "Reset your Moviqo password",
+            "text": f"Use this single-use link to reset it: {recovery_url}",
+        },
+    }.get(language, None) or {
+        "subject": "Reset your Moviqo password",
+        "text": f"Use this single-use link to reset it: {recovery_url}",
+    }
+    return {
+        "from": "Moviqo <noreply@moviqo.local>",
+        "to": [envelope["to"]],
+        **localized,
+    }
 
 
 def _json_payload(payload: dict) -> bytes:

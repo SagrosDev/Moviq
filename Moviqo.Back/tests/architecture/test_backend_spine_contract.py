@@ -6,8 +6,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from django.apps import apps as django_apps
+from django.db.models import ForeignKey, OneToOneField
 
-from moviqo.building_blocks.tenancy import PROTECTED_TENANT_TABLES
+from moviqo.building_blocks.tenancy import (
+    PROTECTED_TENANT_RESOURCES,
+    PROTECTED_TENANT_TABLES,
+)
+from moviqo.modules.organizations.models import Organization
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = PROJECT_ROOT / "src"
@@ -210,49 +216,43 @@ def test_modules_do_not_read_other_modules_tables_directly() -> None:
 
 def test_tenant_owned_tables_are_registered_for_rls_enforcement() -> None:
     registered_tables = {entry.table_name for entry in PROTECTED_TENANT_TABLES}
-    tenant_owned_tables: set[str] = set()
-    for model_file in SRC_ROOT.glob("moviqo/modules/*/models.py"):
-        tree = ast.parse(model_file.read_text(encoding="utf-8"), filename=str(model_file))
-        db_table_names: dict[str, str] = {}
+    registered_isolation_tables = {entry.table_name for entry in PROTECTED_TENANT_RESOURCES}
+    tenant_owned_tables = {
+        model._meta.db_table
+        for model in django_apps.get_models()
+        if model.__module__.startswith("moviqo.modules.")
+        and not model._meta.abstract
+        and not model._meta.proxy
+        and any(
+            isinstance(field, (ForeignKey, OneToOneField))
+            and field.concrete
+            and field.remote_field is not None
+            and field.remote_field.model is Organization
+            for field in model._meta.get_fields()
+        )
+    }
 
-        for class_node in [node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)]:
-            has_organization_foreign_key = False
-            for statement in class_node.body:
-                if _is_organization_relationship(statement):
-                    has_organization_foreign_key = True
-                if isinstance(statement, ast.ClassDef) and statement.name == "Meta":
-                    for meta_statement in statement.body:
-                        if (
-                            isinstance(meta_statement, ast.Assign)
-                            and any(
-                                isinstance(target, ast.Name) and target.id == "db_table"
-                                for target in meta_statement.targets
-                            )
-                            and isinstance(meta_statement.value, ast.Constant)
-                            and isinstance(meta_statement.value.value, str)
-                        ):
-                            db_table_names[class_node.name] = meta_statement.value.value
-            if has_organization_foreign_key and class_node.name in db_table_names:
-                tenant_owned_tables.add(db_table_names[class_node.name])
+    missing_rls_tables = sorted(tenant_owned_tables - registered_tables)
+    missing_isolation_tables = sorted(tenant_owned_tables - registered_isolation_tables)
 
-    assert tenant_owned_tables <= registered_tables
+    assert not missing_rls_tables, (
+        "Missing protected-table registration for tenant-owned tables: "
+        + ", ".join(missing_rls_tables)
+    )
+    assert not missing_isolation_tables, (
+        "Missing tenant isolation release-gate registration for tenant-owned tables: "
+        + ", ".join(missing_isolation_tables)
+        + ". Register them in moviqo.building_blocks.tenancy.checks.PROTECTED_TENANT_RESOURCES "
+        + "and add evidence in tests/integration/test_tenant_isolation.py."
+    )
 
 
-def _is_organization_relationship(statement: ast.stmt) -> bool:
-    if isinstance(statement, ast.Assign):
-        if len(statement.targets) != 1 or not isinstance(statement.targets[0], ast.Name):
-            return False
-        target_name = statement.targets[0].id
-        value = statement.value
-    elif isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
-        target_name = statement.target.id
-        value = statement.value
-    else:
-        return False
+def test_tenant_isolation_gate_registration_matches_rls_registration() -> None:
+    protected_tables = {entry.table_name for entry in PROTECTED_TENANT_TABLES}
+    isolation_tables = {entry.table_name for entry in PROTECTED_TENANT_RESOURCES}
+    missing_isolation_tables = sorted(protected_tables - isolation_tables)
 
-    return (
-        target_name == "organization"
-        and isinstance(value, ast.Call)
-        and isinstance(value.func, ast.Attribute)
-        and value.func.attr in {"ForeignKey", "OneToOneField"}
+    assert not missing_isolation_tables, (
+        "Protected tenant tables missing isolation-gate coverage: "
+        + ", ".join(missing_isolation_tables)
     )

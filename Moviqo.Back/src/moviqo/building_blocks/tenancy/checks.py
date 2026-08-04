@@ -18,15 +18,38 @@ class TenantTableRegistration:
     policy_name: str
 
 
-PROTECTED_TENANT_TABLES = (
-    TenantTableRegistration(
+@dataclass(frozen=True)
+class TenantIsolationGateRegistration:
+    resource_name: str
+    table_name: str
+    policy_name: str
+    isolation_test_id: str
+    evidence_hint: str
+
+
+PROTECTED_TENANT_RESOURCES = (
+    TenantIsolationGateRegistration(
+        resource_name="organization",
         table_name="organizations_organization",
         policy_name="organizations_organization_tenant_isolation",
+        isolation_test_id="organization",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[organization]",
     ),
-    TenantTableRegistration(
+    TenantIsolationGateRegistration(
+        resource_name="membership",
         table_name="organizations_membership",
         policy_name="organizations_membership_tenant_isolation",
+        isolation_test_id="membership",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[membership]",
     ),
+)
+
+PROTECTED_TENANT_TABLES = tuple(
+    TenantTableRegistration(
+        table_name=registration.table_name,
+        policy_name=registration.policy_name,
+    )
+    for registration in PROTECTED_TENANT_RESOURCES
 )
 
 

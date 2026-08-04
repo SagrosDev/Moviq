@@ -37,6 +37,14 @@ test("Moviqo-owned labels, navigation, statuses, validation, help, and catalog c
   assert.equal(translate("en", "help.requiredField"), "Use a short and clear description.");
   assert.equal(translate("es", "catalog.task.title"), "Tarjeta de tarea");
   assert.equal(translate("en", "catalog.task.title"), "Task card");
+  assert.equal(
+    translate("es", "password.policy.helper"),
+    "Usa entre 15 y 128 caracteres. Evita contrasenas comunes o expuestas."
+  );
+  assert.equal(
+    translate("en", "password.policy.reveal"),
+    "Show password"
+  );
 });
 
 test("missing English resources fall back to Spanish instead of internal keys", () => {

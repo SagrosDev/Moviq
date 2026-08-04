@@ -15,6 +15,14 @@ ROOT_URLCONF = "moviqo.urls"
 ASGI_APPLICATION = "moviqo.asgi.application"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "organizations.MoviqoUser"
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": (
+            "moviqo.modules.organizations.application.password_policy."
+            "MoviqoPasswordPolicyValidator"
+        )
+    }
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",

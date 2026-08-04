@@ -31,6 +31,9 @@ export type MessageKey =
   | "status.needsAttention"
   | "validation.required"
   | "help.requiredField"
+  | "password.policy.helper"
+  | "password.policy.reveal"
+  | "password.policy.hide"
   | "catalog.title"
   | "catalog.subtitle"
   | "catalog.responsive.title"
@@ -124,6 +127,10 @@ export const spanishMessages: MessageDictionary = {
   "status.needsAttention": "Necesita atencion",
   "validation.required": "Completa este campo para continuar.",
   "help.requiredField": "Usa una descripcion corta y clara.",
+  "password.policy.helper":
+    "Usa entre 15 y 128 caracteres. Evita contrasenas comunes o expuestas.",
+  "password.policy.reveal": "Mostrar contrasena",
+  "password.policy.hide": "Ocultar contrasena",
   "catalog.title": "Sistema de diseno",
   "catalog.subtitle": "Componentes base para experiencias operativas seguras.",
   "catalog.responsive.title": "Comportamiento responsivo",
@@ -218,6 +225,10 @@ export const englishMessages: Partial<MessageDictionary> = {
   "status.needsAttention": "Needs attention",
   "validation.required": "Complete this field to continue.",
   "help.requiredField": "Use a short and clear description.",
+  "password.policy.helper":
+    "Use 15 to 128 characters. Avoid common or exposed passwords.",
+  "password.policy.reveal": "Show password",
+  "password.policy.hide": "Hide password",
   "catalog.title": "Design system",
   "catalog.subtitle": "Base components for safe operational experiences.",
   "catalog.responsive.title": "Responsive behavior",

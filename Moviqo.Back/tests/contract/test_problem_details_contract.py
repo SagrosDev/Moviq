@@ -10,6 +10,7 @@ from moviqo.building_blocks.api.problem_details import (
     problem_details_exception_handler,
     problem_response,
 )
+from moviqo.building_blocks.commands import IdempotencyKeyReuseConflict
 from moviqo.modules.organizations.application.identity_boundary import IdentityBoundaryViolation
 
 FORBIDDEN_FRAGMENTS = [
@@ -180,3 +181,16 @@ def test_identity_boundary_violations_map_to_non_disclosing_problem_details() ->
 
     body = _assert_problem(response, status=404, code="resource_not_found")
     assert "existing organization" not in str(body).lower()
+
+
+def test_idempotency_key_reuse_conflicts_map_to_stable_problem_details() -> None:
+    request = APIRequestFactory().get("/api/v1/workflow-runtime/commands/")
+    request.correlation_id = "safe-correlation-123"
+
+    response = problem_details_exception_handler(
+        IdempotencyKeyReuseConflict(),
+        {"request": request},
+    )
+
+    body = _assert_problem(response, status=409, code="idempotency_key_reused")
+    assert "request hash" not in str(body).lower()

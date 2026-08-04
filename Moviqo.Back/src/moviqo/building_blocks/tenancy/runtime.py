@@ -73,6 +73,17 @@ def tenant_atomic_context(context: TenantContext):
         yield context
 
 
+@contextmanager
+def tenant_background_atomic_context(*, organization_id: UUID):
+    with transaction.atomic():
+        if connection.vendor == "postgresql":
+            with connection.cursor() as cursor:
+                _activate_runtime_role(cursor)
+                _set_local_setting(cursor, AUTHENTICATED_USER_SETTING_NAME, "0")
+                _set_local_setting(cursor, TENANT_SETTING_NAME, str(organization_id))
+        yield organization_id
+
+
 def require_authenticated_user(user) -> None:
     if not getattr(user, "is_authenticated", False) or not getattr(user, "is_active", False):
         raise PermissionDenied("tenant context unavailable")

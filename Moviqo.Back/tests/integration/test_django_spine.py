@@ -43,6 +43,9 @@ def test_health_start_endpoint_is_minimal() -> None:
         "cachePolicy": "local",
         "fileInspection": "disabled",
         "messageDelivery": "console",
+        "jobRunners": {
+            "outboxEmailDrain": "inline-console",
+        },
         "disabledServices": {
             "liveMalwareScanning": "disabled-by-gate",
             "independentBackups": "disabled-by-gate",

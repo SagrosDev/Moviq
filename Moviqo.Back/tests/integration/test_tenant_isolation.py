@@ -19,7 +19,10 @@ from moviqo.building_blocks.tenancy import (
     runtime_role_name,
 )
 from moviqo.building_blocks.tenancy.runtime import TenantContext, tenant_atomic_context
+from moviqo.modules.governance.models import CommandResult, TransactionalAuditRecord
+from moviqo.modules.messaging.models import OutboxMessage
 from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
+from moviqo.modules.workflow_runtime.models import AtomicCommandProbe
 
 
 class ListHandler(logging.Handler):
@@ -140,6 +143,128 @@ def _assert_membership_isolation(seed: IsolationSeed) -> None:
 
     seed.membership_b.refresh_from_db()
     assert seed.membership_b.role == MembershipRole.OWNER
+
+
+def _assert_command_result_isolation(seed: IsolationSeed) -> None:
+    CommandResult.objects.create(
+        organization=seed.organization_a,
+        command_type="workflow-runtime.probe.execute",
+        idempotency_key="alpha",
+        request_hash="hash-alpha",
+        result_payload={"reference": "alpha"},
+    )
+    row_b = CommandResult.objects.create(
+        organization=seed.organization_b,
+        command_type="workflow-runtime.probe.execute",
+        idempotency_key="bravo",
+        request_hash="hash-bravo",
+        result_payload={"reference": "bravo"},
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert CommandResult.objects.count() == 1
+        assert not CommandResult.objects.filter(id=row_b.id).exists()
+        updated = CommandResult.objects.filter(id=row_b.id).update(request_hash="cross-tenant")
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.request_hash == "hash-bravo"
+
+
+def _assert_transactional_audit_record_isolation(seed: IsolationSeed) -> None:
+    TransactionalAuditRecord.objects.create(
+        organization=seed.organization_a,
+        command_type="workflow-runtime.probe.execute",
+        event_type="alpha",
+        payload={"reference": "alpha"},
+    )
+    row_b = TransactionalAuditRecord.objects.create(
+        organization=seed.organization_b,
+        command_type="workflow-runtime.probe.execute",
+        event_type="bravo",
+        payload={"reference": "bravo"},
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert TransactionalAuditRecord.objects.count() == 1
+        assert not TransactionalAuditRecord.objects.filter(id=row_b.id).exists()
+        updated = TransactionalAuditRecord.objects.filter(id=row_b.id).update(
+            event_type="cross-tenant"
+        )
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.event_type == "bravo"
+
+
+def _assert_outbox_message_isolation(seed: IsolationSeed) -> None:
+    OutboxMessage.objects.create(
+        organization=seed.organization_a,
+        message_type="email.probe.created",
+        payload={"reference": "alpha"},
+    )
+    row_b = OutboxMessage.objects.create(
+        organization=seed.organization_b,
+        message_type="email.probe.created",
+        payload={"reference": "bravo"},
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert OutboxMessage.objects.count() == 1
+        assert not OutboxMessage.objects.filter(id=row_b.id).exists()
+        updated = OutboxMessage.objects.filter(id=row_b.id).update(
+            dead_letter_reason="cross-tenant"
+        )
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.dead_letter_reason == ""
+
+
+def _assert_atomic_command_probe_isolation(seed: IsolationSeed) -> None:
+    AtomicCommandProbe.objects.create(
+        organization=seed.organization_a,
+        reference="alpha",
+        payload={"reference": "alpha"},
+    )
+    row_b = AtomicCommandProbe.objects.create(
+        organization=seed.organization_b,
+        reference="bravo",
+        payload={"reference": "bravo"},
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert AtomicCommandProbe.objects.count() == 1
+        assert not AtomicCommandProbe.objects.filter(id=row_b.id).exists()
+        updated = AtomicCommandProbe.objects.filter(id=row_b.id).update(reference="cross-tenant")
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.reference == "bravo"
 
 
 def _assertion_for_registration(

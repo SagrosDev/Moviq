@@ -10,6 +10,7 @@ from moviqo.building_blocks.tenancy.runtime import (
     apply_tenant_context,
     runtime_role_name,
     tenant_atomic_context,
+    tenant_background_atomic_context,
     tenant_bootstrap_context,
 )
 
@@ -21,5 +22,6 @@ __all__ = [
     "apply_tenant_context",
     "runtime_role_name",
     "tenant_atomic_context",
+    "tenant_background_atomic_context",
     "tenant_bootstrap_context",
 ]

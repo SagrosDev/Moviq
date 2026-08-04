@@ -28,5 +28,6 @@ def run() -> dict[str, object]:
         "cachePolicy": settings.MOVIQO_CACHE_POLICY,
         "fileInspection": file_report["adapter"],
         "messageDelivery": messaging_report["adapter"],
+        "jobRunners": messaging_report["job_runners"],
         "disabledServices": settings.MOVIQO_DISABLED_SERVICES,
     }

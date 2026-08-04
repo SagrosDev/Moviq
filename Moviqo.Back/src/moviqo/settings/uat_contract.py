@@ -32,6 +32,7 @@ def load_uat_contract() -> dict[str, object]:
         "file_inspection_adapter": required_env("MOVIQO_FILE_INSPECTION_ADAPTER"),
         "message_delivery_adapter": required_env("MOVIQO_MESSAGE_DELIVERY_ADAPTER"),
         "cache_policy": required_env("MOVIQO_CACHE_POLICY"),
+        "job_runners": _job_runners(required_env("MOVIQO_MESSAGE_DELIVERY_ADAPTER")),
         "disabled_services": disabled_services,
     }
     validate_uat_contract(contract)
@@ -47,6 +48,8 @@ def validate_uat_contract(contract: dict[str, object]) -> None:
 
     if contract["message_delivery_adapter"] != "resend-outbox":
         raise RuntimeError("UAT must deliver email through the Resend outbox adapter.")
+    if contract["job_runners"] != {"outboxEmailDrain": "outbox-email-drain"}:
+        raise RuntimeError("UAT must expose only the outbox email drain runner path.")
 
     if contract["cache_policy"] != "firebase-hosting-no-store":
         raise RuntimeError("UAT must declare the firebase-hosting-no-store cache policy.")
@@ -80,3 +83,9 @@ def _reject_production_identifier(name: str, value: str) -> None:
     normalized = value.lower()
     if any(keyword in normalized for keyword in PRODUCTION_KEYWORDS):
         raise RuntimeError(f"UAT configuration must not reference production resources: {name}")
+
+
+def _job_runners(message_delivery_adapter: str) -> dict[str, str]:
+    if message_delivery_adapter == "resend-outbox":
+        return {"outboxEmailDrain": "outbox-email-drain"}
+    return {}

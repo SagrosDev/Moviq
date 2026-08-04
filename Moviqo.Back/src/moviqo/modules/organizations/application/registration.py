@@ -301,7 +301,7 @@ def verify_initial_registration(*, token: str) -> dict[str, str]:
             )
         )
         verification = (
-            RegistrationVerification.objects.select_for_update()
+            RegistrationVerification.objects.select_for_update(of=("self",))
             .select_related("organization", "membership", "user")
             .filter(id=verification_id)
             .first()
@@ -310,7 +310,7 @@ def verify_initial_registration(*, token: str) -> dict[str, str]:
             raise VerificationActivationError()
 
         membership = (
-            Membership.objects.select_for_update()
+            Membership.objects.select_for_update(of=("self",))
             .select_related("organization", "user")
             .filter(id=verification.membership_id)
             .first()

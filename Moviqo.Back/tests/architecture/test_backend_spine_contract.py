@@ -218,15 +218,7 @@ def test_tenant_owned_tables_are_registered_for_rls_enforcement() -> None:
         for class_node in [node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)]:
             has_organization_foreign_key = False
             for statement in class_node.body:
-                if (
-                    isinstance(statement, ast.Assign)
-                    and len(statement.targets) == 1
-                    and isinstance(statement.targets[0], ast.Name)
-                    and statement.targets[0].id == "organization"
-                    and isinstance(statement.value, ast.Call)
-                    and isinstance(statement.value.func, ast.Attribute)
-                    and statement.value.func.attr in {"ForeignKey", "OneToOneField"}
-                ):
+                if _is_organization_relationship(statement):
                     has_organization_foreign_key = True
                 if isinstance(statement, ast.ClassDef) and statement.name == "Meta":
                     for meta_statement in statement.body:
@@ -244,3 +236,23 @@ def test_tenant_owned_tables_are_registered_for_rls_enforcement() -> None:
                 tenant_owned_tables.add(db_table_names[class_node.name])
 
     assert tenant_owned_tables <= registered_tables
+
+
+def _is_organization_relationship(statement: ast.stmt) -> bool:
+    if isinstance(statement, ast.Assign):
+        if len(statement.targets) != 1 or not isinstance(statement.targets[0], ast.Name):
+            return False
+        target_name = statement.targets[0].id
+        value = statement.value
+    elif isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
+        target_name = statement.target.id
+        value = statement.value
+    else:
+        return False
+
+    return (
+        target_name == "organization"
+        and isinstance(value, ast.Call)
+        and isinstance(value.func, ast.Attribute)
+        and value.func.attr in {"ForeignKey", "OneToOneField"}
+    )

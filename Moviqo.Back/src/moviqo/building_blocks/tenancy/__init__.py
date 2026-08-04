@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from moviqo.building_blocks.tenancy.checks import PROTECTED_TENANT_TABLES
 from moviqo.building_blocks.tenancy.runtime import (
     TENANT_SETTING_NAME,
@@ -5,6 +7,7 @@ from moviqo.building_blocks.tenancy.runtime import (
     apply_tenant_context,
     runtime_role_name,
     tenant_atomic_context,
+    tenant_bootstrap_context,
 )
 
 __all__ = [
@@ -14,4 +17,5 @@ __all__ = [
     "apply_tenant_context",
     "runtime_role_name",
     "tenant_atomic_context",
+    "tenant_bootstrap_context",
 ]

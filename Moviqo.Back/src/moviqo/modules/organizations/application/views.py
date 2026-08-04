@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from moviqo.building_blocks.api.problem_details import ProblemDetailsSerializer
-from moviqo.building_blocks.tenancy.runtime import tenant_atomic_context
+from moviqo.building_blocks.tenancy.runtime import apply_tenant_context, tenant_bootstrap_context
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.models import Membership
 
@@ -33,8 +33,9 @@ class ProtectedMembershipDetailView(APIView):
         },
     )
     def get(self, request, membership_id: UUID) -> Response:
-        tenant_context = resolve_tenant_context(request)
-        with tenant_atomic_context(tenant_context):
+        with tenant_bootstrap_context(user_id=request.user.pk):
+            tenant_context = resolve_tenant_context(request)
+            apply_tenant_context(tenant_context)
             membership = (
                 Membership.objects.select_related("organization")
                 .filter(

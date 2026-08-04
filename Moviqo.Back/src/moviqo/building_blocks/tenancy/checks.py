@@ -8,6 +8,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import connection
 
 TENANT_SETTING_NAME = "moviqo.current_organization_id"
+AUTHENTICATED_USER_SETTING_NAME = "moviqo.authenticated_user_id"
 OPERATOR_SCHEMA_NAME = "operator_history"
 
 

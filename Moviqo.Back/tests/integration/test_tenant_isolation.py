@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from django.conf import settings
 from django.db import DatabaseError, connection
+from django.test import Client
 
 from moviqo.building_blocks.tenancy import TENANT_SETTING_NAME, runtime_role_name
 from moviqo.building_blocks.tenancy.runtime import TenantContext, tenant_atomic_context
@@ -155,3 +156,41 @@ def test_tenant_context_is_transaction_local_and_does_not_bleed_across_connectio
         )
     ):
         assert list(Organization.objects.values_list("slug", flat=True)) == ["bravo"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_protected_membership_endpoint_bootstraps_tenant_context_under_rls(
+    django_user_model,
+) -> None:
+    _integration_only()
+    user = django_user_model.objects.create_user(username="owner-a", password="test")
+    other_user = django_user_model.objects.create_user(username="owner-b", password="test")
+    organization_a = Organization.objects.create(slug="org-a", display_name="Org A")
+    organization_b = Organization.objects.create(slug="org-b", display_name="Org B")
+    membership_a = Membership.objects.create(
+        organization=organization_a,
+        user=user,
+        role=MembershipRole.OWNER,
+    )
+    membership_b = Membership.objects.create(
+        organization=organization_b,
+        user=other_user,
+        role=MembershipRole.OWNER,
+    )
+
+    client = Client()
+    client.force_login(user)
+
+    ok_response = client.get(
+        f"/api/v1/organizations/protected-memberships/{membership_a.id}/",
+        HTTP_X_MOVIQO_ORGANIZATION_ID=str(organization_a.id),
+    )
+    assert ok_response.status_code == 200
+    assert ok_response.json()["organizationId"] == str(organization_a.id)
+
+    hidden_response = client.get(
+        f"/api/v1/organizations/protected-memberships/{membership_b.id}/",
+        HTTP_X_MOVIQO_ORGANIZATION_ID=str(organization_a.id),
+    )
+    assert hidden_response.status_code == 404
+    assert hidden_response.json()["code"] == "resource_not_found"

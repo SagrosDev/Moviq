@@ -8,7 +8,10 @@ from django.conf import settings
 from django.db import connection, transaction
 from rest_framework.exceptions import PermissionDenied
 
-from moviqo.building_blocks.tenancy.checks import TENANT_SETTING_NAME
+from moviqo.building_blocks.tenancy.checks import (
+    AUTHENTICATED_USER_SETTING_NAME,
+    TENANT_SETTING_NAME,
+)
 
 
 @dataclass(frozen=True)
@@ -26,17 +29,41 @@ def _quote_identifier(value: str) -> str:
     return '"' + value.replace('"', '""') + '"'
 
 
+def _activate_runtime_role(cursor) -> None:
+    if settings.DATABASES["default"]["USER"] != runtime_role_name():
+        cursor.execute(f"SET LOCAL ROLE {_quote_identifier(runtime_role_name())}")
+
+
+def _set_local_setting(cursor, setting_name: str, value: str) -> None:
+    cursor.execute("SELECT set_config(%s, %s, true)", [setting_name, value])
+
+
 def apply_tenant_context(context: TenantContext) -> None:
     if connection.vendor != "postgresql":
         return
 
     with connection.cursor() as cursor:
-        if settings.DATABASES["default"]["USER"] != runtime_role_name():
-            cursor.execute(f"SET LOCAL ROLE {_quote_identifier(runtime_role_name())}")
-        cursor.execute(
-            "SELECT set_config(%s, %s, true)",
-            [TENANT_SETTING_NAME, str(context.organization_id)],
+        _activate_runtime_role(cursor)
+        _set_local_setting(
+            cursor,
+            AUTHENTICATED_USER_SETTING_NAME,
+            str(context.user_id),
         )
+        _set_local_setting(cursor, TENANT_SETTING_NAME, str(context.organization_id))
+
+
+@contextmanager
+def tenant_bootstrap_context(*, user_id: int):
+    with transaction.atomic():
+        if connection.vendor == "postgresql":
+            with connection.cursor() as cursor:
+                _activate_runtime_role(cursor)
+                _set_local_setting(
+                    cursor,
+                    AUTHENTICATED_USER_SETTING_NAME,
+                    str(user_id),
+                )
+        yield
 
 
 @contextmanager

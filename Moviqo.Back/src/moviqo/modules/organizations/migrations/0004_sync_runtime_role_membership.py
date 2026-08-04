@@ -1,8 +1,21 @@
 from __future__ import annotations
 
+from django.conf import settings
 from django.db import migrations
 
-from moviqo.modules.organizations.tenant_policy_helpers import runtime_role_setup_sql
+RUNTIME_ROLE_NAME = "moviqo_runtime"
+
+
+def _runtime_role_name() -> str:
+    return getattr(settings, "MOVIQO_DB_RUNTIME_ROLE", RUNTIME_ROLE_NAME)
+
+
+def _runtime_member_name() -> str:
+    return getattr(settings, "MOVIQO_DB_RUNTIME_MEMBER", settings.DATABASES["default"]["USER"])
+
+
+def _quote_identifier(value: str) -> str:
+    return '"' + value.replace('"', '""') + '"'
 
 
 def sync_runtime_role_membership(_apps, schema_editor) -> None:
@@ -10,7 +23,10 @@ def sync_runtime_role_membership(_apps, schema_editor) -> None:
         return
 
     with schema_editor.connection.cursor() as cursor:
-        cursor.execute(runtime_role_setup_sql())
+        cursor.execute(
+            f"GRANT {_quote_identifier(_runtime_role_name())} "
+            f"TO {_quote_identifier(_runtime_member_name())}"
+        )
 
 
 def noop_reverse(_apps, _schema_editor) -> None:

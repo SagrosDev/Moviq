@@ -45,10 +45,8 @@ def test_my_work_dashboard_returns_tenant_scoped_empty_contract(active_member) -
     client.force_login(user)
 
     response = client.get(
-        (
-            f"/api/v1/my-work/?organizationId={other_organization.id}"
-            f"&membershipId={other_membership.id}"
-        )
+        f"/api/v1/my-work/?organizationId={other_organization.id}"
+        f"&membershipId={other_membership.id}"
     )
 
     assert response.status_code == 200

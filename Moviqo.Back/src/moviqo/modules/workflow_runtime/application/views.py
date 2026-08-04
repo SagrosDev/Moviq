@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.utils import OpenApiResponse
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response

@@ -82,6 +82,7 @@ def problem_response(
 def problem_details_exception_handler(exc: Exception, context: dict[str, Any]) -> Response:
     request = context.get("request")
     response = drf_exception_handler(exc, context)
+    from moviqo.building_blocks.commands import IdempotencyKeyReuseConflict
     from moviqo.modules.organizations.application.identity_boundary import (
         IdentityBoundaryViolation,
         UnsupportedIdentityState,
@@ -124,6 +125,16 @@ def problem_details_exception_handler(exc: Exception, context: dict[str, Any]) -
             ProblemTemplate(
                 status_code=status.HTTP_409_CONFLICT,
                 code="conflict",
+                title="Conflict",
+            ),
+        )
+
+    if isinstance(exc, IdempotencyKeyReuseConflict):
+        return problem_response(
+            request,
+            ProblemTemplate(
+                status_code=status.HTTP_409_CONFLICT,
+                code="idempotency_key_reused",
                 title="Conflict",
             ),
         )

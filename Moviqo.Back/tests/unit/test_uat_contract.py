@@ -46,6 +46,7 @@ def test_uat_contract_loads_when_environment_is_explicitly_synthetic(
 
     assert contract["environment_class"] == "synthetic-only"
     assert contract["file_inspection_adapter"] == "synthetic"
+    assert contract["job_runners"] == {"outboxEmailDrain": "outbox-email-drain"}
     assert contract["disabled_services"] == {
         "liveMalwareScanning": "disabled-by-gate",
         "independentBackups": "disabled-by-gate",

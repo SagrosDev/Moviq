@@ -42,6 +42,34 @@ PROTECTED_TENANT_RESOURCES = (
         isolation_test_id="membership",
         evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[membership]",
     ),
+    TenantIsolationGateRegistration(
+        resource_name="command-result",
+        table_name="governance_command_result",
+        policy_name="governance_command_result_tenant_isolation",
+        isolation_test_id="command_result",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[command-result]",
+    ),
+    TenantIsolationGateRegistration(
+        resource_name="transactional-audit-record",
+        table_name="governance_transactional_audit_record",
+        policy_name="governance_transactional_audit_record_tenant_isolation",
+        isolation_test_id="transactional_audit_record",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[transactional-audit-record]",
+    ),
+    TenantIsolationGateRegistration(
+        resource_name="outbox-message",
+        table_name="messaging_outbox_message",
+        policy_name="messaging_outbox_message_tenant_isolation",
+        isolation_test_id="outbox_message",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[outbox-message]",
+    ),
+    TenantIsolationGateRegistration(
+        resource_name="atomic-command-probe",
+        table_name="workflow_runtime_atomic_command_probe",
+        policy_name="workflow_runtime_atomic_command_probe_tenant_isolation",
+        isolation_test_id="atomic_command_probe",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[atomic-command-probe]",
+    ),
 )
 
 PROTECTED_TENANT_TABLES = tuple(

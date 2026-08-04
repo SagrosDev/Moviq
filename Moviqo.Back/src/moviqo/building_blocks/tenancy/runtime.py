@@ -10,6 +10,7 @@ from rest_framework.exceptions import PermissionDenied
 
 from moviqo.building_blocks.tenancy.checks import (
     AUTHENTICATED_USER_SETTING_NAME,
+    REGISTRATION_VERIFICATION_SETTING_NAME,
     TENANT_SETTING_NAME,
 )
 
@@ -50,6 +51,19 @@ def apply_tenant_context(context: TenantContext) -> None:
             str(context.user_id),
         )
         _set_local_setting(cursor, TENANT_SETTING_NAME, str(context.organization_id))
+
+
+@contextmanager
+def registration_verification_bootstrap_context(*, verification_id: UUID):
+    if connection.vendor == "postgresql":
+        with connection.cursor() as cursor:
+            _activate_runtime_role(cursor)
+            _set_local_setting(
+                cursor,
+                REGISTRATION_VERIFICATION_SETTING_NAME,
+                str(verification_id),
+            )
+    yield
 
 
 @contextmanager

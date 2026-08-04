@@ -6,11 +6,15 @@ from moviqo.modules.organizations.application.password_policy import (
     set_user_password,
     validate_password_policy,
 )
-from moviqo.modules.organizations.application.registration import register_initial_owner
+from moviqo.modules.organizations.application.registration import (
+    register_initial_owner,
+    verify_initial_registration,
+)
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.application.views import (
     InitialRegistrationView,
     ProtectedMembershipDetailView,
+    RegistrationVerificationView,
 )
 
 
@@ -26,6 +30,8 @@ __all__ = [
     "module_health",
     "register_initial_owner",
     "resolve_tenant_context",
+    "RegistrationVerificationView",
     "set_user_password",
     "validate_password_policy",
+    "verify_initial_registration",
 ]

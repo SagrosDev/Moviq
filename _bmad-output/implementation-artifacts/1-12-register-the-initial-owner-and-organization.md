@@ -242,14 +242,14 @@ GPT-5 Codex
 - Story request `12.2` was resolved to tracked story `1-12-register-the-initial-owner-and-organization`.
 - Git story branch preflight completed on `story/1-12-register-the-initial-owner-and-organization` with existing local changes preserved.
 - Verification on Tuesday, August 4, 2026 passed for `uv run ruff check src tests`, `uv run pytest`, `uv run python src/manage.py spectacular --file ../docs/api/openapi-v1.json --format openapi-json --validate --fail-on-warn --settings=moviqo.settings.test`, `uv run python src/manage.py makemigrations --settings=moviqo.settings.test --check --dry-run`, `npm run generate:api-client`, `npm run test:unit`, `node tests/architecture/frontend-boundaries.test.mjs`, `.\node_modules\.bin\tsc.cmd --noEmit`, and `.\node_modules\.bin\vite.cmd build`.
-- The repo wrapper commands `npm run test` and `npm run build` were blocked on Tuesday, August 4, 2026 because the workspace currently has Node `26.6.0` while `tests/build/check-node-version.mjs` requires `26.5.1`.
+- The repo wrapper commands `npm run test` and `npm run build` were previously blocked on Tuesday, August 4, 2026 by the old Node patch pin; the project is now aligned to the installed Node `26.6.0` runtime.
 
 ### Completion Notes List
 
 - Implemented pending registration state across `Organization`, `Membership`, and `MoviqoUser`, plus consent and verification support records for Story 1.13 follow-on activation.
 - Added a public `/api/v1/organizations/registrations/` endpoint, safe registration command, localized verification outbox payload, generated OpenAPI contract, and frontend registration route reached from the landing CTA.
 - Added backend contract/unit coverage for atomic creation, consent rollback, capacity rollback, duplicate-email non-disclosure, and outbox retry stability, plus frontend registration model coverage for Spanish defaults, browser suggestions, preserved non-secret values, and password clearing.
-- Full backend validation passed on Tuesday, August 4, 2026; frontend code validation passed through direct architecture, type, unit, API-client generation, and Vite build commands, while the repo wrapper scripts remain blocked by the local Node `26.6.0` versus pinned `26.5.1` mismatch.
+- Full backend validation passed on Tuesday, August 4, 2026; frontend code validation passed through direct architecture, type, unit, API-client generation, and Vite build commands. The former Node version mismatch is resolved by the `26.6.0` alignment.
 
 ### File List
 
@@ -285,8 +285,8 @@ GPT-5 Codex
 
 ### Change Log
 
-- 2026-08-04: Implemented Story 1.12 pending registration backend, public API, verification outbox payload, registration frontend route, and supporting tests; backend validation passed and frontend direct validation passed, with `npm run test` and `npm run build` blocked only by the local Node `26.6.0` versus pinned `26.5.1` version gate.
-- 2026-08-04: Applied code-review fixes for explicit consent capture, public-registration idempotency replay, stable registration validation responses, slug-collision retry handling, pending-capacity reservation, and inline frontend correction messages; focused registration backend tests and frontend unit/type checks passed, while `npm run typecheck` remained blocked by the same pinned Node `26.5.1` wrapper check against local Node `26.6.0`.
+- 2026-08-04: Implemented Story 1.12 pending registration backend, public API, verification outbox payload, registration frontend route, and supporting tests; backend validation passed and frontend direct validation passed. The project runtime is now aligned to Node `26.6.0`.
+- 2026-08-04: Applied code-review fixes for explicit consent capture, public-registration idempotency replay, stable registration validation responses, slug-collision retry handling, pending-capacity reservation, and inline frontend correction messages; focused registration backend tests and frontend unit/type checks passed. The Node wrapper check now targets `26.6.0`.
 
 ### Review Findings
 

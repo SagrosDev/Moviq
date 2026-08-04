@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/registrations/verify-email/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_verify_initial_registration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/schema/": {
         parameters: {
             query?: never;
@@ -118,6 +134,16 @@ export interface components {
             organizationId: string;
             role: string;
         };
+        RegistrationVerificationRequest: {
+            token?: string;
+        };
+        RegistrationVerificationResponse: {
+            status: string;
+            /** Format: email */
+            email: string;
+            language: string;
+            nextStep: string;
+        };
         SystemPing: {
             status: string;
         };
@@ -199,6 +225,39 @@ export interface operations {
                 };
             };
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    organizations_verify_initial_registration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RegistrationVerificationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RegistrationVerificationRequest"];
+                "multipart/form-data": components["schemas"]["RegistrationVerificationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationVerificationResponse"];
+                };
+            };
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

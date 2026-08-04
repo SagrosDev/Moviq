@@ -8,6 +8,7 @@ from moviqo.modules.organizations.application.identity_boundary import (
     IdentityBoundaryViolation,
     ensure_identity_membership,
 )
+from moviqo.modules.organizations.application.registration import register_initial_owner
 from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
 
 
@@ -134,3 +135,36 @@ def test_identity_boundary_rejects_duplicate_email_for_another_organization(
             username="owner-b",
             role=MembershipRole.ADMINISTRATOR,
         )
+
+
+@pytest.mark.django_db
+def test_protected_membership_endpoint_rejects_pending_user_even_if_force_logged_in() -> None:
+    register_initial_owner(
+        owner_name="Ana Gomez",
+        organization_name="Equipo Norte",
+        email="ana@example.com",
+        password="frase segura para moviqo 2026",
+        language="es",
+        region="CO",
+        timezone="America/Bogota",
+        currency="COP",
+        terms_accepted=True,
+        privacy_accepted=True,
+        terms_version="beta-2026-08-04",
+        privacy_version="privacy-2026-08-04",
+        prohibited_data_acknowledged=True,
+        idempotency_key="registration-1",
+    )
+    membership = Membership.objects.get()
+    membership.user.is_active = True
+    membership.user.save(update_fields=["is_active"])
+
+    client = Client()
+    client.force_login(membership.user)
+
+    response = client.get(
+        f"/api/v1/organizations/protected-memberships/{membership.id}/",
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "resource_not_found"

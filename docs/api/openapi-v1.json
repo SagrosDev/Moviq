@@ -124,6 +124,55 @@
                 }
             }
         },
+        "/api/v1/organizations/registrations/verify-email/": {
+            "post": {
+                "operationId": "organizations_verify_initial_registration",
+                "tags": [
+                    "organizations"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegistrationVerificationRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegistrationVerificationRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegistrationVerificationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationVerificationResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/schema/": {
             "get": {
                 "operationId": "schema_retrieve",
@@ -473,6 +522,39 @@
                     "membershipId",
                     "organizationId",
                     "role"
+                ]
+            },
+            "RegistrationVerificationRequest": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "maxLength": 512
+                    }
+                }
+            },
+            "RegistrationVerificationResponse": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "language": {
+                        "type": "string"
+                    },
+                    "nextStep": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "email",
+                    "language",
+                    "nextStep",
+                    "status"
                 ]
             },
             "SystemPing": {

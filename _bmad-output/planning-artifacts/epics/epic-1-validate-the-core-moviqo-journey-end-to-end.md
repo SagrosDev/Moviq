@@ -37,7 +37,7 @@ So that user-facing capabilities remain modular and backend-authoritative.
 
 **Acceptance Criteria:**
 
-**Given** a clean checkout with Node.js 26.5.1
+**Given** a clean checkout with Node.js 26.6.0
 **When** frontend install, type-check, test, and production-build commands run
 **Then** TypeScript 6.0.x, React 19.2.7, Vite 8.2.x, React Flow 12.11.2, and Playwright 1.62.x produce one static SPA artifact
 **And** the artifact contains no server secret or environment-private credential.

@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { signIn } from "../../../features/authentication";
+import { protectedEntryPath, signIn } from "../../../features/authentication";
 import { LanguageSelector, useLanguage } from "../../../shared/localization";
 import { PasswordField } from "../../../shared/ui/PasswordField";
 
@@ -13,7 +13,7 @@ export const SignInPage = () => {
   const resetComplete = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("reset") === "complete";
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setSubmitting(true); setError(false);
-    try { await signIn({ email, password }); window.location.assign("/"); }
+    try { await signIn({ email, password }); window.location.assign(protectedEntryPath); }
     catch { setError(true); setPassword(""); }
     finally { setSubmitting(false); }
   };

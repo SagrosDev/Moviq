@@ -5,6 +5,7 @@ import { VerificationPage } from "../../pages/verification";
 import { SignInPage } from "../../pages/sign-in";
 import { PasswordRecoveryPage } from "../../pages/password-recovery";
 import { PasswordResetPage } from "../../pages/password-reset";
+import { MyWorkPage } from "../../pages/my-work";
 import { AppProviders } from "../providers/AppProviders";
 import { EnvironmentBanner } from "./EnvironmentBanner";
 
@@ -27,6 +28,8 @@ export const App = () => {
         <PasswordRecoveryPage />
       ) : path === "/password-reset" ? (
         <PasswordResetPage />
+      ) : path === "/my-work" ? (
+        <MyWorkPage />
       ) : (
         <HomePage />
       )}

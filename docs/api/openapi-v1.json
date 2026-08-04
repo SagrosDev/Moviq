@@ -228,6 +228,31 @@
                 }
             }
         },
+        "/api/v1/my-work/": {
+            "get": {
+                "operationId": "workflow_runtime_my_work_dashboard",
+                "tags": [
+                    "my-work"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MyWorkDashboard"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/protected-memberships/{membership_id}/": {
             "get": {
                 "operationId": "organizations_protected_membership_detail",
@@ -691,6 +716,145 @@
                     "status"
                 ]
             },
+            "MyProcessCollection": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MyProcessSummary"
+                        }
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "hasMore": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "hasMore",
+                    "items",
+                    "limit"
+                ]
+            },
+            "MyProcessSummary": {
+                "type": "object",
+                "properties": {
+                    "processId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "workflowName": {
+                        "type": "string"
+                    },
+                    "involvement": {
+                        "type": "string"
+                    },
+                    "currentStep": {
+                        "type": "string"
+                    },
+                    "instanceState": {
+                        "type": "string"
+                    },
+                    "systemStatus": {
+                        "type": "string"
+                    },
+                    "startedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "lastActivityAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "currentStep",
+                    "instanceState",
+                    "involvement",
+                    "lastActivityAt",
+                    "processId",
+                    "startedAt",
+                    "systemStatus",
+                    "workflowName"
+                ]
+            },
+            "MyTaskCollection": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MyTaskSummary"
+                        }
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "hasMore": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "hasMore",
+                    "items",
+                    "limit"
+                ]
+            },
+            "MyTaskSummary": {
+                "type": "object",
+                "properties": {
+                    "taskId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "workflowName": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "assignee": {
+                        "type": "string"
+                    },
+                    "currentStep": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "assignee",
+                    "currentStep",
+                    "status",
+                    "taskId",
+                    "title",
+                    "workflowName"
+                ]
+            },
+            "MyWorkDashboard": {
+                "type": "object",
+                "properties": {
+                    "startWorkflows": {
+                        "$ref": "#/components/schemas/StartWorkflowCollection"
+                    },
+                    "myTasks": {
+                        "$ref": "#/components/schemas/MyTaskCollection"
+                    },
+                    "myProcesses": {
+                        "$ref": "#/components/schemas/MyProcessCollection"
+                    }
+                },
+                "required": [
+                    "myProcesses",
+                    "myTasks",
+                    "startWorkflows"
+                ]
+            },
             "PasswordRecoveryRequest": {
                 "type": "object",
                 "properties": {
@@ -863,6 +1027,53 @@
                 "required": [
                     "email",
                     "password"
+                ]
+            },
+            "StartWorkflowCollection": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StartWorkflowSummary"
+                        }
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "hasMore": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "hasMore",
+                    "items",
+                    "limit"
+                ]
+            },
+            "StartWorkflowSummary": {
+                "type": "object",
+                "properties": {
+                    "workflowId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "availability": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "availability",
+                    "description",
+                    "title",
+                    "workflowId"
                 ]
             },
             "SystemPing": {

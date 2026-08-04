@@ -100,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/my-work/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["workflow_runtime_my_work_dashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/protected-memberships/{membership_id}/": {
         parameters: {
             query?: never;
@@ -214,6 +230,43 @@ export interface components {
             email: string;
             language: string;
         };
+        MyProcessCollection: {
+            items: components["schemas"]["MyProcessSummary"][];
+            limit: number;
+            hasMore: boolean;
+        };
+        MyProcessSummary: {
+            /** Format: uuid */
+            processId: string;
+            workflowName: string;
+            involvement: string;
+            currentStep: string;
+            instanceState: string;
+            systemStatus: string;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            lastActivityAt: string;
+        };
+        MyTaskCollection: {
+            items: components["schemas"]["MyTaskSummary"][];
+            limit: number;
+            hasMore: boolean;
+        };
+        MyTaskSummary: {
+            /** Format: uuid */
+            taskId: string;
+            title: string;
+            workflowName: string;
+            status: string;
+            assignee: string;
+            currentStep: string;
+        };
+        MyWorkDashboard: {
+            startWorkflows: components["schemas"]["StartWorkflowCollection"];
+            myTasks: components["schemas"]["MyTaskCollection"];
+            myProcesses: components["schemas"]["MyProcessCollection"];
+        };
         PasswordRecoveryRequest: {
             /** Format: email */
             email: string;
@@ -267,6 +320,18 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
+        };
+        StartWorkflowCollection: {
+            items: components["schemas"]["StartWorkflowSummary"][];
+            limit: number;
+            hasMore: boolean;
+        };
+        StartWorkflowSummary: {
+            /** Format: uuid */
+            workflowId: string;
+            title: string;
+            description: string;
+            availability: string;
         };
         SystemPing: {
             status: string;
@@ -440,6 +505,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    workflow_runtime_my_work_dashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyWorkDashboard"];
+                };
             };
         };
     };

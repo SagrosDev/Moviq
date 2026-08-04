@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 from django.test import Client, override_settings
-from rest_framework.exceptions import Throttled
+from rest_framework.exceptions import APIException, AuthenticationFailed, Throttled
 from rest_framework.test import APIRequestFactory
 
 from moviqo.building_blocks.api.problem_details import (
@@ -119,6 +119,77 @@ def test_wrapped_drf_exceptions_preserve_protocol_headers() -> None:
     assert response["Retry-After"] == "30"
 
 
+def test_wrapped_exceptions_drop_unsafe_headers() -> None:
+    request = APIRequestFactory().get("/api/v1/system/ping/")
+    request.correlation_id = "safe-correlation-123"
+    exception = APIException("secret")
+    exception.get_headers = lambda: {"Content-Type": "text/plain", "X-Secret": "secret"}
+
+    response = problem_details_exception_handler(exception, {"request": request})
+
+    _assert_problem(response, status=500, code="error")
+    assert "X-Secret" not in response
+    assert response["Content-Type"].startswith("application/problem+json")
+
+
+def test_wrapped_unauthorized_exceptions_preserve_authentication_challenge() -> None:
+    request = APIRequestFactory().get("/api/v1/system/ping/")
+    request.correlation_id = "safe-correlation-123"
+    exception = AuthenticationFailed("secret")
+    exception.auth_header = "Session"
+
+    response = problem_details_exception_handler(exception, {"request": request})
+
+    _assert_problem(response, status=401, code="authentication_failed")
+    assert response["WWW-Authenticate"] == "Session"
+
+
+def test_server_error_api_exception_is_recorded(caplog: pytest.LogCaptureFixture) -> None:
+    request = APIRequestFactory().get("/api/v1/system/ping/")
+    request.correlation_id = "safe-correlation-123"
+    exception = APIException("SELECT password FROM credentials")
+    exception.status_code = 500
+
+    with caplog.at_level("ERROR", logger="moviqo.diagnostics"):
+        response = problem_details_exception_handler(exception, {"request": request})
+
+    _assert_problem(response, status=500, code="error")
+    assert "SELECT password" not in caplog.text
+    assert "redacted-diagnostic" in caplog.text
+
+
+def test_explicit_invalid_parameter_reasons_are_redacted() -> None:
+    request = APIRequestFactory().get("/api/v1/system/ping/")
+    request.correlation_id = "safe-correlation-123"
+
+    response = problem_response(
+        request,
+        ProblemTemplate(400, "validation_failed", "Validation failed"),
+        invalid_params=[{"name": "password", "reason": "password=secret-value"}],
+    )
+
+    body = _assert_problem(response, status=400, code="validation_failed")
+    assert body["invalidParams"] == [{"name": "password", "reason": "Invalid value."}]
+
+
+def test_unexpected_exception_is_recorded_without_request_values(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    request = APIRequestFactory().get("/api/v1/system/ping/?token=secret")
+    request.correlation_id = "safe-correlation-123"
+
+    with caplog.at_level("ERROR", logger="moviqo.diagnostics"):
+        response = problem_details_exception_handler(
+            RuntimeError("token=secret"),
+            {"request": request},
+        )
+
+    _assert_problem(response, status=500, code="internal_error")
+    assert "token=secret" not in caplog.text
+    assert "RuntimeError" in caplog.text
+    assert "safe-correlation-123" in caplog.text
+
+
 def test_problem_details_preserve_safe_detail_and_invalid_param_names() -> None:
     request = APIRequestFactory().get("/api/v1/system/ping/")
     request.correlation_id = "safe-correlation-123"
@@ -155,6 +226,40 @@ def test_problem_details_replace_unsafe_invalid_param_names() -> None:
 
     body = _assert_problem(response, status=400, code="validation_failed")
     assert body["invalidParams"] == [{"name": "nonFieldErrors", "reason": "Invalid value."}]
+
+
+def test_problem_details_replace_protected_and_unknown_invalid_param_names() -> None:
+    request = APIRequestFactory().get("/api/v1/system/ping/")
+    request.correlation_id = "safe-correlation-123"
+
+    response = problem_response(
+        request,
+        ProblemTemplate(400, "validation_failed", "Validation failed"),
+        invalid_params=[
+            {"name": "token", "reason": "Invalid value."},
+            {"name": "internalField", "reason": "Invalid value."},
+        ],
+    )
+
+    body = _assert_problem(response, status=400, code="validation_failed")
+    assert body["invalidParams"] == [
+        {"name": "nonFieldErrors", "reason": "Invalid value."},
+        {"name": "nonFieldErrors", "reason": "Invalid value."},
+    ]
+
+
+def test_problem_details_drop_unsafe_invalid_param_codes() -> None:
+    request = APIRequestFactory().get("/api/v1/system/ping/")
+    request.correlation_id = "safe-correlation-123"
+
+    response = problem_response(
+        request,
+        ProblemTemplate(400, "validation_failed", "Validation failed"),
+        invalid_params=[{"name": "email", "reason": "Invalid value.", "code": "secret/code"}],
+    )
+
+    body = _assert_problem(response, status=400, code="validation_failed")
+    assert body["invalidParams"] == [{"name": "email", "reason": "Invalid value."}]
 
 
 def test_protected_endpoint_does_not_serve_cleartext_requests() -> None:

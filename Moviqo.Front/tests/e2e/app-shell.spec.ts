@@ -86,6 +86,46 @@ test("design-system page passes scoped axe checks", async ({ page }) => {
   ).toEqual([]);
 });
 
+test("registration server errors stay localized and associated with consent controls", async ({ page }) => {
+  await page.route("**/api/v1/organizations/registrations/", async (route) => {
+    await route.fulfill({
+      status: 400,
+      contentType: "application/problem+json",
+      headers: { "X-Correlation-ID": "safe-correlation-123" },
+      body: JSON.stringify({
+        type: "https://api.moviqo.local/problems/validation-failed",
+        title: "Validation failed",
+        status: 400,
+        code: "validation_failed",
+        correlationId: "safe-correlation-123",
+        invalidParams: [
+          { name: "termsAccepted", reason: "unsafe server text", code: "required" },
+          { name: "privacyAccepted", reason: "unsafe server text", code: "unknown_code" }
+        ]
+      })
+    });
+  });
+
+  await page.goto("/register");
+  await page.getByRole("button", { name: "Enviar registro" }).click();
+
+  await expect(page.getByRole("alert").last()).toContainText("Corrige los datos marcados");
+  await expect(page.locator("#registration-terms")).toHaveAttribute(
+    "aria-describedby",
+    "registration-terms-error"
+  );
+  await expect(page.locator("#registration-privacy")).toHaveAttribute(
+    "aria-describedby",
+    "registration-privacy-error"
+  );
+  await expect(page.locator("#registration-terms-error")).toHaveText(
+    "Completa este campo para continuar."
+  );
+  await expect(page.locator("#registration-privacy-error")).toHaveText(
+    "Revisa este campo e intenta de nuevo."
+  );
+});
+
 test("operational and catalog surfaces remain usable at narrow width and 200 percent text", async ({
   page
 }) => {

@@ -1,4 +1,5 @@
 import type { ApiProblemDetails } from "../../../shared/api";
+import type { MessageKey, MoviqoTranslator } from "../../../shared/localization";
 
 export type RegistrationDraft = {
   ownerName: string;
@@ -72,16 +73,25 @@ export const applyRegistrationFailure = (
 };
 
 export const fieldErrorMapFromProblem = (
-  problem: ApiProblemDetails
+  problem: ApiProblemDetails,
+  translate?: MoviqoTranslator
 ): Record<string, string[]> => {
   const fieldErrors: Record<string, string[]> = {};
+
+  const messageKeyForCode = (code: string | undefined): MessageKey => {
+    if (code === "required") return "validation.required";
+    if (code === "invalid_email") return "validation.email";
+    return "validation.generic";
+  };
 
   for (const param of problem.invalidParams || []) {
     const fieldName = String(param.name || "nonFieldErrors");
     if (!fieldErrors[fieldName]) {
       fieldErrors[fieldName] = [];
     }
-    fieldErrors[fieldName].push(String(param.reason || "Invalid value."));
+    fieldErrors[fieldName].push(
+      translate ? translate(messageKeyForCode(param.code)) : String(param.reason || "Invalid value.")
+    );
   }
 
   return fieldErrors;

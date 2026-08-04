@@ -33,6 +33,8 @@ export type MessageKey =
   | "status.blocked"
   | "status.needsAttention"
   | "validation.required"
+  | "validation.generic"
+  | "validation.email"
   | "help.requiredField"
   | "password.policy.helper"
   | "password.policy.reveal"
@@ -175,6 +177,8 @@ export const spanishMessages: MessageDictionary = {
   "status.blocked": "Bloqueado",
   "status.needsAttention": "Necesita atencion",
   "validation.required": "Completa este campo para continuar.",
+  "validation.generic": "Revisa este campo e intenta de nuevo.",
+  "validation.email": "Escribe un correo electronico valido.",
   "help.requiredField": "Usa una descripcion corta y clara.",
   "password.policy.helper":
     "Usa entre 15 y 128 caracteres. Evita contrasenas comunes o expuestas.",
@@ -330,6 +334,8 @@ export const englishMessages: Partial<MessageDictionary> = {
   "status.blocked": "Blocked",
   "status.needsAttention": "Needs attention",
   "validation.required": "Complete this field to continue.",
+  "validation.generic": "Review this field and try again.",
+  "validation.email": "Enter a valid email address.",
   "help.requiredField": "Use a short and clear description.",
   "password.policy.helper":
     "Use 15 to 128 characters. Avoid common or exposed passwords.",

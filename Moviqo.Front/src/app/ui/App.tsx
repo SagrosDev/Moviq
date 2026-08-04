@@ -8,10 +8,11 @@ import { EnvironmentBanner } from "./EnvironmentBanner";
 
 export const App = () => {
   const path = typeof window === "undefined" ? "/" : window.location.pathname;
+  const isPublicLanding = path === "/";
 
   return (
     <AppProviders>
-      <EnvironmentBanner />
+      {!isPublicLanding && <EnvironmentBanner />}
       {path === "/design-system" ? (
         <DesignSystemPage />
       ) : path === "/register" ? (

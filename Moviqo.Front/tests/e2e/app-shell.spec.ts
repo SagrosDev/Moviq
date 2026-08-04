@@ -4,21 +4,22 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const axePath = require.resolve("axe-core/axe.min.js");
 
-test("application shell exposes semantic navigation and keyboard focus", async ({ browserName, page }) => {
+test("public landing exposes semantic sections and keyboard focus", async ({ browserName, page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: /avanza el trabajo/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /entorno interno con datos sinteticos/i })).toBeVisible();
-  await expect(page.getByText(/prohibido ingresar datos reales de negocio/i)).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Principal" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /convierte procesos repetibles/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /un camino sencillo/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /tres casos ficticios/i })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Navegación de la página" })).toBeVisible();
   await expect(page.getByRole("main")).toBeVisible();
+  await expect(page.getByText(/WhatsApp|MFA|SSO|garantizado/i)).toHaveCount(0);
 
   if (browserName === "webkit") {
-    await page.getByRole("link", { name: "Inicio de Moviqo" }).focus();
+    await page.getByRole("link", { name: "Moviqo" }).first().focus();
   } else {
     await page.keyboard.press("Tab");
   }
-  await expect(page.getByRole("link", { name: "Inicio de Moviqo" })).toBeFocused();
+  await expect(page.getByRole("link", { name: "Moviqo" }).first()).toBeFocused();
 });
 
 test("language selector is keyboard operable and persists locally", async ({ browserName, page }) => {
@@ -32,19 +33,31 @@ test("language selector is keyboard operable and persists locally", async ({ bro
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
   }
   await expect(page.getByLabel("Idioma")).toBeFocused();
 
   await page.getByLabel("Idioma").selectOption("en");
-  await expect(page.getByRole("heading", { name: /move work forward/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /internal synthetic-data environment/i })).toBeVisible();
-  await expect(page.getByText(/do not enter real business data/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: /turn repeatable processes/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /three fictional cases/i })).toBeVisible();
 
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
   await expect(page.getByLabel("Language")).toHaveValue("en");
-  await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Page navigation" })).toBeVisible();
+});
+
+test("public landing passes scoped axe checks and exposes safe CTAs", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "Iniciar beta gratuita" }).first()).toHaveAttribute("href", "/register");
+  await expect(page.getByRole("link", { name: "Ingresar" }).first()).toHaveAttribute("href", "/sign-in");
+  await page.addScriptTag({ path: axePath });
+
+  const result = await page.evaluate(async () => {
+    const axe = (window as unknown as { axe: typeof import("axe-core") }).axe;
+    return axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] } });
+  });
+
+  expect(result.violations.map((violation) => violation.id)).toEqual([]);
 });
 
 test("design-system catalog exposes named components, states, and safe metadata", async ({ page }) => {

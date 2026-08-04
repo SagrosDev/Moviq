@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { bootstrapSession, signOut, type SessionContext } from "./session";
+import { resolveProtectedRedirectPath } from "./sessionRouting";
+import { clearProtectedQueryState } from "../../../shared/api";
 
 type SessionState =
   | { status: "loading" }
@@ -17,18 +19,35 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<SessionState>({ status: "loading" });
 
   useEffect(() => {
+    const redirectAnonymousIfRequired = () => {
+      const nextPath = resolveProtectedRedirectPath(window.location.pathname);
+      if (nextPath && window.location.pathname !== nextPath) {
+        window.location.assign(nextPath);
+      }
+    };
+
     const loadSession = async () => {
       try {
         const context = await bootstrapSession();
-        setState(context ? { status: "authenticated", context } : { status: "anonymous" });
-      } catch {
+        if (context) {
+          setState({ status: "authenticated", context });
+          return;
+        }
+
+        clearProtectedQueryState("anonymous-session");
         setState({ status: "anonymous" });
+        redirectAnonymousIfRequired();
+      } catch {
+        clearProtectedQueryState("session-bootstrap-failed");
+        setState({ status: "anonymous" });
+        redirectAnonymousIfRequired();
       }
     };
 
     const handleSessionExpired = () => {
+      clearProtectedQueryState("session-expired");
       setState({ status: "anonymous" });
-      if (window.location.pathname !== "/sign-in") window.location.assign("/sign-in");
+      redirectAnonymousIfRequired();
     };
 
     void loadSession();
@@ -38,6 +57,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
   const signOutCurrentSession = async () => {
     await signOut();
+    clearProtectedQueryState("sign-out");
     setState({ status: "anonymous" });
     window.location.assign("/sign-in");
   };

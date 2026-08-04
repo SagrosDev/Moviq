@@ -82,6 +82,24 @@ export type MessageKey =
   | "signIn.submit"
   | "signIn.submitting"
   | "signIn.failure"
+  | "myWork.eyebrow"
+  | "myWork.title"
+  | "myWork.lede"
+  | "myWork.primaryNav"
+  | "myWork.regionNav"
+  | "myWork.loading"
+  | "myWork.error"
+  | "myWork.retry"
+  | "myWork.sessionLoading"
+  | "myWork.myTasks.title"
+  | "myWork.myTasks.summary"
+  | "myWork.myTasks.empty"
+  | "myWork.startWorkflows.title"
+  | "myWork.startWorkflows.summary"
+  | "myWork.startWorkflows.empty"
+  | "myWork.myProcesses.title"
+  | "myWork.myProcesses.summary"
+  | "myWork.myProcesses.empty"
   | "passwordRecovery.eyebrow"
   | "passwordRecovery.title"
   | "passwordRecovery.lede"
@@ -256,6 +274,24 @@ export const spanishMessages: MessageDictionary = {
   "signIn.submit": "Ingresar",
   "signIn.submitting": "Ingresando",
   "signIn.failure": "No pudimos autenticarte. Revisa tus datos e intentalo de nuevo.",
+  "myWork.eyebrow": "Trabajo autenticado",
+  "myWork.title": "Mi trabajo",
+  "myWork.lede": "Consulta lo que puedes iniciar, atender y seguir dentro de tu membresia activa.",
+  "myWork.primaryNav": "Navegacion principal de Mi trabajo",
+  "myWork.regionNav": "Navegacion de regiones de Mi trabajo",
+  "myWork.loading": "Cargando tu trabajo autorizado.",
+  "myWork.error": "No pudimos cargar tu trabajo autorizado. Intenta de nuevo.",
+  "myWork.retry": "Reintentar",
+  "myWork.sessionLoading": "Estamos validando tu sesion segura.",
+  "myWork.myTasks.title": "Mis tareas",
+  "myWork.myTasks.summary": "Trabajo accionable asignado a tu membresia activa.",
+  "myWork.myTasks.empty": "No tienes tareas autorizadas para atender ahora.",
+  "myWork.startWorkflows.title": "Iniciar un proceso",
+  "myWork.startWorkflows.summary": "Flujos publicados que tu membresia puede iniciar.",
+  "myWork.startWorkflows.empty": "No hay procesos autorizados para iniciar ahora.",
+  "myWork.myProcesses.title": "Mis procesos",
+  "myWork.myProcesses.summary": "Procesos en los que has participado o que puedes seguir.",
+  "myWork.myProcesses.empty": "No tienes procesos autorizados para seguir ahora.",
   "passwordRecovery.eyebrow": "Recuperacion segura",
   "passwordRecovery.title": "Recupera tu contrasena",
   "passwordRecovery.lede": "Te enviaremos instrucciones si la cuenta puede recibirlas.",
@@ -432,6 +468,24 @@ export const englishMessages: Partial<MessageDictionary> = {
   "signIn.submit": "Sign in",
   "signIn.submitting": "Signing in",
   "signIn.failure": "We could not authenticate you. Check your details and try again.",
+  "myWork.eyebrow": "Authenticated work",
+  "myWork.title": "My work",
+  "myWork.lede": "Review what you can start, do, and follow within your active membership.",
+  "myWork.primaryNav": "My work primary navigation",
+  "myWork.regionNav": "My work region navigation",
+  "myWork.loading": "Loading your authorized work.",
+  "myWork.error": "We could not load your authorized work. Try again.",
+  "myWork.retry": "Retry",
+  "myWork.sessionLoading": "We are validating your secure session.",
+  "myWork.myTasks.title": "My tasks",
+  "myWork.myTasks.summary": "Actionable work assigned to your active membership.",
+  "myWork.myTasks.empty": "You do not have any authorized tasks to work on right now.",
+  "myWork.startWorkflows.title": "Start a process",
+  "myWork.startWorkflows.summary": "Published workflows your membership may start.",
+  "myWork.startWorkflows.empty": "There are no authorized processes to start right now.",
+  "myWork.myProcesses.title": "My processes",
+  "myWork.myProcesses.summary": "Processes you have participated in or may follow.",
+  "myWork.myProcesses.empty": "You do not have any authorized processes to follow right now.",
   "passwordRecovery.eyebrow": "Secure recovery",
   "passwordRecovery.title": "Recover your password",
   "passwordRecovery.lede": "We will send instructions if the account can receive them.",

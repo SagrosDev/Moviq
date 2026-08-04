@@ -10,6 +10,7 @@ from moviqo.modules.organizations.application.registration import (
     register_initial_owner,
     verify_initial_registration,
 )
+from moviqo.modules.organizations.application.session import active_membership_for_user
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.application.views import (
     CsrfTokenView,
@@ -37,6 +38,7 @@ __all__ = [
     "create_user_with_validated_password",
     "module_health",
     "register_initial_owner",
+    "active_membership_for_user",
     "resolve_tenant_context",
     "RegistrationVerificationView",
     "PasswordRecoveryView",

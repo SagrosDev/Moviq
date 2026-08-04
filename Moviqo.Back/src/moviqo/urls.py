@@ -18,6 +18,7 @@ from moviqo.modules.organizations.application import (
     SignInView,
     SignOutView,
 )
+from moviqo.modules.workflow_runtime.application import MyWorkDashboardView
 
 
 def health_start(_request):
@@ -46,6 +47,7 @@ urlpatterns = [
     ),
     path("api/v1/auth/session/", CurrentSessionView.as_view(), name="api-v1-auth-session"),
     path("api/v1/auth/sign-out/", SignOutView.as_view(), name="api-v1-auth-sign-out"),
+    path("api/v1/my-work/", MyWorkDashboardView.as_view(), name="api-v1-my-work-dashboard"),
     path(
         "api/v1/organizations/registrations/",
         InitialRegistrationView.as_view(),

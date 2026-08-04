@@ -5,7 +5,11 @@ from django.test import Client, override_settings
 from rest_framework.exceptions import Throttled
 from rest_framework.test import APIRequestFactory
 
-from moviqo.building_blocks.api.problem_details import problem_details_exception_handler
+from moviqo.building_blocks.api.problem_details import (
+    ProblemTemplate,
+    problem_details_exception_handler,
+    problem_response,
+)
 from moviqo.modules.organizations.application.identity_boundary import IdentityBoundaryViolation
 
 FORBIDDEN_FRAGMENTS = [
@@ -93,6 +97,76 @@ def test_wrapped_drf_exceptions_preserve_protocol_headers() -> None:
 
     _assert_problem(response, status=429, code="throttled")
     assert response["Retry-After"] == "30"
+
+
+def test_problem_details_preserve_safe_detail_and_invalid_param_names() -> None:
+    request = APIRequestFactory().get("/api/v1/system/ping/")
+    request.correlation_id = "safe-correlation-123"
+
+    response = problem_response(
+        request,
+        ProblemTemplate(
+            status_code=400,
+            code="validation_failed",
+            title="Validation failed",
+            detail="Membership 00000000-0000-0000-0000-000000000001 is invalid.",
+        ),
+        invalid_params=[{"name": "member_id", "reason": "Invalid value."}],
+    )
+
+    body = _assert_problem(response, status=400, code="validation_failed")
+    assert body["detail"] == "Membership 00000000-0000-0000-0000-000000000001 is invalid."
+    assert body["invalidParams"] == [{"name": "member_id", "reason": "Invalid value."}]
+
+
+def test_problem_details_replace_unsafe_invalid_param_names() -> None:
+    request = APIRequestFactory().get("/api/v1/system/ping/")
+    request.correlation_id = "safe-correlation-123"
+
+    response = problem_response(
+        request,
+        ProblemTemplate(
+            status_code=400,
+            code="validation_failed",
+            title="Validation failed",
+        ),
+        invalid_params=[{"name": "process-field-secret/private", "reason": "Invalid value."}],
+    )
+
+    body = _assert_problem(response, status=400, code="validation_failed")
+    assert body["invalidParams"] == [{"name": "nonFieldErrors", "reason": "Invalid value."}]
+
+
+def test_protected_endpoint_does_not_serve_cleartext_requests() -> None:
+    membership_id = "00000000-0000-0000-0000-000000000001"
+
+    with override_settings(
+        SECURE_SSL_REDIRECT=True,
+        SESSION_COOKIE_SECURE=True,
+        CSRF_COOKIE_SECURE=True,
+        ALLOWED_HOSTS=["testserver"],
+    ):
+        response = Client().get(
+            f"/api/v1/organizations/protected-memberships/{membership_id}/",
+            secure=False,
+        )
+
+    assert response.status_code == 301
+    assert response["Location"].startswith(
+        f"https://testserver/api/v1/organizations/protected-memberships/{membership_id}/"
+    )
+
+
+def test_protected_endpoint_rejects_untrusted_hosts() -> None:
+    membership_id = "00000000-0000-0000-0000-000000000001"
+
+    with override_settings(ALLOWED_HOSTS=["app.moviqo.example"]):
+        response = Client(HTTP_HOST="evil.example").get(
+            f"/api/v1/organizations/protected-memberships/{membership_id}/",
+            secure=True,
+        )
+
+    assert response.status_code == 400
 
 
 def test_identity_boundary_violations_map_to_non_disclosing_problem_details() -> None:

@@ -12,6 +12,7 @@ from django.db import connection
 from django.test import Client
 
 
+@pytest.mark.django_db
 def test_asgi_settings_and_custom_user_model() -> None:
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "moviqo.settings.test")
     django.setup()

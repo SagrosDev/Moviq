@@ -224,7 +224,7 @@ def test_tenant_owned_tables_are_registered_for_rls_enforcement() -> None:
         and not model._meta.abstract
         and not model._meta.proxy
         and any(
-            isinstance(field, (ForeignKey, OneToOneField))
+            isinstance(field, ForeignKey | OneToOneField)
             and field.concrete
             and field.remote_field is not None
             and field.remote_field.model is Organization

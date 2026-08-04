@@ -2,35 +2,75 @@ import { useEffect } from "react";
 import { LanguageSelector, useLanguage } from "../../../shared/localization";
 import { landingContent, landingDestinations } from "../model/landingContent";
 
-const configuredDestination = (value: string | undefined, fallback: string, expectedPath?: string) => {
+export type DestinationKind = "application" | "document" | "support";
+
+export type DestinationOptions = {
+  expectedPath?: string;
+  kind?: DestinationKind;
+  origin?: string;
+  allowedOrigins?: string[];
+};
+
+export const configuredDestination = (
+  value: string | undefined,
+  fallback: string,
+  options: DestinationOptions = {}
+) => {
+  const { expectedPath, kind = expectedPath ? "application" : "document", origin = "https://moviqo.invalid", allowedOrigins = [origin] } = options;
   if (!value) return fallback;
+  if (/\r|\n/.test(value)) return fallback;
   try {
-    const url = new URL(value, window.location.origin);
+    const url = new URL(value, origin);
+    if (url.username || url.password) return fallback;
     if (expectedPath) {
-      return url.origin === window.location.origin && url.pathname === expectedPath
-        ? `${url.pathname}${url.search}${url.hash}`
-        : fallback;
+      if (!["http:", "https:"].includes(url.protocol) || !allowedOrigins.includes(url.origin) || url.pathname !== expectedPath) return fallback;
+      return url.origin === origin ? `${url.pathname}${url.search}${url.hash}` : url.toString();
     }
-    return ["http:", "https:", "mailto:"].includes(url.protocol) ? value ?? fallback : fallback;
+    if (kind === "support") {
+      return /^mailto:[^@\s]+@[^@\s]+$/i.test(value) ? value : fallback;
+    }
+    return ["http:", "https:"].includes(url.protocol) && allowedOrigins.includes(url.origin)
+      ? value
+      : fallback;
   } catch {
     return fallback;
   }
 };
 
-const configuredMetaDestination = (name: string, fallback: string, expectedPath?: string) => {
+const configuredMetaDestination = (name: string, fallback: string, options?: DestinationOptions) => {
   if (typeof document === "undefined") return fallback;
-  return configuredDestination(document.querySelector(`meta[name="${name}"]`)?.getAttribute("content") ?? undefined, fallback, expectedPath);
+  const origin = window.location.origin;
+  const allowedOrigins = (document.querySelector('meta[name="moviqo-allowed-public-origins"]')?.getAttribute("content") ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => { try { const url = new URL(item); return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password ? url.origin : ""; } catch { return ""; } })
+    .filter(Boolean);
+  return configuredDestination(
+    document.querySelector(`meta[name="${name}"]`)?.getAttribute("content") ?? undefined,
+    fallback,
+    { ...options, origin, allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : [origin] }
+  );
 };
 
 export const HomePage = () => {
   const { language } = useLanguage();
   const content = landingContent[language];
-  const register = configuredMetaDestination("moviqo-register-url", landingDestinations.register, "/register");
-  const signIn = configuredMetaDestination("moviqo-sign-in-url", landingDestinations.signIn, "/sign-in");
-  const betaTerms = configuredMetaDestination("moviqo-beta-terms-url", landingDestinations.betaTerms);
-  const privacy = configuredMetaDestination("moviqo-privacy-url", landingDestinations.privacy);
-  const prohibitedData = configuredMetaDestination("moviqo-prohibited-data-url", landingDestinations.prohibitedData);
-  const support = configuredMetaDestination("moviqo-support-url", landingDestinations.support);
+  const register = configuredMetaDestination("moviqo-register-url", landingDestinations.register, { expectedPath: "/register" });
+  const signIn = configuredMetaDestination("moviqo-sign-in-url", landingDestinations.signIn, { expectedPath: "/sign-in" });
+  const betaTerms = configuredMetaDestination("moviqo-beta-terms-url", landingDestinations.betaTerms, { kind: "document" });
+  const privacy = configuredMetaDestination("moviqo-privacy-url", landingDestinations.privacy, { kind: "document" });
+  const prohibitedData = configuredMetaDestination("moviqo-prohibited-data-url", landingDestinations.prohibitedData, { kind: "document" });
+  const support = configuredMetaDestination("moviqo-support-url", landingDestinations.support, { kind: "support" });
+  const withCrossOriginLanguage = (destination: string, selectedLanguage: typeof language) => {
+    if (typeof window === "undefined") return destination;
+    const url = new URL(destination, window.location.origin);
+    if (url.origin === window.location.origin) return destination;
+    url.searchParams.set("lang", selectedLanguage);
+    return url.toString();
+  };
+  const registerDestination = withCrossOriginLanguage(register, language);
+  const signInDestination = withCrossOriginLanguage(signIn, language);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -54,7 +94,7 @@ export const HomePage = () => {
         </nav>
         <div className="landing-header__actions">
           <LanguageSelector />
-          <a className="landing-sign-in" href={signIn}>{content.hero.secondary}</a>
+          <a className="landing-sign-in" href={signInDestination}>{content.hero.secondary}</a>
         </div>
       </header>
 
@@ -66,8 +106,8 @@ export const HomePage = () => {
             <p className="lede">{content.hero.body}</p>
             <p className="landing-capabilities">{content.hero.capabilities}</p>
             <div className="button-row">
-              <a className="button" href={register}>{content.hero.primary}</a>
-              <a className="button" data-variant="secondary" href={signIn}>{content.hero.secondary}</a>
+              <a className="button" href={registerDestination}>{content.hero.primary}</a>
+              <a className="button" data-variant="secondary" href={signInDestination}>{content.hero.secondary}</a>
             </div>
             <p className="landing-time-to-value">{content.timeToValue}</p>
           </div>
@@ -133,7 +173,7 @@ export const HomePage = () => {
 
         <section className="landing-final" aria-labelledby="final-title">
           <h2 id="final-title">{content.final.title}</h2><p>{content.final.body}</p>
-          <div className="button-row"><a className="button" href={register}>{content.final.primary}</a><a className="button" data-variant="secondary" href={signIn}>{content.final.secondary}</a></div>
+          <div className="button-row"><a className="button" href={registerDestination}>{content.final.primary}</a><a className="button" data-variant="secondary" href={signInDestination}>{content.final.secondary}</a></div>
         </section>
       </main>
       <footer className="landing-footer"><span>Moviqo</span><span>{content.hero.eyebrow}</span></footer>

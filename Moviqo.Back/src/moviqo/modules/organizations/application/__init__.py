@@ -6,8 +6,12 @@ from moviqo.modules.organizations.application.password_policy import (
     set_user_password,
     validate_password_policy,
 )
+from moviqo.modules.organizations.application.registration import register_initial_owner
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
-from moviqo.modules.organizations.application.views import ProtectedMembershipDetailView
+from moviqo.modules.organizations.application.views import (
+    InitialRegistrationView,
+    ProtectedMembershipDetailView,
+)
 
 
 def module_health() -> None:
@@ -17,8 +21,10 @@ def module_health() -> None:
 __all__ = [
     "ProtectedMembershipDetailView",
     "CredentialValidationError",
+    "InitialRegistrationView",
     "create_user_with_validated_password",
     "module_health",
+    "register_initial_owner",
     "resolve_tenant_context",
     "set_user_password",
     "validate_password_policy",

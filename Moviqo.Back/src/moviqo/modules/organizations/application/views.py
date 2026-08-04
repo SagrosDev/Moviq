@@ -10,8 +10,16 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from moviqo.building_blocks.api.problem_details import ProblemDetailsSerializer
+from moviqo.building_blocks.api.problem_details import (
+    ProblemDetailsSerializer,
+    ProblemTemplate,
+    problem_response,
+)
 from moviqo.building_blocks.tenancy.runtime import apply_tenant_context, tenant_bootstrap_context
+from moviqo.modules.organizations.application.registration import (
+    RegistrationValidationError,
+    register_initial_owner,
+)
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.models import Membership
 
@@ -62,3 +70,164 @@ class ProtectedMembershipDetailView(APIView):
                     "role": membership.role,
                 }
             )
+
+
+class InitialRegistrationRequestSerializer(serializers.Serializer):
+    ownerName = serializers.CharField(max_length=120, allow_blank=True, required=False)
+    organizationName = serializers.CharField(max_length=120, allow_blank=True, required=False)
+    email = serializers.EmailField(max_length=254, allow_blank=True, required=False)
+    password = serializers.CharField(
+        max_length=128,
+        trim_whitespace=False,
+        allow_blank=True,
+        required=False,
+    )
+    language = serializers.CharField(max_length=8, allow_blank=True, required=False)
+    region = serializers.CharField(max_length=8, allow_blank=True, required=False)
+    timezone = serializers.CharField(max_length=64, allow_blank=True, required=False)
+    currency = serializers.CharField(max_length=8, allow_blank=True, required=False)
+    termsAccepted = serializers.BooleanField(required=False)
+    privacyAccepted = serializers.BooleanField(required=False)
+    termsVersion = serializers.CharField(max_length=64, allow_blank=True, required=False)
+    privacyVersion = serializers.CharField(max_length=64, allow_blank=True, required=False)
+    prohibitedDataAcknowledged = serializers.BooleanField()
+
+
+class InitialRegistrationResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    email = serializers.EmailField()
+    language = serializers.CharField()
+
+
+class InitialRegistrationView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(
+        operation_id="organizations_register_initial_owner",
+        request=InitialRegistrationRequestSerializer,
+        responses={
+            201: InitialRegistrationResponseSerializer,
+            (400, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (409, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def post(self, request) -> Response:
+        serializer = InitialRegistrationRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    status_code=400,
+                    code="registration_invalid",
+                    title="Registration failed",
+                ),
+                invalid_params=_registration_invalid_params(serializer.errors),
+            )
+
+        idempotency_key = request.headers.get("Idempotency-Key")
+        if not idempotency_key:
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    status_code=400,
+                    code="registration_invalid",
+                    title="Registration failed",
+                ),
+                invalid_params=[
+                    {
+                        "name": "idempotencyKey",
+                        "code": "required",
+                        "reason": "Provide an idempotency key to continue.",
+                    }
+                ],
+            )
+
+        try:
+            result = register_initial_owner(
+                owner_name=serializer.validated_data["ownerName"],
+                organization_name=serializer.validated_data["organizationName"],
+                email=serializer.validated_data["email"],
+                password=serializer.validated_data["password"],
+                language=serializer.validated_data["language"],
+                region=serializer.validated_data["region"],
+                timezone=serializer.validated_data["timezone"],
+                currency=serializer.validated_data["currency"],
+                terms_accepted=serializer.validated_data["termsAccepted"],
+                privacy_accepted=serializer.validated_data["privacyAccepted"],
+                terms_version=serializer.validated_data["termsVersion"],
+                privacy_version=serializer.validated_data["privacyVersion"],
+                prohibited_data_acknowledged=serializer.validated_data[
+                    "prohibitedDataAcknowledged"
+                ],
+                idempotency_key=idempotency_key,
+            )
+        except RegistrationValidationError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    status_code=400,
+                    code=exc.problem_code,
+                    title=exc.title,
+                ),
+                invalid_params=exc.invalid_params,
+            )
+
+        return Response(result, status=201)
+
+
+def _registration_invalid_params(errors) -> list[dict[str, str]]:
+    invalid_params: list[dict[str, str]] = []
+
+    for field_name in (
+        "ownerName",
+        "organizationName",
+        "email",
+        "password",
+        "language",
+        "region",
+        "timezone",
+        "currency",
+        "termsAccepted",
+        "privacyAccepted",
+        "termsVersion",
+        "privacyVersion",
+        "prohibitedDataAcknowledged",
+    ):
+        if field_name not in errors:
+            continue
+
+        invalid_params.append(
+            {
+                "name": field_name,
+                "code": _registration_error_code(field_name),
+                "reason": _registration_error_reason(field_name),
+            }
+        )
+
+    if not invalid_params:
+        invalid_params.append(
+            {
+                "name": "nonFieldErrors",
+                "code": "invalid_request",
+                "reason": "Correct the marked values and try again.",
+            }
+        )
+
+    return invalid_params
+
+
+def _registration_error_code(field_name: str) -> str:
+    if field_name in {"email"}:
+        return "invalid_email"
+    if field_name in {"termsAccepted", "privacyAccepted", "termsVersion", "privacyVersion"}:
+        return "consent_required"
+    return "required"
+
+
+def _registration_error_reason(field_name: str) -> str:
+    if field_name == "email":
+        return "Enter a valid email address."
+    if field_name in {"termsAccepted", "privacyAccepted", "termsVersion", "privacyVersion"}:
+        return "Complete the required acceptance to continue."
+    return "Complete this field to continue."

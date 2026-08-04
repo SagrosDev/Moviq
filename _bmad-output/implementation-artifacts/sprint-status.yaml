@@ -31,7 +31,7 @@ development_status:
   1-9-enforce-the-single-organization-identity-boundary: done
   1-10-establish-atomic-commands-and-leased-background-jobs: done
   1-11-enforce-the-password-and-credential-policy: done
-  1-12-register-the-initial-owner-and-organization: backlog
+  1-12-register-the-initial-owner-and-organization: done
   1-13-verify-email-and-activate-the-organization: backlog
   1-14-sign-in-and-out-with-secure-sessions: backlog
   1-15-return-safe-and-consistent-application-errors: backlog

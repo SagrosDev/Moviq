@@ -68,10 +68,7 @@ def problem_response(
         body["detail"] = template.detail
     if invalid_params:
         body["invalidParams"] = [
-            {
-                "name": _safe_invalid_param_name(param.get("name")),
-                "reason": str(param.get("reason", "Invalid value.")),
-            }
+            _invalid_param_body(param)
             for param in invalid_params
         ]
     response = Response(
@@ -209,6 +206,17 @@ def _safe_invalid_param_reason(field_name: str, errors: Any) -> str:
         if getattr(error, "code", None) in SAFE_PASSWORD_REASON_CODES:
             return str(error)
     return "Invalid value."
+
+
+def _invalid_param_body(param: Mapping[str, Any]) -> dict[str, str]:
+    body = {
+        "name": _safe_invalid_param_name(param.get("name")),
+        "reason": str(param.get("reason", "Invalid value.")),
+    }
+    code = param.get("code")
+    if code:
+        body["code"] = str(code)
+    return body
 
 
 def _flatten_error_details(errors: Any) -> list[Any]:

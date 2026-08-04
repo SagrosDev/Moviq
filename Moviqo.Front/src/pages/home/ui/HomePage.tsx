@@ -1,4 +1,5 @@
 import { AuthorityPreview } from "../../../features/authority-preview";
+import { Button } from "../../../shared/ui/Button";
 import { LanguageSelector, useLanguage } from "../../../shared/localization";
 
 export const HomePage = () => {
@@ -23,6 +24,11 @@ export const HomePage = () => {
           <p className="eyebrow">{t("home.eyebrow")}</p>
           <h1 id="page-title">{t("home.title")}</h1>
           <p className="lede">{t("home.lede")}</p>
+          <div className="button-row">
+            <Button type="button" onClick={() => window.location.assign("/register")}>
+              {t("home.cta.register")}
+            </Button>
+          </div>
         </section>
         <AuthorityPreview />
       </main>

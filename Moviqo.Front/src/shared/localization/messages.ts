@@ -17,6 +17,7 @@ export type MessageKey =
   | "home.eyebrow"
   | "home.title"
   | "home.lede"
+  | "home.cta.register"
   | "environment.banner.title"
   | "environment.banner.body"
   | "environment.banner.rule1"
@@ -34,6 +35,29 @@ export type MessageKey =
   | "password.policy.helper"
   | "password.policy.reveal"
   | "password.policy.hide"
+  | "registration.eyebrow"
+  | "registration.title"
+  | "registration.lede"
+  | "registration.form.title"
+  | "registration.form.body"
+  | "registration.ownerName.label"
+  | "registration.organizationName.label"
+  | "registration.email.label"
+  | "registration.password.label"
+  | "registration.language.label"
+  | "registration.region.label"
+  | "registration.timezone.label"
+  | "registration.currency.label"
+  | "registration.consent.title"
+  | "registration.consent.body"
+  | "registration.documents.current"
+  | "registration.terms.label"
+  | "registration.privacy.label"
+  | "registration.prohibited.label"
+  | "registration.submit"
+  | "registration.submitting"
+  | "registration.success"
+  | "registration.failure"
   | "catalog.title"
   | "catalog.subtitle"
   | "catalog.responsive.title"
@@ -108,6 +132,7 @@ export const spanishMessages: MessageDictionary = {
   "home.title": "Avanza el trabajo con responsables claros.",
   "home.lede":
     "Moviqo mantiene las decisiones del flujo en el servidor mientras esta interfaz prueba la estructura accesible y bilingue.",
+  "home.cta.register": "Registrar organizacion",
   "environment.banner.title": "Entorno interno con datos sinteticos",
   "environment.banner.body":
     "Usa este entorno solo para pruebas internas persistentes. No actives clientes ni registres datos reales.",
@@ -131,6 +156,36 @@ export const spanishMessages: MessageDictionary = {
     "Usa entre 15 y 128 caracteres. Evita contrasenas comunes o expuestas.",
   "password.policy.reveal": "Mostrar contrasena",
   "password.policy.hide": "Ocultar contrasena",
+  "registration.eyebrow": "Onboarding inicial",
+  "registration.title": "Registra la organizacion y a su primera persona responsable.",
+  "registration.lede":
+    "Esta solicitud crea una organizacion pendiente, una cuenta pendiente y una verificacion por correo antes de exponer datos protegidos.",
+  "registration.form.title": "Formulario de registro",
+  "registration.form.body":
+    "Revisa idioma, region, zona horaria y moneda antes de enviar. La contrasena se limpia si el servidor devuelve errores.",
+  "registration.ownerName.label": "Nombre de la persona responsable",
+  "registration.organizationName.label": "Nombre de la organizacion",
+  "registration.email.label": "Correo de acceso",
+  "registration.password.label": "Contrasena",
+  "registration.language.label": "Idioma preferido",
+  "registration.region.label": "Region",
+  "registration.timezone.label": "Zona horaria",
+  "registration.currency.label": "Moneda",
+  "registration.consent.title": "Aceptaciones requeridas",
+  "registration.consent.body":
+    "Debes aceptar los terminos beta, la privacidad y la prohibicion de datos reales antes de continuar.",
+  "registration.documents.current":
+    "Documentos vigentes: beta-2026-08-04 y privacy-2026-08-04.",
+  "registration.terms.label":
+    "Confirmo que acepto los terminos beta vigentes para continuar con el registro.",
+  "registration.privacy.label":
+    "Confirmo que acepto el aviso de privacidad vigente para continuar con el registro.",
+  "registration.prohibited.label":
+    "Confirmo que no ingresare datos personales reales, datos de clientes ni archivos de produccion.",
+  "registration.submit": "Enviar registro",
+  "registration.submitting": "Enviando registro",
+  "registration.success": "Se envio un enlace de verificacion a",
+  "registration.failure": "Corrige los datos marcados y vuelve a enviar.",
   "catalog.title": "Sistema de diseno",
   "catalog.subtitle": "Componentes base para experiencias operativas seguras.",
   "catalog.responsive.title": "Comportamiento responsivo",
@@ -206,6 +261,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "home.title": "Move work forward with clear ownership.",
   "home.lede":
     "Moviqo keeps workflow decisions on the server while this interface proves the accessible bilingual structure.",
+  "home.cta.register": "Register organization",
   "environment.banner.title": "Internal synthetic-data environment",
   "environment.banner.body":
     "Use this environment for persistent internal testing only. Do not onboard customers or enter real data.",
@@ -229,6 +285,36 @@ export const englishMessages: Partial<MessageDictionary> = {
     "Use 15 to 128 characters. Avoid common or exposed passwords.",
   "password.policy.reveal": "Show password",
   "password.policy.hide": "Hide password",
+  "registration.eyebrow": "Initial onboarding",
+  "registration.title": "Register the organization and its first owner.",
+  "registration.lede":
+    "This request creates a pending organization, pending account, and email verification before any protected data is exposed.",
+  "registration.form.title": "Registration form",
+  "registration.form.body":
+    "Review language, region, timezone, and currency before sending. The password is cleared if the server returns errors.",
+  "registration.ownerName.label": "Owner name",
+  "registration.organizationName.label": "Organization name",
+  "registration.email.label": "Access email",
+  "registration.password.label": "Password",
+  "registration.language.label": "Preferred language",
+  "registration.region.label": "Region",
+  "registration.timezone.label": "Timezone",
+  "registration.currency.label": "Currency",
+  "registration.consent.title": "Required acceptances",
+  "registration.consent.body":
+    "You must accept the beta terms, privacy notice, and real-data prohibition before continuing.",
+  "registration.documents.current":
+    "Current documents: beta-2026-08-04 and privacy-2026-08-04.",
+  "registration.terms.label":
+    "I confirm that I accept the current beta terms to continue with registration.",
+  "registration.privacy.label":
+    "I confirm that I accept the current privacy notice to continue with registration.",
+  "registration.prohibited.label":
+    "I confirm that I will not enter real personal data, customer data, or production files.",
+  "registration.submit": "Send registration",
+  "registration.submitting": "Sending registration",
+  "registration.success": "A verification link was sent to",
+  "registration.failure": "Correct the marked values and try again.",
   "catalog.title": "Design system",
   "catalog.subtitle": "Base components for safe operational experiences.",
   "catalog.responsive.title": "Responsive behavior",

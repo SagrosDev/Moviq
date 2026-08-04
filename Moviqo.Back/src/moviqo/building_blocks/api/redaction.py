@@ -12,7 +12,7 @@ UUID_PATTERN = re.compile(
 
 SENSITIVE_DIAGNOSTIC_PATTERN = re.compile(
     r"(?i)\b(?:select|insert|update|delete)\b|"
-    r"(?:[A-Za-z]:\\|/)(?:[^\s]+/)+[^\s]*|"
+    r"(?:[A-Za-z]:\\|\\\\(?:[^\s\\]+\\)+|/(?:home|usr|var|tmp|opt|etc|app)/)[^\s]*|"
     r"\b(?:api[_-]?key|access[_-]?key|client[_-]?secret)\b\s*[:=]"
 )
 

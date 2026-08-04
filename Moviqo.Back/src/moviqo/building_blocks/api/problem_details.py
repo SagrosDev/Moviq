@@ -37,6 +37,9 @@ SAFE_VISIBLE_INVALID_PARAM_NAMES = frozenset(
         "member_id",
         "membershipId",
         "organizationId",
+        "idempotencyKey",
+        "termsVersion",
+        "privacyVersion",
         "nonFieldErrors",
     }
 )

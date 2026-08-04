@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse
 from rest_framework import serializers
+from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from moviqo.building_blocks.api.problem_details import ProblemDetailsSerializer
 from moviqo.building_blocks.tenancy.runtime import apply_tenant_context, tenant_bootstrap_context
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.application.views import AuthenticatedRequestPermission
+from moviqo.modules.organizations.models import Organization, RegistrationWorkflowState
 from moviqo.modules.workflow_runtime.application.my_work import read_my_work_dashboard
 
 
@@ -67,10 +71,21 @@ class MyWorkDashboardView(APIView):
 
     @extend_schema(
         operation_id="workflow_runtime_my_work_dashboard",
-        responses={200: MyWorkDashboardSerializer},
+        responses={
+            200: MyWorkDashboardSerializer,
+            (403, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (404, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
     )
     def get(self, request) -> Response:
         with tenant_bootstrap_context(user_id=request.user.pk):
             tenant_context = resolve_tenant_context(request)
             apply_tenant_context(tenant_context)
+            organization_is_active = Organization.objects.filter(
+                id=tenant_context.organization_id,
+                is_active=True,
+                registration_state=RegistrationWorkflowState.ACTIVE,
+            ).exists()
+            if not organization_is_active:
+                raise NotFound("my-work")
             return Response(read_my_work_dashboard(tenant_context))

@@ -4,7 +4,7 @@ baseline_commit: c1cf682c10a949d858a5458bd074cf3680c527eb
 
 # Story 1.20: Provide the Authenticated My Work Shell
 
-Status: review
+Status: done
 
 ## Story
 
@@ -42,6 +42,13 @@ so that the first workflow journey has an understandable navigation anchor.
   - [x] Add backend contract, authorization, tenant-isolation, and query behavior tests; include empty/error/unauthorized cases and verify no protected data leaks in response or logs.
   - [x] Add frontend unit tests for query state, invalidation, session expiry, and safe routing. Test files and new frontend implementation functions must use arrow-function constants per `AGENTS.md`.
   - [x] Add Playwright coverage for authenticated My Work, default My Tasks, all three semantic regions, mocked server loading/empty/error/retry responses, keyboard focus, mobile width, 200% text, and revoked-session transition. Use role/name-based locators and the existing axe-core approach; automated checks do not replace manual assistive-technology review.
+
+### Review Findings
+
+- [x] [Review][Patch] Authenticated root routing still falls back to the public landing instead of My Work [Moviqo.Front/src/app/ui/App.tsx:13]
+- [x] [Review][Patch] My Work skips the post-tenant active-organization validation required by the tenant access seam [Moviqo.Back/src/moviqo/modules/workflow_runtime/application/views.py:74]
+- [x] [Review][Patch] `/api/v1/my-work/` documents only `200` and omits Problem Details failure responses [Moviqo.Back/src/moviqo/modules/workflow_runtime/application/views.py:68]
+- [x] [Review][Patch] My Work contract coverage does not exercise hostile tenant identifiers or the required tenant-isolation evidence path [Moviqo.Back/tests/contract/test_my_work_contract.py:25]
 
 ## Dev Notes
 

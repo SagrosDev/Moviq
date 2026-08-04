@@ -497,3 +497,44 @@ def test_protected_membership_endpoint_bootstraps_tenant_context_under_rls(
         assert all("[redacted-uuid]" in message for message in hidden_messages)
     finally:
         logger.removeHandler(log_capture)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_my_work_endpoint_ignores_hostile_tenant_identifiers_under_rls(
+    django_user_model,
+) -> None:
+    _integration_only()
+    user = django_user_model.objects.create_user(username="owner-a", password="test")
+    other_user = django_user_model.objects.create_user(username="owner-b", password="test")
+    organization_a = Organization.objects.create(slug="org-a-work", display_name="Org A")
+    organization_b = Organization.objects.create(slug="org-b-work", display_name="Org B")
+    Membership.objects.create(
+        organization=organization_a,
+        user=user,
+        role=MembershipRole.OWNER,
+    )
+    membership_b = Membership.objects.create(
+        organization=organization_b,
+        user=other_user,
+        role=MembershipRole.OWNER,
+    )
+
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(
+        (
+            f"/api/v1/my-work/?organizationId={organization_b.id}"
+            f"&membershipId={membership_b.id}"
+        ),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "startWorkflows": {"items": [], "limit": 6, "hasMore": False},
+        "myTasks": {"items": [], "limit": 12, "hasMore": False},
+        "myProcesses": {"items": [], "limit": 12, "hasMore": False},
+    }
+    payload = response.content.decode("utf-8")
+    assert str(organization_b.id) not in payload
+    assert str(membership_b.id) not in payload

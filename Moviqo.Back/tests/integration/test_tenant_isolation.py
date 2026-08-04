@@ -8,6 +8,7 @@ import pytest
 from django.conf import settings
 from django.db import DatabaseError, connection, transaction
 from django.test import Client
+from django.utils import timezone
 
 from moviqo.building_blocks.api.logging import (
     RedactDiagnosticLogFilter,
@@ -21,7 +22,13 @@ from moviqo.building_blocks.tenancy import (
 from moviqo.building_blocks.tenancy.runtime import TenantContext, tenant_atomic_context
 from moviqo.modules.governance.models import CommandResult, TransactionalAuditRecord
 from moviqo.modules.messaging.models import OutboxMessage
-from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
+from moviqo.modules.organizations.models import (
+    Membership,
+    MembershipRole,
+    Organization,
+    OrganizationRegistrationConsent,
+    RegistrationVerification,
+)
 from moviqo.modules.workflow_runtime.models import AtomicCommandProbe
 
 
@@ -143,6 +150,76 @@ def _assert_membership_isolation(seed: IsolationSeed) -> None:
 
     seed.membership_b.refresh_from_db()
     assert seed.membership_b.role == MembershipRole.OWNER
+
+
+def _assert_registration_consent_isolation(seed: IsolationSeed) -> None:
+    OrganizationRegistrationConsent.objects.create(
+        organization=seed.organization_a,
+        user=seed.user_a,
+        terms_version="beta-2026-08-04",
+        privacy_version="privacy-2026-08-04",
+        prohibited_data_acknowledged=True,
+        accepted_at=timezone.now(),
+    )
+    row_b = OrganizationRegistrationConsent.objects.create(
+        organization=seed.organization_b,
+        user=seed.user_b,
+        terms_version="beta-2026-08-04",
+        privacy_version="privacy-2026-08-04",
+        prohibited_data_acknowledged=True,
+        accepted_at=timezone.now(),
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert OrganizationRegistrationConsent.objects.count() == 1
+        assert not OrganizationRegistrationConsent.objects.filter(id=row_b.id).exists()
+        updated = OrganizationRegistrationConsent.objects.filter(id=row_b.id).update(
+            privacy_version="cross-tenant"
+        )
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.privacy_version == "privacy-2026-08-04"
+
+
+def _assert_registration_verification_isolation(seed: IsolationSeed) -> None:
+    row_a_membership = Membership.objects.get(id=seed.membership_a.id)
+    row_b_membership = Membership.objects.get(id=seed.membership_b.id)
+    RegistrationVerification.objects.create(
+        organization=seed.organization_a,
+        user=seed.user_a,
+        membership=row_a_membership,
+        expires_at=timezone.now(),
+    )
+    row_b = RegistrationVerification.objects.create(
+        organization=seed.organization_b,
+        user=seed.user_b,
+        membership=row_b_membership,
+        expires_at=timezone.now(),
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert RegistrationVerification.objects.count() == 1
+        assert not RegistrationVerification.objects.filter(id=row_b.id).exists()
+        updated = RegistrationVerification.objects.filter(id=row_b.id).update(
+            consumed_at=timezone.now()
+        )
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.consumed_at is None
 
 
 def _assert_command_result_isolation(seed: IsolationSeed) -> None:

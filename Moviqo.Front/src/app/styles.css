@@ -50,14 +50,16 @@ body {
 button,
 a,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 3px solid var(--primary);
   outline-offset: 3px;
 }
@@ -321,11 +323,21 @@ p {
 }
 
 .form-field input {
+.form-field select,
+.registration-checkbox input {
   border: 1px solid var(--border);
+}
+
+.form-field input,
+.form-field select {
   border-radius: var(--radius-field);
   color: var(--ink-primary);
   min-height: var(--target-min);
   padding: 0 var(--space-md);
+}
+
+.form-field select {
+  background: var(--surface-raised);
 }
 
 .validation-message {
@@ -387,6 +399,71 @@ p {
   gap: var(--space-sm);
   margin: 0;
   padding-left: 1.25rem;
+}
+
+.registration-form {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.registration-grid {
+  display: grid;
+  gap: var(--space-lg);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+
+.registration-consent {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+}
+
+.registration-consent p {
+  margin: 0;
+}
+
+.registration-checkbox {
+  align-items: start;
+  display: grid;
+  gap: var(--space-sm);
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.registration-checkbox input {
+  margin-top: 0.35rem;
+}
+
+.password-field {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.password-field > label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.password-field__control {
+  display: grid;
+  gap: var(--space-sm);
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.password-field__control input {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  color: var(--ink-primary);
+  min-height: var(--target-min);
+  padding: 0 var(--space-md);
+}
+
+.success-message {
+  color: var(--success);
+  font-weight: 600;
+  margin: 0;
 }
 
 @media (max-width: 520px) {

@@ -92,6 +92,13 @@ MOVIQO_SERVICE_NAME = os.getenv("MOVIQO_SERVICE_NAME", "moviqo-back")
 MOVIQO_FILE_INSPECTION_ADAPTER = os.getenv("MOVIQO_FILE_INSPECTION_ADAPTER", "disabled")
 MOVIQO_MESSAGE_DELIVERY_ADAPTER = os.getenv("MOVIQO_MESSAGE_DELIVERY_ADAPTER", "console")
 MOVIQO_CACHE_POLICY = os.getenv("MOVIQO_CACHE_POLICY", "local")
+MOVIQO_ACTIVE_ORGANIZATION_CAPACITY = int(
+    os.getenv("MOVIQO_ACTIVE_ORGANIZATION_CAPACITY", "100")
+)
+MOVIQO_PUBLIC_APP_BASE_URL = os.getenv(
+    "MOVIQO_PUBLIC_APP_BASE_URL",
+    "https://moviqo.local",
+)
 MOVIQO_DISABLED_SERVICES = {
     "liveMalwareScanning": os.getenv("MOVIQO_LIVE_MALWARE_SCANNING", "disabled-by-gate"),
     "independentBackups": os.getenv("MOVIQO_INDEPENDENT_BACKUPS", "disabled-by-gate"),

@@ -57,7 +57,7 @@ test("public landing passes scoped axe checks and exposes safe CTAs", async ({ p
     return axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] } });
   });
 
-  expect(result.violations.map((violation) => violation.id)).toEqual([]);
+  expect(result.violations, JSON.stringify(result.violations, null, 2)).toEqual([]);
 });
 
 test("design-system catalog exposes named components, states, and safe metadata", async ({ page }) => {

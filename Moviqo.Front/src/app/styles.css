@@ -322,7 +322,7 @@ p {
   color: var(--ink-secondary);
 }
 
-.form-field input {
+.form-field input,
 .form-field select,
 .registration-checkbox input {
   border: 1px solid var(--border);
@@ -494,6 +494,7 @@ p {
 .landing-sign-in,
 .landing-beta__links a {
   color: var(--ink-primary);
+  height: var(--target-min);
   min-height: var(--target-min);
   padding: 0 var(--space-sm);
   display: inline-flex;
@@ -611,6 +612,7 @@ p {
 .visual-row { border-radius: 0; display: flex; flex-wrap: wrap; gap: var(--space-md); justify-content: space-between; }
 .visual-row span { color: var(--ink-secondary); }
 .landing-trust { background: var(--surface-soft); }
+.landing-trust .eyebrow { color: var(--ink-primary); }
 .landing-checklist { display: grid; gap: var(--space-md); margin: 0; padding-left: 1.2rem; }
 .landing-beta { grid-template-columns: minmax(0, 1fr) minmax(0, 0.7fr); }
 .landing-beta__links { display: grid; align-content: start; gap: var(--space-sm); }

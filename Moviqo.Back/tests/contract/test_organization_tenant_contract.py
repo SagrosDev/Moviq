@@ -11,6 +11,43 @@ from moviqo.modules.organizations.application.identity_boundary import (
 from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
 
 
+def _assert_unsupported_multi_membership_state_returns_not_found(
+    django_user_model,
+    monkeypatch,
+) -> None:
+    user = django_user_model.objects.create_user(username="single-org-user", password="test")
+    organization_a = Organization.objects.create(slug="org-a", display_name="Org A")
+    membership_a = Membership.objects.create(
+        organization=organization_a,
+        user=user,
+        role=MembershipRole.OWNER,
+    )
+
+    class FakeMembershipQuerySet:
+        def order_by(self, *_args):
+            return self
+
+        def values_list(self, *_args):
+            return [
+                (membership_a.id, organization_a.id),
+                (membership_a.id, organization_a.id),
+            ]
+
+    monkeypatch.setattr(
+        tenant_access.Membership.objects,
+        "filter",
+        lambda **_kwargs: FakeMembershipQuerySet(),
+    )
+
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(f"/api/v1/organizations/protected-memberships/{membership_a.id}/")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "resource_not_found"
+
+
 @pytest.mark.django_db
 def test_protected_membership_endpoint_hides_cross_tenant_resources(django_user_model) -> None:
     user = django_user_model.objects.create_user(username="owner-a", password="test")
@@ -48,40 +85,24 @@ def test_protected_membership_endpoint_hides_cross_tenant_resources(django_user_
 
 
 @pytest.mark.django_db
+def test_protected_membership_endpoint_rejects_ambiguous_membership_selection(
+    django_user_model,
+    monkeypatch,
+) -> None:
+    _assert_unsupported_multi_membership_state_returns_not_found(
+        django_user_model,
+        monkeypatch,
+    )
+
+
+@pytest.mark.django_db
 def test_protected_membership_endpoint_fails_closed_for_unsupported_multi_membership_state(
     django_user_model, monkeypatch
 ) -> None:
-    user = django_user_model.objects.create_user(username="single-org-user", password="test")
-    organization_a = Organization.objects.create(slug="org-a", display_name="Org A")
-    membership_a = Membership.objects.create(
-        organization=organization_a,
-        user=user,
-        role=MembershipRole.OWNER,
+    _assert_unsupported_multi_membership_state_returns_not_found(
+        django_user_model,
+        monkeypatch,
     )
-
-    class FakeMembershipQuerySet:
-        def order_by(self, *_args):
-            return self
-
-        def values_list(self, *_args):
-            return [
-                (membership_a.id, organization_a.id),
-                (membership_a.id, organization_a.id),
-            ]
-
-    monkeypatch.setattr(
-        tenant_access.Membership.objects,
-        "filter",
-        lambda **_kwargs: FakeMembershipQuerySet(),
-    )
-
-    client = Client()
-    client.force_login(user)
-
-    response = client.get(f"/api/v1/organizations/protected-memberships/{membership_a.id}/")
-
-    assert response.status_code == 404
-    assert response.json()["code"] == "resource_not_found"
 
 
 @pytest.mark.django_db

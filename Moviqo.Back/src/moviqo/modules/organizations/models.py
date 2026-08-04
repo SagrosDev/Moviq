@@ -5,11 +5,6 @@ import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-
-def new_uuid7() -> uuid.UUID:
-    return uuid.uuid7()
-
-
 class MoviqoUser(AbstractUser):
     """Minimal custom user model required before the first migration."""
 
@@ -18,7 +13,7 @@ class MoviqoUser(AbstractUser):
 
 
 class Organization(models.Model):
-    id = models.UUIDField(primary_key=True, default=new_uuid7, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     slug = models.SlugField(max_length=80, unique=True)
     display_name = models.CharField(max_length=120)
     is_active = models.BooleanField(default=True)
@@ -37,7 +32,7 @@ class MembershipRole(models.TextChoices):
 
 
 class Membership(models.Model):
-    id = models.UUIDField(primary_key=True, default=new_uuid7, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey(
         Organization,
         on_delete=models.PROTECT,

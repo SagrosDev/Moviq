@@ -162,6 +162,35 @@ class RegistrationVerification(models.Model):
         db_table = "organizations_registration_verification"
 
 
+class PasswordRecoveryToken(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    user = models.ForeignKey(
+        MoviqoUser,
+        on_delete=models.CASCADE,
+        related_name="password_recovery_tokens",
+    )
+    token_digest = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "organizations_password_recovery_token"
+        indexes = [
+            models.Index(fields=("user", "expires_at"), name="org_recovery_user_exp_idx"),
+            models.Index(fields=("token_digest", "expires_at"), name="org_recovery_digest_exp_idx"),
+        ]
+
+
+class PasswordRecoveryThrottle(models.Model):
+    key_digest = models.CharField(max_length=64, primary_key=True)
+    window_started_at = models.DateTimeField()
+    request_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "organizations_password_recovery_throttle"
+
+
 class InitialRegistrationCommandResult(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     normalized_email = models.CharField(max_length=254)

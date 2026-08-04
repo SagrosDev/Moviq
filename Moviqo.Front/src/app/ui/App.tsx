@@ -3,6 +3,8 @@ import { DesignSystemPage } from "../../pages/design-system";
 import { RegistrationPage } from "../../pages/registration";
 import { VerificationPage } from "../../pages/verification";
 import { SignInPage } from "../../pages/sign-in";
+import { PasswordRecoveryPage } from "../../pages/password-recovery";
+import { PasswordResetPage } from "../../pages/password-reset";
 import { AppProviders } from "../providers/AppProviders";
 import { EnvironmentBanner } from "./EnvironmentBanner";
 
@@ -20,6 +22,10 @@ export const App = () => {
         <VerificationPage />
       ) : path === "/sign-in" ? (
         <SignInPage />
+      ) : path === "/password-recovery" ? (
+        <PasswordRecoveryPage />
+      ) : path === "/password-reset" ? (
+        <PasswordResetPage />
       ) : (
         <HomePage />
       )}

@@ -82,6 +82,24 @@ export type MessageKey =
   | "signIn.submit"
   | "signIn.submitting"
   | "signIn.failure"
+  | "passwordRecovery.eyebrow"
+  | "passwordRecovery.title"
+  | "passwordRecovery.lede"
+  | "passwordRecovery.email"
+  | "passwordRecovery.submit"
+  | "passwordRecovery.submitting"
+  | "passwordRecovery.confirmation"
+  | "passwordRecovery.failure"
+  | "passwordRecovery.forgotLink"
+  | "passwordRecovery.resetTitle"
+  | "passwordRecovery.resetLede"
+  | "passwordRecovery.password"
+  | "passwordRecovery.resetSubmit"
+  | "passwordRecovery.resetting"
+  | "passwordRecovery.resetFailure"
+  | "passwordRecovery.resetComplete"
+  | "passwordRecovery.signIn"
+  | "passwordRecovery.requestAgain"
   | "catalog.title"
   | "catalog.subtitle"
   | "catalog.responsive.title"
@@ -238,6 +256,24 @@ export const spanishMessages: MessageDictionary = {
   "signIn.submit": "Ingresar",
   "signIn.submitting": "Ingresando",
   "signIn.failure": "No pudimos autenticarte. Revisa tus datos e intentalo de nuevo.",
+  "passwordRecovery.eyebrow": "Recuperacion segura",
+  "passwordRecovery.title": "Recupera tu contrasena",
+  "passwordRecovery.lede": "Te enviaremos instrucciones si la cuenta puede recibirlas.",
+  "passwordRecovery.email": "Correo electronico",
+  "passwordRecovery.submit": "Enviar instrucciones",
+  "passwordRecovery.submitting": "Enviando",
+  "passwordRecovery.confirmation": "Si existe una cuenta elegible, recibiras instrucciones para recuperar el acceso.",
+  "passwordRecovery.failure": "No pudimos procesar la solicitud. Intentalo de nuevo.",
+  "passwordRecovery.forgotLink": "Olvide mi contrasena",
+  "passwordRecovery.resetTitle": "Define una contrasena nueva",
+  "passwordRecovery.resetLede": "Usa una contrasena que cumpla la politica de seguridad.",
+  "passwordRecovery.password": "Contrasena nueva",
+  "passwordRecovery.resetSubmit": "Cambiar contrasena",
+  "passwordRecovery.resetting": "Cambiando contrasena",
+  "passwordRecovery.resetFailure": "El enlace no es valido o la contrasena no cumple la politica.",
+  "passwordRecovery.resetComplete": "Tu contrasena fue actualizada. Ahora puedes ingresar.",
+  "passwordRecovery.signIn": "Ir a ingresar",
+  "passwordRecovery.requestAgain": "Solicitar un enlace nuevo",
   "catalog.title": "Sistema de diseno",
   "catalog.subtitle": "Componentes base para experiencias operativas seguras.",
   "catalog.responsive.title": "Comportamiento responsivo",
@@ -396,6 +432,24 @@ export const englishMessages: Partial<MessageDictionary> = {
   "signIn.submit": "Sign in",
   "signIn.submitting": "Signing in",
   "signIn.failure": "We could not authenticate you. Check your details and try again.",
+  "passwordRecovery.eyebrow": "Secure recovery",
+  "passwordRecovery.title": "Recover your password",
+  "passwordRecovery.lede": "We will send instructions if the account can receive them.",
+  "passwordRecovery.email": "Email address",
+  "passwordRecovery.submit": "Send instructions",
+  "passwordRecovery.submitting": "Sending",
+  "passwordRecovery.confirmation": "If an eligible account exists, you will receive instructions to recover access.",
+  "passwordRecovery.failure": "We could not process the request. Try again.",
+  "passwordRecovery.forgotLink": "Forgot password?",
+  "passwordRecovery.resetTitle": "Set a new password",
+  "passwordRecovery.resetLede": "Use a password that meets the security policy.",
+  "passwordRecovery.password": "New password",
+  "passwordRecovery.resetSubmit": "Change password",
+  "passwordRecovery.resetting": "Changing password",
+  "passwordRecovery.resetFailure": "The link is invalid or the password does not meet the policy.",
+  "passwordRecovery.resetComplete": "Your password was updated. You can now sign in.",
+  "passwordRecovery.signIn": "Go to sign in",
+  "passwordRecovery.requestAgain": "Request a new link",
   "catalog.title": "Design system",
   "catalog.subtitle": "Base components for safe operational experiences.",
   "catalog.responsive.title": "Responsive behavior",

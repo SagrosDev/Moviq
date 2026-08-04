@@ -102,3 +102,26 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "0.1.0",
     "SCHEMA_PATH_PREFIX": r"/api/v1",
 }
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "redact_uuid_request_paths": {
+            "()": "moviqo.building_blocks.api.logging.RedactUuidRequestLogFilter",
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "filters": ["redact_uuid_request_paths"],
+        }
+    },
+    "loggers": {
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        }
+    },
+}

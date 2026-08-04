@@ -33,6 +33,8 @@ def test_protected_membership_endpoint_hides_cross_tenant_resources(django_user_
 
     assert response.status_code == 404
     assert response.json()["code"] == "resource_not_found"
+    assert str(membership_b.id) not in response.content.decode("utf-8")
+    assert str(organization_b.id) not in response.content.decode("utf-8")
 
     ok_response = client.get(
         f"/api/v1/organizations/protected-memberships/{membership_a.id}/",

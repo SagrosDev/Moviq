@@ -48,7 +48,16 @@ jobs:
         working-directory: .
       - run: git diff --exit-code -- ../docs/api/openapi-v1.json
       - run: uv run python src/manage.py makemigrations --settings=moviqo.settings.test --check --dry-run
+      - name: Run tenant isolation release gate registration checks
+        run: >-
+          uv run pytest
+          tests/architecture/test_backend_spine_contract.py::test_tenant_owned_tables_are_registered_for_rls_enforcement
+          tests/architecture/test_backend_spine_contract.py::test_tenant_isolation_gate_registration_matches_rls_registration
+          tests/contract/test_organization_tenant_contract.py::test_protected_membership_endpoint_hides_cross_tenant_resources
+          tests/contract/test_organization_tenant_contract.py::test_protected_membership_endpoint_rejects_ambiguous_membership_selection
       - run: uv run python src/manage.py migrate --settings=moviqo.settings.integration --noinput
+      - name: Run tenant isolation release gate integration evidence
+        run: uv run pytest tests/integration/test_tenant_isolation.py --ds=moviqo.settings.integration
       - run: uv run pytest tests/integration --ds=moviqo.settings.integration
       - run: uv run python src/manage.py check --deploy --settings=moviqo.settings.production
       - run: uv run python src/manage.py health_start

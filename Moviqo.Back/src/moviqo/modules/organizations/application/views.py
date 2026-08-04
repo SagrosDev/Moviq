@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from uuid import UUID
 
 from drf_spectacular.utils import OpenApiResponse, extend_schema
@@ -13,6 +14,8 @@ from moviqo.building_blocks.api.problem_details import ProblemDetailsSerializer
 from moviqo.building_blocks.tenancy.runtime import apply_tenant_context, tenant_bootstrap_context
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.models import Membership
+
+request_logger = logging.getLogger("django.request")
 
 
 class ProtectedMembershipSerializer(serializers.Serializer):
@@ -46,6 +49,10 @@ class ProtectedMembershipDetailView(APIView):
                 .first()
             )
             if membership is None:
+                request_logger.warning(
+                    "Protected membership resource hidden for current tenant path=%s",
+                    request.path,
+                )
                 raise NotFound("membership")
 
             return Response(

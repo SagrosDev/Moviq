@@ -79,19 +79,18 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         InitialRegistrationRequest: {
-            ownerName: string;
-            organizationName: string;
-            /** Format: email */
-            email: string;
-            password: string;
-            language: string;
-            region: string;
-            timezone: string;
-            currency: string;
-            termsAccepted: boolean;
-            privacyAccepted: boolean;
-            termsVersion: string;
-            privacyVersion: string;
+            ownerName?: string;
+            organizationName?: string;
+            email?: string;
+            password?: string;
+            language?: string;
+            region?: string;
+            timezone?: string;
+            currency?: string;
+            termsAccepted?: boolean;
+            privacyAccepted?: boolean;
+            termsVersion?: string;
+            privacyVersion?: string;
             prohibitedDataAcknowledged: boolean;
         };
         InitialRegistrationResponse: {

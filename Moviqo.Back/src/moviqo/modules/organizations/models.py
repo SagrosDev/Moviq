@@ -4,13 +4,31 @@ import uuid
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models import Q
+from moviqo.modules.organizations.user_managers import MoviqoUserManager
 
 
 class MoviqoUser(AbstractUser):
     """Minimal custom user model required before the first migration."""
 
+    normalized_email = models.CharField(max_length=254, blank=True, default="")
+
+    objects = MoviqoUserManager()
+
+    def save(self, *args, **kwargs):
+        self.email = self.__class__.objects.normalize_email(self.email)
+        self.normalized_email = self.__class__.objects.normalize_email(self.email)
+        super().save(*args, **kwargs)
+
     class Meta:
         db_table = "organizations_moviqo_user"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("normalized_email",),
+                condition=~Q(normalized_email=""),
+                name="organizations_moviqo_user_normalized_email_unique",
+            )
+        ]
 
 
 class Organization(models.Model):
@@ -59,5 +77,9 @@ class Membership(models.Model):
             models.UniqueConstraint(
                 fields=("organization", "user"),
                 name="organizations_membership_organization_user_unique",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=("user",),
+                name="organizations_membership_user_unique",
+            ),
         ]

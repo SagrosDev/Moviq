@@ -267,14 +267,12 @@ def test_protected_membership_endpoint_bootstraps_tenant_context_under_rls(
     try:
         ok_response = client.get(
             f"/api/v1/organizations/protected-memberships/{membership_a.id}/",
-            HTTP_X_MOVIQO_ORGANIZATION_ID=str(organization_a.id),
         )
         assert ok_response.status_code == 200
         assert ok_response.json()["organizationId"] == str(organization_a.id)
 
         hidden_response = client.get(
             f"/api/v1/organizations/protected-memberships/{membership_b.id}/",
-            HTTP_X_MOVIQO_ORGANIZATION_ID=str(organization_a.id),
         )
         assert hidden_response.status_code == 404
         assert hidden_response.json()["code"] == "resource_not_found"

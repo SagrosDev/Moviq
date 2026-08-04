@@ -107,14 +107,14 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "filters": {
-        "redact_uuid_request_paths": {
-            "()": "moviqo.building_blocks.api.logging.RedactUuidRequestLogFilter",
+        "redact_sensitive_diagnostics": {
+            "()": "moviqo.building_blocks.api.logging.RedactDiagnosticLogFilter",
         }
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "filters": ["redact_uuid_request_paths"],
+            "filters": ["redact_sensitive_diagnostics"],
         }
     },
     "loggers": {

@@ -60,6 +60,30 @@ test("public landing passes scoped axe checks and exposes safe CTAs", async ({ p
   expect(result.violations, JSON.stringify(result.violations, null, 2)).toEqual([]);
 });
 
+test("landing metadata follows the selected locale without private URLs", async ({ page }) => {
+  await page.goto("/en/");
+
+  await expect(page).toHaveTitle("Moviqo · Clear processes");
+  await expect(page.locator('html')).toHaveAttribute("lang", "en");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Moviqo helps teams/);
+  await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute("content", "en_US");
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/en\/$/);
+  await expect(page.locator('link[rel="alternate"]')).toHaveAttribute("hreflang", "es");
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute("content", /\/en\/$/);
+  await expect(page.locator('meta[property="og:url"]')).not.toHaveAttribute("content", /[?&#]/);
+  await expect(page.locator("script[src*='analytics'], script[src*='track'], script[src*='marketing']")).toHaveCount(0);
+});
+
+test("landing remains usable at mobile width and 200 percent text", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.addStyleTag({ content: "html { font-size: 200%; }" });
+
+  await expect(page.getByRole("heading", { name: /convierte procesos repetibles/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Iniciar beta gratuita" }).first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
 test("landing conversion preserves the selected language and keeps public routes data-free", async ({ page }) => {
   const apiRequests: string[] = [];
   page.on("request", (request) => {

@@ -33,6 +33,31 @@ const files = async (root) => {
 const artifactFiles = await files(distRoot);
 assert.ok(artifactFiles.length > 0, "Expected Vite to produce a static dist artifact.");
 
+const indexContent = await readFile(join(distRoot, "index.html"), "utf8");
+for (const marker of [
+  'name="description"',
+  'property="og:title"',
+  'property="og:description"',
+  'property="og:url"',
+  'rel="canonical"',
+  'rel="alternate"'
+]) {
+  assert.ok(indexContent.includes(marker), `index.html is missing required landing metadata: ${marker}`);
+}
+assert.ok(!/<script[^>]+src=["'][^"']*(analytics|track|marketing)/i.test(indexContent), "Non-essential tracker found in landing HTML.");
+
+const localePages = [
+  { path: "es/index.html", language: "es", alternate: "/en/", title: "Procesos claros" },
+  { path: "en/index.html", language: "en", alternate: "/es/", title: "Clear processes" }
+];
+for (const localePage of localePages) {
+  const content = await readFile(join(distRoot, localePage.path), "utf8");
+  assert.match(content, new RegExp(`<html[^>]+lang=["']${localePage.language}["']`, "i"));
+  assert.match(content, new RegExp(`<title>Moviqo[^<]*${localePage.title}</title>`, "i"));
+  assert.match(content, new RegExp(`rel=["']canonical["'][^>]+href=["'][^"']+/${localePage.language}/["']`, "i"));
+  assert.match(content, new RegExp(`hreflang=["']${localePage.language === "es" ? "en" : "es"}["'][^>]+href=["'][^"']+${localePage.alternate}`, "i"));
+}
+
 for (const file of artifactFiles) {
   const content = await readFile(file, "utf8").catch(() => "");
   for (const pattern of forbiddenPatterns) {

@@ -1,5 +1,45 @@
 export type LandingLocale = "es" | "en";
 
+export type LandingMetadata = {
+  title: string;
+  description: string;
+  canonical: string;
+  locale: "es_CO" | "en_US";
+  alternate: { hrefLang: LandingLocale; href: string };
+};
+
+export type LandingMeasurementEvent =
+  | "page_view"
+  | "language_selected"
+  | "use_case_engagement"
+  | "start_free_beta"
+  | "sign_in"
+  | "registration_start"
+  | "registration_completion";
+
+export type LandingMeasurementPayload = {
+  event: LandingMeasurementEvent;
+  locale: LandingLocale;
+  referrerClass: "direct" | "internal" | "external";
+  campaignClass: "campaign-present" | "none";
+  deviceClass: "mobile" | "tablet" | "desktop" | "unknown";
+  performanceClass: "fast" | "expected" | "slow" | "unknown";
+};
+
+// No approved consent provider or measurement policy is configured in this repository.
+// Keeping this disabled is the privacy-safe behavior; the typed payload is ready for a future approved adapter.
+export const landingMeasurementEnabled = false;
+
+type LandingMeasurementInput = {
+  [key: string]: unknown;
+  event: LandingMeasurementEvent;
+  locale: string;
+  referrer?: string;
+  campaign?: string;
+  device?: string;
+  performance?: string;
+};
+
 type LandingScenario = {
   label: string;
   name: string;
@@ -30,6 +70,109 @@ export const landingDestinations = {
   prohibitedData: "",
   support: ""
 } as const;
+
+const landingMetadataCopy: Record<LandingLocale, Pick<LandingMetadata, "title" | "description">> = {
+  es: {
+    title: "Moviqo · Procesos claros",
+    description: "Moviqo ayuda a equipos a convertir procesos repetibles en trabajo claro."
+  },
+  en: {
+    title: "Moviqo · Clear processes",
+    description: "Moviqo helps teams turn repeatable processes into clear work."
+  }
+};
+
+export const resolveLandingMetadata = (language: LandingLocale, origin: string): LandingMetadata => {
+  let canonical = "https://moviqo.invalid/";
+  try {
+    const safeOrigin = new URL(origin);
+    canonical = new URL("/", safeOrigin.origin).toString();
+  } catch {
+    // The invalid origin is a safe non-production fallback for server-side rendering/tests.
+  }
+
+  const localePath = language === "en" ? "/en/" : "/es/";
+  const localizedCanonical = new URL(localePath, canonical).toString();
+
+  return {
+    ...landingMetadataCopy[language],
+    canonical: localizedCanonical,
+    locale: language === "es" ? "es_CO" : "en_US",
+    alternate: {
+      hrefLang: language === "es" ? "en" : "es",
+      href: new URL(language === "es" ? "/en/" : "/es/", canonical).toString()
+    }
+  };
+};
+
+const unsafeLandingClaims = /guaranteed|customer savings|ahorros de clientes|testimonial|testimonio|certified|certificado/i;
+
+export const validateLandingContent = (content: Record<LandingLocale, LandingCopy>): string[] => {
+  const errors: string[] = [];
+  for (const locale of ["es", "en"] as const) {
+    const value = content[locale];
+    if (!value) {
+      errors.push(`missing locale: ${locale}`);
+      continue;
+    }
+    const requiredText = [
+      value.hero.eyebrow,
+      value.hero.title,
+      value.hero.body,
+      value.hero.primary,
+      value.hero.secondary,
+      value.nav.story,
+      value.nav.examples,
+      value.nav.trust,
+      value.examples.title,
+      value.problem.title,
+      value.problem.body,
+      value.visuals.alt,
+      value.trust.body,
+      value.beta.title,
+      value.beta.body,
+      value.timeToValue,
+      value.final.title,
+      value.final.body,
+      value.final.primary,
+      value.final.secondary
+    ];
+    if (requiredText.some((item) => !item.trim()) || value.scenarios.length !== 3 || value.howItWorks.steps.length !== 3) {
+      errors.push(`required sections incomplete: ${locale}`);
+    }
+    if (value.beta.links.length !== 3 || value.beta.links.some((item) => !item.trim()) || !value.beta.support.trim()) {
+      errors.push(`legal/support links incomplete: ${locale}`);
+    }
+    if (unsafeLandingClaims.test(JSON.stringify(value))) {
+      errors.push(`unsafe claim: ${locale}`);
+    }
+  }
+  return errors;
+};
+
+const normalizeMeasurementLocale = (locale: string): LandingLocale => locale.toLowerCase().startsWith("en") ? "en" : "es";
+const normalizeBucket = <T extends string>(value: string | undefined, allowed: readonly T[], fallback: T): T => {
+  return allowed.includes(value as T) ? value as T : fallback;
+};
+
+export const createLandingMeasurementPayload = (input: LandingMeasurementInput): LandingMeasurementPayload => {
+  let referrerClass: LandingMeasurementPayload["referrerClass"] = "direct";
+  if (input.referrer) {
+    try {
+      referrerClass = new URL(input.referrer).origin === "https://moviqo.invalid" ? "internal" : "external";
+    } catch {
+      referrerClass = "external";
+    }
+  }
+  return {
+    event: input.event,
+    locale: normalizeMeasurementLocale(input.locale),
+    referrerClass,
+    campaignClass: input.campaign ? "campaign-present" : "none",
+    deviceClass: normalizeBucket(input.device, ["mobile", "tablet", "desktop"] as const, "unknown"),
+    performanceClass: normalizeBucket(input.performance, ["fast", "expected", "slow"] as const, "unknown")
+  };
+};
 
 export const landingContent: Record<LandingLocale, LandingCopy> = {
   es: {

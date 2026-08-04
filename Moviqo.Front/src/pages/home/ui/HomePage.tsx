@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { LanguageSelector, useLanguage } from "../../../shared/localization";
-import { landingContent, landingDestinations } from "../model/landingContent";
+import { landingContent, landingDestinations, resolveLandingMetadata } from "../model/landingContent";
 
 export type DestinationKind = "application" | "document" | "support";
 
@@ -53,6 +53,10 @@ const configuredMetaDestination = (name: string, fallback: string, options?: Des
   );
 };
 
+const setMetaContent = (selector: string, content: string) => {
+  document.querySelector(selector)?.setAttribute("content", content);
+};
+
 export const HomePage = () => {
   const { language } = useLanguage();
   const content = landingContent[language];
@@ -73,14 +77,18 @@ export const HomePage = () => {
   const signInDestination = withCrossOriginLanguage(signIn, language);
 
   useEffect(() => {
+    const metadata = resolveLandingMetadata(language, window.location.origin);
     document.documentElement.lang = language;
-    document.title = language === "es" ? "Moviqo · Procesos claros" : "Moviqo · Clear processes";
-    document.querySelector('meta[name="description"]')?.setAttribute(
-      "content",
-      language === "es"
-        ? "Moviqo ayuda a equipos a convertir procesos repetibles en trabajo claro."
-        : "Moviqo helps teams turn repeatable processes into clear work."
-    );
+    document.title = metadata.title;
+    setMetaContent('meta[name="description"]', metadata.description);
+    setMetaContent('meta[property="og:title"]', metadata.title);
+    setMetaContent('meta[property="og:description"]', metadata.description);
+    setMetaContent('meta[property="og:url"]', metadata.canonical);
+    setMetaContent('meta[property="og:locale"]', metadata.locale);
+    document.querySelector('link[rel="canonical"]')?.setAttribute("href", metadata.canonical);
+    const alternateLink = document.querySelector('link[rel="alternate"][data-moviqo-locale]');
+    alternateLink?.setAttribute("href", metadata.alternate.href);
+    alternateLink?.setAttribute("hreflang", metadata.alternate.hrefLang);
   }, [language]);
 
   return (

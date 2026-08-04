@@ -524,6 +524,20 @@ p {
 
 .landing-hero__copy,
 .landing-section,
+.landing-final,
+.landing-hero__visual,
+.landing-card,
+.landing-beta__links,
+.visual-stack {
+  min-width: 0;
+}
+
+.landing-shell {
+  overflow-wrap: anywhere;
+}
+
+.landing-hero__copy,
+.landing-section,
 .landing-final {
   display: grid;
   gap: var(--space-lg);

@@ -43,7 +43,9 @@ const defaultBrowserLanguages = () => {
 const requestedLanguage = () => {
   if (typeof window === "undefined") return null;
   const value = new URLSearchParams(window.location.search).get("lang");
-  return isSupportedLanguage(value) ? value : null;
+  if (isSupportedLanguage(value)) return value;
+  const pathLanguage = window.location.pathname.split("/")[1];
+  return isSupportedLanguage(pathLanguage) ? pathLanguage : null;
 };
 
 export const LanguageProvider = ({

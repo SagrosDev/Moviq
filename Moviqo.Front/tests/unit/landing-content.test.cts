@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { landingContent, landingDestinations } from "../../src/pages/home/model/landingContent";
+import {
+  createLandingMeasurementPayload,
+  landingContent,
+  landingDestinations,
+  landingMeasurementEnabled,
+  resolveLandingMetadata,
+  validateLandingContent
+} from "../../src/pages/home/model/landingContent";
 import { configuredDestination } from "../../src/pages/home/ui/HomePage";
 
 const bannedClaims = [
@@ -58,6 +65,52 @@ test("landing destinations use safe same-origin fallbacks", () => {
   assert.equal(landingDestinations.privacy, "");
   assert.equal(landingDestinations.prohibitedData, "");
   assert.equal(landingDestinations.support, "");
+});
+
+test("localized landing metadata is complete and environment-safe", () => {
+  const es = resolveLandingMetadata("es", "https://uat.moviqo.example");
+  const en = resolveLandingMetadata("en", "https://uat.moviqo.example");
+
+  assert.equal(es.locale, "es_CO");
+  assert.equal(en.locale, "en_US");
+  assert.equal(es.canonical, "https://uat.moviqo.example/es/");
+  assert.equal(en.canonical, "https://uat.moviqo.example/en/");
+  assert.ok(es.title.length > 0);
+  assert.ok(en.description.length > 0);
+  assert.equal(es.alternate.href, "https://uat.moviqo.example/en/");
+  assert.equal(en.alternate.href, es.canonical);
+  assert.equal(es.canonical.includes("?"), false);
+  assert.equal(es.description.match(/guarantee|garant[ií]a|customer|cliente/i), null);
+});
+
+test("landing content validator accepts both locales and reports unsafe content", () => {
+  assert.deepEqual(validateLandingContent(landingContent), []);
+  const invalid = structuredClone(landingContent);
+  invalid.en.hero.title = "Guaranteed customer savings";
+  assert.match(validateLandingContent(invalid).join(" "), /unsafe claim/i);
+});
+
+test("measurement payload is a closed, privacy-safe allowlist", () => {
+  assert.equal(landingMeasurementEnabled, false);
+  const payload = createLandingMeasurementPayload({
+    event: "registration_start",
+    locale: "en",
+    referrer: "https://evil.example/private?email=jortiz@example.com",
+    campaign: "spring-secret-customer-list",
+    device: "mobile",
+    performance: "fast",
+    email: "jortiz@example.com",
+    processData: "sensitive"
+  });
+
+  assert.deepEqual(payload, {
+    event: "registration_start",
+    locale: "en",
+    referrerClass: "external",
+    campaignClass: "campaign-present",
+    deviceClass: "mobile",
+    performanceClass: "fast"
+  });
 });
 
 test("landing legal destinations accept the public document contract", () => {

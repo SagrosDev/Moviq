@@ -60,6 +60,28 @@ test("public landing passes scoped axe checks and exposes safe CTAs", async ({ p
   expect(result.violations, JSON.stringify(result.violations, null, 2)).toEqual([]);
 });
 
+test("landing conversion preserves the selected language and keeps public routes data-free", async ({ page }) => {
+  const apiRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/api/v1/")) apiRequests.push(request.url());
+  });
+  await page.goto("/");
+  await page.getByLabel("Idioma").selectOption("en");
+  await page.getByRole("link", { name: "Start Free Beta" }).first().click();
+  await expect(page).toHaveURL(/\/register$/);
+  await expect(page.getByRole("heading", { name: "Register the organization and its first owner." })).toBeVisible();
+  await expect(page.getByText(/Workflow|Process Data|Organization detail|dashboard/i)).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /start process|start workflow|iniciar proceso|iniciar flujo/i })).toHaveCount(0);
+
+  await page.goto("/sign-in");
+  await expect(page.getByRole("heading", { name: "Sign in to Moviqo" })).toBeVisible();
+  await expect(page.getByText(/Workflow|Process Data|Organization detail|dashboard/i)).toHaveCount(0);
+  await page.goto("/register?lang=en");
+  await expect(page.getByRole("heading", { name: "Register the organization and its first owner." })).toBeVisible();
+  await expect(page.getByRole("link", { name: /start process|start workflow|iniciar proceso|iniciar flujo/i })).toHaveCount(0);
+  expect(apiRequests.filter((url) => !url.includes("/api/v1/auth/session/") && !url.includes("/api/v1/auth/csrf/"))).toEqual([]);
+});
+
 test("design-system catalog exposes named components, states, and safe metadata", async ({ page }) => {
   await page.goto("/design-system");
 

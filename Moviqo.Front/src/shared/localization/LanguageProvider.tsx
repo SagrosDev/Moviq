@@ -4,7 +4,7 @@ import {
   createLocalLanguagePreferenceAdapter,
   type LanguagePreferenceAdapter
 } from "./storage";
-import { resolveInitialLanguage, translate, type MoviqoTranslator } from "./translator";
+import { isSupportedLanguage, resolveInitialLanguage, translate, type MoviqoTranslator } from "./translator";
 
 type LanguageContextValue = {
   language: Language;
@@ -40,13 +40,19 @@ const defaultBrowserLanguages = () => {
   return navigator.languages.length > 0 ? navigator.languages : [navigator.language];
 };
 
+const requestedLanguage = () => {
+  if (typeof window === "undefined") return null;
+  const value = new URLSearchParams(window.location.search).get("lang");
+  return isSupportedLanguage(value) ? value : null;
+};
+
 export const LanguageProvider = ({
   children,
   adapter = defaultAdapter(),
   browserLanguages = defaultBrowserLanguages()
 }: LanguageProviderProps) => {
   const [language, setLanguageState] = useState<Language>(() =>
-    resolveInitialLanguage(adapter.read(), browserLanguages)
+    requestedLanguage() ?? resolveInitialLanguage(adapter.read(), browserLanguages)
   );
 
   const value = useMemo<LanguageContextValue>(() => {

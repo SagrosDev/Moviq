@@ -1,6 +1,5 @@
 from django.db import migrations
 
-
 TENANT_SETTING_NAME = "moviqo.current_organization_id"
 VERIFICATION_SETTING_NAME = "moviqo.registration_verification_id"
 RUNTIME_ROLE_NAME = "moviqo_runtime"

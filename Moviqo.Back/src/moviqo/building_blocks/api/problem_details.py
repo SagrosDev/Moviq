@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from http import HTTPStatus
@@ -11,7 +12,10 @@ from rest_framework.exceptions import APIException, NotFound, PermissionDenied, 
 from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_exception_handler
 
+from moviqo.building_blocks.api.correlation import safe_correlation_id
+
 PROBLEM_BASE_TYPE = "https://api.moviqo.local/problems"
+SAFE_INVALID_PARAM_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 
 
 class ProblemDetailsSerializer(serializers.Serializer):
@@ -53,12 +57,18 @@ def problem_response(
         "title": template.title,
         "status": template.status_code,
         "code": template.code,
-        "correlationId": getattr(request, "correlation_id", ""),
+        "correlationId": safe_correlation_id(getattr(request, "correlation_id", None)),
     }
     if template.detail:
         body["detail"] = template.detail
     if invalid_params:
-        body["invalidParams"] = invalid_params
+        body["invalidParams"] = [
+            {
+                "name": _safe_invalid_param_name(param.get("name")),
+                "reason": str(param.get("reason", "Invalid value.")),
+            }
+            for param in invalid_params
+        ]
     response = Response(
         body,
         status=template.status_code,
@@ -133,7 +143,7 @@ def _invalid_params_from(detail: Any) -> list[dict[str, str]]:
 
     invalid_params: list[dict[str, str]] = []
     for field_name in detail:
-        safe_name = str(field_name)
+        safe_name = _safe_invalid_param_name(field_name)
         invalid_params.append({"name": safe_name, "reason": "Invalid value."})
     return invalid_params
 
@@ -147,3 +157,10 @@ def _status_title(status_code: int) -> str:
 
 def _preserved_headers(headers: Mapping[str, str]) -> dict[str, str]:
     return {key: value for key, value in headers.items() if key.lower() != "content-type"}
+
+
+def _safe_invalid_param_name(field_name: Any) -> str:
+    normalized_name = str(field_name)
+    if SAFE_INVALID_PARAM_NAME.fullmatch(normalized_name):
+        return normalized_name
+    return "nonFieldErrors"

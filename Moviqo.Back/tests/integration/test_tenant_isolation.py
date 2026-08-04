@@ -9,7 +9,10 @@ from django.conf import settings
 from django.db import DatabaseError, connection, transaction
 from django.test import Client
 
-from moviqo.building_blocks.api.logging import RedactUuidRequestLogFilter
+from moviqo.building_blocks.api.logging import (
+    RedactDiagnosticLogFilter,
+    RedactUuidRequestLogFilter,
+)
 from moviqo.building_blocks.tenancy import (
     PROTECTED_TENANT_RESOURCES,
     TENANT_SETTING_NAME,
@@ -257,7 +260,7 @@ def test_protected_membership_endpoint_bootstraps_tenant_context_under_rls(
     client.force_login(user)
     logger = logging.getLogger("django.request")
     assert any(
-        isinstance(log_filter, RedactUuidRequestLogFilter)
+        isinstance(log_filter, RedactDiagnosticLogFilter | RedactUuidRequestLogFilter)
         for handler in logger.handlers
         for log_filter in handler.filters
     )

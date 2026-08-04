@@ -4,6 +4,7 @@ from fnmatch import fnmatchcase
 import json
 from pathlib import Path
 import re
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 DISABLED_BY_GATE = "disabled-by-gate"
@@ -58,8 +59,18 @@ def _validate_uat_environment(uat_environment: dict[str, object]) -> None:
         raise RuntimeError("UAT environmentClass must be synthetic-only.")
     if uat_environment["region"] != "us-east1":
         raise RuntimeError("UAT region must be us-east1.")
+    if not uat_environment["routing"]["allowedHosts"]:
+        raise RuntimeError("UAT must declare explicit allowed hosts.")
+    if not uat_environment["routing"]["csrfTrustedOrigins"]:
+        raise RuntimeError("UAT must declare explicit CSRF trusted origins.")
+    if uat_environment["routing"]["trustXForwardedProto"] is not True:
+        raise RuntimeError("UAT must trust HTTPS through X-Forwarded-Proto only.")
     if uat_environment["storage"]["publicAccess"] is not False:
         raise RuntimeError("UAT storage must remain private.")
+    if uat_environment["storage"]["encryptionAtRest"] is not True:
+        raise RuntimeError("UAT storage must keep encryption at rest enabled.")
+    if uat_environment["database"]["encryptionAtRest"] is not True:
+        raise RuntimeError("UAT database must keep encryption at rest enabled.")
     if uat_environment["fileInspection"]["adapter"] != "synthetic":
         raise RuntimeError("UAT file inspection must use the synthetic adapter.")
 
@@ -79,6 +90,13 @@ def _validate_uat_environment(uat_environment: dict[str, object]) -> None:
         uat_environment["messaging"]["apiKeySecret"],
     ):
         _assert_non_production_identifier(value)
+    for host in uat_environment["routing"]["allowedHosts"]:
+        _assert_non_production_identifier(host)
+    for origin in uat_environment["routing"]["csrfTrustedOrigins"]:
+        parsed_origin = urlparse(origin)
+        if not parsed_origin.hostname:
+            raise RuntimeError("UAT CSRF trusted origins must contain hostnames.")
+        _assert_non_production_identifier(parsed_origin.hostname)
 
     cloud_run_scaling = uat_environment["scaling"]["cloudRun"]
     if cloud_run_scaling["minInstances"] != 0:
@@ -100,6 +118,33 @@ def _validate_cloud_run_service(
         raise RuntimeError("Cloud Run scaling must stay within the UAT low-cost cap.")
     if cloud_run_service["env"]["MOVIQO_ENVIRONMENT_CLASS"] != "synthetic-only":
         raise RuntimeError("Cloud Run must export MOVIQO_ENVIRONMENT_CLASS=synthetic-only.")
+    if (
+        cloud_run_service["env"]["MOVIQO_ALLOWED_HOSTS"]
+        != ",".join(uat_environment["routing"]["allowedHosts"])
+    ):
+        raise RuntimeError("Cloud Run must export the declared UAT allowed hosts.")
+    if (
+        cloud_run_service["env"]["MOVIQO_CSRF_TRUSTED_ORIGINS"]
+        != ",".join(uat_environment["routing"]["csrfTrustedOrigins"])
+    ):
+        raise RuntimeError("Cloud Run must export the declared UAT CSRF trusted origins.")
+    if cloud_run_service["env"]["MOVIQO_TRUST_X_FORWARDED_PROTO"] != "true":
+        raise RuntimeError("Cloud Run must trust HTTPS only through X-Forwarded-Proto.")
+    if (
+        cloud_run_service["env"]["MOVIQO_GCS_PRIVATE_BUCKET"]
+        != uat_environment["storage"]["privateBucket"]
+    ):
+        raise RuntimeError("Cloud Run must export the declared UAT private bucket.")
+    if (
+        cloud_run_service["env"]["MOVIQO_GCS_QUARANTINE_BUCKET"]
+        != uat_environment["storage"]["quarantineBucket"]
+    ):
+        raise RuntimeError("Cloud Run must export the declared UAT quarantine bucket.")
+    if (
+        cloud_run_service["env"]["MOVIQO_GCS_CLEAN_BUCKET"]
+        != uat_environment["storage"]["cleanBucket"]
+    ):
+        raise RuntimeError("Cloud Run must export the declared UAT clean bucket.")
     if cloud_run_service["env"]["MOVIQO_FILE_INSPECTION_ADAPTER"] != "synthetic":
         raise RuntimeError("Cloud Run must use the synthetic file inspection adapter.")
     if cloud_run_service["env"]["MOVIQO_MESSAGE_DELIVERY_ADAPTER"] != "resend-outbox":
@@ -109,6 +154,9 @@ def _validate_cloud_run_service(
         != uat_environment["identity"]["cloudRunServiceAccount"]
     ):
         raise RuntimeError("Cloud Run service must use the declared UAT service identity.")
+    for env_name in ("MOVIQO_SECRET_KEY", "MOVIQO_DB_PASSWORD", "MOVIQO_RESEND_API_KEY"):
+        if env_name in cloud_run_service["env"]:
+            raise RuntimeError(f"Cloud Run must not inline the secret value for {env_name}.")
 
     secret_bindings = {
         binding["env"]: binding["secret"] for binding in cloud_run_service["secretEnv"]
@@ -124,6 +172,12 @@ def _validate_cloud_run_service(
                 f"Cloud Run must inject {env_name} from the {secret_name} secret."
             )
         _assert_non_production_identifier(secret_name)
+    unexpected_secret_bindings = set(secret_bindings) - set(required_secret_bindings)
+    if unexpected_secret_bindings:
+        raise RuntimeError(
+            "Cloud Run secretEnv contains undeclared runtime secrets: "
+            f"{sorted(unexpected_secret_bindings)}"
+        )
 
 
 def _validate_cloud_run_job(
@@ -140,6 +194,12 @@ def _validate_cloud_run_job(
     if cloud_run_job["serviceAccount"] != uat_environment["identity"]["cloudRunJobServiceAccount"]:
         raise RuntimeError("Cloud Run job must use the declared UAT job identity.")
     _assert_non_production_identifier(cloud_run_job["serviceAccount"])
+    _validate_runtime_secret_wiring(
+        runtime_name="Cloud Run job",
+        env=cloud_run_job.get("env", {}),
+        secret_env=cloud_run_job.get("secretEnv", []),
+        required_secret_bindings={},
+    )
 
 
 def _validate_identity_separation(
@@ -159,6 +219,33 @@ def _assert_non_production_identifier(value: str) -> None:
     normalized = value.lower()
     if any(keyword in normalized for keyword in PRODUCTION_KEYWORDS):
         raise RuntimeError(f"UAT contract references a production-like identifier: {value}")
+
+
+def _validate_runtime_secret_wiring(
+    *,
+    runtime_name: str,
+    env: dict[str, object],
+    secret_env: list[dict[str, object]],
+    required_secret_bindings: dict[str, str],
+) -> None:
+    for env_name in ("MOVIQO_SECRET_KEY", "MOVIQO_DB_PASSWORD", "MOVIQO_RESEND_API_KEY"):
+        if env_name in env:
+            raise RuntimeError(f"{runtime_name} must not inline the secret value for {env_name}.")
+
+    secret_bindings = {binding["env"]: binding["secret"] for binding in secret_env}
+    for env_name, secret_name in required_secret_bindings.items():
+        if secret_bindings.get(env_name) != secret_name:
+            raise RuntimeError(
+                f"{runtime_name} must inject {env_name} from the {secret_name} secret."
+            )
+        _assert_non_production_identifier(secret_name)
+
+    unexpected_secret_bindings = set(secret_bindings) - set(required_secret_bindings)
+    if unexpected_secret_bindings:
+        raise RuntimeError(
+            f"{runtime_name} secretEnv contains undeclared runtime secrets: "
+            f"{sorted(unexpected_secret_bindings)}"
+        )
 
 
 def _match_header_value(

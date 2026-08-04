@@ -9,7 +9,9 @@ from moviqo.settings.uat_contract import load_uat_contract
 
 UAT_ENV = {
     "MOVIQO_SECRET_KEY": "test-only-secret",
-    "MOVIQO_ALLOWED_HOSTS": "localhost,testserver",
+    "MOVIQO_ALLOWED_HOSTS": "uat.moviqo.internal",
+    "MOVIQO_CSRF_TRUSTED_ORIGINS": "https://uat.moviqo.internal",
+    "MOVIQO_TRUST_X_FORWARDED_PROTO": "true",
     "MOVIQO_DB_NAME": "moviqo_uat",
     "MOVIQO_DB_USER": "moviqo_uat",
     "MOVIQO_DB_PASSWORD": "moviqo_uat_password",
@@ -100,6 +102,17 @@ def test_uat_settings_fail_during_import_when_contract_is_invalid(
         _reload_uat_settings()
 
 
+def test_uat_contract_does_not_require_inline_resend_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_uat_env(monkeypatch)
+    monkeypatch.delenv("MOVIQO_RESEND_API_KEY", raising=False)
+
+    contract = load_uat_contract()
+
+    assert contract["resend_api_key_secret"] == "moviqo-uat-resend-api-key"
+
+
 def _set_uat_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for key, value in UAT_ENV.items():
         monkeypatch.setenv(key, value)
@@ -108,6 +121,9 @@ def _set_uat_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _reload_uat_settings():
+    import os
+
+    os.environ.setdefault("MOVIQO_RESEND_API_KEY", "uat-runtime-resend-key")
     for module_name in [
         "moviqo.settings.base",
         "moviqo.settings.production",

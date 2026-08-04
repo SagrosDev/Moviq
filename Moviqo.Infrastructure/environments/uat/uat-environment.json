@@ -6,6 +6,11 @@
     "backendService": "moviqo-back-uat",
     "serviceClass": "uat-internal"
   },
+  "routing": {
+    "allowedHosts": ["uat.moviqo.internal"],
+    "csrfTrustedOrigins": ["https://uat.moviqo.internal"],
+    "trustXForwardedProto": true
+  },
   "identity": {
     "cloudProjectId": "moviqo-uat-synthetic",
     "cloudRunServiceAccount": "moviqo-uat-runner@moviqo-uat-synthetic.iam.gserviceaccount.com",
@@ -15,13 +20,15 @@
     "privateBucket": "moviqo-uat-private",
     "quarantineBucket": "moviqo-uat-quarantine",
     "cleanBucket": "moviqo-uat-clean",
-    "publicAccess": false
+    "publicAccess": false,
+    "encryptionAtRest": true
   },
   "database": {
     "provider": "supabase-postgresql",
     "host": "db.uat.supabase.internal",
     "runtimeCredentialSecret": "moviqo-uat-db-password",
-    "migrationCredentialSecret": "moviqo-uat-db-password-migrate"
+    "migrationCredentialSecret": "moviqo-uat-db-password-migrate",
+    "encryptionAtRest": true
   },
   "messaging": {
     "provider": "resend-outbox",

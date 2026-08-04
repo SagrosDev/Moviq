@@ -46,7 +46,7 @@ def test_fail_on_multi_membership_users_rejects_legacy_multi_org_accounts(
 ) -> None:
     user = django_user_model.objects.create_user(username="owner-a", email="owner@example.com")
     organization = Organization.objects.create(slug="org-a", display_name="Org A")
-    membership = Membership.objects.create(
+    Membership.objects.create(
         organization=organization,
         user=user,
         role=MembershipRole.OWNER,
@@ -77,7 +77,11 @@ def test_fail_on_multi_membership_users_rejects_legacy_multi_org_accounts(
                 return FakeMembershipCountQuerySet()
         return original_filter(*args, **kwargs)
 
-    monkeypatch.setattr(Membership.objects, "values_list", lambda *_args, **_kwargs: FakeMembershipQuerySet())
+    monkeypatch.setattr(
+        Membership.objects,
+        "values_list",
+        lambda *_args, **_kwargs: FakeMembershipQuerySet(),
+    )
     monkeypatch.setattr(Membership.objects, "filter", fake_filter)
 
     with pytest.raises(RuntimeError, match="multi-membership accounts"):

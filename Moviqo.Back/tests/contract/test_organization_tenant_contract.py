@@ -3,11 +3,11 @@ from __future__ import annotations
 import pytest
 from django.test import Client
 
+from moviqo.modules.organizations.application import tenant_access
 from moviqo.modules.organizations.application.identity_boundary import (
     IdentityBoundaryViolation,
     ensure_identity_membership,
 )
-from moviqo.modules.organizations.application import tenant_access
 from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
 
 

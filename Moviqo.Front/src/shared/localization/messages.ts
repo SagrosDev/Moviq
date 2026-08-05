@@ -136,6 +136,34 @@ export type MessageKey =
   | "workflowDesign.editor.saveError"
   | "workflowDesign.editor.errorTitle"
   | "workflowDesign.editor.conflictTitle"
+  | "workflowDesign.editor.validatePublication"
+  | "workflowDesign.editor.validatingPublication"
+  | "workflowDesign.editor.checklistTitle"
+  | "workflowDesign.editor.checklistBody"
+  | "workflowDesign.editor.checklistEmpty"
+  | "workflowDesign.editor.checklistError"
+  | "workflowDesign.editor.publicationSetupTitle"
+  | "workflowDesign.editor.publicationSetupBody"
+  | "workflowDesign.editor.configureStarter"
+  | "workflowDesign.editor.starterConfigured"
+  | "workflowDesign.editor.configureAssignment"
+  | "workflowDesign.editor.assignmentConfigured"
+  | "workflowDesign.editor.issue.starterMissing"
+  | "workflowDesign.editor.issue.assignmentMissing"
+  | "workflowDesign.editor.issue.startStepInvalid"
+  | "workflowDesign.editor.issue.firstTaskMissing"
+  | "workflowDesign.editor.issue.endStepInvalid"
+  | "workflowDesign.editor.issue.startPathIncomplete"
+  | "workflowDesign.editor.issue.pathDisconnected"
+  | "workflowDesign.editor.issue.pathToEndMissing"
+  | "workflowDesign.editor.issue.firstTaskFormMissing"
+  | "workflowDesign.editor.issue.firstTaskBindingMissingField"
+  | "workflowDesign.editor.issue.firstTaskFormDecorative"
+  | "workflowDesign.editor.issueAction.configureStarter"
+  | "workflowDesign.editor.issueAction.configureAssignment"
+  | "workflowDesign.editor.issueAction.reviewWorkflowPath"
+  | "workflowDesign.editor.issueAction.openFirstTaskForm"
+  | "workflowDesign.editor.issueAction.openReusableField"
   | "workflowDesign.editor.previewTitle"
   | "workflowDesign.editor.previewBody"
   | "workflowDesign.editor.connectLabel"
@@ -409,6 +437,49 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.saveError": "No pudimos guardar este borrador. Corrige el camino e intenta de nuevo.",
   "workflowDesign.editor.errorTitle": "Corrige este borrador antes de guardar",
   "workflowDesign.editor.conflictTitle": "El servidor tiene una revision mas reciente",
+  "workflowDesign.editor.validatePublication": "Validar publicacion",
+  "workflowDesign.editor.validatingPublication": "Validando publicacion",
+  "workflowDesign.editor.checklistTitle": "Checklist de publicacion",
+  "workflowDesign.editor.checklistBody":
+    "Valida el borrador actual sin publicarlo. Los bloqueos siguen una lista estable y accionable.",
+  "workflowDesign.editor.checklistEmpty":
+    "Ejecuta la validacion para ver los bloqueos de publicacion de este borrador.",
+  "workflowDesign.editor.checklistError":
+    "No pudimos validar este borrador para publicacion. Intenta de nuevo.",
+  "workflowDesign.editor.publicationSetupTitle": "Preparacion de publicacion",
+  "workflowDesign.editor.publicationSetupBody":
+    "Marca cuando el borrador ya tiene una decision valida para quien inicia el flujo y quien recibe la primera tarea.",
+  "workflowDesign.editor.configureStarter": "Configurar inicio",
+  "workflowDesign.editor.starterConfigured": "Inicio listo",
+  "workflowDesign.editor.configureAssignment": "Configurar asignacion",
+  "workflowDesign.editor.assignmentConfigured": "Asignacion lista",
+  "workflowDesign.editor.issue.starterMissing":
+    "Necesitamos un detalle mas antes de publicar: define quien puede iniciar este flujo.",
+  "workflowDesign.editor.issue.assignmentMissing":
+    "Necesitamos un detalle mas antes de publicar: define quien recibe la primera tarea.",
+  "workflowDesign.editor.issue.startStepInvalid":
+    "Agrega exactamente un paso Start antes de publicar este flujo.",
+  "workflowDesign.editor.issue.firstTaskMissing":
+    "Agrega la primera tarea antes de publicar este flujo.",
+  "workflowDesign.editor.issue.endStepInvalid":
+    "Agrega exactamente un paso End antes de publicar este flujo.",
+  "workflowDesign.editor.issue.startPathIncomplete":
+    "Conecta Start con la primera tarea antes de publicar este flujo.",
+  "workflowDesign.editor.issue.pathDisconnected":
+    "Conecta este paso dentro del camino de Start a End antes de publicar.",
+  "workflowDesign.editor.issue.pathToEndMissing":
+    "Conecta este paso para que el flujo llegue a End antes de publicar.",
+  "workflowDesign.editor.issue.firstTaskFormMissing":
+    "Agrega un campo visible al formulario de la primera tarea antes de publicar.",
+  "workflowDesign.editor.issue.firstTaskBindingMissingField":
+    "Reconecta este campo de la tarea con un campo reutilizable existente antes de publicar.",
+  "workflowDesign.editor.issue.firstTaskFormDecorative":
+    "Reemplaza el contenido decorativo por una etiqueta de campo visible antes de publicar.",
+  "workflowDesign.editor.issueAction.configureStarter": "Configurar inicio",
+  "workflowDesign.editor.issueAction.configureAssignment": "Configurar asignacion",
+  "workflowDesign.editor.issueAction.reviewWorkflowPath": "Revisar camino",
+  "workflowDesign.editor.issueAction.openFirstTaskForm": "Abrir formulario",
+  "workflowDesign.editor.issueAction.openReusableField": "Abrir campo reutilizable",
   "workflowDesign.editor.previewTitle": "Vista previa del camino",
   "workflowDesign.editor.previewBody": "Esta vista muestra el orden actual del borrador local.",
   "workflowDesign.editor.connectLabel": "Conectar",
@@ -685,6 +756,49 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.saveError": "We could not save this draft. Correct the path and try again.",
   "workflowDesign.editor.errorTitle": "Correct this draft before saving",
   "workflowDesign.editor.conflictTitle": "The server has a newer revision",
+  "workflowDesign.editor.validatePublication": "Validate publication",
+  "workflowDesign.editor.validatingPublication": "Validating publication",
+  "workflowDesign.editor.checklistTitle": "Publish checklist",
+  "workflowDesign.editor.checklistBody":
+    "Validate the current draft without publishing it. Blocking rows stay stable and actionable.",
+  "workflowDesign.editor.checklistEmpty":
+    "Run validation to see this draft's publication blockers.",
+  "workflowDesign.editor.checklistError":
+    "We could not validate this draft for publication. Try again.",
+  "workflowDesign.editor.publicationSetupTitle": "Publication setup",
+  "workflowDesign.editor.publicationSetupBody":
+    "Mark when this draft already has a valid decision for who can start the workflow and who receives the first task.",
+  "workflowDesign.editor.configureStarter": "Configure starter",
+  "workflowDesign.editor.starterConfigured": "Starter ready",
+  "workflowDesign.editor.configureAssignment": "Configure assignment",
+  "workflowDesign.editor.assignmentConfigured": "Assignment ready",
+  "workflowDesign.editor.issue.starterMissing":
+    "We need one more detail before publishing: choose who can start this workflow.",
+  "workflowDesign.editor.issue.assignmentMissing":
+    "We need one more detail before publishing: choose who receives the first task.",
+  "workflowDesign.editor.issue.startStepInvalid":
+    "Add exactly one Start step before publishing this workflow.",
+  "workflowDesign.editor.issue.firstTaskMissing":
+    "Add the first Task step before publishing this workflow.",
+  "workflowDesign.editor.issue.endStepInvalid":
+    "Add exactly one End step before publishing this workflow.",
+  "workflowDesign.editor.issue.startPathIncomplete":
+    "Connect Start to the first Task before publishing this workflow.",
+  "workflowDesign.editor.issue.pathDisconnected":
+    "Connect this step into the Start to End path before publishing.",
+  "workflowDesign.editor.issue.pathToEndMissing":
+    "Connect this step so the workflow reaches End before publishing.",
+  "workflowDesign.editor.issue.firstTaskFormMissing":
+    "Add one visible field to the first Task form before publishing.",
+  "workflowDesign.editor.issue.firstTaskBindingMissingField":
+    "Reconnect this Task field to an existing reusable field before publishing.",
+  "workflowDesign.editor.issue.firstTaskFormDecorative":
+    "Replace decorative-only form content with a visible field label before publishing.",
+  "workflowDesign.editor.issueAction.configureStarter": "Configure starter",
+  "workflowDesign.editor.issueAction.configureAssignment": "Configure assignment",
+  "workflowDesign.editor.issueAction.reviewWorkflowPath": "Review workflow path",
+  "workflowDesign.editor.issueAction.openFirstTaskForm": "Open first task form",
+  "workflowDesign.editor.issueAction.openReusableField": "Open reusable field",
   "workflowDesign.editor.previewTitle": "Path preview",
   "workflowDesign.editor.previewBody": "This view shows the current order of the local draft.",
   "workflowDesign.editor.connectLabel": "Connect",

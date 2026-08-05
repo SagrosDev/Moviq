@@ -57,6 +57,10 @@ def test_workflow_creation_returns_authoritative_draft_payload(workflow_design_m
         "connections": [],
         "processFields": [],
         "formBindings": [],
+        "publication": {
+            "starter": {"isConfigured": False},
+            "assignment": {"isConfigured": False},
+        },
     }
 
 
@@ -280,6 +284,10 @@ def test_workflow_draft_detail_returns_authoritative_server_payload(
             "connections": [],
             "processFields": [],
             "formBindings": [],
+            "publication": {
+                "starter": {"isConfigured": False},
+                "assignment": {"isConfigured": False},
+            },
         },
     }
 
@@ -402,6 +410,10 @@ def test_workflow_draft_save_returns_authoritative_graph_payload(
                     "label": None,
                 }
             ],
+            "publication": {
+                "starter": {"isConfigured": False},
+                "assignment": {"isConfigured": False},
+            },
         },
     }
 
@@ -768,3 +780,387 @@ def test_workflow_draft_save_rejects_blank_graph_identifiers(
             "reason": "Workflow draft field 'id' cannot be blank.",
         }
     ]
+
+
+@pytest.mark.django_db
+def test_workflow_publication_validation_returns_deterministic_checklist_rows(
+    workflow_design_member,
+) -> None:
+    user, _organization, _membership = workflow_design_member
+    client = Client()
+    client.force_login(user)
+
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow intake"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-1"},
+    )
+    workflow_id = created.json()["workflowId"]
+    draft_id = created.json()["draft"]["draftId"]
+
+    saved = client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                "schemaVersion": 3,
+                "draftId": draft_id,
+                "workflowId": workflow_id,
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "start-1", "type": "start", "label": "Start"},
+                    {"id": "task-1", "type": "task", "label": "Task"},
+                    {"id": "end-1", "type": "end", "label": "End"},
+                ],
+                "connections": [
+                    {
+                        "id": "connection-1",
+                        "type": "sequence",
+                        "sourceId": "start-1",
+                        "targetId": "task-1",
+                    },
+                    {
+                        "id": "connection-2",
+                        "type": "sequence",
+                        "sourceId": "task-1",
+                        "targetId": "end-1",
+                    },
+                ],
+                "processFields": [
+                    {
+                        "kind": "shortText",
+                        "label": "Requester name",
+                    }
+                ],
+                "formBindings": [
+                    {
+                        "taskElementId": "task-1",
+                        "fieldId": "field-1",
+                    }
+                ],
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-1"},
+    )
+    assert saved.status_code == 200
+
+    response = client.post(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/publication-validation/",
+        data={
+            "expectedRevision": "2",
+            "draft": saved.json()["draft"],
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-validate-1"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "workflowId": workflow_id,
+        "revision": "2",
+        "publishable": False,
+        "issues": [
+            {
+                "code": "starter_missing",
+                "severity": "blocking",
+                "target": "configuration.starter",
+                "elementId": None,
+                "fieldId": None,
+                "bindingId": None,
+                "message": (
+                    "We need one more detail before publishing: "
+                    "choose who can start this workflow."
+                ),
+                "actionLabel": "Configure starter",
+            },
+            {
+                "code": "assignment_missing",
+                "severity": "blocking",
+                "target": "configuration.assignment",
+                "elementId": None,
+                "fieldId": None,
+                "bindingId": None,
+                "message": (
+                    "We need one more detail before publishing: "
+                    "choose who receives the first task."
+                ),
+                "actionLabel": "Configure assignment",
+            },
+        ],
+    }
+
+
+@pytest.mark.django_db
+def test_workflow_publication_validation_rejects_stale_revision(
+    workflow_design_member,
+) -> None:
+    user, _organization, _membership = workflow_design_member
+    client = Client()
+    client.force_login(user)
+
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow intake"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-1"},
+    )
+    workflow_id = created.json()["workflowId"]
+    draft_id = created.json()["draft"]["draftId"]
+
+    saved = client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                "schemaVersion": 3,
+                "draftId": draft_id,
+                "workflowId": workflow_id,
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "start-1", "type": "start", "label": "Start"},
+                    {"id": "task-1", "type": "task", "label": "Task"},
+                    {"id": "end-1", "type": "end", "label": "End"},
+                ],
+                "connections": [
+                    {
+                        "id": "connection-1",
+                        "type": "sequence",
+                        "sourceId": "start-1",
+                        "targetId": "task-1",
+                    },
+                    {
+                        "id": "connection-2",
+                        "type": "sequence",
+                        "sourceId": "task-1",
+                        "targetId": "end-1",
+                    },
+                ],
+                "processFields": [
+                    {
+                        "kind": "shortText",
+                        "label": "Requester name",
+                    }
+                ],
+                "formBindings": [
+                    {
+                        "taskElementId": "task-1",
+                        "fieldId": "field-1",
+                    }
+                ],
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-1"},
+    )
+    assert saved.status_code == 200
+
+    response = client.post(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/publication-validation/",
+        data={
+            "expectedRevision": "1",
+            "draft": saved.json()["draft"],
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-validate-1"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "workflow_draft_revision_conflict"
+    assert response.json()["invalidParams"] == [
+        {
+            "name": "expectedRevision",
+            "code": "stale",
+            "reason": "Reload the last saved draft before validating again.",
+        }
+    ]
+
+
+@pytest.mark.django_db
+def test_workflow_publication_validation_rejects_save_invalid_draft_shape(
+    workflow_design_member,
+) -> None:
+    user, _organization, _membership = workflow_design_member
+    client = Client()
+    client.force_login(user)
+
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow intake"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-1"},
+    )
+    workflow_id = created.json()["workflowId"]
+    draft_id = created.json()["draft"]["draftId"]
+
+    response = client.post(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/publication-validation/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                "schemaVersion": 3,
+                "draftId": draft_id,
+                "workflowId": workflow_id,
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "task-1", "type": "start", "label": "Start"},
+                    {"id": "task-1", "type": "task", "label": "Task"},
+                    {"id": "end-1", "type": "end", "label": "End"},
+                ],
+                "connections": [
+                    {
+                        "id": "connection-1",
+                        "type": "sequence",
+                        "sourceId": "task-1",
+                        "targetId": "task-1",
+                    }
+                ],
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-validate-1"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "workflow_draft_invalid"
+    assert response.json()["invalidParams"] == [
+        {
+            "name": "elements",
+            "code": "duplicate_element_id",
+            "reason": "Use a unique identifier for each workflow element.",
+        }
+    ]
+
+
+@pytest.mark.django_db
+def test_workflow_publication_validation_can_return_publishable_true(
+    workflow_design_member,
+) -> None:
+    user, _organization, _membership = workflow_design_member
+    client = Client()
+    client.force_login(user)
+
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow intake"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-1"},
+    )
+    workflow_id = created.json()["workflowId"]
+    draft_id = created.json()["draft"]["draftId"]
+
+    response = client.post(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/publication-validation/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                "schemaVersion": 3,
+                "draftId": draft_id,
+                "workflowId": workflow_id,
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "start-1", "type": "start", "label": "Start"},
+                    {"id": "task-1", "type": "task", "label": "Task"},
+                    {"id": "end-1", "type": "end", "label": "End"},
+                ],
+                "connections": [
+                    {
+                        "id": "connection-1",
+                        "type": "sequence",
+                        "sourceId": "start-1",
+                        "targetId": "task-1",
+                    },
+                    {
+                        "id": "connection-2",
+                        "type": "sequence",
+                        "sourceId": "task-1",
+                        "targetId": "end-1",
+                    },
+                ],
+                "processFields": [
+                    {
+                        "kind": "shortText",
+                        "label": "Requester name",
+                    }
+                ],
+                "formBindings": [
+                    {
+                        "taskElementId": "task-1",
+                        "fieldId": "field-1",
+                    }
+                ],
+                "publication": {
+                    "starter": {"isConfigured": True},
+                    "assignment": {"isConfigured": True},
+                },
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-validate-1"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["publishable"] is True
+    assert response.json()["issues"] == []
+
+
+@pytest.mark.django_db
+def test_workflow_publication_validation_rejects_member_role(django_user_model) -> None:
+    user = django_user_model.objects.create_user(
+        username="workflow-member-validate",
+        email="member-validate@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Member",
+    )
+    organization = Organization.objects.create(
+        slug="workflow-member-validate-org",
+        display_name="Workflow Member Validate Org",
+    )
+    membership = Membership.objects.create(
+        organization=organization,
+        user=user,
+        role=MembershipRole.MEMBER,
+    )
+    workflow_user = django_user_model.objects.create_user(
+        username="workflow-designer-validate",
+        email="designer-validate@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Designer",
+    )
+    workflow_membership = Membership.objects.create(
+        organization=organization,
+        user=workflow_user,
+        role=MembershipRole.DESIGNER,
+    )
+    client = Client()
+    client.force_login(workflow_user)
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow intake"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-1"},
+    )
+    assert created.status_code == 201
+
+    client.force_login(user)
+    response = client.post(
+        f"/api/v1/workflow-design/workflows/{created.json()['workflowId']}/publication-validation/",
+        data={
+            "expectedRevision": "1",
+            "draft": created.json()["draft"],
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-validate-1"},
+    )
+
+    assert membership.role == MembershipRole.MEMBER
+    assert workflow_membership.role == MembershipRole.DESIGNER
+    assert response.status_code == 403
+    assert response.json()["code"] == "workflow_design_forbidden"

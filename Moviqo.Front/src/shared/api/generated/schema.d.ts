@@ -250,6 +250,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workflow-design/workflows/{workflow_id}/publication-validation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["workflow_design_publication_validation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -467,6 +483,7 @@ export interface components {
             connections?: components["schemas"]["WorkflowConnection"][];
             processFields?: components["schemas"]["WorkflowProcessField"][];
             formBindings?: components["schemas"]["WorkflowFormBinding"][];
+            publication?: components["schemas"]["WorkflowPublication"];
         };
         WorkflowDraftSaveRequest: {
             expectedRevision: string;
@@ -494,6 +511,34 @@ export interface components {
             defaultValue?: string | null;
             minimumLength?: number;
             maximumLength?: number;
+        };
+        WorkflowPublication: {
+            starter?: components["schemas"]["WorkflowPublicationSection"];
+            assignment?: components["schemas"]["WorkflowPublicationSection"];
+        };
+        WorkflowPublicationIssue: {
+            code: string;
+            severity: string;
+            target: string;
+            elementId: string | null;
+            fieldId: string | null;
+            bindingId: string | null;
+            message: string;
+            actionLabel: string;
+        };
+        WorkflowPublicationSection: {
+            isConfigured?: boolean;
+        };
+        WorkflowPublicationValidationRequest: {
+            expectedRevision: string;
+            draft: components["schemas"]["WorkflowDraftDocument"];
+        };
+        WorkflowPublicationValidationResponse: {
+            /** Format: uuid */
+            workflowId: string;
+            revision: string;
+            publishable: boolean;
+            issues: components["schemas"]["WorkflowPublicationIssue"][];
         };
     };
     responses: never;
@@ -1133,6 +1178,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkflowCreateResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_design_publication_validation: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowPublicationValidationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WorkflowPublicationValidationRequest"];
+                "multipart/form-data": components["schemas"]["WorkflowPublicationValidationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowPublicationValidationResponse"];
                 };
             };
             400: {

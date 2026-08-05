@@ -44,7 +44,7 @@ development_status:
   1-22-design-a-basic-start-task-end-graph: done
   1-23-create-and-bind-the-first-short-text-process-field: done
   1-24-compose-and-run-the-minimal-task-form: done
-  1-25-validate-the-minimal-workflow-for-publication: backlog
+  1-25-validate-the-minimal-workflow-for-publication: done
   1-26-configure-workflow-starters-and-task-assignment: backlog
   1-27-autosave-and-resolve-shared-draft-conflicts: backlog
   1-28-publish-an-immutable-workflow-version: backlog

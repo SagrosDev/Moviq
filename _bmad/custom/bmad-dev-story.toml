@@ -6,12 +6,14 @@ activation_steps_append = [
   Branch rule:
   - Determine the target story key from the user request when provided, otherwise from the story selected by sprint-status discovery.
   - Normalize it to `story/<story-key>`, for example `story/1-2-establish-the-frontend-application-spine`.
+  - Before any implementation reads or code changes, stop and complete this branch preflight first. The only allowed pre-branch reads are the story-selection inputs needed to identify the target story key.
   - Run `git status --short` and preserve all current staged and unstaged worktree changes.
   - If already on the target branch, continue.
   - If the target branch exists, run `git switch <target-branch>`.
   - If the target branch does not exist, run `git switch -c <target-branch>`.
   - Do not stash, reset, checkout, clean, or discard changes. The current worktree changes must remain present on the story branch.
   - If Git refuses the switch because of conflicts or incompatible local changes, HALT and report the exact Git error before modifying code.
+  - If the current branch name is not the normalized target branch after this preflight, HALT. Do not continue into implementation on any other branch.
   - Record the selected branch name in Dev Agent Record -> Debug Log References.
   """
 ]

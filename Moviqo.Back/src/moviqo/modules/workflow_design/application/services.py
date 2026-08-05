@@ -10,6 +10,9 @@ from rest_framework.exceptions import APIException
 
 from moviqo.building_blocks.commands import execute_atomic_command
 from moviqo.building_blocks.tenancy.runtime import TenantContext
+from moviqo.modules.workflow_design.application.publication_validation import (
+    validate_workflow_for_publication,
+)
 from moviqo.modules.workflow_design.application.schema import (
     CURRENT_DRAFT_SCHEMA_VERSION,
     WorkflowDraftSchemaError,
@@ -23,6 +26,7 @@ from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDr
 MAX_WORKFLOW_NAME_LENGTH = 120
 WORKFLOW_CREATE_COMMAND = "workflow-design.create"
 WORKFLOW_SAVE_COMMAND = "workflow-design.save-draft"
+WORKFLOW_VALIDATE_COMMAND = "workflow-design.validate-publication"
 SAVE_OUTCOME_ACCEPTED = "accepted"
 SAVE_OUTCOME_REJECTED = "rejected"
 
@@ -65,6 +69,18 @@ class WorkflowDraftRevisionConflictError(APIException):
     def __init__(self, *, invalid_params: list[dict[str, str]]) -> None:
         super().__init__(detail=self.default_detail, code=self.default_code)
         self.invalid_params = invalid_params
+
+
+@dataclass(frozen=True)
+class WorkflowPublicationIssue:
+    code: str
+    severity: str
+    target: str
+    element_id: str | None
+    field_id: str | None
+    binding_id: str | None
+    message: str
+    action_label: str
 
 
 @dataclass(frozen=True)
@@ -192,6 +208,48 @@ def save_workflow_draft(
         idempotency_key=idempotency_key,
         request_hash=request_hash,
         handler=lambda command_context: _save_workflow_draft_side_effects(
+            tenant_context=tenant_context,
+            command_context=command_context,
+            workflow_id=workflow_id,
+            expected_revision=expected_revision,
+            draft=draft,
+        ),
+    )
+
+    outcome = execution.result
+    if outcome["outcome"] == SAVE_OUTCOME_ACCEPTED:
+        return outcome["payload"]
+
+    error = outcome["error"]
+    if error["code"] == WorkflowDraftRevisionConflictError.default_code:
+        raise WorkflowDraftRevisionConflictError(invalid_params=error["invalidParams"])
+
+    raise WorkflowDraftValidationAPIError(invalid_params=error["invalidParams"])
+
+
+def validate_workflow_publication(
+    *,
+    tenant_context: TenantContext,
+    workflow_id,
+    expected_revision: str,
+    draft: dict[str, Any],
+    idempotency_key: str,
+    request_hash: str,
+) -> dict[str, Any] | None:
+    workflow = (
+        WorkflowDefinition.objects.select_related("draft")
+        .filter(id=workflow_id, organization_id=tenant_context.organization_id)
+        .first()
+    )
+    if workflow is None:
+        return None
+
+    execution = execute_atomic_command(
+        tenant_context=tenant_context,
+        command_type=WORKFLOW_VALIDATE_COMMAND,
+        idempotency_key=idempotency_key,
+        request_hash=request_hash,
+        handler=lambda command_context: _validate_workflow_publication_side_effects(
             tenant_context=tenant_context,
             command_context=command_context,
             workflow_id=workflow_id,
@@ -368,6 +426,98 @@ def _save_workflow_draft_side_effects(
             "revision": next_revision,
             "draft": validated_document,
         },
+    }
+
+
+def _validate_workflow_publication_side_effects(
+    *,
+    tenant_context: TenantContext,
+    command_context,
+    workflow_id,
+    expected_revision: str,
+    draft: dict[str, Any],
+) -> dict[str, Any]:
+    workflow_draft = (
+        WorkflowDraft.objects.select_related("workflow")
+        .select_for_update()
+        .get(workflow_id=workflow_id, organization_id=tenant_context.organization_id)
+    )
+    workflow = workflow_draft.workflow
+
+    if workflow_draft.revision != expected_revision:
+        return _rejected_save_outcome(
+            code=WorkflowDraftRevisionConflictError.default_code,
+            invalid_params=[
+                {
+                    "name": "expectedRevision",
+                    "code": "stale",
+                    "reason": "Reload the last saved draft before validating again.",
+                }
+            ],
+        )
+
+    previous_document = load_draft_document(workflow_draft.document)
+    candidate_document = {
+        "schemaVersion": draft.get("schemaVersion", CURRENT_DRAFT_SCHEMA_VERSION),
+        "draftId": previous_document["draftId"],
+        "workflowId": str(workflow.id),
+        "name": workflow.name,
+        "status": previous_document["status"],
+        "elements": draft.get("elements", previous_document["elements"]),
+        "connections": draft.get("connections", previous_document["connections"]),
+        "processFields": _merge_process_fields(
+            previous_document=previous_document,
+            draft=draft,
+        ),
+        "formBindings": _merge_form_bindings(
+            previous_document=previous_document,
+            draft=draft,
+        ),
+        "publication": _merge_publication(
+            previous_document=previous_document,
+            draft=draft,
+        ),
+    }
+    try:
+        normalized_document = validate_workflow_graph_document(candidate_document)
+    except WorkflowDraftValidationError as exc:
+        return _rejected_save_outcome(
+            code=WorkflowDraftValidationAPIError.default_code,
+            invalid_params=_build_graph_invalid_params(exc.issues),
+        )
+    except WorkflowDraftSchemaError as exc:
+        return _rejected_save_outcome(
+            code=WorkflowDraftValidationAPIError.default_code,
+            invalid_params=[
+                {
+                    "name": "draft",
+                    "code": "invalid",
+                    "reason": str(exc),
+                }
+            ],
+        )
+
+    validation = validate_workflow_for_publication(normalized_document)
+    payload = {
+        "workflowId": str(workflow.id),
+        "revision": workflow_draft.revision,
+        "publishable": validation["publishable"],
+        "issues": validation["issues"],
+    }
+    command_context.append_audit(
+        event_type="workflow-design.publication-validation-ran",
+        payload={
+            "workflowId": str(workflow.id),
+            "draftId": normalized_document["draftId"],
+            "revision": workflow_draft.revision,
+            "publishable": validation["publishable"],
+            "issueCount": len(validation["issues"]),
+            "issueCodes": [issue["code"] for issue in validation["issues"]],
+        },
+    )
+    return {
+        "outcome": SAVE_OUTCOME_ACCEPTED,
+        "payload": payload,
     }
 
 
@@ -697,3 +847,26 @@ def _merge_form_bindings(
             next_ordinal += 1
         merged_bindings.append(candidate)
     return merged_bindings
+
+
+def _merge_publication(
+    *,
+    previous_document: dict[str, Any],
+    draft: dict[str, Any],
+) -> dict[str, Any]:
+    submitted_publication = draft.get("publication")
+    if submitted_publication is None:
+        return previous_document["publication"]
+
+    previous_publication = previous_document["publication"]
+    starter = submitted_publication.get("starter")
+    assignment = submitted_publication.get("assignment")
+
+    return {
+        "starter": dict(starter)
+        if isinstance(starter, dict)
+        else dict(previous_publication["starter"]),
+        "assignment": dict(assignment)
+        if isinstance(assignment, dict)
+        else dict(previous_publication["assignment"]),
+    }

@@ -1079,6 +1079,110 @@
                     }
                 }
             }
+        },
+        "/api/v1/workflow-design/workflows/{workflow_id}/publication-validation/": {
+            "post": {
+                "operationId": "workflow_design_publication_validation",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "workflow_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "workflow-design"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowPublicationValidationRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowPublicationValidationRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowPublicationValidationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WorkflowPublicationValidationResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "403": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "409": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -1865,6 +1969,9 @@
                         "items": {
                             "$ref": "#/components/schemas/WorkflowFormBinding"
                         }
+                    },
+                    "publication": {
+                        "$ref": "#/components/schemas/WorkflowPublication"
                     }
                 },
                 "required": [
@@ -1972,6 +2079,109 @@
                 "required": [
                     "kind",
                     "label"
+                ]
+            },
+            "WorkflowPublication": {
+                "type": "object",
+                "properties": {
+                    "starter": {
+                        "$ref": "#/components/schemas/WorkflowPublicationSection"
+                    },
+                    "assignment": {
+                        "$ref": "#/components/schemas/WorkflowPublicationSection"
+                    }
+                }
+            },
+            "WorkflowPublicationIssue": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "severity": {
+                        "type": "string"
+                    },
+                    "target": {
+                        "type": "string"
+                    },
+                    "elementId": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "fieldId": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "bindingId": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "actionLabel": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "actionLabel",
+                    "bindingId",
+                    "code",
+                    "elementId",
+                    "fieldId",
+                    "message",
+                    "severity",
+                    "target"
+                ]
+            },
+            "WorkflowPublicationSection": {
+                "type": "object",
+                "properties": {
+                    "isConfigured": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "WorkflowPublicationValidationRequest": {
+                "type": "object",
+                "properties": {
+                    "expectedRevision": {
+                        "type": "string"
+                    },
+                    "draft": {
+                        "$ref": "#/components/schemas/WorkflowDraftDocument"
+                    }
+                },
+                "required": [
+                    "draft",
+                    "expectedRevision"
+                ]
+            },
+            "WorkflowPublicationValidationResponse": {
+                "type": "object",
+                "properties": {
+                    "workflowId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "revision": {
+                        "type": "string"
+                    },
+                    "publishable": {
+                        "type": "boolean"
+                    },
+                    "issues": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WorkflowPublicationIssue"
+                        }
+                    }
+                },
+                "required": [
+                    "issues",
+                    "publishable",
+                    "revision",
+                    "workflowId"
                 ]
             }
         },

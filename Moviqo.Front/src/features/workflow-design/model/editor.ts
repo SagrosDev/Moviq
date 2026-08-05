@@ -12,6 +12,8 @@ import type {
   WorkflowDraftConnection,
   WorkflowDraftDocument,
   WorkflowDraftElement,
+  WorkflowPublicationIssue,
+  WorkflowPublicationValidationAccepted,
   WorkflowProcessField,
   WorkflowDraftSaveAccepted,
   WorkflowElementType
@@ -26,6 +28,11 @@ export type WorkflowDraftEditorState = {
   errorCode: string | null;
   errorMessages: string[];
   invalidFieldNames: string[];
+  publicationStatus: "idle" | "validating" | "error" | "success";
+  publicationErrorCode: string | null;
+  publicationIssues: WorkflowPublicationIssue[];
+  activePublicationRequestKey: string | null;
+  focusedChecklistSection: "starter" | "assignment" | "canvas" | "field" | null;
 };
 
 export type WorkflowElementLabels = {
@@ -51,7 +58,28 @@ export const createWorkflowDraftEditorState = (
   saveStatus: "idle",
   errorCode: null,
   errorMessages: [],
-  invalidFieldNames: []
+  invalidFieldNames: [],
+  publicationStatus: "idle",
+  publicationErrorCode: null,
+  publicationIssues: [],
+  activePublicationRequestKey: null,
+  focusedChecklistSection: null
+});
+
+const clearPublicationState = (
+  state: Omit<
+    WorkflowDraftEditorState,
+    | "publicationStatus"
+    | "publicationErrorCode"
+    | "publicationIssues"
+    | "activePublicationRequestKey"
+  >
+): WorkflowDraftEditorState => ({
+  ...state,
+  publicationStatus: "idle",
+  publicationErrorCode: null,
+  publicationIssues: [],
+  activePublicationRequestKey: null
 });
 
 export const syncWorkflowDraftEditorState = (
@@ -60,18 +88,19 @@ export const syncWorkflowDraftEditorState = (
   force = false
 ): WorkflowDraftEditorState =>
   state.hasLocalChanges && !force
-    ? {
+      ? {
         ...state,
         saveStatus: state.saveStatus === "saving" ? "idle" : state.saveStatus
       }
-    : {
+    : clearPublicationState({
         localDraft: structuredClone(draftState.value),
         hasLocalChanges: false,
         saveStatus: force ? "success" : "idle",
         errorCode: null,
         errorMessages: [],
-        invalidFieldNames: []
-      };
+        invalidFieldNames: [],
+        focusedChecklistSection: state.focusedChecklistSection
+      });
 
 export const addGuidedWorkflowElement = (
   draft: WorkflowDraftDocument,
@@ -191,6 +220,25 @@ export const setFirstTaskFieldBinding = (
   };
 };
 
+export const setPublicationConfiguration = (
+  draft: WorkflowDraftDocument,
+  section: "starter" | "assignment",
+  isConfigured: boolean
+): WorkflowDraftDocument => ({
+  ...draft,
+  publication: {
+    starter: {
+      isConfigured: draft.publication?.starter.isConfigured ?? false
+    },
+    assignment: {
+      isConfigured: draft.publication?.assignment.isConfigured ?? false
+    },
+    [section]: {
+      isConfigured
+    }
+  }
+});
+
 export const reduceWorkflowDraftEditorState = (
   state: WorkflowDraftEditorState,
   action:
@@ -200,6 +248,8 @@ export const reduceWorkflowDraftEditorState = (
     | { type: "connected"; sourceId: string; targetId: string }
     | { type: "short-text-configured"; field: ShortTextFieldDraft }
     | { type: "first-task-binding-toggled"; enabled: boolean }
+    | { type: "starter-configuration-toggled"; isConfigured: boolean }
+    | { type: "assignment-configuration-toggled"; isConfigured: boolean }
     | { type: "save-requested" }
     | {
         type: "save-failed";
@@ -207,11 +257,24 @@ export const reduceWorkflowDraftEditorState = (
         errorMessages: string[];
         invalidFieldNames: string[];
       }
+    | { type: "publication-validation-requested"; requestKey: string }
+    | {
+        type: "publication-validation-failed";
+        requestKey: string;
+        errorCode: string;
+        errorMessage: string;
+      }
+    | {
+        type: "publication-validation-succeeded";
+        requestKey: string;
+        validation: WorkflowPublicationValidationAccepted;
+      }
+    | { type: "checklist-target-selected"; target: string }
     | { type: "save-succeeded"; draftState: DraftState<WorkflowDraftDocument> }
     | { type: "server-synced"; draftState: DraftState<WorkflowDraftDocument> }
 ): WorkflowDraftEditorState => {
   if (action.type === "start-added") {
-    return {
+    return clearPublicationState({
       ...state,
       localDraft: addGuidedWorkflowElement(state.localDraft, "start", action.labels),
       hasLocalChanges: true,
@@ -219,11 +282,11 @@ export const reduceWorkflowDraftEditorState = (
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
-    };
+    });
   }
 
   if (action.type === "task-added") {
-    return {
+    return clearPublicationState({
       ...state,
       localDraft: addGuidedWorkflowElement(state.localDraft, "task", action.labels),
       hasLocalChanges: true,
@@ -231,11 +294,11 @@ export const reduceWorkflowDraftEditorState = (
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
-    };
+    });
   }
 
   if (action.type === "end-added") {
-    return {
+    return clearPublicationState({
       ...state,
       localDraft: addGuidedWorkflowElement(state.localDraft, "end", action.labels),
       hasLocalChanges: true,
@@ -243,11 +306,11 @@ export const reduceWorkflowDraftEditorState = (
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
-    };
+    });
   }
 
   if (action.type === "connected") {
-    return {
+    return clearPublicationState({
       ...state,
       localDraft: connectWorkflowElements(
         state.localDraft,
@@ -259,11 +322,11 @@ export const reduceWorkflowDraftEditorState = (
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
-    };
+    });
   }
 
   if (action.type === "short-text-configured") {
-    return {
+    return clearPublicationState({
       ...state,
       localDraft: upsertShortTextProcessField(state.localDraft, action.field),
       hasLocalChanges: true,
@@ -271,11 +334,11 @@ export const reduceWorkflowDraftEditorState = (
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
-    };
+    });
   }
 
   if (action.type === "first-task-binding-toggled") {
-    return {
+    return clearPublicationState({
       ...state,
       localDraft: setFirstTaskFieldBinding(state.localDraft, action.enabled),
       hasLocalChanges: true,
@@ -283,7 +346,39 @@ export const reduceWorkflowDraftEditorState = (
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
-    };
+    });
+  }
+
+  if (action.type === "starter-configuration-toggled") {
+    return clearPublicationState({
+      ...state,
+      localDraft: setPublicationConfiguration(
+        state.localDraft,
+        "starter",
+        action.isConfigured
+      ),
+      hasLocalChanges: true,
+      saveStatus: "idle",
+      errorCode: null,
+      errorMessages: [],
+      invalidFieldNames: []
+    });
+  }
+
+  if (action.type === "assignment-configuration-toggled") {
+    return clearPublicationState({
+      ...state,
+      localDraft: setPublicationConfiguration(
+        state.localDraft,
+        "assignment",
+        action.isConfigured
+      ),
+      hasLocalChanges: true,
+      saveStatus: "idle",
+      errorCode: null,
+      errorMessages: [],
+      invalidFieldNames: []
+    });
   }
 
   if (action.type === "save-requested") {
@@ -304,6 +399,48 @@ export const reduceWorkflowDraftEditorState = (
       errorCode: action.errorCode,
       errorMessages: action.errorMessages,
       invalidFieldNames: action.invalidFieldNames
+    };
+  }
+
+  if (action.type === "publication-validation-requested") {
+    return {
+      ...state,
+      publicationStatus: "validating",
+      publicationErrorCode: null,
+      activePublicationRequestKey: action.requestKey
+    };
+  }
+
+  if (action.type === "publication-validation-failed") {
+    if (state.activePublicationRequestKey !== action.requestKey) {
+      return state;
+    }
+    return {
+      ...state,
+      publicationStatus: "error",
+      publicationErrorCode: action.errorCode,
+      publicationIssues: [],
+      activePublicationRequestKey: null
+    };
+  }
+
+  if (action.type === "publication-validation-succeeded") {
+    if (state.activePublicationRequestKey !== action.requestKey) {
+      return state;
+    }
+    return {
+      ...state,
+      publicationStatus: "success",
+      publicationErrorCode: null,
+      publicationIssues: action.validation.issues,
+      activePublicationRequestKey: null
+    };
+  }
+
+  if (action.type === "checklist-target-selected") {
+    return {
+      ...state,
+      focusedChecklistSection: focusChecklistTarget(action.target)
     };
   }
 
@@ -362,6 +499,44 @@ export const saveWorkflowDraft = async (
   };
 };
 
+export const validateWorkflowPublication = async (
+  draftState: DraftState<WorkflowDraftDocument>,
+  localDraft: WorkflowDraftDocument,
+  requestKey: string
+): Promise<
+  | { ok: true; data: WorkflowPublicationValidationAccepted }
+  | { ok: false; error: NormalizedApiProblem }
+> => {
+  const response = await (
+    workflowDesignClient as {
+      POST(
+        path: string,
+        init?: object
+      ): Promise<{ data?: unknown; response: Response }>;
+    }
+  ).POST(
+    `/api/v1/workflow-design/workflows/${localDraft.workflowId}/publication-validation/`,
+    {
+      body: {
+        expectedRevision: draftState.revision,
+        draft: localDraft
+      },
+      headers: {
+        "Idempotency-Key": requestKey
+      }
+    }
+  );
+
+  if (!response.response.ok) {
+    return { ok: false, error: await readApiProblem(response.response) };
+  }
+
+  return {
+    ok: true,
+    data: response.data as WorkflowPublicationValidationAccepted
+  };
+};
+
 export const workflowPathPreview = (
   draft: WorkflowDraftDocument
 ): Array<WorkflowDraftElement | WorkflowDraftConnection> => {
@@ -402,6 +577,24 @@ const createElementId = (
 
 const createConnectionId = (draft: WorkflowDraftDocument) =>
   `connection-${draft.connections.length + 1}`;
+
+export const focusChecklistTarget = (target: string) => {
+  if (target === "configuration.starter") {
+    return "starter" as const;
+  }
+  if (target === "configuration.assignment") {
+    return "assignment" as const;
+  }
+  if (target.startsWith("processFields.") || target.startsWith("formBindings.")) {
+    return "field" as const;
+  }
+  return "canvas" as const;
+};
+
+export const clearPublicationChecklist = (_issues: WorkflowPublicationIssue[]) => [];
+
+export const createPublicationValidationRequestKey = (workflowId: string) =>
+  `workflow-validate-${workflowId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 const nextElementLabel = (
   draft: WorkflowDraftDocument,

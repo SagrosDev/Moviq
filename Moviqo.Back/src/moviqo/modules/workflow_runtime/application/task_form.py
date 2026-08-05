@@ -12,8 +12,8 @@ from moviqo.modules.workflow_design.application import (
     read_published_workflow_version,
     read_workflow_draft_snapshot,
 )
-from moviqo.modules.workflow_runtime.models import TaskOccurrence, TaskProcessFieldValue
 from moviqo.modules.workflow_runtime.application.my_work import OPEN_TASK_STATUSES
+from moviqo.modules.workflow_runtime.models import TaskOccurrence, TaskProcessFieldValue
 
 TASK_FORM_SAVE_COMMAND = "workflow-runtime.save-task-form-draft"
 SAVE_OUTCOME_ACCEPTED = "accepted"

@@ -12,7 +12,10 @@ from django.db import close_old_connections
 from moviqo.building_blocks.tenancy.runtime import TenantContext
 from moviqo.modules.governance.models import CommandResult, TransactionalAuditRecord
 from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
-from moviqo.modules.workflow_design.application import create_workflow_definition, save_workflow_draft
+from moviqo.modules.workflow_design.application import (
+    create_workflow_definition,
+    save_workflow_draft,
+)
 from moviqo.modules.workflow_design.models import WorkflowDraft, WorkflowVersion
 from moviqo.modules.workflow_runtime.application.task_form import (
     TaskFormRevisionConflictError,
@@ -20,7 +23,11 @@ from moviqo.modules.workflow_runtime.application.task_form import (
     read_task_form,
     save_task_form_draft,
 )
-from moviqo.modules.workflow_runtime.models import ProcessInstance, TaskOccurrence, TaskProcessFieldValue
+from moviqo.modules.workflow_runtime.models import (
+    ProcessInstance,
+    TaskOccurrence,
+    TaskProcessFieldValue,
+)
 
 
 def _integration_only() -> None:
@@ -247,7 +254,10 @@ def test_concurrent_stale_saves_reject_the_loser_without_partial_commit(
     tenant_context, _created, task = _seed_task_form(django_user_model)
     start_gate = threading.Event()
 
-    def attempt_save(value: str, idempotency_key: str) -> tuple[str, dict[str, object] | list[dict[str, str]]]:
+    def attempt_save(
+        value: str,
+        idempotency_key: str,
+    ) -> tuple[str, dict[str, object] | list[dict[str, str]]]:
         close_old_connections()
         start_gate.wait()
         try:

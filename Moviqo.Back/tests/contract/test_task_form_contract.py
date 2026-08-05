@@ -5,8 +5,16 @@ from django.test import Client
 
 from moviqo.modules.governance.models import CommandResult
 from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
-from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft, WorkflowVersion
-from moviqo.modules.workflow_runtime.models import ProcessInstance, TaskOccurrence, TaskProcessFieldValue
+from moviqo.modules.workflow_design.models import (
+    WorkflowDefinition,
+    WorkflowDraft,
+    WorkflowVersion,
+)
+from moviqo.modules.workflow_runtime.models import (
+    ProcessInstance,
+    TaskOccurrence,
+    TaskProcessFieldValue,
+)
 
 
 @pytest.fixture

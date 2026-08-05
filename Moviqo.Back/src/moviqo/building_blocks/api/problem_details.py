@@ -41,9 +41,11 @@ SAFE_VISIBLE_INVALID_PARAM_NAMES = frozenset(
         "termsVersion",
         "privacyVersion",
         "expectedRevision",
+        "expectedTaskRevision",
         "draft",
         "elements",
         "connections",
+        "controls",
         "nonFieldErrors",
         "name",
     }
@@ -53,6 +55,7 @@ SAFE_VISIBLE_INVALID_PARAM_PREFIXES = (
     "connections.",
     "processFields.",
     "formBindings.",
+    "controls.",
 )
 SAFE_PASSWORD_REASON_CODES = {
     "password_too_short",

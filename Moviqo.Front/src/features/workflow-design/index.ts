@@ -20,7 +20,7 @@ export type {
   WorkflowCreationFormState,
   WorkflowDraftConnection,
   WorkflowDraftDocument,
-  WorkflowFormBinding,
+  WorkflowTaskFormControl,
   WorkflowProcessField
 } from "./model/types";
 export { WorkflowCreateForm } from "./ui/WorkflowCreateForm";

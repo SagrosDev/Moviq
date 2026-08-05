@@ -182,7 +182,10 @@ export const setFirstTaskFieldBinding = (
       {
         id: `binding-${draft.formBindings.length + 1}`,
         taskElementId: firstTask.id,
-        fieldId: firstField.id
+        fieldId: firstField.id,
+        position: 0,
+        width: "full",
+        label: null
       }
     ]
   };

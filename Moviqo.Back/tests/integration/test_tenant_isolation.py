@@ -30,7 +30,11 @@ from moviqo.modules.organizations.models import (
     RegistrationVerification,
 )
 from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft
-from moviqo.modules.workflow_runtime.models import AtomicCommandProbe
+from moviqo.modules.workflow_runtime.models import (
+    AtomicCommandProbe,
+    TaskOccurrence,
+    TaskProcessFieldValue,
+)
 
 
 class ListHandler(logging.Handler):
@@ -343,6 +347,116 @@ def _assert_atomic_command_probe_isolation(seed: IsolationSeed) -> None:
 
     row_b.refresh_from_db()
     assert row_b.reference == "bravo"
+
+
+def _assert_task_occurrence_isolation(seed: IsolationSeed) -> None:
+    workflow_a = WorkflowDefinition.objects.create(
+        organization=seed.organization_a,
+        name="Workflow alpha",
+        normalized_name="workflow alpha",
+        draft_schema_version=3,
+        created_by_membership_id=seed.membership_a.id,
+        created_by_user_id=seed.user_a.id,
+    )
+    workflow_b = WorkflowDefinition.objects.create(
+        organization=seed.organization_b,
+        name="Workflow bravo",
+        normalized_name="workflow bravo",
+        draft_schema_version=3,
+        created_by_membership_id=seed.membership_b.id,
+        created_by_user_id=seed.user_b.id,
+    )
+    TaskOccurrence.objects.create(
+        organization=seed.organization_a,
+        workflow=workflow_a,
+        task_element_id="task-1",
+        assignee_membership_id=seed.membership_a.id,
+        assignee_user_id=seed.user_a.id,
+    )
+    row_b = TaskOccurrence.objects.create(
+        organization=seed.organization_b,
+        workflow=workflow_b,
+        task_element_id="task-1",
+        assignee_membership_id=seed.membership_b.id,
+        assignee_user_id=seed.user_b.id,
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert TaskOccurrence.objects.count() == 1
+        assert not TaskOccurrence.objects.filter(id=row_b.id).exists()
+        updated = TaskOccurrence.objects.filter(id=row_b.id).update(status="in_progress")
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.status == "assigned"
+
+
+def _assert_task_process_field_value_isolation(seed: IsolationSeed) -> None:
+    workflow_a = WorkflowDefinition.objects.create(
+        organization=seed.organization_a,
+        name="Workflow alpha",
+        normalized_name="workflow alpha",
+        draft_schema_version=3,
+        created_by_membership_id=seed.membership_a.id,
+        created_by_user_id=seed.user_a.id,
+    )
+    workflow_b = WorkflowDefinition.objects.create(
+        organization=seed.organization_b,
+        name="Workflow bravo",
+        normalized_name="workflow bravo",
+        draft_schema_version=3,
+        created_by_membership_id=seed.membership_b.id,
+        created_by_user_id=seed.user_b.id,
+    )
+    task_a = TaskOccurrence.objects.create(
+        organization=seed.organization_a,
+        workflow=workflow_a,
+        task_element_id="task-1",
+        assignee_membership_id=seed.membership_a.id,
+        assignee_user_id=seed.user_a.id,
+    )
+    task_b = TaskOccurrence.objects.create(
+        organization=seed.organization_b,
+        workflow=workflow_b,
+        task_element_id="task-1",
+        assignee_membership_id=seed.membership_b.id,
+        assignee_user_id=seed.user_b.id,
+    )
+    TaskProcessFieldValue.objects.create(
+        organization=seed.organization_a,
+        task=task_a,
+        field_id="field-1",
+        value_text="alpha",
+    )
+    row_b = TaskProcessFieldValue.objects.create(
+        organization=seed.organization_b,
+        task=task_b,
+        field_id="field-1",
+        value_text="bravo",
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert TaskProcessFieldValue.objects.count() == 1
+        assert not TaskProcessFieldValue.objects.filter(id=row_b.id).exists()
+        updated = TaskProcessFieldValue.objects.filter(id=row_b.id).update(
+            value_text="cross-tenant"
+        )
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.value_text == "bravo"
 
 
 def _assert_workflow_definition_isolation(seed: IsolationSeed) -> None:

@@ -16,26 +16,26 @@ so that the first Task can collect one value and later Tasks can reuse it.
 
 ## Tasks / Subtasks
 
-- [ ] Extend the workflow-design draft schema to represent reusable Process Fields and first-task form bindings (AC: 1-3)
-  - [ ] Evolve `Moviqo.Back/src/moviqo/modules/workflow_design/application/schema.py` from the Story 1.22 graph-only document into a schema-versioned document that can store reusable Process Field definitions and first-task form bindings alongside `elements` and `connections`.
-  - [ ] Add deterministic upcasting for Story 1.21 and 1.22 draft fixtures so older drafts load into the new document shape without losing graph identity or requiring manual repair.
-  - [ ] Keep writers closed over the MVP Short Text shape for this story. Reject unknown current-version field properties, unknown field kinds, raw validation patterns, and malformed binding objects.
-  - [ ] Preserve `camelCase`, stable string IDs, and one authoritative draft document per Workflow.
-- [ ] Add authenticated save/read behavior for field creation and form binding through the existing draft contract (AC: 1-2)
-  - [ ] Extend `Moviqo.Back/src/moviqo/modules/workflow_design/application/services.py` so `save_workflow_draft()` validates Short Text definition defaults and limits, preserves stable field IDs across reuse, and rejects bindings that duplicate a field definition instead of referencing it.
-  - [ ] Keep the draft mutation inside the current atomic-command, idempotency, audit, and optimistic-revision path. Invalid field edits must leave the last valid persisted draft unchanged.
-  - [ ] Extend `Moviqo.Back/src/moviqo/modules/workflow_design/application/views.py` and generated `/api/v1` contract types through the existing draft save route; do not introduce a separate ad hoc endpoint just for fields unless the current route becomes impossible to keep authoritative.
-  - [ ] Return field-level or binding-level Problem Details entries that let the UI highlight the exact invalid input while preserving safe, localized-ready language.
-- [ ] Add the first Designer authoring UI for a Short Text field and first-task binding (AC: 1-2)
-  - [ ] Evolve the current post-graph authoring surface in `Moviqo.Front/src/features/workflow-design/ui/WorkflowDraftEditor.tsx` and its model types so the saved Start -> Task -> End path can add one reusable Short Text field and bind it to the first Task without replacing the graph editor.
-  - [ ] Keep the UX guided and non-technical: use plain workflow/form language such as `Short text`, `Label`, `Help text`, `Placeholder`, `Default value`, `Minimum length`, `Maximum length`, and `Add to first task`.
-  - [ ] Reuse the existing shared-draft reducer seam in `Moviqo.Front/src/shared/drafts/model/revisionDraftReducer.ts` and the current workflow-design feature slice. Do not introduce local-only field persistence, a second remote-state stack, or client-generated authoritative field semantics.
-  - [ ] Preserve Spanish-first copy with English fallback and keep new frontend implementation functions in `Moviqo.Front/src/**/*.{ts,tsx}` as arrow-function constants per `AGENTS.md`.
-- [ ] Add executable evidence across schema evolution, authoritative saves, and guided authoring (AC: 1-3)
-  - [ ] Add backend unit coverage for Short Text schema normalization, default minimum/maximum behavior, max-255 enforcement, minimum-greater-than-maximum rejection, raw-pattern rejection, and upcasting of pre-field draft fixtures.
-  - [ ] Add backend contract tests for valid field creation and first-task binding, stable binding reuse, malformed field rejection, and safe Problem Details responses.
-  - [ ] Add real-PostgreSQL integration tests that prove one revision increment per accepted save, unchanged persisted draft after rejected field edits, and semantic audit coverage for field creation, field update, field binding, and binding removal.
-  - [ ] Add frontend unit coverage for guided field creation, authoritative save replacement, preserved local edits before acceptance, and reuse of the same field identity when rebinding to the first Task.
+- [x] Extend the workflow-design draft schema to represent reusable Process Fields and first-task form bindings (AC: 1-3)
+  - [x] Evolve `Moviqo.Back/src/moviqo/modules/workflow_design/application/schema.py` from the Story 1.22 graph-only document into a schema-versioned document that can store reusable Process Field definitions and first-task form bindings alongside `elements` and `connections`.
+  - [x] Add deterministic upcasting for Story 1.21 and 1.22 draft fixtures so older drafts load into the new document shape without losing graph identity or requiring manual repair.
+  - [x] Keep writers closed over the MVP Short Text shape for this story. Reject unknown current-version field properties, unknown field kinds, raw validation patterns, and malformed binding objects.
+  - [x] Preserve `camelCase`, stable string IDs, and one authoritative draft document per Workflow.
+- [x] Add authenticated save/read behavior for field creation and form binding through the existing draft contract (AC: 1-2)
+  - [x] Extend `Moviqo.Back/src/moviqo/modules/workflow_design/application/services.py` so `save_workflow_draft()` validates Short Text definition defaults and limits, preserves stable field IDs across reuse, and rejects bindings that duplicate a field definition instead of referencing it.
+  - [x] Keep the draft mutation inside the current atomic-command, idempotency, audit, and optimistic-revision path. Invalid field edits must leave the last valid persisted draft unchanged.
+  - [x] Extend `Moviqo.Back/src/moviqo/modules/workflow_design/application/views.py` and generated `/api/v1` contract types through the existing draft save route; do not introduce a separate ad hoc endpoint just for fields unless the current route becomes impossible to keep authoritative.
+  - [x] Return field-level or binding-level Problem Details entries that let the UI highlight the exact invalid input while preserving safe, localized-ready language.
+- [x] Add the first Designer authoring UI for a Short Text field and first-task binding (AC: 1-2)
+  - [x] Evolve the current post-graph authoring surface in `Moviqo.Front/src/features/workflow-design/ui/WorkflowDraftEditor.tsx` and its model types so the saved Start -> Task -> End path can add one reusable Short Text field and bind it to the first Task without replacing the graph editor.
+  - [x] Keep the UX guided and non-technical: use plain workflow/form language such as `Short text`, `Label`, `Help text`, `Placeholder`, `Default value`, `Minimum length`, `Maximum length`, and `Add to first task`.
+  - [x] Reuse the existing shared-draft reducer seam in `Moviqo.Front/src/shared/drafts/model/revisionDraftReducer.ts` and the current workflow-design feature slice. Do not introduce local-only field persistence, a second remote-state stack, or client-generated authoritative field semantics.
+  - [x] Preserve Spanish-first copy with English fallback and keep new frontend implementation functions in `Moviqo.Front/src/**/*.{ts,tsx}` as arrow-function constants per `AGENTS.md`.
+- [x] Add executable evidence across schema evolution, authoritative saves, and guided authoring (AC: 1-3)
+  - [x] Add backend unit coverage for Short Text schema normalization, default minimum/maximum behavior, max-255 enforcement, minimum-greater-than-maximum rejection, raw-pattern rejection, and upcasting of pre-field draft fixtures.
+  - [x] Add backend contract tests for valid field creation and first-task binding, stable binding reuse, malformed field rejection, and safe Problem Details responses.
+  - [x] Add real-PostgreSQL integration tests that prove one revision increment per accepted save, unchanged persisted draft after rejected field edits, and semantic audit coverage for field creation, field update, field binding, and binding removal.
+  - [x] Add frontend unit coverage for guided field creation, authoritative save replacement, preserved local edits before acceptance, and reuse of the same field identity when rebinding to the first Task.
 
 ## Dev Notes
 
@@ -265,6 +265,19 @@ Codex
 - `web.open https://reactflow.dev/api-reference/types/react-flow-json-object`
 - `web.open https://reactflow.dev/api-reference/utils/add-edge`
 - `web.open https://react.dev/blog/2024/12/05/react-19`
+- `git status --short`
+- `Get-Content _bmad-output/implementation-artifacts/1-23-create-and-bind-the-first-short-text-process-field.md`
+- `Get-Content _bmad-output/implementation-artifacts/sprint-status.yaml`
+- `Get-Content _bmad/bmm/config.yaml`
+- `Get-Content Moviqo.Front/src/features/workflow-design/model/editor.ts`
+- `Get-Content Moviqo.Back/tests/unit/test_workflow_design_schema_registry.py`
+- `$env:DJANGO_SETTINGS_MODULE='moviqo.settings.test'; uv run pytest tests/unit/test_workflow_design_schema_registry.py tests/contract/test_workflow_design_contract.py`
+- `. .\scripts\use-integration-env.ps1; uv run pytest tests/integration/test_workflow_design_integration.py`
+- `npm run test:unit`
+- `npm run test:architecture`
+- `uv run ruff check src tests`
+- `git rev-parse HEAD`
+- `rg -l "processFields|formBindings|shortText|binding_not_first_task|process-field-bound|process-field-created" Moviqo.Back/src Moviqo.Back/tests Moviqo.Front/src Moviqo.Front/tests`
 
 ### Completion Notes List
 
@@ -272,8 +285,31 @@ Codex
 - The implementation seam for this story is the existing shared draft contract. The story explicitly steers the dev agent away from creating a parallel field subsystem or moving authoritative logic into the browser.
 - Guidance emphasizes stable field identity, first-task binding by reference, schema upcasting, atomic rejected-save behavior, and reuse of the revision-aware reducer path already established in Story 1.22.
 - Sprint status should move from `backlog` to `ready-for-dev` for `1-23-create-and-bind-the-first-short-text-process-field`.
+- August 5, 2026 validation pass confirmed the existing implementation is already present in the repository and green for the story-aligned backend and frontend checks; no new product-code changes were required for this request.
+- Verified backend story coverage:
+  - `24` tests passed across `tests/unit/test_workflow_design_schema_registry.py` and `tests/contract/test_workflow_design_contract.py`
+  - `6` integration tests passed in `tests/integration/test_workflow_design_integration.py` with the repo integration env helper loaded
+- Verified frontend story coverage:
+  - `npm run test:unit` passed, including `workflow-design-create.test.cjs`
+  - `npm run test:architecture` passed
+  - `uv run ruff check src tests` passed for `Moviqo.Back`
 
 ### File List
 
+- `Moviqo.Back/src/moviqo/building_blocks/api/problem_details.py`
+- `Moviqo.Back/src/moviqo/modules/workflow_design/application/schema.py`
+- `Moviqo.Back/src/moviqo/modules/workflow_design/application/services.py`
+- `Moviqo.Back/src/moviqo/modules/workflow_design/application/views.py`
+- `Moviqo.Back/tests/contract/test_workflow_design_contract.py`
+- `Moviqo.Back/tests/integration/test_workflow_design_integration.py`
+- `Moviqo.Back/tests/unit/test_workflow_design_schema_registry.py`
+- `Moviqo.Front/src/features/workflow-design/model/editor.ts`
+- `Moviqo.Front/src/features/workflow-design/model/types.ts`
+- `Moviqo.Front/src/features/workflow-design/ui/WorkflowDraftEditor.tsx`
+- `Moviqo.Front/src/shared/api/generated/schema.d.ts`
+- `Moviqo.Front/tests/unit/workflow-design-create.test.cts`
 - `_bmad-output/implementation-artifacts/1-23-create-and-bind-the-first-short-text-process-field.md`
-- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Change Log
+
+- 2026-08-05: Revalidated the already-landed Story 1.23 implementation, reconciled the checklist with the repository state, and refreshed the completion record with passing backend/frontend evidence.

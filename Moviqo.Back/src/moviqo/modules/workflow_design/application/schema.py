@@ -31,7 +31,9 @@ CURRENT_PROCESS_FIELD_FIELDS = frozenset(
         "maximumLength",
     }
 )
-CURRENT_FORM_BINDING_FIELDS = frozenset({"id", "taskElementId", "fieldId"})
+CURRENT_FORM_BINDING_FIELDS = frozenset(
+    {"id", "taskElementId", "fieldId", "position", "width", "label"}
+)
 SUPPORTED_ELEMENT_TYPES = frozenset({"start", "task", "end"})
 SUPPORTED_CONNECTION_TYPES = frozenset({"sequence"})
 SUPPORTED_PROCESS_FIELD_KINDS = frozenset({"shortText"})
@@ -643,7 +645,7 @@ def _normalize_process_field(payload: Any) -> dict[str, Any]:
     }
 
 
-def _normalize_form_binding(payload: Any) -> dict[str, str]:
+def _normalize_form_binding(payload: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise WorkflowDraftSchemaError("Workflow draft formBindings must be objects.")
 
@@ -659,6 +661,27 @@ def _normalize_form_binding(payload: Any) -> dict[str, str]:
             field=issue_field,
             code="unknown_field",
             reason="Remove unsupported placement data from this task field.",
+        )
+
+    position = _normalize_length(
+        payload,
+        "position",
+        0,
+        field=f"{binding_path}.position",
+    )
+    width = payload.get("width", "full")
+    if not isinstance(width, str):
+        _raise_validation_issue(
+            field=f"{binding_path}.width",
+            code="invalid",
+            reason="Keep this task field at the default full width.",
+        )
+    width = width.strip() or "full"
+    if width != "full":
+        _raise_validation_issue(
+            field=f"{binding_path}.width",
+            code="unsupported_width",
+            reason="Keep this task field at the default full width.",
         )
 
     return {
@@ -683,6 +706,9 @@ def _normalize_form_binding(payload: Any) -> dict[str, str]:
             code="required",
             reason="Choose an existing reusable field before adding it to the task.",
         ),
+        "position": position,
+        "width": width,
+        "label": _normalize_optional_nullable_string(payload, "label"),
     }
 
 

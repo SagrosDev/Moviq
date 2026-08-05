@@ -162,6 +162,19 @@ export type MessageKey =
   | "workflowDesign.editor.removeFromFirstTask"
   | "workflowDesign.editor.fieldSummaryPrefix"
   | "workflowDesign.editor.fieldEmpty"
+  | "taskForm.eyebrow"
+  | "taskForm.status"
+  | "taskForm.revision"
+  | "taskForm.errorTitle"
+  | "taskForm.retry"
+  | "taskForm.save"
+  | "taskForm.saving"
+  | "taskForm.saveSuccess"
+  | "taskForm.saveError"
+  | "taskForm.complete"
+  | "taskForm.back"
+  | "taskForm.loading"
+  | "taskForm.loadError"
   | "passwordRecovery.eyebrow"
   | "passwordRecovery.title"
   | "passwordRecovery.lede"
@@ -423,6 +436,19 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.removeFromFirstTask": "Quitar de la primera Task",
   "workflowDesign.editor.fieldSummaryPrefix": "Campo listo:",
   "workflowDesign.editor.fieldEmpty": "Todavia no has creado un campo reutilizable.",
+  "taskForm.eyebrow": "Tarea activa",
+  "taskForm.status": "Estado:",
+  "taskForm.revision": "Revision:",
+  "taskForm.errorTitle": "Corrige este formulario antes de guardar",
+  "taskForm.retry": "Reintentar",
+  "taskForm.save": "Guardar borrador",
+  "taskForm.saving": "Guardando borrador",
+  "taskForm.saveSuccess": "El servidor guardo el avance autorizado.",
+  "taskForm.saveError": "No pudimos guardar este formulario. Corrige los datos e intenta de nuevo.",
+  "taskForm.complete": "Completar tarea",
+  "taskForm.back": "Volver a Mi trabajo",
+  "taskForm.loading": "Cargando la tarea autorizada.",
+  "taskForm.loadError": "No pudimos cargar esta tarea autorizada. Intenta de nuevo.",
   "passwordRecovery.eyebrow": "Recuperacion segura",
   "passwordRecovery.title": "Recupera tu contrasena",
   "passwordRecovery.lede": "Te enviaremos instrucciones si la cuenta puede recibirlas.",
@@ -686,6 +712,19 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.removeFromFirstTask": "Remove from first task",
   "workflowDesign.editor.fieldSummaryPrefix": "Field ready:",
   "workflowDesign.editor.fieldEmpty": "You have not created a reusable field yet.",
+  "taskForm.eyebrow": "Active task",
+  "taskForm.status": "Status:",
+  "taskForm.revision": "Revision:",
+  "taskForm.errorTitle": "Correct this form before saving",
+  "taskForm.retry": "Retry",
+  "taskForm.save": "Save draft",
+  "taskForm.saving": "Saving draft",
+  "taskForm.saveSuccess": "The server saved the authorized progress.",
+  "taskForm.saveError": "We could not save this form. Correct the values and try again.",
+  "taskForm.complete": "Complete task",
+  "taskForm.back": "Back to My work",
+  "taskForm.loading": "Loading the authorized task.",
+  "taskForm.loadError": "We could not load this authorized task. Try again.",
   "passwordRecovery.eyebrow": "Secure recovery",
   "passwordRecovery.title": "Recover your password",
   "passwordRecovery.lede": "We will send instructions if the account can receive them.",

@@ -27,10 +27,13 @@ export type WorkflowProcessField = {
   maximumLength: number;
 };
 
-export type WorkflowFormBinding = {
+export type WorkflowTaskFormControl = {
   id: string;
   taskElementId: string;
   fieldId: string;
+  position: number;
+  width: "full";
+  label: string | null;
 };
 
 export type WorkflowDraftDocument = {
@@ -42,7 +45,7 @@ export type WorkflowDraftDocument = {
   elements: WorkflowDraftElement[];
   connections: WorkflowDraftConnection[];
   processFields: WorkflowProcessField[];
-  formBindings: WorkflowFormBinding[];
+  formBindings: WorkflowTaskFormControl[];
 };
 
 export type WorkflowCreationAccepted = {

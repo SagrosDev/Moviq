@@ -8,8 +8,7 @@ from rest_framework.exceptions import APIException
 
 from moviqo.building_blocks.commands import execute_atomic_command
 from moviqo.building_blocks.tenancy.runtime import TenantContext
-from moviqo.modules.workflow_design.application.schema import load_draft_document
-from moviqo.modules.workflow_design.models import WorkflowDraft
+from moviqo.modules.workflow_design.application import read_workflow_draft_snapshot
 from moviqo.modules.workflow_runtime.models import TaskOccurrence, TaskProcessFieldValue
 
 TASK_FORM_SAVE_COMMAND = "workflow-runtime.save-task-form-draft"
@@ -374,10 +373,20 @@ def _validate_submitted_controls(
 
 
 def _load_authoritative_task_document(task: TaskOccurrence) -> dict[str, Any] | None:
-    draft = WorkflowDraft.objects.only("revision", "document").get(workflow_id=task.workflow_id)
-    if draft.revision != task.definition_revision:
+    snapshot = read_workflow_draft_snapshot(
+        tenant_context=TenantContext(
+            organization_id=task.organization_id,
+            membership_id=task.assignee_membership_id,
+            user_id=task.assignee_user_id,
+        ),
+        workflow_id=task.workflow_id,
+    )
+    if snapshot is None:
         return None
-    return load_draft_document(draft.document)
+    revision, document = snapshot
+    if revision != task.definition_revision:
+        return None
+    return document
 
 
 def _task_form_response(*, projection: TaskFormProjection) -> dict[str, Any]:

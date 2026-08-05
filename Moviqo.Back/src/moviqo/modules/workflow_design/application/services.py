@@ -153,6 +153,22 @@ def read_workflow_draft(*, tenant_context: TenantContext, workflow_id) -> dict[s
     }
 
 
+def read_workflow_draft_snapshot(
+    *,
+    tenant_context: TenantContext,
+    workflow_id,
+) -> tuple[str, dict[str, Any]] | None:
+    workflow = (
+        WorkflowDefinition.objects.select_related("draft")
+        .filter(id=workflow_id, organization_id=tenant_context.organization_id)
+        .first()
+    )
+    if workflow is None:
+        return None
+
+    return workflow.draft.revision, load_draft_document(workflow.draft.document)
+
+
 def save_workflow_draft(
     *,
     tenant_context: TenantContext,

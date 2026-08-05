@@ -273,6 +273,164 @@
                 }
             }
         },
+        "/api/v1/my-work/tasks/{task_id}/form/": {
+            "get": {
+                "operationId": "workflow_runtime_task_form_detail",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "task_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "my-work"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TaskFormDocument"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "403": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "workflow_runtime_task_form_save",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "task_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "my-work"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TaskFormSaveRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TaskFormSaveRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TaskFormSaveRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TaskFormDocument"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "403": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "409": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/organizations/protected-memberships/{membership_id}/": {
             "get": {
                 "operationId": "organizations_protected_membership_detail",
@@ -1393,6 +1551,165 @@
                     "status"
                 ]
             },
+            "TaskFormActions": {
+                "type": "object",
+                "properties": {
+                    "saveDraft": {
+                        "type": "boolean"
+                    },
+                    "complete": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "complete",
+                    "saveDraft"
+                ]
+            },
+            "TaskFormBody": {
+                "type": "object",
+                "properties": {
+                    "controls": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TaskFormControl"
+                        }
+                    }
+                },
+                "required": [
+                    "controls"
+                ]
+            },
+            "TaskFormControl": {
+                "type": "object",
+                "properties": {
+                    "controlId": {
+                        "type": "string"
+                    },
+                    "fieldId": {
+                        "type": "string"
+                    },
+                    "kind": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "helpText": {
+                        "type": "string"
+                    },
+                    "placeholder": {
+                        "type": "string"
+                    },
+                    "width": {
+                        "type": "string"
+                    },
+                    "position": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "controlId",
+                    "fieldId",
+                    "helpText",
+                    "kind",
+                    "label",
+                    "placeholder",
+                    "position",
+                    "value",
+                    "width"
+                ]
+            },
+            "TaskFormDocument": {
+                "type": "object",
+                "properties": {
+                    "taskId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "workflowId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "workflowName": {
+                        "type": "string"
+                    },
+                    "taskTitle": {
+                        "type": "string"
+                    },
+                    "taskElementId": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "taskRevision": {
+                        "type": "string"
+                    },
+                    "definitionRevision": {
+                        "type": "string"
+                    },
+                    "actions": {
+                        "$ref": "#/components/schemas/TaskFormActions"
+                    },
+                    "form": {
+                        "$ref": "#/components/schemas/TaskFormBody"
+                    }
+                },
+                "required": [
+                    "actions",
+                    "definitionRevision",
+                    "form",
+                    "status",
+                    "taskElementId",
+                    "taskId",
+                    "taskRevision",
+                    "taskTitle",
+                    "workflowId",
+                    "workflowName"
+                ]
+            },
+            "TaskFormSaveControl": {
+                "type": "object",
+                "properties": {
+                    "controlId": {
+                        "type": "string"
+                    },
+                    "fieldId": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "controlId",
+                    "fieldId",
+                    "value"
+                ]
+            },
+            "TaskFormSaveRequest": {
+                "type": "object",
+                "properties": {
+                    "expectedTaskRevision": {
+                        "type": "string"
+                    },
+                    "controls": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TaskFormSaveControl"
+                        }
+                    }
+                },
+                "required": [
+                    "controls",
+                    "expectedTaskRevision"
+                ]
+            },
             "WorkflowCatalogItem": {
                 "type": "object",
                 "properties": {
@@ -1603,6 +1920,17 @@
                     },
                     "fieldId": {
                         "type": "string"
+                    },
+                    "position": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "width": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string",
+                        "nullable": true
                     }
                 },
                 "required": [

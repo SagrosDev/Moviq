@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -28,32 +29,35 @@ def test_versioned_openapi_schema_is_served_and_committed() -> None:
     assert committed_schema == served_schema
 
 
-def test_schema_generation_command_validates_without_warnings(tmp_path: Path) -> None:
-    generated = tmp_path / "openapi-v1.json"
+def test_schema_generation_command_validates_without_warnings() -> None:
+    generated = PROJECT_ROOT / ".tmp-openapi-v1.json"
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "src/manage.py",
+                "spectacular",
+                "--file",
+                str(generated),
+                "--format",
+                "openapi-json",
+                "--validate",
+                "--fail-on-warn",
+                "--settings=moviqo.settings.test",
+            ],
+            cwd=PROJECT_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
 
-    result = subprocess.run(
-        [
-            sys.executable,
-            "src/manage.py",
-            "spectacular",
-            "--file",
-            str(generated),
-            "--format",
-            "openapi-json",
-            "--validate",
-            "--fail-on-warn",
-            "--settings=moviqo.settings.test",
-        ],
-        cwd=PROJECT_ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-
-    assert result.returncode == 0, result.stderr
-    assert json.loads(generated.read_text(encoding="utf-8")) == json.loads(
-        SCHEMA_PATH.read_text(encoding="utf-8")
-    )
+        assert result.returncode == 0, result.stderr
+        assert json.loads(generated.read_text(encoding="utf-8")) == json.loads(
+            SCHEMA_PATH.read_text(encoding="utf-8")
+        )
+    finally:
+        if generated.exists():
+            os.remove(generated)
 
 
 def test_problem_details_component_matches_runtime_shape() -> None:

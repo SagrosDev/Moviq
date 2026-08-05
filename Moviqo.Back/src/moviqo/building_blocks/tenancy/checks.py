@@ -79,6 +79,20 @@ PROTECTED_TENANT_RESOURCES = (
         evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[outbox-message]",
     ),
     TenantIsolationGateRegistration(
+        resource_name="workflow-definition",
+        table_name="workflow_design_workflow_definition",
+        policy_name="workflow_design_workflow_definition_tenant_isolation",
+        isolation_test_id="workflow_definition",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[workflow-definition]",
+    ),
+    TenantIsolationGateRegistration(
+        resource_name="workflow-draft",
+        table_name="workflow_design_workflow_draft",
+        policy_name="workflow_design_workflow_draft_tenant_isolation",
+        isolation_test_id="workflow_draft",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[workflow-draft]",
+    ),
+    TenantIsolationGateRegistration(
         resource_name="atomic-command-probe",
         table_name="workflow_runtime_atomic_command_probe",
         policy_name="workflow_runtime_atomic_command_probe_tenant_isolation",

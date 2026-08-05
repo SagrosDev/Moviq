@@ -41,6 +41,7 @@ SAFE_VISIBLE_INVALID_PARAM_NAMES = frozenset(
         "termsVersion",
         "privacyVersion",
         "nonFieldErrors",
+        "name",
     }
 )
 SAFE_PASSWORD_REASON_CODES = {

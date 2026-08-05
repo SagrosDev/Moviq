@@ -635,6 +635,190 @@
                     }
                 }
             }
+        },
+        "/api/v1/workflow-design/workflows/": {
+            "get": {
+                "operationId": "workflow_design_catalog_list",
+                "tags": [
+                    "workflow-design"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WorkflowCatalogResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "403": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "workflow_design_workflow_create",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "workflow-design"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowCreateRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowCreateRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorkflowCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WorkflowCreateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "403": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "409": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/workflow-design/workflows/{workflow_id}/draft/": {
+            "get": {
+                "operationId": "workflow_design_draft_detail",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "workflow_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "workflow-design"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WorkflowCreateResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "403": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -1105,6 +1289,131 @@
                 },
                 "required": [
                     "status"
+                ]
+            },
+            "WorkflowCatalogItem": {
+                "type": "object",
+                "properties": {
+                    "workflowId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "revision": {
+                        "type": "string"
+                    },
+                    "schemaVersion": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "name",
+                    "revision",
+                    "schemaVersion",
+                    "updatedAt",
+                    "workflowId"
+                ]
+            },
+            "WorkflowCatalogResponse": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WorkflowCatalogItem"
+                        }
+                    }
+                },
+                "required": [
+                    "items"
+                ]
+            },
+            "WorkflowCreateRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 120
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            },
+            "WorkflowCreateResponse": {
+                "type": "object",
+                "properties": {
+                    "workflowId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "organizationId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "createdByMembershipId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "revision": {
+                        "type": "string"
+                    },
+                    "draft": {
+                        "$ref": "#/components/schemas/WorkflowDraftDocument"
+                    }
+                },
+                "required": [
+                    "createdByMembershipId",
+                    "draft",
+                    "name",
+                    "organizationId",
+                    "revision",
+                    "workflowId"
+                ]
+            },
+            "WorkflowDraftDocument": {
+                "type": "object",
+                "properties": {
+                    "schemaVersion": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "draftId": {
+                        "type": "string"
+                    },
+                    "workflowId": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "elements": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                        }
+                    }
+                },
+                "required": [
+                    "draftId",
+                    "name",
+                    "schemaVersion",
+                    "status",
+                    "workflowId"
                 ]
             }
         },

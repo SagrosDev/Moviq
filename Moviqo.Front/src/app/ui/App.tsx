@@ -6,33 +6,41 @@ import { SignInPage } from "../../pages/sign-in";
 import { PasswordRecoveryPage } from "../../pages/password-recovery";
 import { PasswordResetPage } from "../../pages/password-reset";
 import { MyWorkPage } from "../../pages/my-work";
+import { WorkflowCreatePage } from "../../pages/workflow-create";
 import { protectedEntryPath, useSession } from "../../features/authentication";
 import { AppProviders } from "../providers/AppProviders";
 import { EnvironmentBanner } from "./EnvironmentBanner";
 
+export const normalizeAppPath = (path: string) =>
+  path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+
 const AppRouter = () => {
   const { state } = useSession();
   const path = typeof window === "undefined" ? "/" : window.location.pathname;
-  const isPublicLanding = path === "/" || path === "/es/" || path === "/en/";
+  const normalizedPath = normalizeAppPath(path);
+  const isPublicLanding =
+    normalizedPath === "/" || normalizedPath === "/es" || normalizedPath === "/en";
   const shouldRouteAuthenticatedRoot =
-    path === "/" && state.status === "authenticated";
+    normalizedPath === "/" && state.status === "authenticated";
 
   return (
     <>
       {!isPublicLanding && <EnvironmentBanner />}
-      {path === "/design-system" ? (
+      {normalizedPath === "/design-system" ? (
         <DesignSystemPage />
-      ) : path === "/register" ? (
+      ) : normalizedPath === "/register" ? (
         <RegistrationPage />
-      ) : path === "/verify-email" ? (
+      ) : normalizedPath === "/verify-email" ? (
         <VerificationPage />
-      ) : path === "/sign-in" ? (
+      ) : normalizedPath === "/sign-in" ? (
         <SignInPage />
-      ) : path === "/password-recovery" ? (
+      ) : normalizedPath === "/password-recovery" ? (
         <PasswordRecoveryPage />
-      ) : path === "/password-reset" ? (
+      ) : normalizedPath === "/password-reset" ? (
         <PasswordResetPage />
-      ) : path === protectedEntryPath || shouldRouteAuthenticatedRoot ? (
+      ) : normalizedPath === "/my-work/workflows/new" ? (
+        <WorkflowCreatePage />
+      ) : normalizedPath === protectedEntryPath || shouldRouteAuthenticatedRoot ? (
         <MyWorkPage />
       ) : (
         <HomePage />

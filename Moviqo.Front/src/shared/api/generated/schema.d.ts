@@ -202,6 +202,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workflow-design/workflows/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["workflow_design_catalog_list"];
+        put?: never;
+        post: operations["workflow_design_workflow_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workflow-design/workflows/{workflow_id}/draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["workflow_design_draft_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -335,6 +367,42 @@ export interface components {
         };
         SystemPing: {
             status: string;
+        };
+        WorkflowCatalogItem: {
+            /** Format: uuid */
+            workflowId: string;
+            name: string;
+            revision: string;
+            schemaVersion: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        WorkflowCatalogResponse: {
+            items: components["schemas"]["WorkflowCatalogItem"][];
+        };
+        WorkflowCreateRequest: {
+            name: string;
+        };
+        WorkflowCreateResponse: {
+            /** Format: uuid */
+            workflowId: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            createdByMembershipId: string;
+            name: string;
+            revision: string;
+            draft: components["schemas"]["WorkflowDraftDocument"];
+        };
+        WorkflowDraftDocument: {
+            schemaVersion: number;
+            draftId: string;
+            workflowId: string;
+            name: string;
+            status: string;
+            elements?: {
+                [key: string]: unknown;
+            }[];
         };
     };
     responses: never;
@@ -719,6 +787,129 @@ export interface operations {
                 };
             };
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_design_catalog_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowCatalogResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_design_workflow_create: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowCreateRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WorkflowCreateRequest"];
+                "multipart/form-data": components["schemas"]["WorkflowCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowCreateResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_design_draft_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowCreateResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

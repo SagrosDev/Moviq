@@ -100,6 +100,22 @@ export type MessageKey =
   | "myWork.myProcesses.title"
   | "myWork.myProcesses.summary"
   | "myWork.myProcesses.empty"
+  | "workflowDesign.create.eyebrow"
+  | "workflowDesign.create.title"
+  | "workflowDesign.create.lede"
+  | "workflowDesign.create.body"
+  | "workflowDesign.create.name"
+  | "workflowDesign.create.help"
+  | "workflowDesign.create.submit"
+  | "workflowDesign.create.submitting"
+  | "workflowDesign.create.back"
+  | "workflowDesign.create.error"
+  | "workflowDesign.create.conflict"
+  | "workflowDesign.create.cta"
+  | "workflowDesign.draft.title"
+  | "workflowDesign.draft.revision"
+  | "workflowDesign.draft.schemaVersion"
+  | "workflowDesign.draft.save"
   | "passwordRecovery.eyebrow"
   | "passwordRecovery.title"
   | "passwordRecovery.lede"
@@ -292,6 +308,27 @@ export const spanishMessages: MessageDictionary = {
   "myWork.myProcesses.title": "Mis procesos",
   "myWork.myProcesses.summary": "Procesos en los que has participado o que puedes seguir.",
   "myWork.myProcesses.empty": "No tienes procesos autorizados para seguir ahora.",
+  "workflowDesign.create.eyebrow": "Diseno de flujos",
+  "workflowDesign.create.title": "Crear flujo",
+  "workflowDesign.create.lede":
+    "Crea un flujo con un borrador compartido y mutable para comenzar la configuracion.",
+  "workflowDesign.create.body":
+    "Usa un nombre claro. El servidor devolvera el borrador y la revision autorizados.",
+  "workflowDesign.create.name": "Nombre del flujo",
+  "workflowDesign.create.help":
+    "Usa un nombre corto, claro y unico dentro de tu organizacion.",
+  "workflowDesign.create.submit": "Crear flujo",
+  "workflowDesign.create.submitting": "Creando flujo",
+  "workflowDesign.create.back": "Volver",
+  "workflowDesign.create.error":
+    "No pudimos crear el flujo. Revisa el nombre e intenta de nuevo.",
+  "workflowDesign.create.conflict":
+    "Ese nombre ya esta en uso. Elige otro antes de continuar.",
+  "workflowDesign.create.cta": "Crear flujo",
+  "workflowDesign.draft.title": "Borrador",
+  "workflowDesign.draft.revision": "Revision",
+  "workflowDesign.draft.schemaVersion": "Version de esquema",
+  "workflowDesign.draft.save": "Guardar borrador",
   "passwordRecovery.eyebrow": "Recuperacion segura",
   "passwordRecovery.title": "Recupera tu contrasena",
   "passwordRecovery.lede": "Te enviaremos instrucciones si la cuenta puede recibirlas.",
@@ -486,6 +523,27 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.myProcesses.title": "My processes",
   "myWork.myProcesses.summary": "Processes you have participated in or may follow.",
   "myWork.myProcesses.empty": "You do not have any authorized processes to follow right now.",
+  "workflowDesign.create.eyebrow": "Workflow design",
+  "workflowDesign.create.title": "Create workflow",
+  "workflowDesign.create.lede":
+    "Create one workflow with a shared mutable draft so configuration can begin safely.",
+  "workflowDesign.create.body":
+    "Use a clear name. The server returns the authoritative draft and revision.",
+  "workflowDesign.create.name": "Workflow name",
+  "workflowDesign.create.help":
+    "Use a short, clear, unique name inside your organization.",
+  "workflowDesign.create.submit": "Create workflow",
+  "workflowDesign.create.submitting": "Creating workflow",
+  "workflowDesign.create.back": "Back",
+  "workflowDesign.create.error":
+    "We could not create the workflow. Review the name and try again.",
+  "workflowDesign.create.conflict":
+    "That name is already in use. Choose a different one before continuing.",
+  "workflowDesign.create.cta": "Create workflow",
+  "workflowDesign.draft.title": "Draft",
+  "workflowDesign.draft.revision": "Revision",
+  "workflowDesign.draft.schemaVersion": "Schema version",
+  "workflowDesign.draft.save": "Save draft",
   "passwordRecovery.eyebrow": "Secure recovery",
   "passwordRecovery.title": "Recover your password",
   "passwordRecovery.lede": "We will send instructions if the account can receive them.",

@@ -13,13 +13,20 @@ import type {
 type MyWorkShellProps = {
   snapshot: QuerySnapshot<MyWorkDashboard>;
   onRetry(): void;
+  workflowCreationHref?: string | null;
+  showWorkflowCreation: boolean;
 };
 
 type Translate = ReturnType<typeof useLanguage>["t"];
 
 const regionOrder: MyWorkRegion[] = ["myTasks", "startWorkflows", "myProcesses"];
 
-export const MyWorkShell = ({ snapshot, onRetry }: MyWorkShellProps) => {
+export const MyWorkShell = ({
+  snapshot,
+  onRetry,
+  workflowCreationHref,
+  showWorkflowCreation
+}: MyWorkShellProps) => {
   const { t } = useLanguage();
   const [activeRegion, setActiveRegion] = useState<MyWorkRegion>("myTasks");
 
@@ -28,6 +35,11 @@ export const MyWorkShell = ({ snapshot, onRetry }: MyWorkShellProps) => {
       <p className="eyebrow">{t("myWork.eyebrow")}</p>
       <h1 id="my-work-title">{t("myWork.title")}</h1>
       <p className="lede">{t("myWork.lede")}</p>
+      {showWorkflowCreation && workflowCreationHref ? <div className="button-row">
+        <a className="button" href={workflowCreationHref}>
+          {t("workflowDesign.create.cta")}
+        </a>
+      </div> : null}
     </div>
     <nav className="my-work-nav" aria-label={t("myWork.regionNav")}>
       {regionOrder.map((region) => <a

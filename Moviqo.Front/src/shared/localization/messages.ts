@@ -132,10 +132,17 @@ export type MessageKey =
   | "workflowDesign.editor.connectStartTask"
   | "workflowDesign.editor.connectTaskEnd"
   | "workflowDesign.editor.saving"
+  | "workflowDesign.editor.unsaved"
+  | "workflowDesign.editor.retrying"
+  | "workflowDesign.editor.saveNow"
   | "workflowDesign.editor.saveSuccess"
   | "workflowDesign.editor.saveError"
+  | "workflowDesign.editor.reloadError"
   | "workflowDesign.editor.errorTitle"
   | "workflowDesign.editor.conflictTitle"
+  | "workflowDesign.editor.conflictMessage"
+  | "workflowDesign.editor.reloadLatest"
+  | "workflowDesign.editor.reapplyChanges"
   | "workflowDesign.editor.validatePublication"
   | "workflowDesign.editor.validatingPublication"
   | "workflowDesign.editor.checklistTitle"
@@ -444,10 +451,18 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.connectStartTask": "Conectar Start con Task",
   "workflowDesign.editor.connectTaskEnd": "Conectar Task con End",
   "workflowDesign.editor.saving": "Guardando borrador",
+  "workflowDesign.editor.unsaved": "Cambios sin guardar",
+  "workflowDesign.editor.retrying": "Reintentando guardado",
+  "workflowDesign.editor.saveNow": "Guardar ahora",
   "workflowDesign.editor.saveSuccess": "El servidor guardo el camino autorizado.",
   "workflowDesign.editor.saveError": "No pudimos guardar este borrador. Corrige el camino e intenta de nuevo.",
+  "workflowDesign.editor.reloadError": "No pudimos recargar la ultima revision autorizada. Intenta de nuevo.",
   "workflowDesign.editor.errorTitle": "Corrige este borrador antes de guardar",
   "workflowDesign.editor.conflictTitle": "El servidor tiene una revision mas reciente",
+  "workflowDesign.editor.conflictMessage":
+    "Otra persona guardo primero. Recarga el ultimo borrador y reaplica tu cambio.",
+  "workflowDesign.editor.reloadLatest": "Recargar ultimo borrador",
+  "workflowDesign.editor.reapplyChanges": "Reaplicar mis cambios",
   "workflowDesign.editor.validatePublication": "Validar publicacion",
   "workflowDesign.editor.validatingPublication": "Validando publicacion",
   "workflowDesign.editor.checklistTitle": "Checklist de publicacion",
@@ -774,10 +789,19 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.connectStartTask": "Connect Start to Task",
   "workflowDesign.editor.connectTaskEnd": "Connect Task to End",
   "workflowDesign.editor.saving": "Saving draft",
+  "workflowDesign.editor.unsaved": "Unsaved changes",
+  "workflowDesign.editor.retrying": "Retrying save",
+  "workflowDesign.editor.saveNow": "Save now",
   "workflowDesign.editor.saveSuccess": "The server saved the authorized path.",
   "workflowDesign.editor.saveError": "We could not save this draft. Correct the path and try again.",
+  "workflowDesign.editor.reloadError":
+    "We could not reload the latest authorized draft. Try again.",
   "workflowDesign.editor.errorTitle": "Correct this draft before saving",
   "workflowDesign.editor.conflictTitle": "The server has a newer revision",
+  "workflowDesign.editor.conflictMessage":
+    "Another person saved first. Reload the latest draft and reapply your change.",
+  "workflowDesign.editor.reloadLatest": "Reload latest draft",
+  "workflowDesign.editor.reapplyChanges": "Reapply my changes",
   "workflowDesign.editor.validatePublication": "Validate publication",
   "workflowDesign.editor.validatingPublication": "Validating publication",
   "workflowDesign.editor.checklistTitle": "Publish checklist",

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import threading
 import uuid
 
 import pytest
 from django.conf import settings
+from django.db import close_old_connections
 
 from moviqo.building_blocks.commands import IdempotencyKeyReuseConflict
 from moviqo.building_blocks.tenancy.runtime import TenantContext
@@ -16,6 +19,9 @@ from moviqo.modules.workflow_design.application import (
     validate_workflow_publication,
 )
 from moviqo.modules.workflow_design.application.services import WorkflowDraftValidationAPIError
+from moviqo.modules.workflow_design.application.services import (
+    WorkflowDraftRevisionConflictError,
+)
 from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft
 
 
@@ -230,6 +236,153 @@ def test_workflow_graph_save_advances_revision_once_and_records_semantic_audit(
         command_type="workflow-design.save-draft",
         event_type="workflow-design.process-field-updated",
     ).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_accepted_graph_save_replays_one_committed_revision(django_user_model) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow intake",
+        idempotency_key="workflow-create-1",
+        request_hash=_request_hash("Workflow intake"),
+    )
+    request_hash = _request_hash("workflow-save-replay")
+    draft_payload = {
+        "schemaVersion": 3,
+        "draftId": created["draft"]["draftId"],
+        "workflowId": created["workflowId"],
+        "name": "Workflow intake",
+        "status": "draft",
+        "elements": [
+            {"id": "start-1", "type": "start", "label": "Start"},
+            {"id": "task-1", "type": "task", "label": "Task"},
+            {"id": "end-1", "type": "end", "label": "End"},
+        ],
+        "connections": [
+            {
+                "id": "connection-1",
+                "type": "sequence",
+                "sourceId": "start-1",
+                "targetId": "task-1",
+            },
+            {
+                "id": "connection-2",
+                "type": "sequence",
+                "sourceId": "task-1",
+                "targetId": "end-1",
+            },
+        ],
+        "processFields": [],
+        "formBindings": [],
+    }
+
+    first = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft=draft_payload,
+        idempotency_key="workflow-save-replay",
+        request_hash=request_hash,
+    )
+    second = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft=draft_payload,
+        idempotency_key="workflow-save-replay",
+        request_hash=request_hash,
+    )
+
+    assert first == second
+    assert WorkflowDraft.objects.get(workflow_id=created["workflowId"]).revision == "2"
+    assert CommandResult.objects.filter(
+        command_type="workflow-design.save-draft",
+        idempotency_key="workflow-save-replay",
+    ).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_stale_graph_save_rejects_the_loser_without_partial_overwrite(
+    django_user_model,
+) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow intake",
+        idempotency_key="workflow-create-1",
+        request_hash=_request_hash("Workflow intake"),
+    )
+    start_gate = threading.Event()
+
+    def attempt_save(task_label: str, idempotency_key: str) -> tuple[str, str]:
+        close_old_connections()
+        draft_payload = {
+            "schemaVersion": 3,
+            "draftId": created["draft"]["draftId"],
+            "workflowId": created["workflowId"],
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": [
+                {"id": "start-1", "type": "start", "label": "Start"},
+                {"id": "task-1", "type": "task", "label": task_label},
+                {"id": "end-1", "type": "end", "label": "End"},
+            ],
+            "connections": [
+                {
+                    "id": "connection-1",
+                    "type": "sequence",
+                    "sourceId": "start-1",
+                    "targetId": "task-1",
+                },
+                {
+                    "id": "connection-2",
+                    "type": "sequence",
+                    "sourceId": "task-1",
+                    "targetId": "end-1",
+                },
+            ],
+            "processFields": [],
+            "formBindings": [],
+        }
+        start_gate.wait()
+        try:
+            accepted = save_workflow_draft(
+                tenant_context=tenant_context,
+                workflow_id=created["workflowId"],
+                expected_revision="1",
+                draft=draft_payload,
+                idempotency_key=idempotency_key,
+                request_hash=_request_hash(idempotency_key),
+            )
+            return ("accepted", accepted["draft"]["elements"][1]["label"])
+        except WorkflowDraftRevisionConflictError:
+            return ("conflict", task_label)
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first_future = executor.submit(attempt_save, "Task A", "workflow-save-a")
+        second_future = executor.submit(attempt_save, "Task B", "workflow-save-b")
+        start_gate.set()
+        first = first_future.result()
+        second = second_future.result()
+
+    results = [first, second]
+    accepted = [result for result in results if result[0] == "accepted"]
+    conflicted = [result for result in results if result[0] == "conflict"]
+
+    assert len(accepted) == 1
+    assert len(conflicted) == 1
+
+    draft = WorkflowDraft.objects.get(workflow_id=created["workflowId"])
+    assert draft.revision == "2"
+    assert draft.document["elements"][1]["label"] == accepted[0][1]
+    assert draft.document["elements"][1]["label"] != conflicted[0][1]
 
 
 @pytest.mark.django_db(transaction=True)

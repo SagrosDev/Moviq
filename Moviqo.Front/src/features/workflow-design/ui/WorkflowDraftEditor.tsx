@@ -3,16 +3,21 @@ import { useLanguage } from "../../../shared/localization";
 import { type DraftState } from "../../../shared/drafts";
 import { StatusBadge } from "../../../shared/ui/catalog";
 import {
+  autosaveDelayMs,
   applyWorkflowDraftSave,
+  shouldScheduleAutosave,
   createPublicationValidationRequestKey,
   createWorkflowDraftEditorState,
   focusChecklistTarget,
+  readWorkflowDraft,
   reduceWorkflowDraftEditorState,
   saveWorkflowDraft,
   summarizeStarterSelection,
   validateWorkflowPublication,
   workflowPathPreview
 } from "../model/editor";
+import { createWorkflowDraftState } from "../model/draft";
+import { createDraftState } from "../../../shared/drafts";
 import type {
   WorkflowCreationAccepted,
   WorkflowConfigurationDirectory,
@@ -56,7 +61,7 @@ export const WorkflowDraftEditor = ({
   }, [draftState]);
 
   useEffect(() => {
-    const currentField = draftState.value.processFields[0];
+    const currentField = editorState.localDraft.processFields[0];
     setFieldDraft({
       label: currentField?.label ?? "",
       helpText: currentField?.helpText ?? "",
@@ -65,7 +70,7 @@ export const WorkflowDraftEditor = ({
       minimumLength: currentField?.minimumLength ?? 0,
       maximumLength: currentField?.maximumLength ?? 255
     });
-  }, [draftState]);
+  }, [editorState.localDraft.processFields]);
 
   const start = editorState.localDraft.elements.find((element) => element.type === "start");
   const firstTask = editorState.localDraft.elements.find((element) => element.type === "task");
@@ -118,33 +123,90 @@ export const WorkflowDraftEditor = ({
         )
       : false;
   const isEditingDisabled =
-    editorState.saveStatus === "saving" || editorState.publicationStatus === "validating";
+    (editorState.saveStatus === "saving" || editorState.saveStatus === "retrying") ||
+    editorState.publicationStatus === "validating";
 
-  const save = async () => {
-    dispatch({ type: "save-requested" });
-    const expectedRevision = draftState.revision;
-    const result = await saveWorkflowDraft(draftState, editorState.localDraft);
+  const save = async (retry = false) => {
+    const requestKey = editorState.pendingAutosaveRequestKey;
+    if (!requestKey) {
+      return;
+    }
+    dispatch({ type: "save-requested", requestKey, retry });
+    const expectedRevision = editorState.lastAcknowledgedRevision;
+    const result = await saveWorkflowDraft(expectedRevision, editorState.localDraft, requestKey);
 
     if (!result.ok) {
+      const conflict = result.error.code === "workflow_draft_revision_conflict";
       dispatch({
         type: "save-failed",
         errorCode: result.error.code,
         invalidFieldNames:
-          result.error.invalidParams?.map((entry) => entry.name) ?? [],
+          result.error.invalidParams?.map((entry) => entry.name) ?? [], 
         errorMessages:
           result.error.invalidParams?.map((entry) => entry.reason) ??
-          [t("workflowDesign.editor.saveError")]
+          [t("workflowDesign.editor.saveError")],
+        retryable:
+          !conflict &&
+          result.error.code !== "workflow_draft_invalid" &&
+          result.error.code !== "idempotency_key_reused",
+        conflict
       });
       return;
     }
 
     const nextDraftState = applyWorkflowDraftSave(
-      draftState,
+      createDraftState(draftState.value, expectedRevision),
       result.data,
       expectedRevision
     );
     onAccepted(nextDraftState, result.data);
     dispatch({ type: "save-succeeded", draftState: nextDraftState });
+  };
+
+  useEffect(() => {
+    if (!shouldScheduleAutosave(editorState)) {
+      return;
+    }
+    const delay = autosaveDelayMs(editorState);
+    if (delay === null) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      void save(editorState.saveStatus === "retrying");
+    }, delay);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    draftState,
+    editorState.hasLocalChanges,
+    editorState.lastAcknowledgedRevision,
+    editorState.localDraft,
+    editorState.pendingAutosaveRequestKey,
+    editorState.retryCount,
+    editorState.saveStatus
+  ]);
+
+  const reloadLatestDraft = async () => {
+    const result = await readWorkflowDraft(editorState.localDraft.workflowId);
+    if (!result.ok) {
+      dispatch({
+        type: "save-failed",
+        errorCode: result.error.code,
+        invalidFieldNames: result.error.invalidParams?.map((entry) => entry.name) ?? [],
+        errorMessages:
+          result.error.invalidParams?.map((entry) => entry.reason) ??
+          [t("workflowDesign.editor.reloadError")],
+        retryable: false,
+        conflict: true
+      });
+      return;
+    }
+
+    const nextDraftState = createWorkflowDraftState(result.data);
+    onAccepted(nextDraftState, result.data);
+    dispatch({ type: "reload-latest-succeeded", draftState: nextDraftState });
   };
 
   const validatePublication = async () => {
@@ -276,12 +338,12 @@ export const WorkflowDraftEditor = ({
         <button
           className="button"
           type="button"
-          disabled={isEditingDisabled}
-          onClick={() => void save()}
+          disabled={isEditingDisabled || !editorState.hasLocalChanges}
+          onClick={() => void save(false)}
         >
-          {editorState.saveStatus === "saving"
+          {editorState.saveStatus === "saving" || editorState.saveStatus === "retrying"
             ? t("workflowDesign.editor.saving")
-            : t("workflowDesign.draft.save")}
+            : t("workflowDesign.editor.saveNow")}
         </button>
         <button
           className="button"
@@ -297,9 +359,19 @@ export const WorkflowDraftEditor = ({
             : t("workflowDesign.editor.validatePublication")}
         </button>
       </div>
-      {editorState.saveStatus === "success" ? (
-        <p className="success-message">{t("workflowDesign.editor.saveSuccess")}</p>
-      ) : null}
+      <p className="success-message" aria-live="polite">
+        {editorState.saveStatus === "saved"
+          ? t("workflowDesign.editor.saveSuccess")
+          : editorState.saveStatus === "saving"
+            ? t("workflowDesign.editor.saving")
+            : editorState.saveStatus === "retrying"
+              ? t("workflowDesign.editor.retrying")
+              : editorState.saveStatus === "unsaved"
+                ? t("workflowDesign.editor.unsaved")
+                : editorState.saveStatus === "conflict"
+                  ? t("workflowDesign.editor.conflictMessage")
+                  : null}
+      </p>
       {editorState.errorMessages.length > 0 ? (
         <div className="workflow-editor__errors" role="alert">
           <strong>{editorState.errorCode === "workflow_draft_revision_conflict"
@@ -310,6 +382,26 @@ export const WorkflowDraftEditor = ({
               <li key={message}>{message}</li>
             ))}
           </ul>
+          {editorState.saveStatus === "conflict" ? (
+            <div className="button-row">
+              <button
+                className="button"
+                type="button"
+                onClick={() => void reloadLatestDraft()}
+              >
+                {t("workflowDesign.editor.reloadLatest")}
+              </button>
+              <button
+                className="button"
+                data-variant="secondary"
+                type="button"
+                disabled={!editorState.conflictSnapshot}
+                onClick={() => dispatch({ type: "reapply-conflict-draft" })}
+              >
+                {t("workflowDesign.editor.reapplyChanges")}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </article>

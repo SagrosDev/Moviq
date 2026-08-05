@@ -525,6 +525,167 @@ def test_workflow_draft_save_returns_authoritative_graph_payload(
 
 
 @pytest.mark.django_db
+def test_workflow_draft_save_replays_one_authoritative_result_for_same_idempotency_key(
+    workflow_design_member,
+) -> None:
+    user, _organization, _membership = workflow_design_member
+    client = Client()
+    client.force_login(user)
+
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow intake"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-1"},
+    )
+    workflow_id = created.json()["workflowId"]
+    draft_id = created.json()["draft"]["draftId"]
+    payload = {
+        "expectedRevision": "1",
+        "draft": {
+            "schemaVersion": 3,
+            "draftId": draft_id,
+            "workflowId": workflow_id,
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": [
+                {"id": "start-1", "type": "start", "label": "Start"},
+                {"id": "task-1", "type": "task", "label": "Task"},
+                {"id": "end-1", "type": "end", "label": "End"},
+            ],
+            "connections": [
+                {
+                    "id": "connection-1",
+                    "type": "sequence",
+                    "sourceId": "start-1",
+                    "targetId": "task-1",
+                },
+                {
+                    "id": "connection-2",
+                    "type": "sequence",
+                    "sourceId": "task-1",
+                    "targetId": "end-1",
+                },
+            ],
+            "processFields": [],
+            "formBindings": [],
+        },
+    }
+
+    first = client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data=payload,
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-replay"},
+    )
+    second = client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data=payload,
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-replay"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json() == second.json()
+
+
+@pytest.mark.django_db
+def test_workflow_draft_save_rejects_changed_payload_under_reused_idempotency_key(
+    workflow_design_member,
+) -> None:
+    user, _organization, _membership = workflow_design_member
+    client = Client()
+    client.force_login(user)
+
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow intake"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-1"},
+    )
+    workflow_id = created.json()["workflowId"]
+    draft_id = created.json()["draft"]["draftId"]
+
+    first = client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                "schemaVersion": 3,
+                "draftId": draft_id,
+                "workflowId": workflow_id,
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "start-1", "type": "start", "label": "Start"},
+                    {"id": "task-1", "type": "task", "label": "Task"},
+                    {"id": "end-1", "type": "end", "label": "End"},
+                ],
+                "connections": [
+                    {
+                        "id": "connection-1",
+                        "type": "sequence",
+                        "sourceId": "start-1",
+                        "targetId": "task-1",
+                    },
+                    {
+                        "id": "connection-2",
+                        "type": "sequence",
+                        "sourceId": "task-1",
+                        "targetId": "end-1",
+                    },
+                ],
+                "processFields": [],
+                "formBindings": [],
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-reused"},
+    )
+    conflict = client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                "schemaVersion": 3,
+                "draftId": draft_id,
+                "workflowId": workflow_id,
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "start-1", "type": "start", "label": "Inicio"},
+                    {"id": "task-1", "type": "task", "label": "Task"},
+                    {"id": "end-1", "type": "end", "label": "End"},
+                ],
+                "connections": [
+                    {
+                        "id": "connection-1",
+                        "type": "sequence",
+                        "sourceId": "start-1",
+                        "targetId": "task-1",
+                    },
+                    {
+                        "id": "connection-2",
+                        "type": "sequence",
+                        "sourceId": "task-1",
+                        "targetId": "end-1",
+                    },
+                ],
+                "processFields": [],
+                "formBindings": [],
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-reused"},
+    )
+
+    assert first.status_code == 200
+    assert conflict.status_code == 409
+    assert conflict.json()["code"] == "idempotency_key_reused"
+
+
+@pytest.mark.django_db
 def test_workflow_draft_save_rejects_invalid_graph_with_stable_problem_details(
     workflow_design_member,
 ) -> None:

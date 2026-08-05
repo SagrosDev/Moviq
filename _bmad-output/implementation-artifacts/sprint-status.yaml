@@ -46,7 +46,7 @@ development_status:
   1-24-compose-and-run-the-minimal-task-form: done
   1-25-validate-the-minimal-workflow-for-publication: done
   1-26-configure-workflow-starters-and-task-assignment: done
-  1-27-autosave-and-resolve-shared-draft-conflicts: backlog
+  1-27-autosave-and-resolve-shared-draft-conflicts: done
   1-28-publish-an-immutable-workflow-version: backlog
   1-29-start-a-process-from-the-authorized-catalog: backlog
   1-30-open-an-assigned-task-and-save-progress: backlog

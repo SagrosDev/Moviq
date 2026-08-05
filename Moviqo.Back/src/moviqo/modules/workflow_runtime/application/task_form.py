@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import APIException
 
@@ -41,6 +42,16 @@ class TaskFormRevisionConflictError(APIException):
         self.invalid_params = invalid_params
 
 
+class TaskCompletionRouteError(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "Task completion could not resolve the current workflow route."
+    default_code = "task_completion_conflict"
+
+    def __init__(self, *, invalid_params: list[dict[str, str]]) -> None:
+        super().__init__(detail=self.default_detail, code=self.default_code)
+        self.invalid_params = invalid_params
+
+
 @dataclass(frozen=True)
 class TaskFormProjection:
     task: TaskOccurrence
@@ -48,13 +59,15 @@ class TaskFormProjection:
     task_title: str
     process_id: str
     controls: list[dict[str, Any]]
+    completion_available: bool
+    workflow_version_id: str | None
 
 
 def read_task_form(*, tenant_context: TenantContext, task_id) -> dict[str, Any] | None:
     projection = _load_task_form_projection(tenant_context=tenant_context, task_id=task_id)
     if projection is None:
         return None
-    return _task_form_response(projection=projection)
+    return build_task_form_response(projection=projection)
 
 
 def save_task_form_draft(
@@ -137,7 +150,7 @@ def _save_task_form_side_effects(
             ],
         )
 
-    projection = _build_task_form_projection(task)
+    projection = build_task_form_projection(task)
     if projection is None:
         return _rejected_save_outcome(
             code=TaskFormRevisionConflictError.default_code,
@@ -149,7 +162,7 @@ def _save_task_form_side_effects(
                 }
             ],
         )
-    invalid_params = _validate_submitted_controls(
+    invalid_params = validate_submitted_controls(
         projection=projection,
         submitted_controls=submitted_controls,
     )
@@ -159,38 +172,19 @@ def _save_task_form_side_effects(
             invalid_params=invalid_params,
         )
 
-    values_by_field_id = {
-        value.field_id: value
-        for value in TaskProcessFieldValue.objects.select_for_update().filter(
-            task=task,
-            organization_id=tenant_context.organization_id,
-        )
-    }
-    submitted_values = {
-        str(control["controlId"]): str(control.get("value", ""))
-        for control in submitted_controls
-    }
-    for control in projection.controls:
-        field_id = str(control["fieldId"])
-        value_text = submitted_values[control["controlId"]]
-        stored_value = values_by_field_id.get(field_id)
-        if stored_value is None:
-            TaskProcessFieldValue.objects.create(
-                organization_id=tenant_context.organization_id,
-                task=task,
-                field_id=field_id,
-                value_text=value_text,
-            )
-        elif stored_value.value_text != value_text:
-            stored_value.value_text = value_text
-            stored_value.save(update_fields=["value_text", "updated_at"])
+    persist_task_form_values(
+        tenant_context=tenant_context,
+        task=task,
+        projection=projection,
+        submitted_controls=submitted_controls,
+    )
 
     task.revision = str(int(task.revision) + 1)
     task.status = "in_progress"
     task.save(update_fields=["revision", "status", "updated_at"])
 
-    refreshed_projection = _build_task_form_projection(task)
-    payload = _task_form_response(projection=refreshed_projection)
+    refreshed_projection = build_task_form_projection(task)
+    payload = build_task_form_response(projection=refreshed_projection)
     command_context.append_audit(
         event_type="workflow-runtime.task-draft-saved",
         payload={
@@ -225,11 +219,11 @@ def _load_task_form_projection(
     )
     if task is None:
         return None
-    return _build_task_form_projection(task)
+    return build_task_form_projection(task)
 
 
-def _build_task_form_projection(task: TaskOccurrence) -> TaskFormProjection | None:
-    document = _load_authoritative_task_document(task)
+def build_task_form_projection(task: TaskOccurrence) -> TaskFormProjection | None:
+    document = load_authoritative_task_document(task)
     if document is None:
         return None
     fields_by_id = {
@@ -278,13 +272,19 @@ def _build_task_form_projection(task: TaskOccurrence) -> TaskFormProjection | No
         task_title=task_title,
         process_id=str(task.process_id),
         controls=controls,
+        completion_available=can_complete_task(task=task, document=document),
+        workflow_version_id=(
+            str(task.workflow_version_id) if task.workflow_version_id is not None else None
+        ),
     )
 
 
-def _validate_submitted_controls(
+def validate_submitted_controls(
     *,
     projection: TaskFormProjection,
     submitted_controls: list[dict[str, Any]],
+    retry_action: str = "saving again",
+    submission_action: str = "saving this task",
 ) -> list[dict[str, str]]:
     allowed_controls = {
         control["controlId"]: control
@@ -299,7 +299,7 @@ def _validate_submitted_controls(
                 {
                     "name": f"controls.{control_id}.value",
                     "code": "duplicate",
-                    "reason": "Submit each field only once when saving this task.",
+                    "reason": f"Submit each field only once when {submission_action}.",
                 }
             )
             continue
@@ -310,7 +310,7 @@ def _validate_submitted_controls(
                 {
                     "name": f"controls.{control_id or 'unknown'}.value",
                     "code": "unknown_control",
-                    "reason": "Reload the assigned task before saving again.",
+                    "reason": f"Reload the assigned task before {retry_action}.",
                 }
             )
             continue
@@ -319,7 +319,7 @@ def _validate_submitted_controls(
                 {
                     "name": f"controls.{control_id}.fieldId",
                     "code": "mismatch",
-                    "reason": "Reload the assigned task before saving again.",
+                    "reason": f"Reload the assigned task before {retry_action}.",
                 }
             )
             continue
@@ -364,7 +364,7 @@ def _validate_submitted_controls(
         {
             "name": f"controls.{control_id}.value",
             "code": "missing",
-            "reason": "Submit every visible field when saving this task.",
+            "reason": f"Submit every visible field when {submission_action}.",
         }
         for control_id in missing_control_ids
     )
@@ -372,7 +372,45 @@ def _validate_submitted_controls(
     return invalid_params
 
 
-def _load_authoritative_task_document(task: TaskOccurrence) -> dict[str, Any] | None:
+def persist_task_form_values(
+    *,
+    tenant_context: TenantContext,
+    task: TaskOccurrence,
+    projection: TaskFormProjection,
+    submitted_controls: list[dict[str, Any]],
+) -> dict[str, str]:
+    values_by_field_id = {
+        value.field_id: value
+        for value in TaskProcessFieldValue.objects.select_for_update().filter(
+            task=task,
+            organization_id=tenant_context.organization_id,
+        )
+    }
+    submitted_values = {
+        str(control["controlId"]): str(control.get("value", ""))
+        for control in submitted_controls
+    }
+    persisted_values: dict[str, str] = {}
+    for control in projection.controls:
+        field_id = str(control["fieldId"])
+        value_text = submitted_values[control["controlId"]]
+        persisted_values[field_id] = value_text
+        stored_value = values_by_field_id.get(field_id)
+        if stored_value is None:
+            TaskProcessFieldValue.objects.create(
+                organization_id=tenant_context.organization_id,
+                task=task,
+                field_id=field_id,
+                value_text=value_text,
+            )
+        elif stored_value.value_text != value_text:
+            stored_value.value_text = value_text
+            stored_value.updated_at = timezone.now()
+            stored_value.save(update_fields=["value_text", "updated_at"])
+    return persisted_values
+
+
+def load_authoritative_task_document(task: TaskOccurrence) -> dict[str, Any] | None:
     if task.workflow_version_id:
         version = read_published_workflow_version(
             workflow_version_id=task.workflow_version_id,
@@ -404,18 +442,63 @@ def _workflow_name_from_document(*, document: dict[str, Any], fallback: str) -> 
     return name if isinstance(name, str) and name.strip() else fallback
 
 
-def _task_form_response(*, projection: TaskFormProjection) -> dict[str, Any]:
+def resolve_task_completion_route(
+    *,
+    document: dict[str, Any] | None,
+    task_element_id: str,
+) -> str | None:
+    if document is None:
+        return None
+    elements = {
+        str(element.get("id")): element
+        for element in document.get("elements", [])
+        if isinstance(element, dict)
+    }
+    outgoing_targets = [
+        str(connection.get("targetId"))
+        for connection in document.get("connections", [])
+        if isinstance(connection, dict) and connection.get("sourceId") == task_element_id
+    ]
+    if len(outgoing_targets) != 1:
+        return None
+    target_id = outgoing_targets[0]
+    target = elements.get(target_id)
+    if target is None or target.get("type") != "end":
+        return None
+    return target_id
+
+
+def can_complete_task(
+    *,
+    task: TaskOccurrence,
+    document: dict[str, Any] | None,
+) -> bool:
+    if task.status not in OPEN_TASK_STATUSES or task.process_id is None:
+        return False
+    if getattr(task, "process", None) is not None and task.process.status != "active":
+        return False
+    return (
+        resolve_task_completion_route(document=document, task_element_id=task.task_element_id)
+        is not None
+    )
+
+
+def build_task_form_response(*, projection: TaskFormProjection) -> dict[str, Any]:
     return {
         "taskId": str(projection.task.id),
         "processId": projection.process_id,
         "workflowId": str(projection.task.workflow_id),
+        "workflowVersionId": projection.workflow_version_id,
         "workflowName": projection.workflow_name,
         "taskTitle": projection.task_title,
         "taskElementId": projection.task.task_element_id,
         "status": projection.task.status,
         "taskRevision": projection.task.revision,
         "definitionRevision": projection.task.definition_revision,
-        "actions": {"saveDraft": True, "complete": False},
+        "actions": {
+            "saveDraft": True,
+            "complete": projection.completion_available,
+        },
         "form": {
             "controls": [
                 {

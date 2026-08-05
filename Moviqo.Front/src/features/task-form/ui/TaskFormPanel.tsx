@@ -5,6 +5,7 @@ type TaskFormPanelProps = {
   state: TaskFormEditorState;
   onValueChange: (controlId: string, value: string) => void;
   onSave: () => void;
+  onComplete: () => void;
   onRetrySave: () => void;
   onReloadLatest: () => void;
 };
@@ -17,6 +18,9 @@ const statusLabelFor = (status: string, t: ReturnType<typeof useLanguage>["t"]) 
   if (status === "in_progress") {
     return t("status.inProgress");
   }
+  if (status === "completed") {
+    return t("status.completed");
+  }
   return status;
 };
 
@@ -24,11 +28,35 @@ export const TaskFormPanel = ({
   state,
   onValueChange,
   onSave,
+  onComplete,
   onRetrySave,
   onReloadLatest
 }: TaskFormPanelProps) => {
   const { t } = useLanguage();
-  const inputsDisabled = state.saveStatus === "saving";
+  const inputsDisabled = state.saveStatus === "saving" || state.completionStatus === "completing";
+
+  if (state.completionStatus === "success" && state.completionResult) {
+    return <section className="task-form-shell" aria-labelledby="task-form-title">
+      <header className="page-heading">
+        <p className="eyebrow">{t("taskForm.eyebrow")}</p>
+        <h1 id="task-form-title">{state.taskTitle}</h1>
+        <p className="lede">{state.workflowName}</p>
+      </header>
+      <article className="task-form-panel">
+        <p className="success-message">{t("taskForm.completeSuccess")}</p>
+        <p>{state.completionResult.handoffMessage}</p>
+        <div className="task-form-panel__meta">
+          <span>{t("taskForm.status")} {statusLabelFor(state.status, t)}</span>
+          <span>{t("taskForm.processComplete")}</span>
+        </div>
+        <div className="task-form-actions">
+          <a className="button" href={state.completionResult.destinationRoute}>
+            {t("taskForm.back")}
+          </a>
+        </div>
+      </article>
+    </section>;
+  }
 
   return <section className="task-form-shell" aria-labelledby="task-form-title">
     <header className="page-heading">
@@ -86,13 +114,24 @@ export const TaskFormPanel = ({
             !state.actions.saveDraft
             || !state.hasLocalChanges
             || state.saveStatus === "saving"
+            || state.completionStatus === "completing"
           }
           onClick={onSave}
         >
           {state.saveStatus === "saving" ? t("taskForm.saving") : t("taskForm.save")}
         </button>
-        <button className="button" data-variant="secondary" type="button" disabled>
-          {t("taskForm.complete")}
+        <button
+          className="button"
+          data-variant="secondary"
+          type="button"
+          disabled={
+            !state.actions.complete
+            || state.saveStatus === "saving"
+            || state.completionStatus === "completing"
+          }
+          onClick={onComplete}
+        >
+          {state.completionStatus === "completing" ? t("taskForm.completing") : t("taskForm.complete")}
         </button>
       </div>
       {state.saveStatus === "success" ? (

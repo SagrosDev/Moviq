@@ -132,6 +132,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/my-work/tasks/{task_id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["workflow_runtime_task_form_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/my-work/tasks/{task_id}/form/": {
         parameters: {
             query?: never;
@@ -449,6 +465,25 @@ export interface components {
         };
         SystemPing: {
             status: string;
+        };
+        TaskCompletionAccepted: {
+            /** Format: uuid */
+            taskId: string;
+            /** Format: uuid */
+            processId: string;
+            /** Format: uuid */
+            workflowId: string;
+            workflowName: string;
+            taskTitle: string;
+            taskStatus: string;
+            processStatus: string;
+            taskRevision: string;
+            definitionRevision: string;
+            routeTargetId: string;
+            /** Format: date-time */
+            completedAt: string;
+            destinationRoute: string;
+            handoffMessage: string;
         };
         TaskFormActions: {
             saveDraft: boolean;
@@ -866,6 +901,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StartProcessAccepted"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_runtime_task_form_complete: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskFormSaveRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TaskFormSaveRequest"];
+                "multipart/form-data": components["schemas"]["TaskFormSaveRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskCompletionAccepted"];
                 };
             };
             400: {

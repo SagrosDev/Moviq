@@ -17,7 +17,9 @@ from moviqo.modules.workflow_design.application import (
     save_workflow_draft,
 )
 from moviqo.modules.workflow_design.models import WorkflowDraft, WorkflowVersion
+from moviqo.modules.workflow_runtime.application.complete_task import complete_task
 from moviqo.modules.workflow_runtime.application.task_form import (
+    TaskCompletionRouteError,
     TaskFormRevisionConflictError,
     TaskFormValidationAPIError,
     read_task_form,
@@ -318,4 +320,199 @@ def test_concurrent_stale_saves_reject_the_loser_without_partial_commit(
     assert TransactionalAuditRecord.objects.filter(
         command_type="workflow-runtime.save-task-form-draft",
         event_type="workflow-runtime.task-draft-saved",
+    ).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_task_completion_commits_value_task_process_and_audit_once(django_user_model) -> None:
+    _integration_only()
+    tenant_context, _created, task = _seed_task_form(django_user_model)
+
+    completed = complete_task(
+        tenant_context=tenant_context,
+        task_id=task.id,
+        expected_task_revision="1",
+        controls=[{"controlId": "binding-1", "fieldId": "field-1", "value": "Ana Perez"}],
+        idempotency_key="task-form-complete-1",
+        request_hash=_request_hash("task-form-complete-1"),
+    )
+
+    assert completed["taskStatus"] == "completed"
+    assert completed["processStatus"] == "completed"
+    assert completed["workflowVersionId"] == str(task.workflow_version_id)
+    task.refresh_from_db()
+    task.process.refresh_from_db()
+    assert task.status == "completed"
+    assert task.completed_at is not None
+    assert task.process.status == "completed"
+    assert task.process.completed_at is not None
+    assert (
+        TaskProcessFieldValue.objects.get(task=task, field_id="field-1").value_text
+        == "Ana Perez"
+    )
+    assert CommandResult.objects.filter(
+        command_type="workflow-runtime.complete-task",
+        idempotency_key="task-form-complete-1",
+    ).count() == 1
+    assert TransactionalAuditRecord.objects.filter(
+        command_type="workflow-runtime.complete-task",
+        event_type="workflow-runtime.task-completed",
+    ).count() == 1
+    assert TransactionalAuditRecord.objects.filter(
+        command_type="workflow-runtime.complete-task",
+        event_type="workflow-runtime.process-completed",
+    ).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_route_failure_keeps_completion_atomic(django_user_model) -> None:
+    _integration_only()
+    tenant_context, _created, task = _seed_task_form(django_user_model)
+    task.workflow_version.snapshot["connections"] = [
+        {
+            "id": "connection-1",
+            "type": "sequence",
+            "sourceId": "start-1",
+            "targetId": "task-1",
+        }
+    ]
+    WorkflowVersion.objects.filter(id=task.workflow_version_id).update(
+        snapshot=task.workflow_version.snapshot
+    )
+
+    with pytest.raises(TaskCompletionRouteError) as exc_info:
+        complete_task(
+            tenant_context=tenant_context,
+            task_id=task.id,
+            expected_task_revision="1",
+            controls=[{"controlId": "binding-1", "fieldId": "field-1", "value": "Ana Perez"}],
+            idempotency_key="task-form-complete-route-failure",
+            request_hash=_request_hash("task-form-complete-route-failure"),
+        )
+
+    assert exc_info.value.default_code == "task_completion_conflict"
+    task.refresh_from_db()
+    task.process.refresh_from_db()
+    assert task.status == "assigned"
+    assert task.revision == "1"
+    assert task.process.status == "active"
+    assert TaskProcessFieldValue.objects.filter(task=task, field_id="field-1").count() == 0
+    assert TransactionalAuditRecord.objects.filter(
+        command_type="workflow-runtime.complete-task",
+        event_type="workflow-runtime.task-completed",
+    ).count() == 0
+    assert TransactionalAuditRecord.objects.filter(
+        command_type="workflow-runtime.complete-task",
+        event_type="workflow-runtime.process-completed",
+    ).count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_invalid_task_completion_keeps_open_state_and_prior_value(django_user_model) -> None:
+    _integration_only()
+    tenant_context, _created, task = _seed_task_form(django_user_model)
+    save_task_form_draft(
+        tenant_context=tenant_context,
+        task_id=task.id,
+        expected_task_revision="1",
+        controls=[{"controlId": "binding-1", "fieldId": "field-1", "value": "Ana Perez"}],
+        idempotency_key="task-form-save-before-complete",
+        request_hash=_request_hash("task-form-save-before-complete"),
+    )
+
+    with pytest.raises(TaskFormValidationAPIError):
+        complete_task(
+            tenant_context=tenant_context,
+            task_id=task.id,
+            expected_task_revision="2",
+            controls=[{"controlId": "binding-1", "fieldId": "field-1", "value": ""}],
+            idempotency_key="task-form-complete-invalid",
+            request_hash=_request_hash("task-form-complete-invalid"),
+        )
+
+    task.refresh_from_db()
+    task.process.refresh_from_db()
+    assert task.status == "in_progress"
+    assert task.process.status == "active"
+    assert (
+        TaskProcessFieldValue.objects.get(task=task, field_id="field-1").value_text
+        == "Ana Perez"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_completion_accepts_one_winner_and_rejects_one_stale_loser(
+    django_user_model,
+) -> None:
+    _integration_only()
+    tenant_context, _created, task = _seed_task_form(django_user_model)
+    start_gate = threading.Event()
+
+    def attempt_complete(
+        value: str,
+        idempotency_key: str,
+    ) -> tuple[str, dict[str, object] | list[dict[str, str]]]:
+        close_old_connections()
+        start_gate.wait()
+        try:
+            completed = complete_task(
+                tenant_context=tenant_context,
+                task_id=task.id,
+                expected_task_revision="1",
+                controls=[{"controlId": "binding-1", "fieldId": "field-1", "value": value}],
+                idempotency_key=idempotency_key,
+                request_hash=_request_hash(idempotency_key),
+            )
+            return ("accepted", completed)
+        except TaskFormRevisionConflictError as exc:
+            return ("rejected", exc.invalid_params)
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first_future = executor.submit(
+            attempt_complete,
+            "Ana Perez",
+            "task-form-complete-concurrent-1",
+        )
+        second_future = executor.submit(
+            attempt_complete,
+            "Ana Maria Perez",
+            "task-form-complete-concurrent-2",
+        )
+        start_gate.set()
+        first = first_future.result()
+        second = second_future.result()
+
+    accepted = [payload for outcome, payload in (first, second) if outcome == "accepted"]
+    rejected = [payload for outcome, payload in (first, second) if outcome == "rejected"]
+    assert len(accepted) == 1
+    assert len(rejected) == 1
+    assert rejected[0] == [
+        {
+            "name": "expectedTaskRevision",
+            "code": "stale",
+            "reason": "Reload the assigned task before completing it.",
+        }
+    ]
+    task.refresh_from_db()
+    task.process.refresh_from_db()
+    stored_values = list(
+        TaskProcessFieldValue.objects.filter(task=task, field_id="field-1").values_list(
+            "value_text",
+            flat=True,
+        )
+    )
+    assert task.status == "completed"
+    assert task.process.status == "completed"
+    assert len(stored_values) == 1
+    assert stored_values[0] in {"Ana Perez", "Ana Maria Perez"}
+    assert accepted[0]["taskStatus"] == "completed"
+    assert TransactionalAuditRecord.objects.filter(
+        command_type="workflow-runtime.complete-task",
+        event_type="workflow-runtime.task-completed",
+    ).count() == 1
+    assert TransactionalAuditRecord.objects.filter(
+        command_type="workflow-runtime.complete-task",
+        event_type="workflow-runtime.process-completed",
     ).count() == 1

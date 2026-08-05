@@ -60,6 +60,7 @@ class TaskOccurrence(models.Model):
     status = models.CharField(max_length=32, default="assigned")
     definition_revision = models.CharField(max_length=32, default="1")
     revision = models.CharField(max_length=32, default="1")
+    completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -87,6 +88,7 @@ class ProcessInstance(models.Model):
     initiator_membership_id = models.UUIDField()
     initiator_user_id = models.BigIntegerField()
     status = models.CharField(max_length=32, default="active")
+    completed_at = models.DateTimeField(null=True, blank=True)
     started_at = models.DateTimeField(auto_now_add=True)
     last_activity_at = models.DateTimeField(auto_now=True)
 

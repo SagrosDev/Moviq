@@ -21,6 +21,7 @@ export type TaskFormDocument = {
   taskId: string;
   processId: string;
   workflowId: string;
+  workflowVersionId: string | null;
   workflowName: string;
   taskTitle: string;
   taskElementId: string;
@@ -29,6 +30,23 @@ export type TaskFormDocument = {
   definitionRevision: string;
   actions: { saveDraft: boolean; complete: boolean };
   form: { controls: TaskFormControl[] };
+};
+
+export type TaskCompletionDocument = {
+  taskId: string;
+  processId: string;
+  workflowId: string;
+  workflowVersionId: string | null;
+  workflowName: string;
+  taskTitle: string;
+  taskStatus: string;
+  processStatus: string;
+  taskRevision: string;
+  definitionRevision: string;
+  routeTargetId: string;
+  completedAt: string;
+  destinationRoute: string;
+  handoffMessage: string;
 };
 
 export type TaskFormEditorControl = TaskFormControl;
@@ -45,6 +63,9 @@ export type TaskFormEditorState = {
   hasLocalChanges: boolean;
   saveStatus: "idle" | "saving" | "error" | "success";
   saveRequestKey: string | null;
+  completionStatus: "idle" | "completing" | "error" | "success";
+  completionRequestKey: string | null;
+  completionResult: TaskCompletionDocument | null;
   errorCode: string | null;
   errorMessages: string[];
   invalidFieldNames: string[];
@@ -53,6 +74,10 @@ export type TaskFormEditorState = {
 
 export type TaskFormResult =
   | { ok: true; data: TaskFormDocument }
+  | { ok: false; error: NormalizedApiProblem };
+
+export type TaskCompletionResult =
+  | { ok: true; data: TaskCompletionDocument }
   | { ok: false; error: NormalizedApiProblem };
 
 const taskFormClient = createApiClient({ baseUrl: "/api/v1" });
@@ -71,6 +96,9 @@ export const createTaskFormEditorState = (
   hasLocalChanges: false,
   saveStatus: "idle",
   saveRequestKey: null,
+  completionStatus: "idle",
+  completionRequestKey: null,
+  completionResult: null,
   errorCode: null,
   errorMessages: [],
   invalidFieldNames: [],
@@ -89,6 +117,14 @@ export const reduceTaskFormEditorState = (
         invalidFieldNames: string[];
       }
     | { type: "save-succeeded"; document: TaskFormDocument }
+    | { type: "complete-requested"; requestKey: string }
+    | {
+        type: "complete-failed";
+        errorCode: string;
+        errorMessages: string[];
+        invalidFieldNames: string[];
+      }
+    | { type: "complete-succeeded"; document: TaskCompletionDocument }
     | { type: "server-synced"; document: TaskFormDocument }
 ): TaskFormEditorState => {
   if (action.type === "value-updated") {
@@ -102,6 +138,9 @@ export const reduceTaskFormEditorState = (
       hasLocalChanges: true,
       saveStatus: "idle",
       saveRequestKey: null,
+      completionStatus: "idle",
+      completionRequestKey: null,
+      completionResult: null,
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
@@ -113,6 +152,7 @@ export const reduceTaskFormEditorState = (
       ...state,
       saveStatus: "saving",
       saveRequestKey: action.requestKey,
+      completionStatus: "idle",
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
@@ -127,6 +167,30 @@ export const reduceTaskFormEditorState = (
       errorCode: action.errorCode,
       errorMessages: action.errorMessages,
       invalidFieldNames: action.invalidFieldNames,
+      completionStatus: "idle",
+      hasLocalChanges: true
+    };
+  }
+
+  if (action.type === "complete-requested") {
+    return {
+      ...state,
+      completionStatus: "completing",
+      completionRequestKey: action.requestKey,
+      saveStatus: "idle",
+      errorCode: null,
+      errorMessages: [],
+      invalidFieldNames: []
+    };
+  }
+
+  if (action.type === "complete-failed") {
+    return {
+      ...state,
+      completionStatus: "error",
+      errorCode: action.errorCode,
+      errorMessages: action.errorMessages,
+      invalidFieldNames: action.invalidFieldNames,
       hasLocalChanges: true
     };
   }
@@ -135,6 +199,24 @@ export const reduceTaskFormEditorState = (
     return {
       ...createTaskFormEditorState(action.document),
       saveStatus: action.type === "save-succeeded" ? "success" : "idle"
+    };
+  }
+
+  if (action.type === "complete-succeeded") {
+    return {
+      ...state,
+      status: action.document.taskStatus,
+      taskRevision: action.document.taskRevision,
+      hasLocalChanges: false,
+      saveStatus: "idle",
+      saveRequestKey: null,
+      completionStatus: "success",
+      completionRequestKey: null,
+      completionResult: action.document,
+      errorCode: null,
+      errorMessages: [],
+      invalidFieldNames: [],
+      actions: { saveDraft: false, complete: false }
     };
   }
 
@@ -198,5 +280,44 @@ export const saveTaskFormDocument = async (
   }
 };
 
+export const completeTaskFormDocument = async (
+  state: TaskFormEditorState,
+  requestKey: string
+): Promise<TaskCompletionResult> => {
+  try {
+    const response = await (
+      taskFormClient as {
+        POST(path: string, init?: object): Promise<{ data?: unknown; response: Response }>;
+      }
+    ).POST(`/api/v1/my-work/tasks/${state.taskId}/complete/`, {
+      body: {
+        expectedTaskRevision: state.taskRevision,
+        controls: state.controls.map((control) => ({
+          controlId: control.controlId,
+          fieldId: control.fieldId,
+          value: control.value
+        }))
+      },
+      headers: {
+        "Idempotency-Key": requestKey
+      }
+    });
+
+    if (!response.response.ok) {
+      return { ok: false, error: await readApiProblem(response.response) };
+    }
+
+    return {
+      ok: true,
+      data: response.data as TaskCompletionDocument
+    };
+  } catch {
+    return { ok: false, error: normalizeApiProblem(undefined, 0) };
+  }
+};
+
 export const createTaskFormSaveIdempotencyKey = (taskId: string) =>
   `task-form-save-${taskId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
+export const createTaskFormCompletionIdempotencyKey = (taskId: string) =>
+  `task-form-complete-${taskId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;

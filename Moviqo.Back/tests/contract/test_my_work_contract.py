@@ -661,6 +661,47 @@ def test_my_work_dashboard_hides_tasks_with_drifted_runtime_snapshot(active_memb
 
 
 @pytest.mark.django_db
+def test_my_work_dashboard_hides_completed_tasks_after_authoritative_completion(
+    active_member,
+) -> None:
+    user, _organization, owner_membership = active_member
+    workflow_id = _publish_workflow(
+        membership=owner_membership,
+        name="Completable workflow",
+        starter_mode="allActiveMembers",
+    )
+    client = Client()
+    client.force_login(user)
+    start_response = client.post(
+        f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-start-completable-task"},
+    )
+    complete_response = client.post(
+        f"/api/v1/my-work/tasks/{start_response.json()['taskId']}/complete/",
+        data={
+            "expectedTaskRevision": "1",
+            "controls": [
+                {
+                    "controlId": "binding-1",
+                    "fieldId": "field-1",
+                    "value": "Ana Perez",
+                }
+            ],
+        },
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-complete-completable-task"},
+    )
+
+    response = client.get("/api/v1/my-work/")
+
+    assert start_response.status_code == 200
+    assert complete_response.status_code == 200
+    assert response.status_code == 200
+    assert response.json()["myTasks"]["items"] == []
+
+
+@pytest.mark.django_db
 def test_start_workflow_same_key_from_different_member_conflicts(django_user_model) -> None:
     owner = django_user_model.objects.create_user(
         username="shared-key-owner",

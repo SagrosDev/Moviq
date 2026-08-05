@@ -19,9 +19,11 @@ from moviqo.building_blocks.tenancy.runtime import apply_tenant_context, tenant_
 from moviqo.modules.organizations.application import active_membership_for_user
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.application.views import AuthenticatedRequestPermission
+from moviqo.modules.workflow_runtime.application.complete_task import complete_task
 from moviqo.modules.workflow_runtime.application.my_work import read_my_work_dashboard
 from moviqo.modules.workflow_runtime.application.start_process import start_process
 from moviqo.modules.workflow_runtime.application.task_form import (
+    TaskCompletionRouteError,
     TaskFormRevisionConflictError,
     TaskFormValidationAPIError,
     read_task_form,
@@ -124,6 +126,7 @@ class TaskFormDocumentSerializer(serializers.Serializer):
     taskId = serializers.UUIDField()
     processId = serializers.UUIDField()
     workflowId = serializers.UUIDField()
+    workflowVersionId = serializers.UUIDField(allow_null=True)
     workflowName = serializers.CharField()
     taskTitle = serializers.CharField()
     taskElementId = serializers.CharField()
@@ -143,6 +146,23 @@ class TaskFormSaveControlSerializer(serializers.Serializer):
 class TaskFormSaveRequestSerializer(serializers.Serializer):
     expectedTaskRevision = serializers.CharField()
     controls = TaskFormSaveControlSerializer(many=True)
+
+
+class TaskCompletionAcceptedSerializer(serializers.Serializer):
+    taskId = serializers.UUIDField()
+    processId = serializers.UUIDField()
+    workflowId = serializers.UUIDField()
+    workflowVersionId = serializers.UUIDField(allow_null=True)
+    workflowName = serializers.CharField()
+    taskTitle = serializers.CharField()
+    taskStatus = serializers.CharField()
+    processStatus = serializers.CharField()
+    taskRevision = serializers.CharField()
+    definitionRevision = serializers.CharField()
+    routeTargetId = serializers.CharField()
+    completedAt = serializers.DateTimeField()
+    destinationRoute = serializers.CharField()
+    handoffMessage = serializers.CharField()
 
 
 class MyWorkDashboardView(APIView):
@@ -301,7 +321,11 @@ class TaskFormDetailView(APIView):
                 expected_task_revision=serializer.validated_data["expectedTaskRevision"],
                 controls=serializer.validated_data["controls"],
                 idempotency_key=idempotency_key,
-                request_hash=_task_form_request_hash(serializer.validated_data),
+                request_hash=_task_form_request_hash(
+                    task_id=str(task_id),
+                    membership_id=str(tenant_context.membership_id),
+                    payload=serializer.validated_data,
+                ),
             )
         except TaskFormValidationAPIError as exc:
             return problem_response(
@@ -313,6 +337,105 @@ class TaskFormDetailView(APIView):
             return problem_response(
                 request,
                 ProblemTemplate(409, "task_form_revision_conflict", "Task form save failed"),
+                invalid_params=exc.invalid_params,
+            )
+        except IdempotencyKeyReuseConflict:
+            return problem_response(
+                request,
+                ProblemTemplate(409, "idempotency_key_reused", "Conflict"),
+            )
+
+        if result is None:
+            raise NotFound("task-form")
+        return Response(result)
+
+
+class TaskFormCompletionView(APIView):
+    permission_classes = [AuthenticatedRequestPermission]
+
+    @extend_schema(
+        operation_id="workflow_runtime_task_form_complete",
+        request=TaskFormSaveRequestSerializer,
+        parameters=[
+            OpenApiParameter(
+                name="Idempotency-Key",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                required=True,
+            )
+        ],
+        responses={
+            200: TaskCompletionAcceptedSerializer,
+            (400, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (403, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (404, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (409, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def post(self, request, task_id) -> Response:
+        serializer = TaskFormSaveRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    status_code=400,
+                    code="task_form_invalid",
+                    title="Task completion failed",
+                ),
+                invalid_params=_task_form_invalid_params(
+                    serializer.errors,
+                    retry_action="completing it",
+                ),
+            )
+
+        idempotency_key = request.headers.get("Idempotency-Key")
+        if not idempotency_key:
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    status_code=400,
+                    code="task_form_invalid",
+                    title="Task completion failed",
+                ),
+                invalid_params=[
+                    {
+                        "name": "idempotencyKey",
+                        "code": "required",
+                        "reason": "Provide an idempotency key to continue.",
+                    }
+                ],
+            )
+
+        tenant_context = _require_runtime_membership(request)
+        try:
+            result = complete_task(
+                tenant_context=tenant_context,
+                task_id=task_id,
+                expected_task_revision=serializer.validated_data["expectedTaskRevision"],
+                controls=serializer.validated_data["controls"],
+                idempotency_key=idempotency_key,
+                request_hash=_task_form_request_hash(
+                    task_id=str(task_id),
+                    membership_id=str(tenant_context.membership_id),
+                    payload=serializer.validated_data,
+                ),
+            )
+        except TaskFormValidationAPIError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(400, "task_form_invalid", "Task completion failed"),
+                invalid_params=exc.invalid_params,
+            )
+        except TaskFormRevisionConflictError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(409, "task_form_revision_conflict", "Task completion failed"),
+                invalid_params=exc.invalid_params,
+            )
+        except TaskCompletionRouteError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(409, "task_completion_conflict", "Task completion failed"),
                 invalid_params=exc.invalid_params,
             )
         except IdempotencyKeyReuseConflict:
@@ -340,8 +463,21 @@ def _require_runtime_membership(request):
         return tenant_context
 
 
-def _task_form_request_hash(payload: dict[str, object]) -> str:
-    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+def _task_form_request_hash(
+    *,
+    task_id: str,
+    membership_id: str,
+    payload: dict[str, object],
+) -> str:
+    serialized = json.dumps(
+        {
+            "membershipId": membership_id,
+            "payload": payload,
+            "taskId": task_id,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
@@ -354,14 +490,18 @@ def _workflow_start_request_hash(*, workflow_id: str, membership_id: str) -> str
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
-def _task_form_invalid_params(errors) -> list[dict[str, str]]:
+def _task_form_invalid_params(
+    errors,
+    *,
+    retry_action: str = "saving again",
+) -> list[dict[str, str]]:
     invalid_params: list[dict[str, str]] = []
     if "expectedTaskRevision" in errors:
         invalid_params.append(
             {
                 "name": "expectedTaskRevision",
                 "code": "required",
-                "reason": "Reload the assigned task before saving again.",
+                "reason": f"Reload the assigned task before {retry_action}.",
             }
         )
     if "controls" in errors:

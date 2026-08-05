@@ -1437,6 +1437,29 @@
                     "items"
                 ]
             },
+            "WorkflowConnection": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "sourceId": {
+                        "type": "string"
+                    },
+                    "targetId": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "sourceId",
+                    "targetId",
+                    "type"
+                ]
+            },
             "WorkflowCreateRequest": {
                 "type": "object",
                 "properties": {
@@ -1528,15 +1551,26 @@
                     }
                 },
                 "required": [
-                    "connections",
                     "draftId",
-                    "elements",
-                    "formBindings",
                     "name",
-                    "processFields",
                     "schemaVersion",
                     "status",
                     "workflowId"
+                ]
+            },
+            "WorkflowDraftSaveRequest": {
+                "type": "object",
+                "properties": {
+                    "expectedRevision": {
+                        "type": "string"
+                    },
+                    "draft": {
+                        "$ref": "#/components/schemas/WorkflowDraftDocument"
+                    }
+                },
+                "required": [
+                    "draft",
+                    "expectedRevision"
                 ]
             },
             "WorkflowElement": {
@@ -1558,27 +1592,22 @@
                     "type"
                 ]
             },
-            "WorkflowConnection": {
+            "WorkflowFormBinding": {
                 "type": "object",
                 "properties": {
                     "id": {
                         "type": "string"
                     },
-                    "type": {
+                    "taskElementId": {
                         "type": "string"
                     },
-                    "sourceId": {
-                        "type": "string"
-                    },
-                    "targetId": {
+                    "fieldId": {
                         "type": "string"
                     }
                 },
                 "required": [
-                    "id",
-                    "sourceId",
-                    "targetId",
-                    "type"
+                    "fieldId",
+                    "taskElementId"
                 ]
             },
             "WorkflowProcessField": {
@@ -1615,39 +1644,6 @@
                 "required": [
                     "kind",
                     "label"
-                ]
-            },
-            "WorkflowFormBinding": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "taskElementId": {
-                        "type": "string"
-                    },
-                    "fieldId": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "fieldId",
-                    "taskElementId"
-                ]
-            },
-            "WorkflowDraftSaveRequest": {
-                "type": "object",
-                "properties": {
-                    "expectedRevision": {
-                        "type": "string"
-                    },
-                    "draft": {
-                        "$ref": "#/components/schemas/WorkflowDraftDocument"
-                    }
-                },
-                "required": [
-                    "draft",
-                    "expectedRevision"
                 ]
             }
         },

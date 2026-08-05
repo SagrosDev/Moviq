@@ -40,9 +40,17 @@ SAFE_VISIBLE_INVALID_PARAM_NAMES = frozenset(
         "idempotencyKey",
         "termsVersion",
         "privacyVersion",
+        "expectedRevision",
+        "draft",
+        "elements",
+        "connections",
         "nonFieldErrors",
         "name",
     }
+)
+SAFE_VISIBLE_INVALID_PARAM_PREFIXES = (
+    "elements.",
+    "connections.",
 )
 SAFE_PASSWORD_REASON_CODES = {
     "password_too_short",
@@ -245,7 +253,10 @@ def _preserved_headers(headers: Mapping[str, str]) -> dict[str, str]:
 def _safe_invalid_param_name(field_name: Any) -> str:
     normalized_name = str(field_name)
     if (
-        normalized_name in SAFE_VISIBLE_INVALID_PARAM_NAMES
+        (
+            normalized_name in SAFE_VISIBLE_INVALID_PARAM_NAMES
+            or normalized_name.startswith(SAFE_VISIBLE_INVALID_PARAM_PREFIXES)
+        )
         and SAFE_INVALID_PARAM_NAME.fullmatch(normalized_name)
     ):
         return normalized_name

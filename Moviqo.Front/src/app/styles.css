@@ -379,6 +379,82 @@ p {
   gap: var(--space-sm);
 }
 
+.workflow-editor {
+  display: grid;
+  gap: var(--space-xl);
+  margin-top: var(--space-xl);
+}
+
+.workflow-guidance,
+.workflow-canvas {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-guidance);
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+}
+
+.workflow-editor__meta {
+  color: var(--ink-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.workflow-editor__errors {
+  background: #FFF1F1;
+  border: 1px solid #E2B6B6;
+  border-radius: var(--radius-control);
+  color: var(--error);
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+}
+
+.workflow-editor__errors ul {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.workflow-path {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  min-height: 6rem;
+}
+
+.workflow-path__step {
+  background: linear-gradient(135deg, var(--surface-soft), #F3FBF9);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  display: grid;
+  gap: var(--space-xs);
+  min-width: min(100%, 12rem);
+  padding: var(--space-md);
+}
+
+.workflow-path__step span,
+.workflow-guidance p,
+.workflow-canvas p {
+  color: var(--ink-secondary);
+}
+
+.workflow-path__arrow {
+  align-items: center;
+  color: var(--primary);
+  display: inline-flex;
+  font-weight: 700;
+  gap: var(--space-xs);
+}
+
+.workflow-path__arrow::after {
+  content: "->";
+}
+
 .form-field {
   display: grid;
   gap: var(--space-sm);

@@ -48,12 +48,13 @@ def test_workflow_creation_returns_authoritative_draft_payload(workflow_design_m
     assert payload["organizationId"] == str(organization.id)
     assert payload["revision"] == "1"
     assert payload["draft"] == {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "draftId": payload["draft"]["draftId"],
         "workflowId": payload["workflowId"],
         "name": "Workflow intake",
         "status": "draft",
         "elements": [],
+        "connections": [],
     }
 
 
@@ -233,7 +234,7 @@ def test_workflow_catalog_lists_authorized_workflows(workflow_design_member) -> 
                 "workflowId": created.json()["workflowId"],
                 "name": "Workflow intake",
                 "revision": "1",
-                "schemaVersion": 1,
+                "schemaVersion": 2,
                 "updatedAt": response.json()["items"][0]["updatedAt"],
             }
         ]
@@ -268,11 +269,306 @@ def test_workflow_draft_detail_returns_authoritative_server_payload(
         "name": "Workflow intake",
         "revision": "1",
         "draft": {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "draftId": response.json()["draft"]["draftId"],
             "workflowId": workflow_id,
             "name": "Workflow intake",
             "status": "draft",
             "elements": [],
+            "connections": [],
         },
     }
+
+
+@pytest.mark.django_db
+def test_workflow_draft_save_returns_authoritative_graph_payload(
+    workflow_design_member,
+) -> None:
+    user, organization, membership = workflow_design_member
+    client = Client()
+    client.force_login(user)
+
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow intake"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-1"},
+    )
+    workflow_id = created.json()["workflowId"]
+    draft_id = created.json()["draft"]["draftId"]
+
+    response = client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                "schemaVersion": 2,
+                "draftId": draft_id,
+                "workflowId": workflow_id,
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "start-1", "type": "start", "label": "Start"},
+                    {"id": "task-1", "type": "task", "label": "Task"},
+                    {"id": "end-1", "type": "end", "label": "End"},
+                ],
+                "connections": [
+                    {
+                        "id": "connection-1",
+                        "type": "sequence",
+                        "sourceId": "start-1",
+                        "targetId": "task-1",
+                    },
+                    {
+                        "id": "connection-2",
+                        "type": "sequence",
+                        "sourceId": "task-1",
+                        "targetId": "end-1",
+                    },
+                ],
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-1"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "workflowId": workflow_id,
+        "organizationId": str(organization.id),
+        "createdByMembershipId": str(membership.id),
+        "name": "Workflow intake",
+        "revision": "2",
+        "draft": {
+            "schemaVersion": 2,
+            "draftId": draft_id,
+            "workflowId": workflow_id,
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": [
+                {"id": "start-1", "type": "start", "label": "Start"},
+                {"id": "task-1", "type": "task", "label": "Task"},
+                {"id": "end-1", "type": "end", "label": "End"},
+            ],
+            "connections": [
+                {
+                    "id": "connection-1",
+                    "type": "sequence",
+                    "sourceId": "start-1",
+                    "targetId": "task-1",
+                },
+                {
+                    "id": "connection-2",
+                    "type": "sequence",
+                    "sourceId": "task-1",
+                    "targetId": "end-1",
+                },
+            ],
+        },
+    }
+
+
+@pytest.mark.django_db
+def test_workflow_draft_save_rejects_invalid_graph_with_stable_problem_details(
+    workflow_design_member,
+) -> None:
+    user, _organization, _membership = workflow_design_member
+    client = Client()
+    client.force_login(user)
+
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow intake"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-1"},
+    )
+    workflow_id = created.json()["workflowId"]
+    draft_id = created.json()["draft"]["draftId"]
+
+    response = client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                "schemaVersion": 2,
+                "draftId": draft_id,
+                "workflowId": workflow_id,
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "start-1", "type": "start", "label": "Start"},
+                    {"id": "task-1", "type": "task", "label": "Task"},
+                ],
+                "connections": [],
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-1"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "workflow_draft_invalid"
+    assert response.json()["invalidParams"] == [
+        {
+            "name": "elements",
+            "code": "end_count_invalid",
+            "reason": "Add exactly one End step before saving the workflow.",
+        },
+        {
+            "name": "elements.start-1",
+            "code": "start_outgoing_invalid",
+            "reason": "Connect Start to exactly one Task step.",
+        },
+        {
+            "name": "elements.task-1",
+            "code": "task_incoming_required",
+            "reason": "Connect this Task from Start or another Task.",
+        },
+        {
+            "name": "elements.task-1",
+            "code": "task_outgoing_invalid",
+            "reason": "Connect this Task to one next step before saving.",
+        },
+    ]
+
+
+@pytest.mark.django_db
+def test_workflow_draft_save_rejects_stale_revision(
+    workflow_design_member,
+) -> None:
+    user, _organization, _membership = workflow_design_member
+    client = Client()
+    client.force_login(user)
+
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow intake"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-1"},
+    )
+    workflow_id = created.json()["workflowId"]
+    draft_id = created.json()["draft"]["draftId"]
+
+    first_save = client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                "schemaVersion": 2,
+                "draftId": draft_id,
+                "workflowId": workflow_id,
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "start-1", "type": "start", "label": "Start"},
+                    {"id": "task-1", "type": "task", "label": "Task"},
+                    {"id": "end-1", "type": "end", "label": "End"},
+                ],
+                "connections": [
+                    {
+                        "id": "connection-1",
+                        "type": "sequence",
+                        "sourceId": "start-1",
+                        "targetId": "task-1",
+                    },
+                    {
+                        "id": "connection-2",
+                        "type": "sequence",
+                        "sourceId": "task-1",
+                        "targetId": "end-1",
+                    },
+                ],
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-1"},
+    )
+    assert first_save.status_code == 200
+
+    stale_response = client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                "schemaVersion": 2,
+                "draftId": draft_id,
+                "workflowId": workflow_id,
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "start-1", "type": "start", "label": "Start"},
+                    {"id": "task-1", "type": "task", "label": "Task"},
+                ],
+                "connections": [],
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-2"},
+    )
+
+    assert stale_response.status_code == 409
+    assert stale_response.json()["code"] == "workflow_draft_revision_conflict"
+    assert stale_response.json()["invalidParams"] == [
+        {
+            "name": "expectedRevision",
+            "code": "stale",
+            "reason": "Reload the last saved draft before saving again.",
+        }
+    ]
+
+
+@pytest.mark.django_db
+def test_workflow_draft_save_rejects_blank_graph_identifiers(
+    workflow_design_member,
+) -> None:
+    user, _organization, _membership = workflow_design_member
+    client = Client()
+    client.force_login(user)
+
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow intake"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-1"},
+    )
+    workflow_id = created.json()["workflowId"]
+    draft_id = created.json()["draft"]["draftId"]
+
+    response = client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                "schemaVersion": 2,
+                "draftId": draft_id,
+                "workflowId": workflow_id,
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "", "type": "start", "label": "Start"},
+                    {"id": "task-1", "type": "task", "label": "Task"},
+                    {"id": "end-1", "type": "end", "label": "End"},
+                ],
+                "connections": [
+                    {
+                        "id": "connection-1",
+                        "type": "sequence",
+                        "sourceId": "",
+                        "targetId": "task-1",
+                    }
+                ],
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-1"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "workflow_draft_invalid"
+    assert response.json()["invalidParams"] == [
+        {
+            "name": "draft",
+            "code": "invalid",
+            "reason": "Workflow draft field 'id' cannot be blank.",
+        }
+    ]

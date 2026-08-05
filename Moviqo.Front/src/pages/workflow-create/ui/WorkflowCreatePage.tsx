@@ -5,6 +5,7 @@ import {
 } from "../../../features/authentication";
 import {
   WorkflowCreateForm,
+  WorkflowDraftEditor,
   canCreateWorkflow,
   createWorkflowDraftState,
   type WorkflowDraftDocument
@@ -62,15 +63,10 @@ export const WorkflowCreatePage = () => {
         <h2 id="workflow-design-forbidden-title">{t("authority.title")}</h2>
         <p>{t("authority.accessDenied")}</p>
       </section>}
-      {draftState ? <section className="status-panel" aria-labelledby="workflow-draft-title">
-        <h2 id="workflow-draft-title">{t("workflowDesign.draft.title")}</h2>
-        <p>{draftState.value.name}</p>
-        <p>{t("workflowDesign.draft.revision")} {draftState.revision}</p>
-        <p>{t("workflowDesign.draft.schemaVersion")} {draftState.value.schemaVersion}</p>
-        <button className="button" type="button" disabled>
-          {t("workflowDesign.draft.save")}
-        </button>
-      </section> : null}
+      {draftState ? <WorkflowDraftEditor
+        draftState={draftState}
+        onAccepted={setDraftState}
+      /> : null}
     </main>
   </div>;
 };

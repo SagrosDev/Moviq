@@ -17,7 +17,6 @@ from moviqo.modules.workflow_design.application.schema import (
     CURRENT_DRAFT_SCHEMA_VERSION,
     WorkflowDraftSchemaError,
     WorkflowDraftValidationError,
-    dump_current_draft,
     load_draft_document,
     new_workflow_draft_document,
     validate_workflow_graph_document,

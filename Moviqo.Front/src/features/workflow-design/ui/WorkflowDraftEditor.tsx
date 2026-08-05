@@ -1,17 +1,22 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useState, type Dispatch } from "react";
 import { useLanguage } from "../../../shared/localization";
 import { type DraftState } from "../../../shared/drafts";
+import { StatusBadge } from "../../../shared/ui/catalog";
 import {
   applyWorkflowDraftSave,
+  createPublicationValidationRequestKey,
   createWorkflowDraftEditorState,
+  focusChecklistTarget,
   reduceWorkflowDraftEditorState,
   saveWorkflowDraft,
+  validateWorkflowPublication,
   workflowPathPreview
 } from "../model/editor";
 import type {
   WorkflowDraftConnection,
   WorkflowDraftDocument,
-  WorkflowDraftElement
+  WorkflowDraftElement,
+  WorkflowPublicationIssue
 } from "../model/types";
 
 type WorkflowDraftEditorProps = {
@@ -58,6 +63,10 @@ export const WorkflowDraftEditor = ({
   const firstTask = editorState.localDraft.elements.find((element) => element.type === "task");
   const end = editorState.localDraft.elements.find((element) => element.type === "end");
   const firstField = editorState.localDraft.processFields[0];
+  const starterConfigured =
+    editorState.localDraft.publication?.starter.isConfigured ?? false;
+  const assignmentConfigured =
+    editorState.localDraft.publication?.assignment.isConfigured ?? false;
   const firstBinding = firstTask
     ? editorState.localDraft.formBindings.find(
         (binding) =>
@@ -111,6 +120,36 @@ export const WorkflowDraftEditor = ({
     );
     onAccepted(nextDraftState);
     dispatch({ type: "save-succeeded", draftState: nextDraftState });
+  };
+
+  const validatePublication = async () => {
+    const requestKey = createPublicationValidationRequestKey(
+      editorState.localDraft.workflowId
+    );
+    dispatch({ type: "publication-validation-requested", requestKey });
+    const result = await validateWorkflowPublication(
+      draftState,
+      editorState.localDraft,
+      requestKey
+    );
+
+    if (!result.ok) {
+      dispatch({
+        type: "publication-validation-failed",
+        requestKey,
+        errorCode: result.error.code,
+        errorMessage:
+          result.error.invalidParams?.map((entry) => entry.reason).join(" ") ||
+          t("workflowDesign.editor.checklistError")
+      });
+      return;
+    }
+
+    dispatch({
+      type: "publication-validation-succeeded",
+      requestKey,
+      validation: result.data
+    });
   };
 
   const updateFieldDraft = (
@@ -219,6 +258,20 @@ export const WorkflowDraftEditor = ({
             ? t("workflowDesign.editor.saving")
             : t("workflowDesign.draft.save")}
         </button>
+        <button
+          className="button"
+          data-variant="secondary"
+          type="button"
+          disabled={
+            editorState.saveStatus === "saving" ||
+            editorState.publicationStatus === "validating"
+          }
+          onClick={() => void validatePublication()}
+        >
+          {editorState.publicationStatus === "validating"
+            ? t("workflowDesign.editor.validatingPublication")
+            : t("workflowDesign.editor.validatePublication")}
+        </button>
       </div>
       {editorState.saveStatus === "success" ? (
         <p className="success-message">{t("workflowDesign.editor.saveSuccess")}</p>
@@ -237,13 +290,92 @@ export const WorkflowDraftEditor = ({
       ) : null}
     </article>
 
+    <article className="workflow-guidance" aria-labelledby="workflow-publication-setup-title">
+      <h3 id="workflow-publication-setup-title">
+        {t("workflowDesign.editor.publicationSetupTitle")}
+      </h3>
+      <p>{t("workflowDesign.editor.publicationSetupBody")}</p>
+      <div className="button-row">
+        <button
+          id="workflow-starter-config-button"
+          className="button"
+          data-variant="secondary"
+          type="button"
+          aria-pressed={starterConfigured}
+          onClick={() =>
+            dispatch({
+              type: "starter-configuration-toggled",
+              isConfigured: !starterConfigured
+            })
+          }
+        >
+          {starterConfigured
+            ? t("workflowDesign.editor.starterConfigured")
+            : t("workflowDesign.editor.configureStarter")}
+        </button>
+        <button
+          id="workflow-assignment-config-button"
+          className="button"
+          data-variant="secondary"
+          type="button"
+          aria-pressed={assignmentConfigured}
+          onClick={() =>
+            dispatch({
+              type: "assignment-configuration-toggled",
+              isConfigured: !assignmentConfigured
+            })
+          }
+        >
+          {assignmentConfigured
+            ? t("workflowDesign.editor.assignmentConfigured")
+            : t("workflowDesign.editor.configureAssignment")}
+        </button>
+      </div>
+    </article>
+
+    <article className="workflow-guidance publish-checklist" aria-labelledby="workflow-checklist-title">
+      <h3 id="workflow-checklist-title" tabIndex={-1}>{t("workflowDesign.editor.checklistTitle")}</h3>
+      <p>{t("workflowDesign.editor.checklistBody")}</p>
+      {editorState.publicationStatus === "error" ? (
+        <div className="workflow-editor__errors" role="alert">
+          <strong>{t("workflowDesign.editor.errorTitle")}</strong>
+          <p>{t("workflowDesign.editor.checklistError")}</p>
+        </div>
+      ) : null}
+      {editorState.publicationIssues.length > 0 ? (
+        <ul>
+          {editorState.publicationIssues.map((issue) => (
+            <li key={`${issue.code}:${issue.target}`}>
+              <StatusBadge tone={issue.severity === "warning" ? "attention" : "blocked"}>
+                {issue.severity === "warning"
+                  ? t("status.needsAttention")
+                  : t("status.blocked")}
+              </StatusBadge>
+              <span>{localizedIssueMessage(issue, t)}</span>
+              <button
+                className="button"
+                data-variant="secondary"
+                type="button"
+                onClick={() => focusIssue(issue, dispatch)}
+              >
+                {localizedIssueActionLabel(issue, t)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>{t("workflowDesign.editor.checklistEmpty")}</p>
+      )}
+    </article>
+
     <article className="workflow-guidance" aria-labelledby="workflow-field-title">
-      <h3 id="workflow-field-title">{t("workflowDesign.editor.fieldTitle")}</h3>
+      <h3 id="workflow-field-title" tabIndex={-1}>{t("workflowDesign.editor.fieldTitle")}</h3>
       <p>{t("workflowDesign.editor.fieldBody")}</p>
       <div className="workflow-editor__field-grid">
         <label>
           <span>{t("workflowDesign.editor.fieldLabel")}</span>
           <input
+            id="workflow-field-label-input"
             type="text"
             value={fieldDraft.label}
             aria-invalid={labelErrors.length > 0}
@@ -306,6 +438,7 @@ export const WorkflowDraftEditor = ({
       </div>
       <div className="button-row">
         <button
+          id="workflow-field-binding-toggle"
           className="button"
           data-variant="secondary"
           type="button"
@@ -348,7 +481,7 @@ export const WorkflowDraftEditor = ({
     </article>
 
     <article className="workflow-canvas" aria-labelledby="workflow-canvas-title">
-      <h3 id="workflow-canvas-title">{t("workflowDesign.editor.previewTitle")}</h3>
+      <h3 id="workflow-canvas-title" tabIndex={-1}>{t("workflowDesign.editor.previewTitle")}</h3>
       <p>{t("workflowDesign.editor.previewBody")}</p>
       <div className="workflow-path" role="list" aria-label={t("workflowDesign.editor.previewTitle")}>
         {workflowPathPreview(editorState.localDraft).map((item) =>
@@ -357,7 +490,13 @@ export const WorkflowDraftEditor = ({
               {t("workflowDesign.editor.connectLabel")}
             </div>
           ) : (
-            <article key={item.id} className="workflow-path__step" role="listitem">
+            <article
+              id={`workflow-element-${item.id}`}
+              key={item.id}
+              className="workflow-path__step"
+              role="listitem"
+              tabIndex={-1}
+            >
               <strong>{item.label}</strong>
               <span>{stepDescription(t, item.type)}</span>
             </article>
@@ -367,11 +506,92 @@ export const WorkflowDraftEditor = ({
     </article>
 
     <article className="status-panel" aria-labelledby="workflow-saved-title">
-      <h3 id="workflow-saved-title">{t("workflowDesign.editor.savedTitle")}</h3>
+      <h3 id="workflow-saved-title" tabIndex={-1}>{t("workflowDesign.editor.savedTitle")}</h3>
       <p>{t("workflowDesign.editor.savedBody")}</p>
       <p>{savedPathSummary(draftState.value, t("workflowDesign.editor.connectLabel")) || t("workflowDesign.editor.savedEmpty")}</p>
     </article>
   </section>;
+};
+
+const focusIssue = (
+  issue: WorkflowPublicationIssue,
+  dispatch: Dispatch<{ type: "checklist-target-selected"; target: string }>
+) => {
+  dispatch({ type: "checklist-target-selected", target: issue.target });
+  const section = focusChecklistTarget(issue.target);
+  const targetId = issue.elementId
+    ? `workflow-element-${issue.elementId}`
+    : issue.bindingId
+      ? "workflow-field-binding-toggle"
+      : issue.fieldId
+        ? "workflow-field-label-input"
+        : {
+            starter: "workflow-starter-config-button",
+            assignment: "workflow-assignment-config-button",
+            canvas: "workflow-canvas-title",
+            field: "workflow-field-title"
+          }[section];
+  if (targetId) {
+    document.getElementById(targetId)?.focus();
+  }
+};
+
+const localizedIssueMessage = (
+  issue: WorkflowPublicationIssue,
+  t: (key: Parameters<ReturnType<typeof useLanguage>["t"]>[0]) => string
+) => {
+  switch (issue.code) {
+    case "starter_missing":
+      return t("workflowDesign.editor.issue.starterMissing");
+    case "assignment_missing":
+      return t("workflowDesign.editor.issue.assignmentMissing");
+    case "start_step_invalid":
+      return t("workflowDesign.editor.issue.startStepInvalid");
+    case "first_task_missing":
+      return t("workflowDesign.editor.issue.firstTaskMissing");
+    case "end_step_invalid":
+      return t("workflowDesign.editor.issue.endStepInvalid");
+    case "start_path_incomplete":
+      return t("workflowDesign.editor.issue.startPathIncomplete");
+    case "path_disconnected":
+      return t("workflowDesign.editor.issue.pathDisconnected");
+    case "path_to_end_missing":
+      return t("workflowDesign.editor.issue.pathToEndMissing");
+    case "first_task_form_missing":
+      return t("workflowDesign.editor.issue.firstTaskFormMissing");
+    case "first_task_binding_missing_field":
+      return t("workflowDesign.editor.issue.firstTaskBindingMissingField");
+    case "first_task_form_decorative":
+      return t("workflowDesign.editor.issue.firstTaskFormDecorative");
+    default:
+      return issue.message;
+  }
+};
+
+const localizedIssueActionLabel = (
+  issue: WorkflowPublicationIssue,
+  t: (key: Parameters<ReturnType<typeof useLanguage>["t"]>[0]) => string
+) => {
+  switch (issue.code) {
+    case "starter_missing":
+      return t("workflowDesign.editor.issueAction.configureStarter");
+    case "assignment_missing":
+      return t("workflowDesign.editor.issueAction.configureAssignment");
+    case "start_step_invalid":
+    case "first_task_missing":
+    case "end_step_invalid":
+    case "start_path_incomplete":
+    case "path_disconnected":
+    case "path_to_end_missing":
+      return t("workflowDesign.editor.issueAction.reviewWorkflowPath");
+    case "first_task_form_missing":
+    case "first_task_binding_missing_field":
+      return t("workflowDesign.editor.issueAction.openFirstTaskForm");
+    case "first_task_form_decorative":
+      return t("workflowDesign.editor.issueAction.openReusableField");
+    default:
+      return issue.actionLabel;
+  }
 };
 
 const isConnection = (

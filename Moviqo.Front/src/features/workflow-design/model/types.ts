@@ -36,6 +36,15 @@ export type WorkflowTaskFormControl = {
   label: string | null;
 };
 
+export type WorkflowPublicationSection = {
+  isConfigured: boolean;
+};
+
+export type WorkflowPublicationConfiguration = {
+  starter: WorkflowPublicationSection;
+  assignment: WorkflowPublicationSection;
+};
+
 export type WorkflowDraftDocument = {
   schemaVersion: number;
   draftId: string;
@@ -46,6 +55,7 @@ export type WorkflowDraftDocument = {
   connections: WorkflowDraftConnection[];
   processFields: WorkflowProcessField[];
   formBindings: WorkflowTaskFormControl[];
+  publication?: WorkflowPublicationConfiguration;
 };
 
 export type WorkflowCreationAccepted = {
@@ -64,3 +74,23 @@ export type WorkflowCreationFormState = {
 };
 
 export type WorkflowDraftSaveAccepted = WorkflowCreationAccepted;
+
+export type WorkflowPublicationIssueSeverity = "blocking" | "warning";
+
+export type WorkflowPublicationIssue = {
+  code: string;
+  severity: WorkflowPublicationIssueSeverity;
+  target: string;
+  elementId: string | null;
+  fieldId: string | null;
+  bindingId: string | null;
+  message: string;
+  actionLabel: string;
+};
+
+export type WorkflowPublicationValidationAccepted = {
+  workflowId: string;
+  revision: string;
+  publishable: boolean;
+  issues: WorkflowPublicationIssue[];
+};

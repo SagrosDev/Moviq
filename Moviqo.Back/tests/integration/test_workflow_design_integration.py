@@ -13,6 +13,7 @@ from moviqo.modules.organizations.models import Membership, MembershipRole, Orga
 from moviqo.modules.workflow_design.application import (
     create_workflow_definition,
     save_workflow_draft,
+    validate_workflow_publication,
 )
 from moviqo.modules.workflow_design.application.services import WorkflowDraftValidationAPIError
 from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft
@@ -415,3 +416,90 @@ def test_rebinding_keeps_same_field_id_without_duplicate_definition(
     ]
     assert len(rebound["draft"]["formBindings"]) == 1
     assert rebound["draft"]["formBindings"][0]["fieldId"] == "field-1"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_publication_validation_does_not_advance_revision_and_is_deterministic(
+    django_user_model,
+) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow intake",
+        idempotency_key="workflow-create-1",
+        request_hash=_request_hash("Workflow intake"),
+    )
+    saved = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft={
+            "schemaVersion": 3,
+            "draftId": created["draft"]["draftId"],
+            "workflowId": created["workflowId"],
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": [
+                {"id": "start-1", "type": "start", "label": "Start"},
+                {"id": "task-1", "type": "task", "label": "Task"},
+                {"id": "end-1", "type": "end", "label": "End"},
+            ],
+            "connections": [
+                {
+                    "id": "connection-1",
+                    "type": "sequence",
+                    "sourceId": "start-1",
+                    "targetId": "task-1",
+                },
+                {
+                    "id": "connection-2",
+                    "type": "sequence",
+                    "sourceId": "task-1",
+                    "targetId": "end-1",
+                },
+            ],
+            "processFields": [
+                {
+                    "kind": "shortText",
+                    "label": "Requester name",
+                }
+            ],
+            "formBindings": [
+                {
+                    "taskElementId": "task-1",
+                    "fieldId": "field-1",
+                }
+            ],
+        },
+        idempotency_key="workflow-save-1",
+        request_hash=_request_hash("workflow-save-1"),
+    )
+
+    first = validate_workflow_publication(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="2",
+        draft=saved["draft"],
+        idempotency_key="workflow-validate-1",
+        request_hash=_request_hash("workflow-validate-1"),
+    )
+    second = validate_workflow_publication(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="2",
+        draft=saved["draft"],
+        idempotency_key="workflow-validate-2",
+        request_hash=_request_hash("workflow-validate-2"),
+    )
+
+    draft = WorkflowDraft.objects.get(workflow_id=created["workflowId"])
+    assert draft.revision == "2"
+    assert saved["revision"] == "2"
+    assert first == second
+    assert first["revision"] == "2"
+    assert [issue["code"] for issue in first["issues"]] == [
+        "starter_missing",
+        "assignment_missing",
+    ]

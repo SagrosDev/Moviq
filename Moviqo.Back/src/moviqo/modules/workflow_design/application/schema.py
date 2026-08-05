@@ -15,6 +15,7 @@ CURRENT_DRAFT_FIELDS = frozenset(
         "connections",
         "processFields",
         "formBindings",
+        "publication",
     }
 )
 CURRENT_ELEMENT_FIELDS = frozenset({"id", "type", "label"})
@@ -96,6 +97,7 @@ def dump_current_draft(payload: dict[str, Any]) -> dict[str, Any]:
     connections = payload.get("connections")
     process_fields = payload.get("processFields", [])
     form_bindings = payload.get("formBindings", [])
+    publication = payload.get("publication", {})
     if not isinstance(elements, list):
         raise WorkflowDraftSchemaError("Workflow draft elements must be a list.")
     if not isinstance(connections, list):
@@ -104,6 +106,8 @@ def dump_current_draft(payload: dict[str, Any]) -> dict[str, Any]:
         raise WorkflowDraftSchemaError("Workflow draft processFields must be a list.")
     if not isinstance(form_bindings, list):
         raise WorkflowDraftSchemaError("Workflow draft formBindings must be a list.")
+    if not isinstance(publication, dict):
+        raise WorkflowDraftSchemaError("Workflow draft publication must be an object.")
 
     normalized_elements = [_normalize_element(element) for element in elements]
     normalized_connections = [
@@ -115,6 +119,7 @@ def dump_current_draft(payload: dict[str, Any]) -> dict[str, Any]:
     normalized_form_bindings = [
         _normalize_form_binding(binding) for binding in form_bindings
     ]
+    normalized_publication = _normalize_publication(publication)
 
     return {
         "schemaVersion": payload["schemaVersion"],
@@ -126,6 +131,7 @@ def dump_current_draft(payload: dict[str, Any]) -> dict[str, Any]:
         "connections": normalized_connections,
         "processFields": normalized_process_fields,
         "formBindings": normalized_form_bindings,
+        "publication": normalized_publication,
     }
 
 
@@ -141,6 +147,7 @@ def new_workflow_draft_document(*, draft_id: str, workflow_id: str, name: str) -
             "connections": [],
             "processFields": [],
             "formBindings": [],
+            "publication": {},
         }
     )
 
@@ -165,6 +172,9 @@ def _upcast_v1_to_v2(payload: dict[str, Any]) -> dict[str, Any]:
         "status": payload.get("status", "draft"),
         "elements": list(payload.get("elements", [])),
         "connections": [],
+        "processFields": [],
+        "formBindings": [],
+        "publication": {},
     }
 
 
@@ -179,6 +189,23 @@ def _upcast_v2_to_v3(payload: dict[str, Any]) -> dict[str, Any]:
         "connections": list(payload.get("connections", [])),
         "processFields": [],
         "formBindings": [],
+        "publication": {},
+    }
+
+
+def _normalize_publication(payload: dict[str, Any]) -> dict[str, dict[str, bool]]:
+    starter = payload.get("starter", {})
+    assignment = payload.get("assignment", {})
+    if not isinstance(starter, dict):
+        raise WorkflowDraftSchemaError("Workflow draft publication starter must be an object.")
+    if not isinstance(assignment, dict):
+        raise WorkflowDraftSchemaError(
+            "Workflow draft publication assignment must be an object."
+        )
+
+    return {
+        "starter": {"isConfigured": bool(starter.get("isConfigured", False))},
+        "assignment": {"isConfigured": bool(assignment.get("isConfigured", False))},
     }
 
 

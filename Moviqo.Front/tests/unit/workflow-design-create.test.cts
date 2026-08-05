@@ -4,16 +4,19 @@ import {
   addGuidedWorkflowElement,
   applyWorkflowDraftSave,
   canCreateWorkflow,
+  clearPublicationChecklist,
   connectWorkflowElements,
   createWorkflowDraftEditorState,
   createWorkflowDraftState,
+  focusChecklistTarget,
   reduceWorkflowDraftEditorState,
   reduceWorkflowCreationForm,
   setFirstTaskFieldBinding,
   upsertShortTextProcessField,
   type WorkflowCreationAccepted,
   type WorkflowCreationFormState,
-  type WorkflowDraftDocument
+  type WorkflowDraftDocument,
+  type WorkflowPublicationValidationAccepted
 } from "../../src/features/workflow-design";
 
 test("only designer-capable roles can create workflows", () => {
@@ -344,4 +347,128 @@ test("save failures retain field-level invalid param targets for guided inputs",
   assert.equal(state.saveStatus, "error");
   assert.deepEqual(state.invalidFieldNames, ["processFields.field-1.maximumLength"]);
   assert.deepEqual(state.errorMessages, ["Use 255 or fewer for maximum length."]);
+});
+
+test("publication validation stores authoritative checklist issues without discarding local edits", () => {
+  const accepted: WorkflowCreationAccepted = {
+    workflowId: "01987df4-ae8a-7000-8000-000000000110",
+    organizationId: "01987df4-ae8a-7000-8000-000000000101",
+    createdByMembershipId: "01987df4-ae8a-7000-8000-000000000102",
+    name: "Workflow intake",
+    revision: "2",
+    draft: {
+      schemaVersion: 3,
+      draftId: "01987df4-ae8a-7000-8000-000000000111",
+      workflowId: "01987df4-ae8a-7000-8000-000000000110",
+      name: "Workflow intake",
+      status: "draft",
+      elements: [{ id: "start-1", type: "start", label: "Start" }],
+      connections: [],
+      processFields: [],
+      formBindings: []
+    }
+  };
+  const draftState = createWorkflowDraftState(accepted);
+  const edited = reduceWorkflowDraftEditorState(
+    createWorkflowDraftEditorState(draftState),
+    { type: "task-added", labels: { start: "Start", task: "Task", end: "End" } }
+  );
+  const validation: WorkflowPublicationValidationAccepted = {
+    workflowId: accepted.workflowId,
+    revision: "2",
+    publishable: false,
+    issues: [
+      {
+        code: "starter_missing",
+        severity: "blocking",
+        target: "configuration.starter",
+        elementId: null,
+        fieldId: null,
+        bindingId: null,
+        message: "We need one more detail before publishing: choose who can start this workflow.",
+        actionLabel: "Configure starter"
+      }
+    ]
+  };
+
+  const validating = reduceWorkflowDraftEditorState(edited, {
+    type: "publication-validation-requested",
+    requestKey: "request-1"
+  });
+  const state = reduceWorkflowDraftEditorState(validating, {
+    type: "publication-validation-succeeded",
+    requestKey: "request-1",
+    validation
+  });
+
+  assert.equal(state.localDraft.elements.length, 2);
+  assert.equal(state.publicationStatus, "success");
+  assert.equal(state.publicationIssues.length, 1);
+  assert.equal(state.publicationIssues[0]?.code, "starter_missing");
+});
+
+test("publication validation failure keeps the checklist retry state explicit", () => {
+  const accepted: WorkflowCreationAccepted = {
+    workflowId: "01987df4-ae8a-7000-8000-000000000110",
+    organizationId: "01987df4-ae8a-7000-8000-000000000101",
+    createdByMembershipId: "01987df4-ae8a-7000-8000-000000000102",
+    name: "Workflow intake",
+    revision: "2",
+    draft: {
+      schemaVersion: 3,
+      draftId: "01987df4-ae8a-7000-8000-000000000111",
+      workflowId: "01987df4-ae8a-7000-8000-000000000110",
+      name: "Workflow intake",
+      status: "draft",
+      elements: [],
+      connections: [],
+      processFields: [],
+      formBindings: []
+    }
+  };
+
+  const validating = reduceWorkflowDraftEditorState(
+    createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
+    {
+      type: "publication-validation-requested",
+      requestKey: "request-1"
+    }
+  );
+  const state = reduceWorkflowDraftEditorState(
+    validating,
+    {
+      type: "publication-validation-failed",
+      requestKey: "request-1",
+      errorMessage: "We could not validate publication readiness. Try again.",
+      errorCode: "network_error"
+    }
+  );
+
+  assert.equal(state.publicationStatus, "error");
+  assert.equal(state.publicationErrorCode, "network_error");
+  assert.deepEqual(state.publicationIssues, []);
+});
+
+test("checklist target focus maps to stable editor sections", () => {
+  assert.equal(focusChecklistTarget("configuration.starter"), "starter");
+  assert.equal(focusChecklistTarget("configuration.assignment"), "assignment");
+  assert.equal(focusChecklistTarget("elements.task-1"), "canvas");
+  assert.equal(focusChecklistTarget("processFields.field-1"), "field");
+});
+
+test("resolved checklist issues clear only after authoritative validation", () => {
+  const cleared = clearPublicationChecklist([
+    {
+      code: "starter_missing",
+      severity: "blocking",
+      target: "configuration.starter",
+      elementId: null,
+      fieldId: null,
+      bindingId: null,
+      message: "We need one more detail before publishing: choose who can start this workflow.",
+      actionLabel: "Configure starter"
+    }
+  ]);
+
+  assert.deepEqual(cleared, []);
 });

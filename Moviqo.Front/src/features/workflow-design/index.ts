@@ -2,12 +2,15 @@ export { canCreateWorkflow } from "./model/access";
 export {
   addGuidedWorkflowElement,
   applyWorkflowDraftSave,
+  clearPublicationChecklist,
   connectWorkflowElements,
   createWorkflowDraftEditorState,
+  focusChecklistTarget,
   reduceWorkflowDraftEditorState,
   saveWorkflowDraft,
   setFirstTaskFieldBinding,
-  upsertShortTextProcessField
+  upsertShortTextProcessField,
+  validateWorkflowPublication
 } from "./model/editor";
 export { createWorkflowDraftState } from "./model/draft";
 export {
@@ -20,6 +23,8 @@ export type {
   WorkflowCreationFormState,
   WorkflowDraftConnection,
   WorkflowDraftDocument,
+  WorkflowPublicationIssue,
+  WorkflowPublicationValidationAccepted,
   WorkflowTaskFormControl,
   WorkflowProcessField
 } from "./model/types";

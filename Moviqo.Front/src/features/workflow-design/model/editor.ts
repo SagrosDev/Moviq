@@ -14,6 +14,8 @@ import type {
   WorkflowDraftConnection,
   WorkflowDraftDocument,
   WorkflowDraftElement,
+  WorkflowPublishAccepted,
+  WorkflowPublishedVersion,
   WorkflowPublicationIssue,
   WorkflowPublicationValidationAccepted,
   WorkflowProcessField,
@@ -40,6 +42,11 @@ export type WorkflowDraftEditorState = {
   publicationErrorCode: string | null;
   publicationIssues: WorkflowPublicationIssue[];
   activePublicationRequestKey: string | null;
+  publishStatus: "idle" | "publishing" | "success" | "error";
+  publishErrorCode: string | null;
+  publishErrorMessage: string | null;
+  activePublishRequestKey: string | null;
+  publishedVersion: WorkflowPublishedVersion | null;
   focusedChecklistSection: "starter" | "assignment" | "canvas" | "field" | null;
 };
 
@@ -75,6 +82,11 @@ export const createWorkflowDraftEditorState = (
   publicationErrorCode: null,
   publicationIssues: [],
   activePublicationRequestKey: null,
+  publishStatus: "idle",
+  publishErrorCode: null,
+  publishErrorMessage: null,
+  activePublishRequestKey: null,
+  publishedVersion: null,
   focusedChecklistSection: null
 });
 
@@ -85,13 +97,23 @@ const clearPublicationState = (
     | "publicationErrorCode"
     | "publicationIssues"
     | "activePublicationRequestKey"
+    | "publishStatus"
+    | "publishErrorCode"
+    | "publishErrorMessage"
+    | "activePublishRequestKey"
+    | "publishedVersion"
   >
 ): WorkflowDraftEditorState => ({
   ...state,
   publicationStatus: "idle",
   publicationErrorCode: null,
   publicationIssues: [],
-  activePublicationRequestKey: null
+  activePublicationRequestKey: null,
+  publishStatus: "idle",
+  publishErrorCode: null,
+  publishErrorMessage: null,
+  activePublishRequestKey: null,
+  publishedVersion: null
 });
 
 export const syncWorkflowDraftEditorState = (
@@ -387,6 +409,19 @@ export const reduceWorkflowDraftEditorState = (
         requestKey: string;
         validation: WorkflowPublicationValidationAccepted;
       }
+    | { type: "publish-requested"; requestKey: string }
+    | {
+        type: "publish-failed";
+        requestKey: string;
+        errorCode: string;
+        errorMessage: string;
+        issues: WorkflowPublicationIssue[];
+      }
+    | {
+        type: "publish-succeeded";
+        requestKey: string;
+        accepted: WorkflowPublishAccepted;
+      }
     | { type: "reload-latest-succeeded"; draftState: DraftState<WorkflowDraftDocument> }
     | { type: "reapply-conflict-draft" }
     | { type: "checklist-target-selected"; target: string }
@@ -526,6 +561,58 @@ export const reduceWorkflowDraftEditorState = (
     };
   }
 
+  if (action.type === "publish-requested") {
+    return {
+      ...state,
+      publishStatus: "publishing",
+      publishErrorCode: null,
+      publishErrorMessage: null,
+      activePublishRequestKey: action.requestKey
+    };
+  }
+
+  if (action.type === "publish-failed") {
+    if (state.activePublishRequestKey !== action.requestKey) {
+      return state;
+    }
+    return {
+      ...state,
+      publishStatus: "error",
+      publishErrorCode: action.errorCode,
+      publishErrorMessage: action.errorMessage,
+      publicationIssues: action.issues,
+      activePublishRequestKey: null
+    };
+  }
+
+  if (action.type === "publish-succeeded") {
+    if (state.activePublishRequestKey !== action.requestKey) {
+      return state;
+    }
+    return {
+      ...state,
+      localDraft: structuredClone(action.accepted.draft),
+      hasLocalChanges: false,
+      saveStatus: "saved",
+      errorCode: null,
+      errorMessages: [],
+      invalidFieldNames: [],
+      lastAcknowledgedRevision: action.accepted.revision as DraftRevision,
+      pendingAutosaveRequestKey: null,
+      conflictSnapshot: null,
+      retryCount: 0,
+      publicationStatus: "idle",
+      publicationErrorCode: null,
+      publicationIssues: [],
+      activePublicationRequestKey: null,
+      publishStatus: "success",
+      publishErrorCode: null,
+      publishErrorMessage: null,
+      activePublishRequestKey: null,
+      publishedVersion: action.accepted.publishedVersion
+    };
+  }
+
   if (action.type === "checklist-target-selected") {
     return {
       ...state,
@@ -661,6 +748,57 @@ export const validateWorkflowPublication = async (
   };
 };
 
+export const publishWorkflow = async (
+  expectedRevision: DraftRevision,
+  localDraft: WorkflowDraftDocument,
+  requestKey: string
+): Promise<
+  | { ok: true; data: WorkflowPublishAccepted }
+  | { ok: false; error: NormalizedApiProblem }
+> => {
+  const response = await (
+    workflowDesignClient as {
+      POST(
+        path: string,
+        init?: object
+      ): Promise<{ data?: unknown; response: Response }>;
+    }
+  ).POST(`/api/v1/workflow-design/workflows/${localDraft.workflowId}/publish/`, {
+    body: {
+      expectedRevision,
+      draft: localDraft
+    },
+    headers: {
+      "Idempotency-Key": requestKey
+    }
+  });
+
+  if (!response.response.ok) {
+    return { ok: false, error: await readApiProblem(response.response) };
+  }
+
+  return {
+    ok: true,
+    data: response.data as WorkflowPublishAccepted
+  };
+};
+
+export const publicationIssuesFromInvalidParams = (
+  invalidParams: Array<Record<string, string>> | undefined
+): WorkflowPublicationIssue[] =>
+  (invalidParams ?? [])
+    .filter((entry) => Boolean(entry.name) && Boolean(entry.reason))
+    .map((entry) => ({
+      code: entry.code ?? "invalid",
+      severity: "blocking",
+      target: entry.name,
+      elementId: null,
+      fieldId: null,
+      bindingId: null,
+      message: entry.reason,
+      actionLabel: "Review issue"
+    }));
+
 export const readWorkflowDraft = async (
   workflowId: string
 ): Promise<
@@ -687,6 +825,12 @@ export const shouldScheduleAutosave = (state: WorkflowDraftEditorState) =>
   state.hasLocalChanges &&
   state.pendingAutosaveRequestKey !== null &&
   (state.saveStatus === "unsaved" || state.saveStatus === "retrying");
+
+export const canPublishWorkflow = (state: WorkflowDraftEditorState) =>
+  !state.hasLocalChanges &&
+  (state.saveStatus === "idle" || state.saveStatus === "saved") &&
+  state.publicationStatus !== "validating" &&
+  state.publishStatus !== "publishing";
 
 export const autosaveDelayMs = (state: WorkflowDraftEditorState) => {
   if (state.saveStatus === "unsaved") {
@@ -756,6 +900,9 @@ export const clearPublicationChecklist = (_issues: WorkflowPublicationIssue[]) =
 
 export const createPublicationValidationRequestKey = (workflowId: string) =>
   `workflow-validate-${workflowId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
+export const createWorkflowPublishRequestKey = (workflowId: string) =>
+  `workflow-publish-${workflowId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 const nextElementLabel = (
   draft: WorkflowDraftDocument,

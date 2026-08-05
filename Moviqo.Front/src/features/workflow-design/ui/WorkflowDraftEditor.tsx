@@ -5,10 +5,14 @@ import { StatusBadge } from "../../../shared/ui/catalog";
 import {
   autosaveDelayMs,
   applyWorkflowDraftSave,
+  canPublishWorkflow,
+  createWorkflowPublishRequestKey,
+  publicationIssuesFromInvalidParams,
   shouldScheduleAutosave,
   createPublicationValidationRequestKey,
   createWorkflowDraftEditorState,
   focusChecklistTarget,
+  publishWorkflow,
   readWorkflowDraft,
   reduceWorkflowDraftEditorState,
   saveWorkflowDraft,
@@ -125,6 +129,10 @@ export const WorkflowDraftEditor = ({
   const isEditingDisabled =
     (editorState.saveStatus === "saving" || editorState.saveStatus === "retrying") ||
     editorState.publicationStatus === "validating";
+  const publishDisabled =
+    !canPublishWorkflow(editorState) ||
+    editorState.saveStatus === "conflict" ||
+    editorState.saveStatus === "error";
 
   const save = async (retry = false) => {
     const requestKey = editorState.pendingAutosaveRequestKey;
@@ -239,6 +247,44 @@ export const WorkflowDraftEditor = ({
     });
   };
 
+  const publish = async () => {
+    if (!canPublishWorkflow(editorState)) {
+      return;
+    }
+
+    const requestKey = createWorkflowPublishRequestKey(editorState.localDraft.workflowId);
+    dispatch({ type: "publish-requested", requestKey });
+    const result = await publishWorkflow(
+      editorState.lastAcknowledgedRevision,
+      editorState.localDraft,
+      requestKey
+    );
+
+    if (!result.ok) {
+      dispatch({
+        type: "publish-failed",
+        requestKey,
+        errorCode: result.error.code,
+        errorMessage:
+          result.error.invalidParams?.map((entry) => entry.reason).join(" ") ||
+          t("workflowDesign.editor.publishError"),
+        issues: publicationIssuesFromInvalidParams(result.error.invalidParams)
+      });
+      return;
+    }
+
+    const nextDraftState = createDraftState(
+      result.data.draft,
+      result.data.revision as DraftState<WorkflowDraftDocument>["revision"]
+    );
+    onAccepted(nextDraftState, result.data);
+    dispatch({
+      type: "publish-succeeded",
+      requestKey,
+      accepted: result.data
+    });
+  };
+
   const updateFieldDraft = (
     key: keyof typeof fieldDraft,
     value: string | number
@@ -349,18 +395,28 @@ export const WorkflowDraftEditor = ({
           className="button"
           data-variant="secondary"
           type="button"
-          disabled={
-            isEditingDisabled
-          }
+          disabled={isEditingDisabled || editorState.publishStatus === "publishing"}
           onClick={() => void validatePublication()}
         >
           {editorState.publicationStatus === "validating"
             ? t("workflowDesign.editor.validatingPublication")
             : t("workflowDesign.editor.validatePublication")}
         </button>
+        <button
+          className="button"
+          type="button"
+          disabled={publishDisabled}
+          onClick={() => void publish()}
+        >
+          {editorState.publishStatus === "publishing"
+            ? t("workflowDesign.editor.publishingWorkflow")
+            : t("workflowDesign.editor.publishWorkflow")}
+        </button>
       </div>
       <p className="success-message" aria-live="polite">
-        {editorState.saveStatus === "saved"
+        {editorState.publishStatus === "success" && editorState.publishedVersion
+          ? `${t("workflowDesign.editor.publishSuccess")} ${editorState.publishedVersion.versionNumber}.`
+          : editorState.saveStatus === "saved"
           ? t("workflowDesign.editor.saveSuccess")
           : editorState.saveStatus === "saving"
             ? t("workflowDesign.editor.saving")
@@ -372,6 +428,12 @@ export const WorkflowDraftEditor = ({
                   ? t("workflowDesign.editor.conflictMessage")
                   : null}
       </p>
+      {editorState.publishStatus === "error" && editorState.publishErrorMessage ? (
+        <div className="workflow-editor__errors" role="alert">
+          <strong>{t("workflowDesign.editor.publishErrorTitle")}</strong>
+          <p>{editorState.publishErrorMessage}</p>
+        </div>
+      ) : null}
       {editorState.errorMessages.length > 0 ? (
         <div className="workflow-editor__errors" role="alert">
           <strong>{editorState.errorCode === "workflow_draft_revision_conflict"

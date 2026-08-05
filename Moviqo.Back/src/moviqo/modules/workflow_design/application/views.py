@@ -29,6 +29,7 @@ from moviqo.modules.workflow_design.application.services import (
     WorkflowNameValidationError,
     create_workflow_definition,
     list_workflow_catalog,
+    publish_workflow_version,
     read_workflow_draft,
     save_workflow_draft,
     validate_workflow_publication,
@@ -140,6 +141,11 @@ class WorkflowPublicationValidationRequestSerializer(serializers.Serializer):
     draft = WorkflowDraftDocumentSerializer()
 
 
+class WorkflowPublishRequestSerializer(serializers.Serializer):
+    expectedRevision = serializers.CharField()
+    draft = WorkflowDraftDocumentSerializer()
+
+
 class WorkflowCreateResponseSerializer(serializers.Serializer):
     workflowId = serializers.UUIDField()
     organizationId = serializers.UUIDField()
@@ -178,6 +184,17 @@ class WorkflowPublicationValidationResponseSerializer(serializers.Serializer):
     revision = serializers.CharField()
     publishable = serializers.BooleanField()
     issues = WorkflowPublicationIssueSerializer(many=True)
+
+
+class WorkflowPublishedVersionSerializer(serializers.Serializer):
+    versionNumber = serializers.IntegerField(min_value=1)
+    publishedAt = serializers.DateTimeField()
+    sourceRevision = serializers.CharField()
+    schemaVersion = serializers.IntegerField(min_value=1)
+
+
+class WorkflowPublishResponseSerializer(WorkflowCreateResponseSerializer):
+    publishedVersion = WorkflowPublishedVersionSerializer()
 
 
 class WorkflowCollectionView(APIView):
@@ -491,6 +508,101 @@ class WorkflowPublicationValidationView(APIView):
                     409,
                     "workflow_draft_revision_conflict",
                     "Workflow publication validation failed",
+                ),
+                invalid_params=exc.invalid_params,
+            )
+        except IdempotencyKeyReuseConflict:
+            return problem_response(
+                request,
+                ProblemTemplate(409, "idempotency_key_reused", "Conflict"),
+            )
+
+        if result is None:
+            raise NotFound("workflow")
+
+        return Response(result, status=200)
+
+
+class WorkflowPublishView(APIView):
+    permission_classes = [AuthenticatedRequestPermission]
+
+    @extend_schema(
+        operation_id="workflow_design_publish",
+        request=WorkflowPublishRequestSerializer,
+        parameters=[
+            OpenApiParameter(
+                name="Idempotency-Key",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                required=True,
+            )
+        ],
+        responses={
+            200: WorkflowPublishResponseSerializer,
+            (400, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (403, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (404, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (409, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def post(self, request, workflow_id: UUID) -> Response:
+        serializer = WorkflowPublishRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    status_code=400,
+                    code="workflow_draft_invalid",
+                    title="Workflow publish failed",
+                ),
+                invalid_params=_workflow_draft_invalid_params(serializer.errors),
+            )
+
+        idempotency_key = request.headers.get("Idempotency-Key")
+        if not idempotency_key:
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    status_code=400,
+                    code="workflow_draft_invalid",
+                    title="Workflow publish failed",
+                ),
+                invalid_params=[
+                    {
+                        "name": "idempotencyKey",
+                        "code": "required",
+                        "reason": "Provide an idempotency key to continue.",
+                    }
+                ],
+            )
+
+        try:
+            tenant_context, _membership = _require_design_membership(request)
+        except WorkflowDesignForbidden:
+            return _workflow_design_forbidden_response(request)
+
+        try:
+            result = publish_workflow_version(
+                tenant_context=tenant_context,
+                workflow_id=workflow_id,
+                expected_revision=serializer.validated_data["expectedRevision"],
+                draft=serializer.validated_data["draft"],
+                idempotency_key=idempotency_key,
+                request_hash=_workflow_request_hash(serializer.validated_data),
+            )
+        except WorkflowDraftValidationAPIError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(400, "workflow_draft_invalid", "Workflow publish failed"),
+                invalid_params=exc.invalid_params,
+            )
+        except WorkflowDraftRevisionConflictError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    409,
+                    "workflow_draft_revision_conflict",
+                    "Workflow publish failed",
                 ),
                 invalid_params=exc.invalid_params,
             )

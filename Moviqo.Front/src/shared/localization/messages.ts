@@ -145,6 +145,11 @@ export type MessageKey =
   | "workflowDesign.editor.reapplyChanges"
   | "workflowDesign.editor.validatePublication"
   | "workflowDesign.editor.validatingPublication"
+  | "workflowDesign.editor.publishWorkflow"
+  | "workflowDesign.editor.publishingWorkflow"
+  | "workflowDesign.editor.publishSuccess"
+  | "workflowDesign.editor.publishErrorTitle"
+  | "workflowDesign.editor.publishError"
   | "workflowDesign.editor.checklistTitle"
   | "workflowDesign.editor.checklistBody"
   | "workflowDesign.editor.checklistEmpty"
@@ -465,6 +470,11 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.reapplyChanges": "Reaplicar mis cambios",
   "workflowDesign.editor.validatePublication": "Validar publicacion",
   "workflowDesign.editor.validatingPublication": "Validando publicacion",
+  "workflowDesign.editor.publishWorkflow": "Publicar version",
+  "workflowDesign.editor.publishingWorkflow": "Publicando version",
+  "workflowDesign.editor.publishSuccess": "La version publicada ya esta lista para iniciar. Version",
+  "workflowDesign.editor.publishErrorTitle": "No pudimos publicar este flujo",
+  "workflowDesign.editor.publishError": "No pudimos publicar este flujo. Revisa el checklist y vuelve a intentarlo.",
   "workflowDesign.editor.checklistTitle": "Checklist de publicacion",
   "workflowDesign.editor.checklistBody":
     "Valida el borrador actual sin publicarlo. Los bloqueos siguen una lista estable y accionable.",
@@ -804,6 +814,11 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.reapplyChanges": "Reapply my changes",
   "workflowDesign.editor.validatePublication": "Validate publication",
   "workflowDesign.editor.validatingPublication": "Validating publication",
+  "workflowDesign.editor.publishWorkflow": "Publish version",
+  "workflowDesign.editor.publishingWorkflow": "Publishing version",
+  "workflowDesign.editor.publishSuccess": "This published version is now ready to start. Version",
+  "workflowDesign.editor.publishErrorTitle": "We could not publish this workflow",
+  "workflowDesign.editor.publishError": "We could not publish this workflow. Review the checklist and try again.",
   "workflowDesign.editor.checklistTitle": "Publish checklist",
   "workflowDesign.editor.checklistBody":
     "Validate the current draft without publishing it. Blocking rows stay stable and actionable.",

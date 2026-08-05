@@ -21,6 +21,7 @@ from moviqo.modules.organizations.application import (
 from moviqo.modules.workflow_design.application import (
     WorkflowCollectionView,
     WorkflowDraftDetailView,
+    WorkflowPublishView,
     WorkflowPublicationValidationView,
 )
 from moviqo.modules.workflow_runtime.application import (
@@ -75,6 +76,11 @@ urlpatterns = [
         "api/v1/workflow-design/workflows/<uuid:workflow_id>/publication-validation/",
         WorkflowPublicationValidationView.as_view(),
         name="api-v1-workflow-design-publication-validation",
+    ),
+    path(
+        "api/v1/workflow-design/workflows/<uuid:workflow_id>/publish/",
+        WorkflowPublishView.as_view(),
+        name="api-v1-workflow-design-publish",
     ),
     path(
         "api/v1/organizations/registrations/",

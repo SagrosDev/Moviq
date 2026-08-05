@@ -131,3 +131,14 @@ export type WorkflowPublicationValidationAccepted = {
   publishable: boolean;
   issues: WorkflowPublicationIssue[];
 };
+
+export type WorkflowPublishedVersion = {
+  versionNumber: number;
+  publishedAt: string;
+  sourceRevision: string;
+  schemaVersion: number;
+};
+
+export type WorkflowPublishAccepted = WorkflowCreationAccepted & {
+  publishedVersion: WorkflowPublishedVersion;
+};

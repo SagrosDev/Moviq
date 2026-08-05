@@ -56,6 +56,7 @@ SAFE_VISIBLE_INVALID_PARAM_PREFIXES = (
     "processFields.",
     "formBindings.",
     "controls.",
+    "configuration.",
 )
 SAFE_PASSWORD_REASON_CODES = {
     "password_too_short",

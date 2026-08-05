@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.db import IntegrityError
+from django.db.models import Max
 from rest_framework import status
 from rest_framework.exceptions import APIException
 
@@ -21,16 +22,22 @@ from moviqo.modules.workflow_design.application.schema import (
     CURRENT_DRAFT_SCHEMA_VERSION,
     WorkflowDraftSchemaError,
     WorkflowDraftValidationError,
+    dump_current_draft,
     load_draft_document,
     new_workflow_draft_document,
     validate_workflow_graph_document,
 )
-from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft
+from moviqo.modules.workflow_design.models import (
+    WorkflowDefinition,
+    WorkflowDraft,
+    WorkflowVersion,
+)
 
 MAX_WORKFLOW_NAME_LENGTH = 120
 WORKFLOW_CREATE_COMMAND = "workflow-design.create"
 WORKFLOW_SAVE_COMMAND = "workflow-design.save-draft"
 WORKFLOW_VALIDATE_COMMAND = "workflow-design.validate-publication"
+WORKFLOW_PUBLISH_COMMAND = "workflow-design.publish"
 SAVE_OUTCOME_ACCEPTED = "accepted"
 SAVE_OUTCOME_REJECTED = "rejected"
 
@@ -94,6 +101,14 @@ class WorkflowCatalogItem:
     revision: str
     schema_version: int
     updated_at: str
+
+
+@dataclass(frozen=True)
+class WorkflowPublishedVersionSummary:
+    version_number: int
+    published_at: str
+    source_revision: str
+    schema_version: int
 
 
 def create_workflow_definition(
@@ -257,6 +272,48 @@ def validate_workflow_publication(
         idempotency_key=idempotency_key,
         request_hash=request_hash,
         handler=lambda command_context: _validate_workflow_publication_side_effects(
+            tenant_context=tenant_context,
+            command_context=command_context,
+            workflow_id=workflow_id,
+            expected_revision=expected_revision,
+            draft=draft,
+        ),
+    )
+
+    outcome = execution.result
+    if outcome["outcome"] == SAVE_OUTCOME_ACCEPTED:
+        return outcome["payload"]
+
+    error = outcome["error"]
+    if error["code"] == WorkflowDraftRevisionConflictError.default_code:
+        raise WorkflowDraftRevisionConflictError(invalid_params=error["invalidParams"])
+
+    raise WorkflowDraftValidationAPIError(invalid_params=error["invalidParams"])
+
+
+def publish_workflow_version(
+    *,
+    tenant_context: TenantContext,
+    workflow_id,
+    expected_revision: str,
+    draft: dict[str, Any],
+    idempotency_key: str,
+    request_hash: str,
+) -> dict[str, Any] | None:
+    workflow = (
+        WorkflowDefinition.objects.select_related("draft")
+        .filter(id=workflow_id, organization_id=tenant_context.organization_id)
+        .first()
+    )
+    if workflow is None:
+        return None
+
+    execution = execute_atomic_command(
+        tenant_context=tenant_context,
+        command_type=WORKFLOW_PUBLISH_COMMAND,
+        idempotency_key=idempotency_key,
+        request_hash=request_hash,
+        handler=lambda command_context: _publish_workflow_version_side_effects(
             tenant_context=tenant_context,
             command_context=command_context,
             workflow_id=workflow_id,
@@ -562,6 +619,154 @@ def _validate_workflow_publication_side_effects(
     }
 
 
+def _publish_workflow_version_side_effects(
+    *,
+    tenant_context: TenantContext,
+    command_context,
+    workflow_id,
+    expected_revision: str,
+    draft: dict[str, Any],
+) -> dict[str, Any]:
+    workflow_draft = (
+        WorkflowDraft.objects.select_related("workflow")
+        .select_for_update()
+        .get(workflow_id=workflow_id, organization_id=tenant_context.organization_id)
+    )
+    workflow = workflow_draft.workflow
+    authoritative_draft = load_draft_document(workflow_draft.document)
+
+    if workflow_draft.revision != expected_revision:
+        _append_publication_rejection_audit(
+            command_context=command_context,
+            workflow_id=str(workflow.id),
+            draft_id=authoritative_draft["draftId"],
+            revision=workflow_draft.revision,
+            invalid_params=[
+                {
+                    "name": "expectedRevision",
+                    "code": "stale",
+                    "reason": "Reload the last saved draft before publishing.",
+                }
+            ],
+        )
+        return _rejected_save_outcome(
+            code=WorkflowDraftRevisionConflictError.default_code,
+            invalid_params=[
+                {
+                    "name": "expectedRevision",
+                    "code": "stale",
+                    "reason": "Reload the last saved draft before publishing.",
+                }
+            ],
+        )
+
+    try:
+        normalized_document = validate_workflow_graph_document(authoritative_draft)
+    except WorkflowDraftValidationError as exc:
+        invalid_params = _build_graph_invalid_params(exc.issues)
+        _append_publication_rejection_audit(
+            command_context=command_context,
+            workflow_id=str(workflow.id),
+            draft_id=authoritative_draft["draftId"],
+            revision=workflow_draft.revision,
+            invalid_params=invalid_params,
+        )
+        return _rejected_save_outcome(
+            code=WorkflowDraftValidationAPIError.default_code,
+            invalid_params=invalid_params,
+        )
+    except WorkflowDraftSchemaError as exc:
+        invalid_params = [
+            {
+                "name": "draft",
+                "code": "invalid",
+                "reason": str(exc),
+            }
+        ]
+        _append_publication_rejection_audit(
+            command_context=command_context,
+            workflow_id=str(workflow.id),
+            draft_id=authoritative_draft["draftId"],
+            revision=workflow_draft.revision,
+            invalid_params=invalid_params,
+        )
+        return _rejected_save_outcome(
+            code=WorkflowDraftValidationAPIError.default_code,
+            invalid_params=invalid_params,
+        )
+
+    publication_issues = validate_publication_configuration(
+        tenant_context=tenant_context,
+        publication=normalized_document["publication"],
+    )
+    validation = validate_workflow_for_publication(
+        normalized_document,
+        publication_configuration_issues=publication_issues,
+    )
+    if not validation["publishable"]:
+        invalid_params = _build_publication_invalid_params(validation["issues"])
+        _append_publication_rejection_audit(
+            command_context=command_context,
+            workflow_id=str(workflow.id),
+            draft_id=normalized_document["draftId"],
+            revision=workflow_draft.revision,
+            invalid_params=invalid_params,
+        )
+        return _rejected_save_outcome(
+            code=WorkflowDraftValidationAPIError.default_code,
+            invalid_params=invalid_params,
+        )
+
+    latest_version_number = (
+        WorkflowVersion.objects.filter(
+            workflow_id=workflow_id,
+            organization_id=tenant_context.organization_id,
+        ).aggregate(max_version=Max("version_number"))["max_version"]
+        or 0
+    )
+    next_version_number = latest_version_number + 1
+    published_version = WorkflowVersion.objects.create(
+        organization_id=tenant_context.organization_id,
+        workflow=workflow,
+        version_number=next_version_number,
+        source_draft_revision=workflow_draft.revision,
+        snapshot_schema_version=CURRENT_DRAFT_SCHEMA_VERSION,
+        snapshot=dump_current_draft(normalized_document),
+        published_by_membership_id=tenant_context.membership_id,
+        published_by_user_id=tenant_context.user_id,
+    )
+    command_context.append_audit(
+        event_type="workflow-design.workflow-published",
+        payload={
+            "workflowId": str(workflow.id),
+            "draftId": normalized_document["draftId"],
+            "versionNumber": published_version.version_number,
+            "sourceDraftRevision": workflow_draft.revision,
+            "schemaVersion": published_version.snapshot_schema_version,
+            "publishable": True,
+        },
+    )
+    command_context.enqueue_outbox(
+        message_type="workflow-design.workflow-version-published",
+        payload={
+            "workflowId": str(workflow.id),
+            "workflowVersionId": str(published_version.id),
+            "versionNumber": published_version.version_number,
+            "sourceDraftRevision": workflow_draft.revision,
+        },
+    )
+    return {
+        "outcome": SAVE_OUTCOME_ACCEPTED,
+        "payload": _build_workflow_payload(
+            tenant_context=tenant_context,
+            workflow=workflow,
+            revision=workflow_draft.revision,
+            draft=normalized_document,
+            published_version=published_version,
+        ),
+    }
+
+
 def _validate_workflow_name(name: str) -> str:
     safe_name = " ".join(name.split())
     if not safe_name:
@@ -591,12 +796,86 @@ def _normalize_workflow_name(name: str) -> str:
     return name.casefold()
 
 
+def _normalize_candidate_document(
+    *,
+    workflow: WorkflowDefinition,
+    previous_document: dict[str, Any],
+    draft: dict[str, Any],
+) -> dict[str, Any]:
+    candidate_document = {
+        "schemaVersion": draft.get("schemaVersion", CURRENT_DRAFT_SCHEMA_VERSION),
+        "draftId": previous_document["draftId"],
+        "workflowId": str(workflow.id),
+        "name": workflow.name,
+        "status": previous_document["status"],
+        "elements": draft.get("elements", previous_document["elements"]),
+        "connections": draft.get("connections", previous_document["connections"]),
+        "processFields": _merge_process_fields(
+            previous_document=previous_document,
+            draft=draft,
+        ),
+        "formBindings": _merge_form_bindings(
+            previous_document=previous_document,
+            draft=draft,
+        ),
+        "publication": _merge_publication(
+            previous_document=previous_document,
+            draft=draft,
+        ),
+    }
+    return validate_workflow_graph_document(candidate_document)
+
+
+def _build_workflow_payload(
+    *,
+    tenant_context: TenantContext,
+    workflow: WorkflowDefinition,
+    revision: str,
+    draft: dict[str, Any],
+    published_version: WorkflowVersion | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "workflowId": str(workflow.id),
+        "organizationId": str(workflow.organization_id),
+        "createdByMembershipId": str(workflow.created_by_membership_id),
+        "configurationDirectory": _serialize_workflow_design_directory(
+            tenant_context=tenant_context
+        ),
+        "name": workflow.name,
+        "revision": revision,
+        "draft": draft,
+    }
+    if published_version is not None:
+        payload["publishedVersion"] = {
+            "versionNumber": published_version.version_number,
+            "publishedAt": published_version.published_at.isoformat(),
+            "sourceRevision": published_version.source_draft_revision,
+            "schemaVersion": published_version.snapshot_schema_version,
+        }
+    return payload
+
+
 def _build_graph_invalid_params(issues: list[dict[str, str]]) -> list[dict[str, str]]:
     return [
         {
             "name": issue.get("field", "draft"),
             "code": issue.get("code", "invalid"),
             "reason": issue.get("reason", "Correct the workflow draft and try again."),
+        }
+        for issue in issues
+    ]
+
+
+def _build_publication_invalid_params(
+    issues: list[dict[str, Any]],
+) -> list[dict[str, str]]:
+    return [
+        {
+            "name": issue.get("target", "draft"),
+            "code": issue.get("code", "invalid"),
+            "reason": issue.get(
+                "message", "Correct the workflow draft and try again."
+            ),
         }
         for issue in issues
     ]
@@ -614,6 +893,27 @@ def _rejected_save_outcome(
             "invalidParams": invalid_params,
         },
     }
+
+
+def _append_publication_rejection_audit(
+    *,
+    command_context,
+    workflow_id: str,
+    draft_id: str,
+    revision: str,
+    invalid_params: list[dict[str, str]],
+) -> None:
+    command_context.append_audit(
+        event_type="workflow-design.publication-rejected",
+        payload={
+            "workflowId": workflow_id,
+            "draftId": draft_id,
+            "revision": revision,
+            "issueCount": len(invalid_params),
+            "issueCodes": [issue["code"] for issue in invalid_params],
+            "issues": invalid_params,
+        },
+    )
 
 
 def _collect_graph_audit_events(

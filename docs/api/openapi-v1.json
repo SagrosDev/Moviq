@@ -1971,7 +1971,7 @@
                         }
                     },
                     "publication": {
-                        "$ref": "#/components/schemas/WorkflowPublicationConfiguration"
+                        "$ref": "#/components/schemas/WorkflowPublication"
                     }
                 },
                 "required": [
@@ -2081,6 +2081,17 @@
                     "label"
                 ]
             },
+            "WorkflowPublication": {
+                "type": "object",
+                "properties": {
+                    "starter": {
+                        "$ref": "#/components/schemas/WorkflowPublicationSection"
+                    },
+                    "assignment": {
+                        "$ref": "#/components/schemas/WorkflowPublicationSection"
+                    }
+                }
+            },
             "WorkflowPublicationIssue": {
                 "type": "object",
                 "properties": {
@@ -2122,17 +2133,6 @@
                     "severity",
                     "target"
                 ]
-            },
-            "WorkflowPublicationConfiguration": {
-                "type": "object",
-                "properties": {
-                    "starter": {
-                        "$ref": "#/components/schemas/WorkflowPublicationSection"
-                    },
-                    "assignment": {
-                        "$ref": "#/components/schemas/WorkflowPublicationSection"
-                    }
-                }
             },
             "WorkflowPublicationSection": {
                 "type": "object",

@@ -30,6 +30,10 @@ def test_schema_registry_reads_supported_historical_fixture() -> None:
         "connections": [],
         "processFields": [],
         "formBindings": [],
+        "publication": {
+            "starter": {"isConfigured": False},
+            "assignment": {"isConfigured": False},
+        },
     }
 
 

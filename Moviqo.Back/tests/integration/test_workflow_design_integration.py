@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import threading
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from django.conf import settings
@@ -18,9 +18,9 @@ from moviqo.modules.workflow_design.application import (
     save_workflow_draft,
     validate_workflow_publication,
 )
-from moviqo.modules.workflow_design.application.services import WorkflowDraftValidationAPIError
 from moviqo.modules.workflow_design.application.services import (
     WorkflowDraftRevisionConflictError,
+    WorkflowDraftValidationAPIError,
 )
 from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft
 

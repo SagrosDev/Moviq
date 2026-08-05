@@ -6,8 +6,8 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import close_old_connections
 
 from moviqo.building_blocks.commands import IdempotencyKeyReuseConflict

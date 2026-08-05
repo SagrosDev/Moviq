@@ -21,8 +21,8 @@ from moviqo.modules.organizations.application import (
 from moviqo.modules.workflow_design.application import (
     WorkflowCollectionView,
     WorkflowDraftDetailView,
-    WorkflowPublishView,
     WorkflowPublicationValidationView,
+    WorkflowPublishView,
 )
 from moviqo.modules.workflow_runtime.application import (
     MyWorkDashboardView,

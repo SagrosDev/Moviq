@@ -4,8 +4,6 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.test import Client
 
-from moviqo.modules.workflow_design.models import WorkflowVersion
-
 from moviqo.modules.organizations.models import (
     Membership,
     MembershipRole,
@@ -13,6 +11,7 @@ from moviqo.modules.organizations.models import (
     Team,
     TeamMembership,
 )
+from moviqo.modules.workflow_design.models import WorkflowVersion
 
 
 def _publishable_workflow_payload(
@@ -1741,7 +1740,10 @@ def test_workflow_publish_rejects_invalid_draft_without_creating_version(
         {
             "name": "configuration.starter",
             "code": "starter_missing",
-            "reason": "We need one more detail before publishing: choose who can start this workflow.",
+            "reason": (
+                "We need one more detail before publishing: "
+                "choose who can start this workflow."
+            ),
         }
     ]
     assert WorkflowVersion.objects.filter(workflow_id=workflow_id).count() == 0

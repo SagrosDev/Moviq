@@ -6,8 +6,13 @@ from django.test import Client
 
 from moviqo.building_blocks.tenancy.runtime import TenantContext
 from moviqo.modules.governance.models import TransactionalAuditRecord
-from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
-from moviqo.modules.organizations.models import Team, TeamMembership
+from moviqo.modules.organizations.models import (
+    Membership,
+    MembershipRole,
+    Organization,
+    Team,
+    TeamMembership,
+)
 from moviqo.modules.workflow_design.application import (
     create_workflow_definition,
     publish_workflow_version,
@@ -237,7 +242,10 @@ def test_my_work_dashboard_returns_only_startable_published_workflows(django_use
         is_active=True,
         display_name="Outsider Member",
     )
-    organization = Organization.objects.create(slug="workflow-catalog", display_name="Workflow Catalog")
+    organization = Organization.objects.create(
+        slug="workflow-catalog",
+        display_name="Workflow Catalog",
+    )
     owner_membership = Membership.objects.create(
         organization=organization,
         user=owner,
@@ -409,7 +417,7 @@ def test_start_workflow_fails_closed_for_unauthorized_or_unpublished_ids(django_
         user=owner,
         role=MembershipRole.OWNER,
     )
-    member_membership = Membership.objects.create(
+    Membership.objects.create(
         organization=organization,
         user=member,
         role=MembershipRole.MEMBER,
@@ -449,7 +457,9 @@ def test_start_workflow_fails_closed_for_unauthorized_or_unpublished_ids(django_
 
 
 @pytest.mark.django_db
-def test_start_workflow_replays_the_original_process_for_same_idempotency_key(active_member) -> None:
+def test_start_workflow_replays_the_original_process_for_same_idempotency_key(
+    active_member,
+) -> None:
     user, _organization, owner_membership = active_member
     workflow_id = _publish_workflow(
         membership=owner_membership,
@@ -478,7 +488,9 @@ def test_start_workflow_replays_the_original_process_for_same_idempotency_key(ac
 
 
 @pytest.mark.django_db
-def test_start_workflow_creates_distinct_processes_for_distinct_idempotency_keys(active_member) -> None:
+def test_start_workflow_creates_distinct_processes_for_distinct_idempotency_keys(
+    active_member,
+) -> None:
     user, _organization, owner_membership = active_member
     workflow_id = _publish_workflow(
         membership=owner_membership,
@@ -507,7 +519,9 @@ def test_start_workflow_creates_distinct_processes_for_distinct_idempotency_keys
 
 
 @pytest.mark.django_db
-def test_start_workflow_uses_published_snapshot_title_when_workflow_head_changes(active_member) -> None:
+def test_start_workflow_uses_published_snapshot_title_when_workflow_head_changes(
+    active_member,
+) -> None:
     user, _organization, owner_membership = active_member
     workflow_id = _publish_workflow(
         membership=owner_membership,

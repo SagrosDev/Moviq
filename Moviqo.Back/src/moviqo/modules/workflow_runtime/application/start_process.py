@@ -274,7 +274,11 @@ def _workflow_title_from_snapshot(version: WorkflowVersion) -> str:
 def _first_task_element_id(*, snapshot: dict[str, Any]) -> str | None:
     elements = {element["id"]: element for element in snapshot.get("elements", [])}
     connections = snapshot.get("connections", [])
-    start_ids = [element_id for element_id, element in elements.items() if element.get("type") == "start"]
+    start_ids = [
+        element_id
+        for element_id, element in elements.items()
+        if element.get("type") == "start"
+    ]
     if len(start_ids) != 1:
         return None
     outgoing_from_start = [

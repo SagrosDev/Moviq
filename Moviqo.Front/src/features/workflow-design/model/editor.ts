@@ -23,14 +23,19 @@ import type {
 } from "./types";
 
 const workflowDesignClient = createApiClient({ baseUrl: "/api/v1" });
+export const MAX_AUTOSAVE_RETRIES = 3;
 
 export type WorkflowDraftEditorState = {
   localDraft: WorkflowDraftDocument;
   hasLocalChanges: boolean;
-  saveStatus: "idle" | "saving" | "error" | "success";
+  saveStatus: "idle" | "unsaved" | "saving" | "retrying" | "saved" | "conflict" | "error";
   errorCode: string | null;
   errorMessages: string[];
   invalidFieldNames: string[];
+  lastAcknowledgedRevision: DraftRevision;
+  pendingAutosaveRequestKey: string | null;
+  conflictSnapshot: WorkflowDraftDocument | null;
+  retryCount: number;
   publicationStatus: "idle" | "validating" | "error" | "success";
   publicationErrorCode: string | null;
   publicationIssues: WorkflowPublicationIssue[];
@@ -58,6 +63,10 @@ export const createWorkflowDraftEditorState = (
 ): WorkflowDraftEditorState => ({
   localDraft: structuredClone(draftState.value),
   hasLocalChanges: false,
+  lastAcknowledgedRevision: draftState.revision,
+  pendingAutosaveRequestKey: null,
+  conflictSnapshot: null,
+  retryCount: 0,
   saveStatus: "idle",
   errorCode: null,
   errorMessages: [],
@@ -93,12 +102,19 @@ export const syncWorkflowDraftEditorState = (
   state.hasLocalChanges && !force
       ? {
         ...state,
-        saveStatus: state.saveStatus === "saving" ? "idle" : state.saveStatus
+        saveStatus:
+          state.saveStatus === "saving" || state.saveStatus === "saved"
+            ? "unsaved"
+            : state.saveStatus
       }
     : clearPublicationState({
         localDraft: structuredClone(draftState.value),
         hasLocalChanges: false,
-        saveStatus: force ? "success" : "idle",
+        lastAcknowledgedRevision: draftState.revision,
+        pendingAutosaveRequestKey: null,
+        conflictSnapshot: null,
+        retryCount: 0,
+        saveStatus: force ? "saved" : "idle",
         errorCode: null,
         errorMessages: [],
         invalidFieldNames: [],
@@ -350,12 +366,14 @@ export const reduceWorkflowDraftEditorState = (
     | { type: "starter-membership-toggled"; membershipId: string }
     | { type: "assignment-mode-selected"; mode: WorkflowAssignmentMode }
     | { type: "assignment-membership-selected"; membershipId: string }
-    | { type: "save-requested" }
+    | { type: "save-requested"; requestKey: string; retry: boolean }
     | {
         type: "save-failed";
         errorCode: string;
         errorMessages: string[];
         invalidFieldNames: string[];
+        retryable: boolean;
+        conflict: boolean;
       }
     | { type: "publication-validation-requested"; requestKey: string }
     | {
@@ -369,150 +387,80 @@ export const reduceWorkflowDraftEditorState = (
         requestKey: string;
         validation: WorkflowPublicationValidationAccepted;
       }
+    | { type: "reload-latest-succeeded"; draftState: DraftState<WorkflowDraftDocument> }
+    | { type: "reapply-conflict-draft" }
     | { type: "checklist-target-selected"; target: string }
     | { type: "save-succeeded"; draftState: DraftState<WorkflowDraftDocument> }
     | { type: "server-synced"; draftState: DraftState<WorkflowDraftDocument> }
 ): WorkflowDraftEditorState => {
-  if (action.type === "start-added") {
-    return clearPublicationState({
+  const markDirty = (draft: WorkflowDraftDocument) =>
+    clearPublicationState({
       ...state,
-      localDraft: addGuidedWorkflowElement(state.localDraft, "start", action.labels),
+      localDraft: draft,
       hasLocalChanges: true,
-      saveStatus: "idle",
+      pendingAutosaveRequestKey:
+        state.hasLocalChanges && state.saveStatus === "unsaved"
+          ? state.pendingAutosaveRequestKey ?? createSaveIdempotencyKey(draft.workflowId)
+          : createSaveIdempotencyKey(draft.workflowId),
+      conflictSnapshot: state.saveStatus === "conflict" ? state.conflictSnapshot : null,
+      retryCount: 0,
+      saveStatus: "unsaved",
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
     });
+
+  if (action.type === "start-added") {
+    return markDirty(addGuidedWorkflowElement(state.localDraft, "start", action.labels));
   }
 
   if (action.type === "task-added") {
-    return clearPublicationState({
-      ...state,
-      localDraft: addGuidedWorkflowElement(state.localDraft, "task", action.labels),
-      hasLocalChanges: true,
-      saveStatus: "idle",
-      errorCode: null,
-      errorMessages: [],
-      invalidFieldNames: []
-    });
+    return markDirty(addGuidedWorkflowElement(state.localDraft, "task", action.labels));
   }
 
   if (action.type === "end-added") {
-    return clearPublicationState({
-      ...state,
-      localDraft: addGuidedWorkflowElement(state.localDraft, "end", action.labels),
-      hasLocalChanges: true,
-      saveStatus: "idle",
-      errorCode: null,
-      errorMessages: [],
-      invalidFieldNames: []
-    });
+    return markDirty(addGuidedWorkflowElement(state.localDraft, "end", action.labels));
   }
 
   if (action.type === "connected") {
-    return clearPublicationState({
-      ...state,
-      localDraft: connectWorkflowElements(
-        state.localDraft,
-        action.sourceId,
-        action.targetId
-      ),
-      hasLocalChanges: true,
-      saveStatus: "idle",
-      errorCode: null,
-      errorMessages: [],
-      invalidFieldNames: []
-    });
+    return markDirty(
+      connectWorkflowElements(state.localDraft, action.sourceId, action.targetId)
+    );
   }
 
   if (action.type === "short-text-configured") {
-    return clearPublicationState({
-      ...state,
-      localDraft: upsertShortTextProcessField(state.localDraft, action.field),
-      hasLocalChanges: true,
-      saveStatus: "idle",
-      errorCode: null,
-      errorMessages: [],
-      invalidFieldNames: []
-    });
+    return markDirty(upsertShortTextProcessField(state.localDraft, action.field));
   }
 
   if (action.type === "first-task-binding-toggled") {
-    return clearPublicationState({
-      ...state,
-      localDraft: setFirstTaskFieldBinding(state.localDraft, action.enabled),
-      hasLocalChanges: true,
-      saveStatus: "idle",
-      errorCode: null,
-      errorMessages: [],
-      invalidFieldNames: []
-    });
+    return markDirty(setFirstTaskFieldBinding(state.localDraft, action.enabled));
   }
 
   if (action.type === "starter-mode-selected") {
-    return clearPublicationState({
-      ...state,
-      localDraft: setStarterMode(state.localDraft, action.mode),
-      hasLocalChanges: true,
-      saveStatus: "idle",
-      errorCode: null,
-      errorMessages: [],
-      invalidFieldNames: []
-    });
+    return markDirty(setStarterMode(state.localDraft, action.mode));
   }
 
   if (action.type === "starter-team-toggled") {
-    return clearPublicationState({
-      ...state,
-      localDraft: toggleStarterTeam(state.localDraft, action.teamId),
-      hasLocalChanges: true,
-      saveStatus: "idle",
-      errorCode: null,
-      errorMessages: [],
-      invalidFieldNames: []
-    });
+    return markDirty(toggleStarterTeam(state.localDraft, action.teamId));
   }
 
   if (action.type === "starter-membership-toggled") {
-    return clearPublicationState({
-      ...state,
-      localDraft: toggleStarterMembership(state.localDraft, action.membershipId),
-      hasLocalChanges: true,
-      saveStatus: "idle",
-      errorCode: null,
-      errorMessages: [],
-      invalidFieldNames: []
-    });
+    return markDirty(toggleStarterMembership(state.localDraft, action.membershipId));
   }
 
   if (action.type === "assignment-mode-selected") {
-    return clearPublicationState({
-      ...state,
-      localDraft: setAssignmentMode(state.localDraft, action.mode),
-      hasLocalChanges: true,
-      saveStatus: "idle",
-      errorCode: null,
-      errorMessages: [],
-      invalidFieldNames: []
-    });
+    return markDirty(setAssignmentMode(state.localDraft, action.mode));
   }
 
   if (action.type === "assignment-membership-selected") {
-    return clearPublicationState({
-      ...state,
-      localDraft: setAssignmentMembership(state.localDraft, action.membershipId),
-      hasLocalChanges: true,
-      saveStatus: "idle",
-      errorCode: null,
-      errorMessages: [],
-      invalidFieldNames: []
-    });
+    return markDirty(setAssignmentMembership(state.localDraft, action.membershipId));
   }
 
   if (action.type === "save-requested") {
     return {
       ...state,
-      saveStatus: "saving",
+      saveStatus: action.retry ? "retrying" : "saving",
+      pendingAutosaveRequestKey: action.requestKey,
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
@@ -520,10 +468,23 @@ export const reduceWorkflowDraftEditorState = (
   }
 
   if (action.type === "save-failed") {
+    const nextRetryCount = action.retryable ? state.retryCount + 1 : 0;
+    const exhaustedRetries = nextRetryCount > MAX_AUTOSAVE_RETRIES;
+    const nextStatus = action.conflict
+      ? "conflict"
+      : action.retryable && !exhaustedRetries
+        ? "retrying"
+        : "error";
     return {
       ...state,
       hasLocalChanges: true,
-      saveStatus: "error",
+      pendingAutosaveRequestKey:
+        action.errorCode === "idempotency_key_reused"
+          ? createSaveIdempotencyKey(state.localDraft.workflowId)
+          : state.pendingAutosaveRequestKey,
+      conflictSnapshot: action.conflict ? structuredClone(state.localDraft) : state.conflictSnapshot,
+      retryCount: action.conflict ? 0 : nextRetryCount,
+      saveStatus: nextStatus,
       errorCode: action.errorCode,
       errorMessages: action.errorMessages,
       invalidFieldNames: action.invalidFieldNames
@@ -572,6 +533,40 @@ export const reduceWorkflowDraftEditorState = (
     };
   }
 
+  if (action.type === "reload-latest-succeeded") {
+    return clearPublicationState({
+      ...state,
+      localDraft: structuredClone(action.draftState.value),
+      hasLocalChanges: false,
+      lastAcknowledgedRevision: action.draftState.revision,
+      pendingAutosaveRequestKey: null,
+      retryCount: 0,
+      saveStatus: "idle",
+      errorCode: null,
+      errorMessages: [],
+      invalidFieldNames: [],
+      focusedChecklistSection: state.focusedChecklistSection
+    });
+  }
+
+  if (action.type === "reapply-conflict-draft") {
+    if (!state.conflictSnapshot) {
+      return state;
+    }
+    return clearPublicationState({
+      ...state,
+      localDraft: structuredClone(state.conflictSnapshot),
+      hasLocalChanges: true,
+      pendingAutosaveRequestKey: createSaveIdempotencyKey(state.conflictSnapshot.workflowId),
+      retryCount: 0,
+      saveStatus: "unsaved",
+      errorCode: null,
+      errorMessages: [],
+      invalidFieldNames: [],
+      focusedChecklistSection: state.focusedChecklistSection
+    });
+  }
+
   if (action.type === "save-succeeded" || action.type === "server-synced") {
     return syncWorkflowDraftEditorState(
       state,
@@ -596,8 +591,9 @@ export const applyWorkflowDraftSave = (
   });
 
 export const saveWorkflowDraft = async (
-  draftState: DraftState<WorkflowDraftDocument>,
-  localDraft: WorkflowDraftDocument
+  expectedRevision: DraftRevision,
+  localDraft: WorkflowDraftDocument,
+  requestKey: string
 ): Promise<
   | { ok: true; data: WorkflowDraftSaveAccepted }
   | { ok: false; error: NormalizedApiProblem }
@@ -611,10 +607,10 @@ export const saveWorkflowDraft = async (
     }
   ).PUT(`/api/v1/workflow-design/workflows/${localDraft.workflowId}/draft/`, {
     body: {
-      expectedRevision: draftState.revision,
+      expectedRevision,
       draft: localDraft
     },
-    headers: { "Idempotency-Key": createSaveIdempotencyKey(localDraft.workflowId) }
+    headers: { "Idempotency-Key": requestKey }
   });
 
   if (!response.response.ok) {
@@ -663,6 +659,43 @@ export const validateWorkflowPublication = async (
     ok: true,
     data: response.data as WorkflowPublicationValidationAccepted
   };
+};
+
+export const readWorkflowDraft = async (
+  workflowId: string
+): Promise<
+  | { ok: true; data: WorkflowDraftSaveAccepted }
+  | { ok: false; error: NormalizedApiProblem }
+> => {
+  const response = await (
+    workflowDesignClient as {
+      GET(path: string, init?: object): Promise<{ data?: unknown; response: Response }>;
+    }
+  ).GET(`/api/v1/workflow-design/workflows/${workflowId}/draft/`);
+
+  if (!response.response.ok) {
+    return { ok: false, error: await readApiProblem(response.response) };
+  }
+
+  return {
+    ok: true,
+    data: response.data as WorkflowDraftSaveAccepted
+  };
+};
+
+export const shouldScheduleAutosave = (state: WorkflowDraftEditorState) =>
+  state.hasLocalChanges &&
+  state.pendingAutosaveRequestKey !== null &&
+  (state.saveStatus === "unsaved" || state.saveStatus === "retrying");
+
+export const autosaveDelayMs = (state: WorkflowDraftEditorState) => {
+  if (state.saveStatus === "unsaved") {
+    return 800;
+  }
+  if (state.saveStatus !== "retrying") {
+    return null;
+  }
+  return 2000 * 2 ** Math.max(0, state.retryCount - 1);
 };
 
 export const workflowPathPreview = (
@@ -739,7 +772,7 @@ const nextElementLabel = (
   return taskCount === 0 ? labels.task : `${labels.task} ${taskCount + 1}`;
 };
 
-const createSaveIdempotencyKey = (workflowId: string) =>
+export const createSaveIdempotencyKey = (workflowId: string) =>
   `workflow-save-${workflowId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 export const summarizeStarterSelection = (

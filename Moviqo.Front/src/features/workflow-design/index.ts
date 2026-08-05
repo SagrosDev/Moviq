@@ -1,14 +1,17 @@
 export { canCreateWorkflow } from "./model/access";
 export {
+  autosaveDelayMs,
   addGuidedWorkflowElement,
   applyWorkflowDraftSave,
   clearPublicationChecklist,
   connectWorkflowElements,
   createWorkflowDraftEditorState,
   focusChecklistTarget,
+  MAX_AUTOSAVE_RETRIES,
   reduceWorkflowDraftEditorState,
   saveWorkflowDraft,
   setFirstTaskFieldBinding,
+  shouldScheduleAutosave,
   upsertShortTextProcessField,
   validateWorkflowPublication
 } from "./model/editor";

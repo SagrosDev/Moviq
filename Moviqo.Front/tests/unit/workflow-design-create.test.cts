@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  autosaveDelayMs,
+  MAX_AUTOSAVE_RETRIES,
   addGuidedWorkflowElement,
   applyWorkflowDraftSave,
   canCreateWorkflow,
@@ -12,6 +14,7 @@ import {
   reduceWorkflowDraftEditorState,
   reduceWorkflowCreationForm,
   setFirstTaskFieldBinding,
+  shouldScheduleAutosave,
   upsertShortTextProcessField,
   type WorkflowCreationAccepted,
   type WorkflowCreationFormState,
@@ -288,13 +291,169 @@ test("save failures retain field-level invalid param targets for guided inputs",
       type: "save-failed",
       errorCode: "workflow_draft_invalid",
       errorMessages: ["Use 255 or fewer for maximum length."],
-      invalidFieldNames: ["processFields.field-1.maximumLength"]
+      invalidFieldNames: ["processFields.field-1.maximumLength"],
+      retryable: false,
+      conflict: false
     }
   );
 
   assert.equal(state.saveStatus, "error");
   assert.deepEqual(state.invalidFieldNames, ["processFields.field-1.maximumLength"]);
   assert.deepEqual(state.errorMessages, ["Use 255 or fewer for maximum length."]);
+});
+
+test("local semantic edits queue one autosave key until the pending attempt changes", () => {
+  const accepted = createAccepted();
+  const initial = createWorkflowDraftEditorState(createWorkflowDraftState(accepted));
+
+  const edited = reduceWorkflowDraftEditorState(initial, {
+    type: "start-added",
+    labels: { start: "Start", task: "Task", end: "End" }
+  });
+  const editedAgain = reduceWorkflowDraftEditorState(edited, {
+    type: "task-added",
+    labels: { start: "Start", task: "Task", end: "End" }
+  });
+
+  assert.equal(edited.saveStatus, "unsaved");
+  assert.equal(typeof edited.pendingAutosaveRequestKey, "string");
+  assert.equal(editedAgain.pendingAutosaveRequestKey, edited.pendingAutosaveRequestKey);
+});
+
+test("retryable save failures preserve the same logical autosave attempt", () => {
+  const accepted = createAccepted();
+  const edited = reduceWorkflowDraftEditorState(
+    createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
+    {
+      type: "start-added",
+      labels: { start: "Start", task: "Task", end: "End" }
+    }
+  );
+  const requested = reduceWorkflowDraftEditorState(edited, {
+    type: "save-requested",
+    requestKey: edited.pendingAutosaveRequestKey!,
+    retry: false
+  });
+  const failed = reduceWorkflowDraftEditorState(requested, {
+    type: "save-failed",
+    errorCode: "network_error",
+    errorMessages: ["Try again."],
+    invalidFieldNames: [],
+    retryable: true,
+    conflict: false
+  });
+
+  assert.equal(failed.saveStatus, "retrying");
+  assert.equal(failed.retryCount, 1);
+  assert.equal(failed.pendingAutosaveRequestKey, edited.pendingAutosaveRequestKey);
+  assert.equal(failed.hasLocalChanges, true);
+});
+
+test("autosave scheduling uses debounce for fresh edits and exponential backoff for retries", () => {
+  const accepted = createAccepted();
+  const edited = reduceWorkflowDraftEditorState(
+    createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
+    {
+      type: "start-added",
+      labels: { start: "Start", task: "Task", end: "End" }
+    }
+  );
+  const retrying = reduceWorkflowDraftEditorState(edited, {
+    type: "save-failed",
+    errorCode: "network_error",
+    errorMessages: ["Try again."],
+    invalidFieldNames: [],
+    retryable: true,
+    conflict: false
+  });
+
+  assert.equal(shouldScheduleAutosave(edited), true);
+  assert.equal(autosaveDelayMs(edited), 800);
+  assert.equal(shouldScheduleAutosave(retrying), true);
+  assert.equal(autosaveDelayMs(retrying), 2000);
+});
+
+test("autosave retries stop after the configured retry budget", () => {
+  const accepted = createAccepted();
+  let state = reduceWorkflowDraftEditorState(
+    createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
+    {
+      type: "start-added",
+      labels: { start: "Start", task: "Task", end: "End" }
+    }
+  );
+
+  for (let retry = 1; retry <= MAX_AUTOSAVE_RETRIES + 1; retry += 1) {
+    state = reduceWorkflowDraftEditorState(state, {
+      type: "save-failed",
+      errorCode: "network_error",
+      errorMessages: ["Try again."],
+      invalidFieldNames: [],
+      retryable: true,
+      conflict: false
+    });
+  }
+
+  assert.equal(state.saveStatus, "error");
+  assert.equal(state.retryCount, MAX_AUTOSAVE_RETRIES + 1);
+  assert.equal(shouldScheduleAutosave(state), false);
+});
+
+test("terminal idempotency reuse rotates the autosave key instead of retrying forever", () => {
+  const accepted = createAccepted();
+  const edited = reduceWorkflowDraftEditorState(
+    createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
+    {
+      type: "start-added",
+      labels: { start: "Start", task: "Task", end: "End" }
+    }
+  );
+  const failed = reduceWorkflowDraftEditorState(edited, {
+    type: "save-failed",
+    errorCode: "idempotency_key_reused",
+    errorMessages: ["Use a new key before retrying."],
+    invalidFieldNames: [],
+    retryable: false,
+    conflict: false
+  });
+
+  assert.equal(failed.saveStatus, "error");
+  assert.notEqual(failed.pendingAutosaveRequestKey, edited.pendingAutosaveRequestKey);
+  assert.equal(shouldScheduleAutosave(failed), false);
+});
+
+test("stale save conflicts preserve local work and support explicit reapply", () => {
+  const accepted = createAccepted();
+  const edited = reduceWorkflowDraftEditorState(
+    createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
+    {
+      type: "start-added",
+      labels: { start: "Start", task: "Task", end: "End" }
+    }
+  );
+  const conflicted = reduceWorkflowDraftEditorState(edited, {
+    type: "save-failed",
+    errorCode: "workflow_draft_revision_conflict",
+    errorMessages: ["Reload the last saved draft before saving again."],
+    invalidFieldNames: ["expectedRevision"],
+    retryable: false,
+    conflict: true
+  });
+  const reloaded = reduceWorkflowDraftEditorState(conflicted, {
+    type: "reload-latest-succeeded",
+    draftState: createWorkflowDraftState(createAccepted({}, "2"))
+  });
+  const reapplied = reduceWorkflowDraftEditorState(reloaded, {
+    type: "reapply-conflict-draft"
+  });
+
+  assert.equal(conflicted.saveStatus, "conflict");
+  assert.equal(conflicted.localDraft.elements.length, 1);
+  assert.equal(reloaded.hasLocalChanges, false);
+  assert.equal(reloaded.lastAcknowledgedRevision, "2");
+  assert.equal(reapplied.saveStatus, "unsaved");
+  assert.equal(reapplied.localDraft.elements.length, 1);
+  assert.equal(reapplied.lastAcknowledgedRevision, "2");
 });
 
 test("publication validation stores authoritative checklist issues without discarding local edits", () => {

@@ -12,7 +12,14 @@ export const normalizeWorkflowDraft = (
 ): WorkflowDraftDocument => ({
   ...draft,
   publication: draft.publication ?? {
-    starter: { isConfigured: false },
-    assignment: { isConfigured: false }
+    starter: {
+      mode: "unconfigured",
+      teamIds: [],
+      membershipIds: []
+    },
+    assignment: {
+      mode: "unconfigured",
+      membershipId: null
+    }
   }
 });

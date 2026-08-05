@@ -5,6 +5,7 @@ import {
 } from "../../../features/authentication";
 import {
   WorkflowCreateForm,
+  type WorkflowConfigurationDirectory,
   WorkflowDraftEditor,
   canCreateWorkflow,
   createWorkflowDraftState,
@@ -19,6 +20,8 @@ export const WorkflowCreatePage = () => {
   const [draftState, setDraftState] = useState<DraftState<WorkflowDraftDocument> | null>(
     null
   );
+  const [configurationDirectory, setConfigurationDirectory] =
+    useState<WorkflowConfigurationDirectory | null>(null);
 
   useEffect(() => {
     if (state.status === "anonymous") {
@@ -58,14 +61,21 @@ export const WorkflowCreatePage = () => {
       </section>
       {canAuthor ? <WorkflowCreateForm
         onBackHref={protectedEntryPath}
-        onCreated={(accepted) => setDraftState(createWorkflowDraftState(accepted))}
+        onCreated={(accepted) => {
+          setDraftState(createWorkflowDraftState(accepted));
+          setConfigurationDirectory(accepted.configurationDirectory);
+        }}
       /> : <section className="status-panel" aria-labelledby="workflow-design-forbidden-title">
         <h2 id="workflow-design-forbidden-title">{t("authority.title")}</h2>
         <p>{t("authority.accessDenied")}</p>
       </section>}
-      {draftState ? <WorkflowDraftEditor
+      {draftState && configurationDirectory ? <WorkflowDraftEditor
+        configurationDirectory={configurationDirectory}
         draftState={draftState}
-        onAccepted={setDraftState}
+        onAccepted={(acceptedDraftState, accepted) => {
+          setDraftState(acceptedDraftState);
+          setConfigurationDirectory(accepted.configurationDirectory);
+        }}
       /> : null}
     </main>
   </div>;

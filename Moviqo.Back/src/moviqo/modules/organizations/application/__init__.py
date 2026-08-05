@@ -23,6 +23,9 @@ from moviqo.modules.organizations.application.views import (
     SignInView,
     SignOutView,
 )
+from moviqo.modules.organizations.application.workflow_directory import (
+    workflow_design_directory,
+)
 
 
 def module_health() -> None:
@@ -48,4 +51,5 @@ __all__ = [
     "set_user_password",
     "validate_password_policy",
     "verify_initial_registration",
+    "workflow_design_directory",
 ]

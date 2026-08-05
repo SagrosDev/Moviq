@@ -9,6 +9,8 @@ import {
   type NormalizedApiProblem
 } from "../../../shared/api";
 import type {
+  WorkflowAssignmentMode,
+  WorkflowConfigurationDirectory,
   WorkflowDraftConnection,
   WorkflowDraftDocument,
   WorkflowDraftElement,
@@ -16,6 +18,7 @@ import type {
   WorkflowPublicationValidationAccepted,
   WorkflowProcessField,
   WorkflowDraftSaveAccepted,
+  WorkflowStarterMode,
   WorkflowElementType
 } from "./types";
 
@@ -220,21 +223,115 @@ export const setFirstTaskFieldBinding = (
   };
 };
 
-export const setPublicationConfiguration = (
+export const setStarterMode = (
   draft: WorkflowDraftDocument,
-  section: "starter" | "assignment",
-  isConfigured: boolean
+  mode: WorkflowStarterMode
 ): WorkflowDraftDocument => ({
   ...draft,
   publication: {
     starter: {
-      isConfigured: draft.publication?.starter.isConfigured ?? false
+      mode,
+      teamIds: isScopedStarterMode(mode) ? draft.publication?.starter.teamIds ?? [] : [],
+      membershipIds: isScopedStarterMode(mode)
+        ? draft.publication?.starter.membershipIds ?? []
+        : []
+    },
+    assignment: draft.publication?.assignment ?? {
+      mode: "unconfigured",
+      membershipId: null
+    }
+  }
+});
+
+export const toggleStarterTeam = (
+  draft: WorkflowDraftDocument,
+  teamId: string
+): WorkflowDraftDocument => {
+  const teamIds = new Set(draft.publication?.starter.teamIds ?? []);
+  if (teamIds.has(teamId)) {
+    teamIds.delete(teamId);
+  } else {
+    teamIds.add(teamId);
+  }
+  return {
+    ...draft,
+    publication: {
+      starter: {
+        mode: isScopedStarterMode(draft.publication?.starter.mode)
+          ? draft.publication!.starter.mode
+          : "selectedTeams",
+        teamIds: Array.from(teamIds),
+        membershipIds: draft.publication?.starter.membershipIds ?? []
+      },
+      assignment: draft.publication?.assignment ?? {
+        mode: "unconfigured",
+        membershipId: null
+      }
+    }
+  };
+};
+
+export const toggleStarterMembership = (
+  draft: WorkflowDraftDocument,
+  membershipId: string
+): WorkflowDraftDocument => {
+  const membershipIds = new Set(draft.publication?.starter.membershipIds ?? []);
+  if (membershipIds.has(membershipId)) {
+    membershipIds.delete(membershipId);
+  } else {
+    membershipIds.add(membershipId);
+  }
+  return {
+    ...draft,
+    publication: {
+      starter: {
+        mode: isScopedStarterMode(draft.publication?.starter.mode)
+          ? draft.publication!.starter.mode
+          : "selectedMembers",
+        teamIds: draft.publication?.starter.teamIds ?? [],
+        membershipIds: Array.from(membershipIds)
+      },
+      assignment: draft.publication?.assignment ?? {
+        mode: "unconfigured",
+        membershipId: null
+      }
+    }
+  };
+};
+
+export const setAssignmentMode = (
+  draft: WorkflowDraftDocument,
+  mode: WorkflowAssignmentMode
+): WorkflowDraftDocument => ({
+  ...draft,
+  publication: {
+    starter: draft.publication?.starter ?? {
+      mode: "unconfigured",
+      teamIds: [],
+      membershipIds: []
     },
     assignment: {
-      isConfigured: draft.publication?.assignment.isConfigured ?? false
+      mode,
+      membershipId:
+        mode === "specificMember" ? draft.publication?.assignment.membershipId ?? null : null
+    }
+  }
+});
+
+export const setAssignmentMembership = (
+  draft: WorkflowDraftDocument,
+  membershipId: string
+): WorkflowDraftDocument => ({
+  ...draft,
+  publication: {
+    starter: draft.publication?.starter ?? {
+      mode: "unconfigured",
+      teamIds: [],
+      membershipIds: []
     },
-    [section]: {
-      isConfigured
+    assignment: {
+      mode: "specificMember",
+      membershipId
     }
   }
 });
@@ -248,8 +345,11 @@ export const reduceWorkflowDraftEditorState = (
     | { type: "connected"; sourceId: string; targetId: string }
     | { type: "short-text-configured"; field: ShortTextFieldDraft }
     | { type: "first-task-binding-toggled"; enabled: boolean }
-    | { type: "starter-configuration-toggled"; isConfigured: boolean }
-    | { type: "assignment-configuration-toggled"; isConfigured: boolean }
+    | { type: "starter-mode-selected"; mode: WorkflowStarterMode }
+    | { type: "starter-team-toggled"; teamId: string }
+    | { type: "starter-membership-toggled"; membershipId: string }
+    | { type: "assignment-mode-selected"; mode: WorkflowAssignmentMode }
+    | { type: "assignment-membership-selected"; membershipId: string }
     | { type: "save-requested" }
     | {
         type: "save-failed";
@@ -349,14 +449,10 @@ export const reduceWorkflowDraftEditorState = (
     });
   }
 
-  if (action.type === "starter-configuration-toggled") {
+  if (action.type === "starter-mode-selected") {
     return clearPublicationState({
       ...state,
-      localDraft: setPublicationConfiguration(
-        state.localDraft,
-        "starter",
-        action.isConfigured
-      ),
+      localDraft: setStarterMode(state.localDraft, action.mode),
       hasLocalChanges: true,
       saveStatus: "idle",
       errorCode: null,
@@ -365,14 +461,46 @@ export const reduceWorkflowDraftEditorState = (
     });
   }
 
-  if (action.type === "assignment-configuration-toggled") {
+  if (action.type === "starter-team-toggled") {
     return clearPublicationState({
       ...state,
-      localDraft: setPublicationConfiguration(
-        state.localDraft,
-        "assignment",
-        action.isConfigured
-      ),
+      localDraft: toggleStarterTeam(state.localDraft, action.teamId),
+      hasLocalChanges: true,
+      saveStatus: "idle",
+      errorCode: null,
+      errorMessages: [],
+      invalidFieldNames: []
+    });
+  }
+
+  if (action.type === "starter-membership-toggled") {
+    return clearPublicationState({
+      ...state,
+      localDraft: toggleStarterMembership(state.localDraft, action.membershipId),
+      hasLocalChanges: true,
+      saveStatus: "idle",
+      errorCode: null,
+      errorMessages: [],
+      invalidFieldNames: []
+    });
+  }
+
+  if (action.type === "assignment-mode-selected") {
+    return clearPublicationState({
+      ...state,
+      localDraft: setAssignmentMode(state.localDraft, action.mode),
+      hasLocalChanges: true,
+      saveStatus: "idle",
+      errorCode: null,
+      errorMessages: [],
+      invalidFieldNames: []
+    });
+  }
+
+  if (action.type === "assignment-membership-selected") {
+    return clearPublicationState({
+      ...state,
+      localDraft: setAssignmentMembership(state.localDraft, action.membershipId),
       hasLocalChanges: true,
       saveStatus: "idle",
       errorCode: null,
@@ -613,3 +741,28 @@ const nextElementLabel = (
 
 const createSaveIdempotencyKey = (workflowId: string) =>
   `workflow-save-${workflowId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
+export const summarizeStarterSelection = (
+  draft: WorkflowDraftDocument,
+  directory: WorkflowConfigurationDirectory
+) => {
+  const starter = draft.publication?.starter;
+  if (!starter || starter.mode === "unconfigured") {
+    return "";
+  }
+  if (starter.mode === "allActiveMembers") {
+    return "";
+  }
+  const teamSummary = starter.teamIds.map(
+    (teamId) => directory.teams.find((team) => team.teamId === teamId)?.name ?? teamId
+  );
+  const membershipSummary = starter.membershipIds.map(
+    (membershipId) =>
+      directory.memberships.find((membership) => membership.membershipId === membershipId)
+        ?.displayName ?? membershipId
+  );
+  return [...teamSummary, ...membershipSummary].join(", ");
+};
+
+const isScopedStarterMode = (mode: WorkflowStarterMode | undefined): mode is "selectedTeams" | "selectedMembers" =>
+  mode === "selectedTeams" || mode === "selectedMembers";

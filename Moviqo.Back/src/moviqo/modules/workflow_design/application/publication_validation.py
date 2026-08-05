@@ -3,12 +3,18 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Any
 
-STARTER_TARGET = "configuration.starter"
-ASSIGNMENT_TARGET = "configuration.assignment"
+from moviqo.modules.workflow_design.application.publication_configuration import (
+    ASSIGNMENT_TARGET,
+    STARTER_TARGET,
+)
 
 
-def validate_workflow_for_publication(document: dict[str, Any]) -> dict[str, Any]:
-    issues: list[dict[str, Any]] = []
+def validate_workflow_for_publication(
+    document: dict[str, Any],
+    *,
+    publication_configuration_issues: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    issues: list[dict[str, Any]] = list(publication_configuration_issues or [])
     element_by_id = {element["id"]: element for element in document["elements"]}
     outgoing: dict[str, list[dict[str, str]]] = defaultdict(list)
     incoming: dict[str, list[dict[str, str]]] = defaultdict(list)
@@ -24,31 +30,42 @@ def validate_workflow_for_publication(document: dict[str, Any]) -> dict[str, Any
     tasks = [element for element in document["elements"] if element["type"] == "task"]
     ends = [element for element in document["elements"] if element["type"] == "end"]
 
-    publication = document.get("publication", {})
-    if not publication.get("starter", {}).get("isConfigured", False):
-        issues.append(
-            _issue(
-                code="starter_missing",
-                target=STARTER_TARGET,
-                message=(
-                    "We need one more detail before publishing: "
-                    "choose who can start this workflow."
-                ),
-                action_label="Configure starter",
-            )
+    if publication_configuration_issues is None:
+        publication = document.get("publication", {})
+        starter = publication.get("starter", {})
+        assignment = publication.get("assignment", {})
+        starter_mode = starter.get("mode") or (
+            "allActiveMembers" if starter.get("isConfigured", False) else "unconfigured"
         )
-    if not publication.get("assignment", {}).get("isConfigured", False):
-        issues.append(
-            _issue(
-                code="assignment_missing",
-                target=ASSIGNMENT_TARGET,
-                message=(
-                    "We need one more detail before publishing: "
-                    "choose who receives the first task."
-                ),
-                action_label="Configure assignment",
-            )
+        assignment_mode = assignment.get("mode") or (
+            "workflowInitiator"
+            if assignment.get("isConfigured", False)
+            else "unconfigured"
         )
+        if starter_mode == "unconfigured":
+            issues.append(
+                _issue(
+                    code="starter_missing",
+                    target=STARTER_TARGET,
+                    message=(
+                        "We need one more detail before publishing: "
+                        "choose who can start this workflow."
+                    ),
+                    action_label="Configure starter",
+                )
+            )
+        if assignment_mode == "unconfigured":
+            issues.append(
+                _issue(
+                    code="assignment_missing",
+                    target=ASSIGNMENT_TARGET,
+                    message=(
+                        "We need one more detail before publishing: "
+                        "choose who receives the first task."
+                    ),
+                    action_label="Configure assignment",
+                )
+            )
 
     if len(starts) != 1:
         issues.append(
@@ -243,16 +260,18 @@ def _reachable_ids(
 def _deduplicate_and_sort(issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
     order = {
         "starter_missing": 0,
-        "assignment_missing": 1,
-        "start_step_invalid": 2,
-        "first_task_missing": 3,
-        "end_step_invalid": 4,
-        "start_path_incomplete": 5,
-        "path_disconnected": 6,
-        "path_to_end_missing": 7,
-        "first_task_form_missing": 8,
-        "first_task_binding_missing_field": 9,
-        "first_task_form_decorative": 10,
+        "starter_invalid": 1,
+        "assignment_missing": 2,
+        "assignment_invalid": 3,
+        "start_step_invalid": 4,
+        "first_task_missing": 5,
+        "end_step_invalid": 6,
+        "start_path_incomplete": 7,
+        "path_disconnected": 8,
+        "path_to_end_missing": 9,
+        "first_task_form_missing": 10,
+        "first_task_binding_missing_field": 11,
+        "first_task_form_decorative": 12,
     }
     seen: set[tuple[Any, ...]] = set()
     deduplicated: list[dict[str, Any]] = []

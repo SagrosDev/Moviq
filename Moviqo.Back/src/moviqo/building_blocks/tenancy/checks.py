@@ -44,6 +44,20 @@ PROTECTED_TENANT_RESOURCES = (
         evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[membership]",
     ),
     TenantIsolationGateRegistration(
+        resource_name="team",
+        table_name="organizations_team",
+        policy_name="organizations_team_tenant_isolation",
+        isolation_test_id="team",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[team]",
+    ),
+    TenantIsolationGateRegistration(
+        resource_name="team-membership",
+        table_name="organizations_team_membership",
+        policy_name="organizations_team_membership_tenant_isolation",
+        isolation_test_id="team_membership",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[team-membership]",
+    ),
+    TenantIsolationGateRegistration(
         resource_name="registration-consent",
         table_name="organizations_registration_consent",
         policy_name="organizations_registration_consent_tenant_isolation",

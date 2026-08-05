@@ -3,7 +3,13 @@ from __future__ import annotations
 import pytest
 from django.test import Client
 
-from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
+from moviqo.modules.organizations.models import (
+    Membership,
+    MembershipRole,
+    Organization,
+    Team,
+    TeamMembership,
+)
 
 
 @pytest.fixture
@@ -47,8 +53,18 @@ def test_workflow_creation_returns_authoritative_draft_payload(workflow_design_m
     assert payload["createdByMembershipId"] == str(membership.id)
     assert payload["organizationId"] == str(organization.id)
     assert payload["revision"] == "1"
+    assert payload["configurationDirectory"] == {
+        "memberships": [
+            {
+                "membershipId": str(membership.id),
+                "displayName": "Designer",
+                "role": MembershipRole.DESIGNER,
+            }
+        ],
+        "teams": [],
+    }
     assert payload["draft"] == {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "draftId": payload["draft"]["draftId"],
         "workflowId": payload["workflowId"],
         "name": "Workflow intake",
@@ -58,10 +74,66 @@ def test_workflow_creation_returns_authoritative_draft_payload(workflow_design_m
         "processFields": [],
         "formBindings": [],
         "publication": {
-            "starter": {"isConfigured": False},
-            "assignment": {"isConfigured": False},
+            "starter": {
+                "mode": "unconfigured",
+                "teamIds": [],
+                "membershipIds": [],
+            },
+            "assignment": {
+                "mode": "unconfigured",
+                "membershipId": None,
+            },
         },
     }
+
+
+@pytest.mark.django_db
+def test_workflow_creation_returns_active_team_directory_options(
+    workflow_design_member,
+    django_user_model,
+) -> None:
+    user, _organization, membership = workflow_design_member
+    teammate = django_user_model.objects.create_user(
+        username="workflow-team-member",
+        email="team-member@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Team Member",
+    )
+    teammate_membership = Membership.objects.create(
+        organization=membership.organization,
+        user=teammate,
+        role=MembershipRole.MEMBER,
+    )
+    team = Team.objects.create(
+        organization=membership.organization,
+        name="Operations",
+        normalized_name="operations",
+    )
+    TeamMembership.objects.create(
+        organization=membership.organization,
+        team=team,
+        membership=teammate_membership,
+    )
+    client = Client()
+    client.force_login(user)
+
+    response = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow intake"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-1"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["configurationDirectory"]["teams"] == [
+        {
+            "teamId": str(team.id),
+            "name": "Operations",
+            "activeMemberCount": 1,
+            "membershipIds": [str(teammate_membership.id)],
+        }
+    ]
 
 
 @pytest.mark.django_db
@@ -240,7 +312,7 @@ def test_workflow_catalog_lists_authorized_workflows(workflow_design_member) -> 
                 "workflowId": created.json()["workflowId"],
                 "name": "Workflow intake",
                 "revision": "1",
-                "schemaVersion": 3,
+                "schemaVersion": 4,
                 "updatedAt": response.json()["items"][0]["updatedAt"],
             }
         ]
@@ -272,10 +344,20 @@ def test_workflow_draft_detail_returns_authoritative_server_payload(
         "workflowId": workflow_id,
         "organizationId": str(organization.id),
         "createdByMembershipId": str(membership.id),
+        "configurationDirectory": {
+            "memberships": [
+                {
+                    "membershipId": str(membership.id),
+                    "displayName": "Designer",
+                    "role": MembershipRole.DESIGNER,
+                }
+            ],
+            "teams": [],
+        },
         "name": "Workflow intake",
         "revision": "1",
         "draft": {
-            "schemaVersion": 3,
+            "schemaVersion": 4,
             "draftId": response.json()["draft"]["draftId"],
             "workflowId": workflow_id,
             "name": "Workflow intake",
@@ -285,8 +367,15 @@ def test_workflow_draft_detail_returns_authoritative_server_payload(
             "processFields": [],
             "formBindings": [],
             "publication": {
-                "starter": {"isConfigured": False},
-                "assignment": {"isConfigured": False},
+                "starter": {
+                    "mode": "unconfigured",
+                    "teamIds": [],
+                    "membershipIds": [],
+                },
+                "assignment": {
+                    "mode": "unconfigured",
+                    "membershipId": None,
+                },
             },
         },
     }
@@ -361,6 +450,16 @@ def test_workflow_draft_save_returns_authoritative_graph_payload(
         "workflowId": workflow_id,
         "organizationId": str(organization.id),
         "createdByMembershipId": str(membership.id),
+        "configurationDirectory": {
+            "memberships": [
+                {
+                    "membershipId": str(membership.id),
+                    "displayName": "Designer",
+                    "role": MembershipRole.DESIGNER,
+                }
+            ],
+            "teams": [],
+        },
         "name": "Workflow intake",
         "revision": "2",
         "draft": {
@@ -411,8 +510,15 @@ def test_workflow_draft_save_returns_authoritative_graph_payload(
                 }
             ],
             "publication": {
-                "starter": {"isConfigured": False},
-                "assignment": {"isConfigured": False},
+                "starter": {
+                    "mode": "unconfigured",
+                    "teamIds": [],
+                    "membershipIds": [],
+                },
+                "assignment": {
+                    "mode": "unconfigured",
+                    "membershipId": None,
+                },
             },
         },
     }
@@ -1095,8 +1201,15 @@ def test_workflow_publication_validation_can_return_publishable_true(
                     }
                 ],
                 "publication": {
-                    "starter": {"isConfigured": True},
-                    "assignment": {"isConfigured": True},
+                    "starter": {
+                        "mode": "allActiveMembers",
+                        "teamIds": [],
+                        "membershipIds": [],
+                    },
+                    "assignment": {
+                        "mode": "workflowInitiator",
+                        "membershipId": None,
+                    },
                 },
             },
         },

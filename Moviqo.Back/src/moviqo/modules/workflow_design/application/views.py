@@ -47,13 +47,44 @@ class WorkflowCreateRequestSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120, allow_blank=True)
 
 
-class WorkflowPublicationSectionSerializer(serializers.Serializer):
-    isConfigured = serializers.BooleanField(required=False)
+class WorkflowStarterConfigurationSerializer(serializers.Serializer):
+    mode = serializers.CharField(required=False, allow_blank=True)
+    teamIds = serializers.ListField(
+        child=serializers.CharField(allow_blank=True),
+        required=False,
+    )
+    membershipIds = serializers.ListField(
+        child=serializers.CharField(allow_blank=True),
+        required=False,
+    )
+
+
+class WorkflowAssignmentConfigurationSerializer(serializers.Serializer):
+    mode = serializers.CharField(required=False, allow_blank=True)
+    membershipId = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
 class WorkflowPublicationSerializer(serializers.Serializer):
-    starter = WorkflowPublicationSectionSerializer(required=False)
-    assignment = WorkflowPublicationSectionSerializer(required=False)
+    starter = WorkflowStarterConfigurationSerializer(required=False)
+    assignment = WorkflowAssignmentConfigurationSerializer(required=False)
+
+
+class WorkflowDirectoryMembershipSerializer(serializers.Serializer):
+    membershipId = serializers.UUIDField()
+    displayName = serializers.CharField()
+    role = serializers.CharField()
+
+
+class WorkflowDirectoryTeamSerializer(serializers.Serializer):
+    teamId = serializers.UUIDField()
+    name = serializers.CharField()
+    activeMemberCount = serializers.IntegerField(min_value=1)
+    membershipIds = serializers.ListField(child=serializers.UUIDField())
+
+
+class WorkflowConfigurationDirectorySerializer(serializers.Serializer):
+    memberships = WorkflowDirectoryMembershipSerializer(many=True)
+    teams = WorkflowDirectoryTeamSerializer(many=True)
 
 
 class WorkflowDraftDocumentSerializer(serializers.Serializer):
@@ -113,6 +144,7 @@ class WorkflowCreateResponseSerializer(serializers.Serializer):
     workflowId = serializers.UUIDField()
     organizationId = serializers.UUIDField()
     createdByMembershipId = serializers.UUIDField()
+    configurationDirectory = WorkflowConfigurationDirectorySerializer()
     name = serializers.CharField()
     revision = serializers.CharField()
     draft = WorkflowDraftDocumentSerializer()

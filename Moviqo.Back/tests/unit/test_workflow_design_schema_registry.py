@@ -21,7 +21,7 @@ def test_schema_registry_reads_supported_historical_fixture() -> None:
     loaded = load_draft_document(payload)
 
     assert loaded == {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "draftId": "01987df4-ae8a-7000-8000-000000000111",
         "workflowId": "01987df4-ae8a-7000-8000-000000000110",
         "name": "Workflow intake",
@@ -31,8 +31,15 @@ def test_schema_registry_reads_supported_historical_fixture() -> None:
         "processFields": [],
         "formBindings": [],
         "publication": {
-            "starter": {"isConfigured": False},
-            "assignment": {"isConfigured": False},
+            "starter": {
+                "mode": "unconfigured",
+                "teamIds": [],
+                "membershipIds": [],
+            },
+            "assignment": {
+                "mode": "unconfigured",
+                "membershipId": None,
+            },
         },
     }
 
@@ -105,9 +112,20 @@ def test_schema_registry_upcasts_story_1_22_graph_fixture() -> None:
         }
     )
 
-    assert loaded["schemaVersion"] == 3
+    assert loaded["schemaVersion"] == 4
     assert loaded["processFields"] == []
     assert loaded["formBindings"] == []
+    assert loaded["publication"] == {
+        "starter": {
+            "mode": "unconfigured",
+            "teamIds": [],
+            "membershipIds": [],
+        },
+        "assignment": {
+            "mode": "unconfigured",
+            "membershipId": None,
+        },
+    }
 
 
 def test_schema_registry_normalizes_short_text_field_defaults() -> None:

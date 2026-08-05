@@ -380,6 +380,12 @@ export interface components {
         WorkflowCatalogResponse: {
             items: components["schemas"]["WorkflowCatalogItem"][];
         };
+        WorkflowConnection: {
+            id: string;
+            type: string;
+            sourceId: string;
+            targetId: string;
+        };
         WorkflowCreateRequest: {
             name: string;
         };
@@ -400,21 +406,24 @@ export interface components {
             workflowId: string;
             name: string;
             status: string;
-            elements: components["schemas"]["WorkflowElement"][];
-            connections: components["schemas"]["WorkflowConnection"][];
-            processFields: components["schemas"]["WorkflowProcessField"][];
-            formBindings: components["schemas"]["WorkflowFormBinding"][];
+            elements?: components["schemas"]["WorkflowElement"][];
+            connections?: components["schemas"]["WorkflowConnection"][];
+            processFields?: components["schemas"]["WorkflowProcessField"][];
+            formBindings?: components["schemas"]["WorkflowFormBinding"][];
+        };
+        WorkflowDraftSaveRequest: {
+            expectedRevision: string;
+            draft: components["schemas"]["WorkflowDraftDocument"];
         };
         WorkflowElement: {
             id: string;
             type: string;
             label: string;
         };
-        WorkflowConnection: {
-            id: string;
-            type: string;
-            sourceId: string;
-            targetId: string;
+        WorkflowFormBinding: {
+            id?: string;
+            taskElementId: string;
+            fieldId: string;
         };
         WorkflowProcessField: {
             id?: string;
@@ -425,15 +434,6 @@ export interface components {
             defaultValue?: string | null;
             minimumLength?: number;
             maximumLength?: number;
-        };
-        WorkflowFormBinding: {
-            id?: string;
-            taskElementId: string;
-            fieldId: string;
-        };
-        WorkflowDraftSaveRequest: {
-            expectedRevision: string;
-            draft: components["schemas"]["WorkflowDraftDocument"];
         };
     };
     responses: never;

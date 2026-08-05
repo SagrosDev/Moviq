@@ -5,6 +5,7 @@ import {
   MAX_AUTOSAVE_RETRIES,
   addGuidedWorkflowElement,
   applyWorkflowDraftSave,
+  canPublishWorkflow,
   canCreateWorkflow,
   clearPublicationChecklist,
   connectWorkflowElements,
@@ -19,6 +20,7 @@ import {
   type WorkflowCreationAccepted,
   type WorkflowCreationFormState,
   type WorkflowDraftDocument,
+  type WorkflowPublishAccepted,
   type WorkflowPublicationValidationAccepted
 } from "../../src/features/workflow-design";
 
@@ -525,6 +527,112 @@ test("publication validation failure keeps the checklist retry state explicit", 
   assert.equal(state.publicationStatus, "error");
   assert.equal(state.publicationErrorCode, "network_error");
   assert.deepEqual(state.publicationIssues, []);
+});
+
+test("publish is blocked while local autosave work is still pending", () => {
+  const accepted = createAccepted({}, "2");
+  const edited = reduceWorkflowDraftEditorState(
+    createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
+    {
+      type: "start-added",
+      labels: { start: "Start", task: "Task", end: "End" }
+    }
+  );
+
+  assert.equal(canPublishWorkflow(edited), false);
+});
+
+test("publish is blocked while publication validation is in flight", () => {
+  const accepted = createAccepted({}, "2");
+  const validating = reduceWorkflowDraftEditorState(
+    createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
+    {
+      type: "publication-validation-requested",
+      requestKey: "validate-1"
+    }
+  );
+
+  assert.equal(canPublishWorkflow(validating), false);
+});
+
+test("publish success appears only after the authoritative response arrives", () => {
+  const accepted = createAccepted({}, "2");
+  const initial = createWorkflowDraftEditorState(createWorkflowDraftState(accepted));
+  const requested = reduceWorkflowDraftEditorState(initial, {
+    type: "publish-requested",
+    requestKey: "publish-1"
+  });
+  const publishAccepted: WorkflowPublishAccepted = {
+    ...accepted,
+    publishedVersion: {
+      versionNumber: 1,
+      publishedAt: "2026-08-05T12:00:00Z",
+      sourceRevision: "2",
+      schemaVersion: 4
+    }
+  };
+  const succeeded = reduceWorkflowDraftEditorState(requested, {
+    type: "publish-succeeded",
+    requestKey: "publish-1",
+    accepted: publishAccepted
+  });
+
+  assert.equal(requested.publishStatus, "publishing");
+  assert.equal(requested.publishedVersion, null);
+  assert.equal(succeeded.publishStatus, "success");
+  assert.equal(succeeded.publishedVersion?.versionNumber, 1);
+});
+
+test("stale publish failure keeps the draft intact and reports an error", () => {
+  const accepted = createAccepted({}, "2");
+  const initial = createWorkflowDraftEditorState(createWorkflowDraftState(accepted));
+  const requested = reduceWorkflowDraftEditorState(initial, {
+    type: "publish-requested",
+    requestKey: "publish-1"
+  });
+  const failed = reduceWorkflowDraftEditorState(requested, {
+    type: "publish-failed",
+    requestKey: "publish-1",
+    errorCode: "workflow_draft_revision_conflict",
+    errorMessage: "Reload the last saved draft before publishing.",
+    issues: []
+  });
+
+  assert.equal(failed.publishStatus, "error");
+  assert.equal(failed.publishErrorCode, "workflow_draft_revision_conflict");
+  assert.equal(failed.localDraft.workflowId, accepted.workflowId);
+});
+
+test("invalid publish failure keeps checklist blockers actionable", () => {
+  const accepted = createAccepted({}, "2");
+  const initial = createWorkflowDraftEditorState(createWorkflowDraftState(accepted));
+  const requested = reduceWorkflowDraftEditorState(initial, {
+    type: "publish-requested",
+    requestKey: "publish-1"
+  });
+  const failed = reduceWorkflowDraftEditorState(requested, {
+    type: "publish-failed",
+    requestKey: "publish-1",
+    errorCode: "workflow_draft_invalid",
+    errorMessage: "Choose who can start this workflow.",
+    issues: [
+      {
+        code: "starter_missing",
+        severity: "blocking",
+        target: "configuration.starter",
+        elementId: null,
+        fieldId: null,
+        bindingId: null,
+        message: "Choose who can start this workflow.",
+        actionLabel: "Configure starter"
+      }
+    ]
+  });
+
+  assert.equal(failed.publishStatus, "error");
+  assert.equal(failed.publishErrorCode, "workflow_draft_invalid");
+  assert.equal(failed.publicationIssues.length, 1);
+  assert.equal(failed.publicationIssues[0]?.target, "configuration.starter");
 });
 
 test("checklist target focus maps to stable editor sections", () => {

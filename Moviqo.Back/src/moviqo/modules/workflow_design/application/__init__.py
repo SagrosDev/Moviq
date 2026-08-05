@@ -21,6 +21,10 @@ _LAZY_EXPORTS = {
         "moviqo.modules.workflow_design.application.views",
         "WorkflowPublicationValidationView",
     ),
+    "WorkflowPublishView": (
+        "moviqo.modules.workflow_design.application.views",
+        "WorkflowPublishView",
+    ),
     "create_workflow_definition": (
         "moviqo.modules.workflow_design.application.services",
         "create_workflow_definition",
@@ -44,6 +48,10 @@ _LAZY_EXPORTS = {
     "validate_workflow_publication": (
         "moviqo.modules.workflow_design.application.services",
         "validate_workflow_publication",
+    ),
+    "publish_workflow_version": (
+        "moviqo.modules.workflow_design.application.services",
+        "publish_workflow_version",
     ),
 }
 

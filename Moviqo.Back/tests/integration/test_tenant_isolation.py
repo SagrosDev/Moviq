@@ -31,7 +31,11 @@ from moviqo.modules.organizations.models import (
     Team,
     TeamMembership,
 )
-from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft
+from moviqo.modules.workflow_design.models import (
+    WorkflowDefinition,
+    WorkflowDraft,
+    WorkflowVersion,
+)
 from moviqo.modules.workflow_runtime.models import (
     AtomicCommandProbe,
     TaskOccurrence,
@@ -619,6 +623,77 @@ def _assert_workflow_draft_isolation(seed: IsolationSeed) -> None:
 
     row_b.refresh_from_db()
     assert row_b.revision == "1"
+
+
+def _assert_workflow_version_isolation(seed: IsolationSeed) -> None:
+    workflow_a = WorkflowDefinition.objects.create(
+        organization=seed.organization_a,
+        name="Workflow alpha",
+        normalized_name="workflow alpha",
+        draft_schema_version=1,
+        created_by_membership_id=seed.membership_a.id,
+        created_by_user_id=seed.user_a.id,
+    )
+    workflow_b = WorkflowDefinition.objects.create(
+        organization=seed.organization_b,
+        name="Workflow bravo",
+        normalized_name="workflow bravo",
+        draft_schema_version=1,
+        created_by_membership_id=seed.membership_b.id,
+        created_by_user_id=seed.user_b.id,
+    )
+    WorkflowVersion.objects.create(
+        organization=seed.organization_a,
+        workflow=workflow_a,
+        version_number=1,
+        source_draft_revision="1",
+        snapshot_schema_version=1,
+        snapshot={
+            "schemaVersion": 1,
+            "draftId": "alpha",
+            "workflowId": "alpha",
+            "name": "Workflow alpha",
+            "status": "published",
+            "elements": [],
+        },
+        published_by_membership_id=seed.membership_a.id,
+        published_by_user_id=seed.user_a.id,
+    )
+    row_b = WorkflowVersion.objects.create(
+        organization=seed.organization_b,
+        workflow=workflow_b,
+        version_number=1,
+        source_draft_revision="1",
+        snapshot_schema_version=1,
+        snapshot={
+            "schemaVersion": 1,
+            "draftId": "bravo",
+            "workflowId": "bravo",
+            "name": "Workflow bravo",
+            "status": "published",
+            "elements": [],
+        },
+        published_by_membership_id=seed.membership_b.id,
+        published_by_user_id=seed.user_b.id,
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert WorkflowVersion.objects.count() == 1
+        assert not WorkflowVersion.objects.filter(id=row_b.id).exists()
+        with pytest.raises(DatabaseError) as exc_info:
+            with transaction.atomic():
+                WorkflowVersion.objects.filter(id=row_b.id).update(version_number=2)
+        assert "permission denied" in str(exc_info.value).lower()
+        assert str(seed.organization_b.id) not in str(exc_info.value)
+
+    row_b.refresh_from_db()
+    assert row_b.version_number == 1
 
 
 def _assertion_for_registration(

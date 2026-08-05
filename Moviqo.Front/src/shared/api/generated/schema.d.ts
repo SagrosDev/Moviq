@@ -266,6 +266,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workflow-design/workflows/{workflow_id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["workflow_design_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -558,6 +574,30 @@ export interface components {
             revision: string;
             publishable: boolean;
             issues: components["schemas"]["WorkflowPublicationIssue"][];
+        };
+        WorkflowPublishRequest: {
+            expectedRevision: string;
+            draft: components["schemas"]["WorkflowDraftDocument"];
+        };
+        WorkflowPublishResponse: {
+            /** Format: uuid */
+            workflowId: string;
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            createdByMembershipId: string;
+            configurationDirectory: components["schemas"]["WorkflowConfigurationDirectory"];
+            name: string;
+            revision: string;
+            draft: components["schemas"]["WorkflowDraftDocument"];
+            publishedVersion: components["schemas"]["WorkflowPublishedVersion"];
+        };
+        WorkflowPublishedVersion: {
+            versionNumber: number;
+            /** Format: date-time */
+            publishedAt: string;
+            sourceRevision: string;
+            schemaVersion: number;
         };
         WorkflowStarterConfiguration: {
             mode?: string;
@@ -1263,6 +1303,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkflowPublicationValidationResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_design_publish: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowPublishRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WorkflowPublishRequest"];
+                "multipart/form-data": components["schemas"]["WorkflowPublishRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowPublishResponse"];
                 };
             };
             400: {

@@ -7,14 +7,17 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import close_old_connections
 
 from moviqo.building_blocks.commands import IdempotencyKeyReuseConflict
 from moviqo.building_blocks.tenancy.runtime import TenantContext
 from moviqo.modules.governance.models import CommandResult, TransactionalAuditRecord
+from moviqo.modules.messaging.models import OutboxMessage
 from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
 from moviqo.modules.workflow_design.application import (
     create_workflow_definition,
+    publish_workflow_version,
     save_workflow_draft,
     validate_workflow_publication,
 )
@@ -22,7 +25,11 @@ from moviqo.modules.workflow_design.application.services import (
     WorkflowDraftRevisionConflictError,
     WorkflowDraftValidationAPIError,
 )
-from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft
+from moviqo.modules.workflow_design.models import (
+    WorkflowDefinition,
+    WorkflowDraft,
+    WorkflowVersion,
+)
 
 
 def _integration_only() -> None:
@@ -50,6 +57,58 @@ def _tenant_context(django_user_model) -> TenantContext:
         membership_id=membership.id,
         user_id=user.id,
     )
+
+
+def _publishable_draft_payload(created: dict[str, object]) -> dict[str, object]:
+    return {
+        "schemaVersion": 4,
+        "draftId": created["draft"]["draftId"],
+        "workflowId": created["workflowId"],
+        "name": "Workflow intake",
+        "status": "draft",
+        "elements": [
+            {"id": "start-1", "type": "start", "label": "Start"},
+            {"id": "task-1", "type": "task", "label": "Task"},
+            {"id": "end-1", "type": "end", "label": "End"},
+        ],
+        "connections": [
+            {
+                "id": "connection-1",
+                "type": "sequence",
+                "sourceId": "start-1",
+                "targetId": "task-1",
+            },
+            {
+                "id": "connection-2",
+                "type": "sequence",
+                "sourceId": "task-1",
+                "targetId": "end-1",
+            },
+        ],
+        "processFields": [
+            {
+                "kind": "shortText",
+                "label": "Requester name",
+            }
+        ],
+        "formBindings": [
+            {
+                "taskElementId": "task-1",
+                "fieldId": "field-1",
+            }
+        ],
+        "publication": {
+            "starter": {
+                "mode": "allActiveMembers",
+                "teamIds": [],
+                "membershipIds": [],
+            },
+            "assignment": {
+                "mode": "workflowInitiator",
+                "membershipId": None,
+            },
+        },
+    }
 
 
 @pytest.mark.django_db(transaction=True)
@@ -656,3 +715,242 @@ def test_publication_validation_does_not_advance_revision_and_is_deterministic(
         "starter_missing",
         "assignment_missing",
     ]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_workflow_publish_replays_one_committed_version_and_evidence(
+    django_user_model,
+) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow intake",
+        idempotency_key="workflow-create-1",
+        request_hash=_request_hash("Workflow intake"),
+    )
+    saved = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft=_publishable_draft_payload(created),
+        idempotency_key="workflow-save-1",
+        request_hash=_request_hash("workflow-save-1"),
+    )
+    request_hash = _request_hash("workflow-publish-1")
+
+    first = publish_workflow_version(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="2",
+        draft=saved["draft"],
+        idempotency_key="workflow-publish-1",
+        request_hash=request_hash,
+    )
+    second = publish_workflow_version(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="2",
+        draft=saved["draft"],
+        idempotency_key="workflow-publish-1",
+        request_hash=request_hash,
+    )
+
+    assert first == second
+    assert WorkflowVersion.objects.filter(workflow_id=created["workflowId"]).count() == 1
+    assert CommandResult.objects.filter(
+        command_type="workflow-design.publish",
+        idempotency_key="workflow-publish-1",
+    ).count() == 1
+    assert TransactionalAuditRecord.objects.filter(
+        command_type="workflow-design.publish",
+        event_type="workflow-design.workflow-published",
+    ).count() == 1
+    assert OutboxMessage.objects.filter(
+        organization_id=tenant_context.organization_id,
+        message_type="workflow-design.workflow-version-published",
+    ).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_stale_publish_attempts_record_rejection_audit_evidence(
+    django_user_model,
+) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow intake",
+        idempotency_key="workflow-create-1",
+        request_hash=_request_hash("Workflow intake"),
+    )
+    saved = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft=_publishable_draft_payload(created),
+        idempotency_key="workflow-save-1",
+        request_hash=_request_hash("workflow-save-1"),
+    )
+
+    with pytest.raises(WorkflowDraftRevisionConflictError):
+        publish_workflow_version(
+            tenant_context=tenant_context,
+            workflow_id=created["workflowId"],
+            expected_revision="1",
+            draft=saved["draft"],
+            idempotency_key="workflow-publish-stale",
+            request_hash=_request_hash("workflow-publish-stale"),
+        )
+
+    rejection = TransactionalAuditRecord.objects.get(
+        command_type="workflow-design.publish",
+        event_type="workflow-design.publication-rejected",
+    )
+    assert rejection.payload["draftId"] == created["draft"]["draftId"]
+    assert rejection.payload["revision"] == "2"
+    assert rejection.payload["issueCodes"] == ["stale"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_publish_attempts_serialize_to_distinct_versions(
+    django_user_model,
+) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow intake",
+        idempotency_key="workflow-create-1",
+        request_hash=_request_hash("Workflow intake"),
+    )
+    saved = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft=_publishable_draft_payload(created),
+        idempotency_key="workflow-save-1",
+        request_hash=_request_hash("workflow-save-1"),
+    )
+    start_gate = threading.Event()
+
+    def attempt_publish(idempotency_key: str) -> int:
+        close_old_connections()
+        start_gate.wait()
+        try:
+            accepted = publish_workflow_version(
+                tenant_context=tenant_context,
+                workflow_id=created["workflowId"],
+                expected_revision="2",
+                draft=saved["draft"],
+                idempotency_key=idempotency_key,
+                request_hash=_request_hash(idempotency_key),
+            )
+            return accepted["publishedVersion"]["versionNumber"]
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first_future = executor.submit(attempt_publish, "workflow-publish-a")
+        second_future = executor.submit(attempt_publish, "workflow-publish-b")
+        start_gate.set()
+        first_version = first_future.result()
+        second_version = second_future.result()
+
+    assert {first_version, second_version} == {1, 2}
+    assert WorkflowVersion.objects.filter(workflow_id=created["workflowId"]).count() == 2
+
+
+@pytest.mark.django_db(transaction=True)
+def test_later_draft_saves_do_not_mutate_published_snapshot(django_user_model) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow intake",
+        idempotency_key="workflow-create-1",
+        request_hash=_request_hash("Workflow intake"),
+    )
+    saved = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft=_publishable_draft_payload(created),
+        idempotency_key="workflow-save-1",
+        request_hash=_request_hash("workflow-save-1"),
+    )
+    published = publish_workflow_version(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="2",
+        draft=saved["draft"],
+        idempotency_key="workflow-publish-1",
+        request_hash=_request_hash("workflow-publish-1"),
+    )
+    version = WorkflowVersion.objects.get(workflow_id=created["workflowId"], version_number=1)
+    original_snapshot = version.snapshot
+
+    updated_draft = {
+        **saved["draft"],
+        "elements": [
+            {"id": "start-1", "type": "start", "label": "Start"},
+            {"id": "task-1", "type": "task", "label": "Task review"},
+            {"id": "end-1", "type": "end", "label": "End"},
+        ],
+    }
+    latest = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="2",
+        draft=updated_draft,
+        idempotency_key="workflow-save-2",
+        request_hash=_request_hash("workflow-save-2"),
+    )
+
+    version.refresh_from_db()
+    assert published["publishedVersion"]["versionNumber"] == 1
+    assert latest["revision"] == "3"
+    assert version.snapshot == original_snapshot
+    assert version.snapshot["elements"][1]["label"] == "Task"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_published_versions_reject_mutation_attempts(django_user_model) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow intake",
+        idempotency_key="workflow-create-1",
+        request_hash=_request_hash("Workflow intake"),
+    )
+    saved = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft=_publishable_draft_payload(created),
+        idempotency_key="workflow-save-1",
+        request_hash=_request_hash("workflow-save-1"),
+    )
+    publish_workflow_version(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="2",
+        draft=saved["draft"],
+        idempotency_key="workflow-publish-1",
+        request_hash=_request_hash("workflow-publish-1"),
+    )
+
+    version = WorkflowVersion.objects.get(workflow_id=created["workflowId"], version_number=1)
+    version.snapshot = {
+        **version.snapshot,
+        "name": "Mutated published workflow",
+    }
+
+    with pytest.raises(ValidationError):
+        version.save()

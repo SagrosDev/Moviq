@@ -121,6 +121,13 @@ PROTECTED_TENANT_RESOURCES = (
         evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[atomic-command-probe]",
     ),
     TenantIsolationGateRegistration(
+        resource_name="process-instance",
+        table_name="workflow_runtime_process_instance",
+        policy_name="workflow_runtime_process_instance_tenant_isolation",
+        isolation_test_id="process_instance",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[process-instance]",
+    ),
+    TenantIsolationGateRegistration(
         resource_name="task-occurrence",
         table_name="workflow_runtime_task_occurrence",
         policy_name="workflow_runtime_task_occurrence_tenant_isolation",

@@ -38,6 +38,7 @@ from moviqo.modules.workflow_design.models import (
 )
 from moviqo.modules.workflow_runtime.models import (
     AtomicCommandProbe,
+    ProcessInstance,
     TaskOccurrence,
     TaskProcessFieldValue,
 )
@@ -467,6 +468,74 @@ def _assert_task_occurrence_isolation(seed: IsolationSeed) -> None:
 
     row_b.refresh_from_db()
     assert row_b.status == "assigned"
+
+
+def _assert_process_instance_isolation(seed: IsolationSeed) -> None:
+    workflow_a = WorkflowDefinition.objects.create(
+        organization=seed.organization_a,
+        name="Workflow alpha",
+        normalized_name="workflow alpha",
+        draft_schema_version=3,
+        created_by_membership_id=seed.membership_a.id,
+        created_by_user_id=seed.user_a.id,
+    )
+    workflow_b = WorkflowDefinition.objects.create(
+        organization=seed.organization_b,
+        name="Workflow bravo",
+        normalized_name="workflow bravo",
+        draft_schema_version=3,
+        created_by_membership_id=seed.membership_b.id,
+        created_by_user_id=seed.user_b.id,
+    )
+    version_a = WorkflowVersion.objects.create(
+        organization=seed.organization_a,
+        workflow=workflow_a,
+        version_number=1,
+        source_draft_revision="1",
+        snapshot_schema_version=1,
+        snapshot={"name": "Workflow alpha", "elements": []},
+        published_by_membership_id=seed.membership_a.id,
+        published_by_user_id=seed.user_a.id,
+    )
+    version_b = WorkflowVersion.objects.create(
+        organization=seed.organization_b,
+        workflow=workflow_b,
+        version_number=1,
+        source_draft_revision="1",
+        snapshot_schema_version=1,
+        snapshot={"name": "Workflow bravo", "elements": []},
+        published_by_membership_id=seed.membership_b.id,
+        published_by_user_id=seed.user_b.id,
+    )
+    ProcessInstance.objects.create(
+        organization=seed.organization_a,
+        workflow=workflow_a,
+        workflow_version=version_a,
+        initiator_membership_id=seed.membership_a.id,
+        initiator_user_id=seed.user_a.id,
+    )
+    row_b = ProcessInstance.objects.create(
+        organization=seed.organization_b,
+        workflow=workflow_b,
+        workflow_version=version_b,
+        initiator_membership_id=seed.membership_b.id,
+        initiator_user_id=seed.user_b.id,
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert ProcessInstance.objects.count() == 1
+        assert not ProcessInstance.objects.filter(id=row_b.id).exists()
+        updated = ProcessInstance.objects.filter(id=row_b.id).update(status="cross-tenant")
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.status == "active"
 
 
 def _assert_task_process_field_value_isolation(seed: IsolationSeed) -> None:

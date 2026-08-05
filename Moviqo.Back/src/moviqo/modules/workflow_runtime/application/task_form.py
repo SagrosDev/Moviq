@@ -8,7 +8,10 @@ from rest_framework.exceptions import APIException
 
 from moviqo.building_blocks.commands import execute_atomic_command
 from moviqo.building_blocks.tenancy.runtime import TenantContext
-from moviqo.modules.workflow_design.application import read_workflow_draft_snapshot
+from moviqo.modules.workflow_design.application import (
+    read_published_workflow_version,
+    read_workflow_draft_snapshot,
+)
 from moviqo.modules.workflow_runtime.models import TaskOccurrence, TaskProcessFieldValue
 
 TASK_FORM_SAVE_COMMAND = "workflow-runtime.save-task-form-draft"
@@ -275,7 +278,7 @@ def _build_task_form_projection(task: TaskOccurrence) -> TaskFormProjection | No
     controls.sort(key=lambda control: (control["position"], control["controlId"]))
     return TaskFormProjection(
         task=task,
-        workflow_name=task.workflow.name,
+        workflow_name=_workflow_name_from_document(document=document, fallback=task.workflow.name),
         task_title=task_title,
         controls=controls,
     )
@@ -373,6 +376,16 @@ def _validate_submitted_controls(
 
 
 def _load_authoritative_task_document(task: TaskOccurrence) -> dict[str, Any] | None:
+    if task.workflow_version_id:
+        version = read_published_workflow_version(
+            workflow_version_id=task.workflow_version_id,
+            organization_id=task.organization_id,
+            workflow_id=task.workflow_id,
+        )
+        if version is None or version.source_draft_revision != task.definition_revision:
+            return None
+        return version.snapshot
+
     snapshot = read_workflow_draft_snapshot(
         tenant_context=TenantContext(
             organization_id=task.organization_id,
@@ -387,6 +400,11 @@ def _load_authoritative_task_document(task: TaskOccurrence) -> dict[str, Any] | 
     if revision != task.definition_revision:
         return None
     return document
+
+
+def _workflow_name_from_document(*, document: dict[str, Any], fallback: str) -> str:
+    name = document.get("name")
+    return name if isinstance(name, str) and name.strip() else fallback
 
 
 def _task_form_response(*, projection: TaskFormProjection) -> dict[str, Any]:

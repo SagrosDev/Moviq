@@ -116,6 +116,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/my-work/start-workflows/{workflow_id}/start/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["workflow_runtime_start_process"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/my-work/tasks/{task_id}/form/": {
         parameters: {
             query?: never;
@@ -401,6 +417,20 @@ export interface components {
             email: string;
             password: string;
         };
+        StartProcessAccepted: {
+            /** Format: uuid */
+            processId: string;
+            /** Format: uuid */
+            taskId: string;
+            workflow: components["schemas"]["StartProcessAcceptedWorkflow"];
+            destinationRoute: string;
+        };
+        StartProcessAcceptedWorkflow: {
+            /** Format: uuid */
+            workflowId: string;
+            title: string;
+            versionNumber: number;
+        };
         StartWorkflowCollection: {
             items: components["schemas"]["StartWorkflowSummary"][];
             limit: number;
@@ -412,6 +442,7 @@ export interface components {
             title: string;
             description: string;
             availability: string;
+            versionNumber: number;
         };
         SystemPing: {
             status: string;
@@ -802,6 +833,61 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_runtime_start_process: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartProcessAccepted"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.exceptions import PermissionDenied
 
+from moviqo.building_blocks.tenancy.runtime import TenantContext
 from moviqo.modules.organizations.authentication import (
     AUTH_FAILURE_LIMIT,
     clear_login_failures,
@@ -13,9 +16,18 @@ from moviqo.modules.organizations.models import (
     Membership,
     MoviqoUser,
     RegistrationWorkflowState,
+    TeamMembership,
 )
 
 GENERIC_LOGIN_CODE = "authentication_failed"
+
+
+@dataclass(frozen=True)
+class ActiveMembershipRecord:
+    membership_id: str
+    organization_id: str
+    user_id: int
+    role: str
 
 
 def active_membership_for_user(user: MoviqoUser):
@@ -74,3 +86,69 @@ def session_context(user: MoviqoUser) -> dict[str, object]:
 
 def end_session(request) -> None:
     logout(request)
+
+
+def read_active_membership(*, tenant_context: TenantContext) -> ActiveMembershipRecord | None:
+    membership = (
+        Membership.objects.select_related("user", "organization")
+        .filter(
+            id=tenant_context.membership_id,
+            organization_id=tenant_context.organization_id,
+            is_active=True,
+            user__is_active=True,
+            organization__is_active=True,
+            registration_state=RegistrationWorkflowState.ACTIVE,
+            organization__registration_state=RegistrationWorkflowState.ACTIVE,
+        )
+        .first()
+    )
+    return _membership_record(membership)
+
+
+def read_active_membership_by_id(
+    *,
+    organization_id,
+    membership_id,
+) -> ActiveMembershipRecord | None:
+    membership = (
+        Membership.objects.select_related("user", "organization")
+        .filter(
+            id=membership_id,
+            organization_id=organization_id,
+            is_active=True,
+            user__is_active=True,
+            organization__is_active=True,
+            registration_state=RegistrationWorkflowState.ACTIVE,
+            organization__registration_state=RegistrationWorkflowState.ACTIVE,
+        )
+        .first()
+    )
+    return _membership_record(membership)
+
+
+def list_active_team_ids(*, tenant_context: TenantContext) -> set[str]:
+    return {
+        str(team_membership.team_id)
+        for team_membership in TeamMembership.objects.select_related(
+            "team",
+            "membership",
+        ).filter(
+            organization_id=tenant_context.organization_id,
+            membership_id=tenant_context.membership_id,
+            is_active=True,
+            membership__is_active=True,
+            membership__user__is_active=True,
+            team__is_active=True,
+        )
+    }
+
+
+def _membership_record(membership: Membership | None) -> ActiveMembershipRecord | None:
+    if membership is None:
+        return None
+    return ActiveMembershipRecord(
+        membership_id=str(membership.id),
+        organization_id=str(membership.organization_id),
+        user_id=membership.user_id,
+        role=membership.role,
+    )

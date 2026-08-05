@@ -7,6 +7,7 @@ from moviqo.modules.workflow_runtime.application.task_form import (
 )
 from moviqo.modules.workflow_runtime.application.views import (
     MyWorkDashboardView,
+    StartWorkflowProcessView,
     TaskFormDetailView,
 )
 
@@ -17,6 +18,7 @@ def module_health() -> None:
 
 __all__ = [
     "MyWorkDashboardView",
+    "StartWorkflowProcessView",
     "TaskFormDetailView",
     "module_health",
     "read_my_work_dashboard",

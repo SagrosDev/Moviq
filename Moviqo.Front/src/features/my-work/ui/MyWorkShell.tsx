@@ -13,6 +13,9 @@ import type {
 type MyWorkShellProps = {
   snapshot: QuerySnapshot<MyWorkDashboard>;
   onRetry(): void;
+  onStartWorkflow(workflowId: string): void;
+  startFeedbackByWorkflowId: Record<string, string | undefined>;
+  startingWorkflowId: string | null;
   workflowCreationHref?: string | null;
   showWorkflowCreation: boolean;
 };
@@ -23,7 +26,10 @@ const regionOrder: MyWorkRegion[] = ["myTasks", "startWorkflows", "myProcesses"]
 
 export const MyWorkShell = ({
   snapshot,
+  onStartWorkflow,
   onRetry,
+  startFeedbackByWorkflowId,
+  startingWorkflowId,
   workflowCreationHref,
   showWorkflowCreation
 }: MyWorkShellProps) => {
@@ -68,7 +74,14 @@ export const MyWorkShell = ({
         summary={t("myWork.startWorkflows.summary")}
         isActive={activeRegion === "startWorkflows"}
       >
-        {renderStartWorkflows(snapshot, onRetry, t)}
+        {renderStartWorkflows(
+          snapshot,
+          onRetry,
+          onStartWorkflow,
+          startFeedbackByWorkflowId,
+          startingWorkflowId,
+          t
+        )}
       </MyWorkRegionSection>
       <MyWorkRegionSection
         id="my-work-myProcesses"
@@ -138,6 +151,9 @@ const renderMyTasks = (
 const renderStartWorkflows = (
   snapshot: QuerySnapshot<MyWorkDashboard>,
   onRetry: () => void,
+  onStartWorkflow: (workflowId: string) => void,
+  startFeedbackByWorkflowId: Record<string, string | undefined>,
+  startingWorkflowId: string | null,
   t: Translate
 ) => {
   return renderRegionState<MyWorkStartWorkflow>(
@@ -149,8 +165,24 @@ const renderStartWorkflows = (
     onRetry,
     (item) => <article key={item.workflowId} className="my-work-card">
       <h3>{item.title}</h3>
-      <p>{item.description}</p>
+      <p>{`${t("myWork.startWorkflows.version")} ${item.versionNumber}`}</p>
+      {item.description ? <p>{item.description}</p> : null}
       <p>{item.availability}</p>
+      <div className="button-row">
+        <button
+          className="button"
+          type="button"
+          disabled={startingWorkflowId === item.workflowId}
+          onClick={() => onStartWorkflow(item.workflowId)}
+        >
+          {startingWorkflowId === item.workflowId
+            ? t("myWork.startWorkflows.starting")
+            : t("myWork.startWorkflows.start")}
+        </button>
+      </div>
+      {startFeedbackByWorkflowId[item.workflowId] ? (
+        <p role="status">{startFeedbackByWorkflowId[item.workflowId]}</p>
+      ) : null}
     </article>,
     (dashboard) => dashboard.startWorkflows
   );

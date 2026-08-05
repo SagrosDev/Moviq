@@ -20,6 +20,7 @@ from moviqo.modules.organizations.application import active_membership_for_user
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.application.views import AuthenticatedRequestPermission
 from moviqo.modules.workflow_runtime.application.my_work import read_my_work_dashboard
+from moviqo.modules.workflow_runtime.application.start_process import start_process
 from moviqo.modules.workflow_runtime.application.task_form import (
     TaskFormRevisionConflictError,
     TaskFormValidationAPIError,
@@ -33,6 +34,24 @@ class StartWorkflowSummarySerializer(serializers.Serializer):
     title = serializers.CharField()
     description = serializers.CharField(allow_blank=True)
     availability = serializers.CharField()
+    versionNumber = serializers.IntegerField(min_value=1)
+
+
+class StartProcessAcceptedWorkflowSerializer(serializers.Serializer):
+    workflowId = serializers.UUIDField()
+    title = serializers.CharField()
+    versionNumber = serializers.IntegerField(min_value=1)
+
+
+class StartProcessAcceptedSerializer(serializers.Serializer):
+    processId = serializers.UUIDField()
+    taskId = serializers.UUIDField()
+    workflow = StartProcessAcceptedWorkflowSerializer()
+    destinationRoute = serializers.CharField()
+
+
+class StartProcessRequestSerializer(serializers.Serializer):
+    pass
 
 
 class MyTaskSummarySerializer(serializers.Serializer):
@@ -138,6 +157,70 @@ class MyWorkDashboardView(APIView):
     def get(self, request) -> Response:
         tenant_context = _require_runtime_membership(request)
         return Response(read_my_work_dashboard(tenant_context))
+
+
+class StartWorkflowProcessView(APIView):
+    permission_classes = [AuthenticatedRequestPermission]
+
+    @extend_schema(
+        operation_id="workflow_runtime_start_process",
+        request=StartProcessRequestSerializer,
+        parameters=[
+            OpenApiParameter(
+                name="Idempotency-Key",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                required=True,
+            )
+        ],
+        responses={
+            200: StartProcessAcceptedSerializer,
+            (400, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (403, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (404, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (409, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def post(self, request, workflow_id) -> Response:
+        idempotency_key = request.headers.get("Idempotency-Key")
+        if not idempotency_key:
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    status_code=400,
+                    code="workflow_start_invalid",
+                    title="Workflow start failed",
+                ),
+                invalid_params=[
+                    {
+                        "name": "idempotencyKey",
+                        "code": "required",
+                        "reason": "Provide an idempotency key to continue.",
+                    }
+                ],
+            )
+
+        tenant_context = _require_runtime_membership(request)
+        try:
+            result = start_process(
+                tenant_context=tenant_context,
+                workflow_id=workflow_id,
+                idempotency_key=idempotency_key,
+                request_hash=_workflow_start_request_hash(
+                    workflow_id=str(workflow_id),
+                    membership_id=str(tenant_context.membership_id),
+                ),
+            )
+        except IdempotencyKeyReuseConflict:
+            return problem_response(
+                request,
+                ProblemTemplate(409, "idempotency_key_reused", "Conflict"),
+            )
+
+        if result is None:
+            raise NotFound("workflow-start")
+
+        return Response(result)
 
 
 class TaskFormDetailView(APIView):
@@ -257,6 +340,15 @@ def _require_runtime_membership(request):
 
 def _task_form_request_hash(payload: dict[str, object]) -> str:
     serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _workflow_start_request_hash(*, workflow_id: str, membership_id: str) -> str:
+    serialized = json.dumps(
+        {"membershipId": membership_id, "workflowId": workflow_id},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 

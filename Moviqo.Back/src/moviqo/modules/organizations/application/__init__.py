@@ -10,7 +10,13 @@ from moviqo.modules.organizations.application.registration import (
     register_initial_owner,
     verify_initial_registration,
 )
-from moviqo.modules.organizations.application.session import active_membership_for_user
+from moviqo.modules.organizations.application.session import (
+    ActiveMembershipRecord,
+    active_membership_for_user,
+    list_active_team_ids,
+    read_active_membership,
+    read_active_membership_by_id,
+)
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.application.views import (
     CsrfTokenView,
@@ -42,7 +48,11 @@ __all__ = [
     "module_health",
     "register_initial_owner",
     "active_membership_for_user",
+    "ActiveMembershipRecord",
+    "list_active_team_ids",
     "resolve_tenant_context",
+    "read_active_membership",
+    "read_active_membership_by_id",
     "RegistrationVerificationView",
     "PasswordRecoveryView",
     "PasswordResetView",

@@ -1576,16 +1576,22 @@
                     "status": {
                         "type": "string"
                     },
-                    "assignee": {
-                        "type": "string"
+                    "processId": {
+                        "type": "string",
+                        "format": "uuid"
                     },
-                    "currentStep": {
+                    "activatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "openTaskRoute": {
                         "type": "string"
                     }
                 },
                 "required": [
-                    "assignee",
-                    "currentStep",
+                    "activatedAt",
+                    "openTaskRoute",
+                    "processId",
                     "status",
                     "taskId",
                     "title",
@@ -1974,6 +1980,10 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "processId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
                     "workflowId": {
                         "type": "string",
                         "format": "uuid"
@@ -2007,6 +2017,7 @@
                     "actions",
                     "definitionRevision",
                     "form",
+                    "processId",
                     "status",
                     "taskElementId",
                     "taskId",

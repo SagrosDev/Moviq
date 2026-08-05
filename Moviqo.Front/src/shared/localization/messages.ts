@@ -34,6 +34,7 @@ export type MessageKey =
   | "status.needsAttention"
   | "status.assigned"
   | "status.inProgress"
+  | "status.completed"
   | "validation.required"
   | "validation.generic"
   | "validation.email"
@@ -233,6 +234,11 @@ export type MessageKey =
   | "taskForm.save"
   | "taskForm.saving"
   | "taskForm.saveSuccess"
+  | "taskForm.completing"
+  | "taskForm.completeSuccess"
+  | "taskForm.completeError"
+  | "taskForm.completeHandoff"
+  | "taskForm.processComplete"
   | "taskForm.saveError"
   | "taskForm.complete"
   | "taskForm.back"
@@ -352,6 +358,7 @@ export const spanishMessages: MessageDictionary = {
   "status.needsAttention": "Necesita atencion",
   "status.assigned": "Asignada",
   "status.inProgress": "En curso",
+  "status.completed": "Completada",
   "validation.required": "Completa este campo para continuar.",
   "validation.generic": "Revisa este campo e intenta de nuevo.",
   "validation.email": "Escribe un correo electronico valido.",
@@ -586,6 +593,11 @@ export const spanishMessages: MessageDictionary = {
   "taskForm.save": "Guardar borrador",
   "taskForm.saving": "Guardando borrador",
   "taskForm.saveSuccess": "El servidor guardo el avance autorizado.",
+  "taskForm.completing": "Completando tarea",
+  "taskForm.completeSuccess": "La tarea quedo completa y el proceso llego a su fin.",
+  "taskForm.completeError": "No pudimos completar esta tarea. Corrige los datos y vuelve a intentarlo.",
+  "taskForm.completeHandoff": "Te llevaremos de regreso a Mi trabajo despues de confirmar el resultado autorizado.",
+  "taskForm.processComplete": "Proceso: Completado",
   "taskForm.saveError": "No pudimos guardar este formulario. Corrige los datos e intenta de nuevo.",
   "taskForm.complete": "Completar tarea",
   "taskForm.back": "Volver a Mi trabajo",
@@ -706,6 +718,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "status.needsAttention": "Needs attention",
   "status.assigned": "Assigned",
   "status.inProgress": "In progress",
+  "status.completed": "Completed",
   "validation.required": "Complete this field to continue.",
   "validation.generic": "Review this field and try again.",
   "validation.email": "Enter a valid email address.",
@@ -942,6 +955,11 @@ export const englishMessages: Partial<MessageDictionary> = {
   "taskForm.save": "Save draft",
   "taskForm.saving": "Saving draft",
   "taskForm.saveSuccess": "The server saved the authorized progress.",
+  "taskForm.completing": "Completing task",
+  "taskForm.completeSuccess": "The task is complete and the process reached its end.",
+  "taskForm.completeError": "We could not complete this task. Correct the values and try again.",
+  "taskForm.completeHandoff": "We will return you to My work after confirming the authorized result.",
+  "taskForm.processComplete": "Process: Completed",
   "taskForm.saveError": "We could not save this form. Correct the values and try again.",
   "taskForm.complete": "Complete task",
   "taskForm.back": "Back to My work",

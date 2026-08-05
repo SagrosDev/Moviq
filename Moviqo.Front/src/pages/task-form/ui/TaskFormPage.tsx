@@ -1,6 +1,8 @@
 import { useEffect, useReducer, useState } from "react";
 import { protectedEntryPath, useSession } from "../../../features/authentication";
 import {
+  completeTaskFormDocument,
+  createTaskFormCompletionIdempotencyKey,
   createTaskFormSaveIdempotencyKey,
   createTaskFormEditorState,
   readTaskFormDocument,
@@ -39,6 +41,7 @@ export const TaskFormPage = ({ taskId }: TaskFormPageProps) => {
       taskId,
       processId: "",
       workflowId: "",
+      workflowVersionId: null,
       workflowName: "",
       taskTitle: "",
       taskElementId: "",
@@ -77,6 +80,18 @@ export const TaskFormPage = ({ taskId }: TaskFormPageProps) => {
     void load();
   }, [state.status, taskId]);
 
+  useEffect(() => {
+    if (editorState.completionStatus !== "success" || !editorState.completionResult) {
+      return;
+    }
+
+    const redirectTimer = window.setTimeout(() => {
+      window.location.assign(editorState.completionResult?.destinationRoute ?? protectedEntryPath);
+    }, 1500);
+
+    return () => window.clearTimeout(redirectTimer);
+  }, [editorState.completionResult, editorState.completionStatus]);
+
   if (state.status !== "authenticated") {
     return <div className="app-shell">
       <header className="app-header">
@@ -106,6 +121,26 @@ export const TaskFormPage = ({ taskId }: TaskFormPageProps) => {
     }
     setDocument(result.data);
     dispatch({ type: "save-succeeded", document: result.data });
+  };
+
+  const complete = async () => {
+    const requestKey =
+      editorState.completionRequestKey
+      ?? createTaskFormCompletionIdempotencyKey(editorState.taskId);
+    dispatch({ type: "complete-requested", requestKey });
+    const result = await completeTaskFormDocument(editorState, requestKey);
+    if (!result.ok) {
+      dispatch({
+        type: "complete-failed",
+        errorCode: result.error.code,
+        errorMessages:
+          result.error.invalidParams?.map((entry) => entry.reason) ?? [t("taskForm.completeError")],
+        invalidFieldNames:
+          result.error.invalidParams?.map((entry) => entry.name) ?? []
+      });
+      return;
+    }
+    dispatch({ type: "complete-succeeded", document: result.data });
   };
 
   const retry = async () => {
@@ -145,7 +180,14 @@ export const TaskFormPage = ({ taskId }: TaskFormPageProps) => {
       ) : (
         <TaskFormPanel
           state={editorState}
-          onRetrySave={() => void save()}
+          onComplete={() => void complete()}
+          onRetrySave={() =>
+            void (
+              editorState.completionStatus === "error"
+                ? complete()
+                : save()
+            )
+          }
           onReloadLatest={() => void retry()}
           onSave={() => void save()}
           onValueChange={(controlId, value) =>

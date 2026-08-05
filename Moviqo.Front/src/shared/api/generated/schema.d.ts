@@ -355,8 +355,11 @@ export interface components {
             title: string;
             workflowName: string;
             status: string;
-            assignee: string;
-            currentStep: string;
+            /** Format: uuid */
+            processId: string;
+            /** Format: date-time */
+            activatedAt: string;
+            openTaskRoute: string;
         };
         MyWorkDashboard: {
             startWorkflows: components["schemas"]["StartWorkflowCollection"];
@@ -468,6 +471,8 @@ export interface components {
         TaskFormDocument: {
             /** Format: uuid */
             taskId: string;
+            /** Format: uuid */
+            processId: string;
             /** Format: uuid */
             workflowId: string;
             workflowName: string;

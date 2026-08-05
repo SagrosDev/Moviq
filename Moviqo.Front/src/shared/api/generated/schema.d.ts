@@ -483,7 +483,7 @@ export interface components {
             connections?: components["schemas"]["WorkflowConnection"][];
             processFields?: components["schemas"]["WorkflowProcessField"][];
             formBindings?: components["schemas"]["WorkflowFormBinding"][];
-            publication?: components["schemas"]["WorkflowPublicationConfiguration"];
+            publication?: components["schemas"]["WorkflowPublication"];
         };
         WorkflowDraftSaveRequest: {
             expectedRevision: string;
@@ -512,6 +512,10 @@ export interface components {
             minimumLength?: number;
             maximumLength?: number;
         };
+        WorkflowPublication: {
+            starter?: components["schemas"]["WorkflowPublicationSection"];
+            assignment?: components["schemas"]["WorkflowPublicationSection"];
+        };
         WorkflowPublicationIssue: {
             code: string;
             severity: string;
@@ -521,10 +525,6 @@ export interface components {
             bindingId: string | null;
             message: string;
             actionLabel: string;
-        };
-        WorkflowPublicationConfiguration: {
-            starter?: components["schemas"]["WorkflowPublicationSection"];
-            assignment?: components["schemas"]["WorkflowPublicationSection"];
         };
         WorkflowPublicationSection: {
             isConfigured?: boolean;

@@ -45,19 +45,19 @@ so that a new Process and its first assigned Task are created once.
   - [x] Load the immutable snapshot from `WorkflowVersion.snapshot`, not the mutable shared draft, and validate that the published version still contains the minimal Epic 1 Start -> Task -> End path and publication configuration expected from Stories 1.22 through 1.28.
   - [x] Preserve FR20 operational authority: Owners and Administrators may start a published workflow even when not listed as configured starters, and the command must mark that elevated start path for audit.
   - [x] Resolve the first-task assignment only from the published assignment configuration currently in scope: `workflowInitiator` or `specificMember`. Keep the resolution Organization-scoped and reject inactive or cross-tenant assignees safely.
-  - [ ] Create the Process row and first Task occurrence in one transaction, with no follow-up HTTP call required to “finish” the start. Starting a process that cannot also create its first valid task must roll back completely.
+  - [x] Create the Process row and first Task occurrence in one transaction, with no follow-up HTTP call required to “finish” the start. Starting a process that cannot also create its first valid task must roll back completely.
   - [x] Return safe denial contracts for unpublished, unauthorized, archived, inactive, or guessed workflow IDs without revealing whether the hidden workflow exists, who can start it, or how many published versions it has.
 
 - [x] Wire the My Work frontend to the real startable catalog and start command while preserving backend authority (AC: 1-3)
-  - [ ] Update `Moviqo.Front/src/features/my-work/model/myWork.ts`, `useMyWorkDashboard.ts`, `ui/MyWorkShell.tsx`, and `pages/my-work/ui/MyWorkPage.tsx` so `Start workflows` renders the backend collection rather than a permanent empty-state stub.
-  - [ ] Add one explicit start action per workflow card. The UI may disable during the in-flight request and show plain-language pending/success/failure state, but it must not assume success before the server confirms the created Process.
-  - [ ] Keep new frontend implementation functions in `Moviqo.Front/src/**/*.{ts,tsx}` as arrow-function constants per `AGENTS.md`.
-  - [ ] Reuse current query/invalidation patterns from `shared/api` and route the accepted response into the existing protected app flow instead of inventing a separate local-only state store for started processes.
-  - [ ] Keep the wording aligned with `EXPERIENCE.md`: “Start workflows” is the authorized catalog, not the full designer workflow list; avoid technical language like node, snapshot, or runtime resolver in user-facing copy.
+  - [x] Update `Moviqo.Front/src/features/my-work/model/myWork.ts`, `useMyWorkDashboard.ts`, `ui/MyWorkShell.tsx`, and `pages/my-work/ui/MyWorkPage.tsx` so `Start workflows` renders the backend collection rather than a permanent empty-state stub.
+  - [x] Add one explicit start action per workflow card. The UI may disable during the in-flight request and show plain-language pending/success/failure state, but it must not assume success before the server confirms the created Process.
+  - [x] Keep new frontend implementation functions in `Moviqo.Front/src/**/*.{ts,tsx}` as arrow-function constants per `AGENTS.md`.
+  - [x] Reuse current query/invalidation patterns from `shared/api` and route the accepted response into the existing protected app flow instead of inventing a separate local-only state store for started processes.
+  - [x] Keep the wording aligned with `EXPERIENCE.md`: “Start workflows” is the authorized catalog, not the full designer workflow list; avoid technical language like node, snapshot, or runtime resolver in user-facing copy.
 
 - [x] Add executable evidence for authorization filtering, atomic start behavior, idempotent replay, and safe denial (AC: 1-3)
-  - [ ] Add backend contract tests for the populated `GET /api/v1/my-work/` start-workflow collection, authorized start success, missing idempotency key, unauthorized start denial, hidden unpublished workflow denial, and idempotent replay returning the original Process identifier.
-  - [ ] Add real-PostgreSQL integration coverage proving two concurrent start attempts under the same logical idempotency key create only one Process and one first Task, while distinct authorized commands create distinct Process IDs.
+  - [x] Add backend contract tests for the populated `GET /api/v1/my-work/` start-workflow collection, authorized start success, missing idempotency key, unauthorized start denial, hidden unpublished workflow denial, and idempotent replay returning the original Process identifier.
+  - [x] Add real-PostgreSQL integration coverage proving two concurrent start attempts under the same logical idempotency key create only one Process and one first Task, while distinct authorized commands create distinct Process IDs.
   - [ ] Add integration coverage proving owner/administrator operational starts succeed even when the membership is not listed in the starter set and that the resulting audit marks operational-authority use.
   - [ ] Add frontend unit coverage for rendering the authorized start-workflow list, start-button pending state, post-success navigation handoff, retry-safe error display, and no false success before the authoritative response.
   - [ ] Extend Playwright or later Story 1.33 prep only if it stays narrow; do not defer all catalog/start coverage to the end-to-end story.

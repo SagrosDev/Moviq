@@ -400,12 +400,36 @@ export interface components {
             workflowId: string;
             name: string;
             status: string;
-            elements?: {
-                [key: string]: unknown;
-            }[];
-            connections?: {
-                [key: string]: unknown;
-            }[];
+            elements: components["schemas"]["WorkflowElement"][];
+            connections: components["schemas"]["WorkflowConnection"][];
+            processFields: components["schemas"]["WorkflowProcessField"][];
+            formBindings: components["schemas"]["WorkflowFormBinding"][];
+        };
+        WorkflowElement: {
+            id: string;
+            type: string;
+            label: string;
+        };
+        WorkflowConnection: {
+            id: string;
+            type: string;
+            sourceId: string;
+            targetId: string;
+        };
+        WorkflowProcessField: {
+            id?: string;
+            kind: string;
+            label: string;
+            helpText?: string;
+            placeholder?: string;
+            defaultValue?: string | null;
+            minimumLength?: number;
+            maximumLength?: number;
+        };
+        WorkflowFormBinding: {
+            id?: string;
+            taskElementId: string;
+            fieldId: string;
         };
         WorkflowDraftSaveRequest: {
             expectedRevision: string;

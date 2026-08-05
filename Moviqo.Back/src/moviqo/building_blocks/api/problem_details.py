@@ -51,6 +51,8 @@ SAFE_VISIBLE_INVALID_PARAM_NAMES = frozenset(
 SAFE_VISIBLE_INVALID_PARAM_PREFIXES = (
     "elements.",
     "connections.",
+    "processFields.",
+    "formBindings.",
 )
 SAFE_PASSWORD_REASON_CODES = {
     "password_too_short",

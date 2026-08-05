@@ -278,12 +278,20 @@ def _save_workflow_draft_side_effects(
         "status": previous_document["status"],
         "elements": draft.get("elements", previous_document["elements"]),
         "connections": draft.get("connections", previous_document["connections"]),
+        "processFields": _merge_process_fields(
+            previous_document=previous_document,
+            draft=draft,
+        ),
+        "formBindings": _merge_form_bindings(
+            previous_document=previous_document,
+            draft=draft,
+        ),
     }
     try:
         validated_document = validate_workflow_graph_document(candidate_document)
     except WorkflowDraftValidationError as exc:
         command_context.append_audit(
-            event_type="workflow-design.graph-edit-rejected",
+            event_type="workflow-design.draft-edit-rejected",
             payload={
                 "workflowId": str(workflow.id),
                 "draftId": previous_document["draftId"],
@@ -304,7 +312,7 @@ def _save_workflow_draft_side_effects(
             }
         ]
         command_context.append_audit(
-            event_type="workflow-design.graph-edit-rejected",
+            event_type="workflow-design.draft-edit-rejected",
             payload={
                 "workflowId": str(workflow.id),
                 "draftId": previous_document["draftId"],
@@ -420,6 +428,16 @@ def _collect_graph_audit_events(
     current_connections = {
         connection["id"]: connection for connection in current_document["connections"]
     }
+    previous_fields = {
+        field["id"]: field for field in previous_document["processFields"]
+    }
+    current_fields = {field["id"]: field for field in current_document["processFields"]}
+    previous_bindings = {
+        binding["id"]: binding for binding in previous_document["formBindings"]
+    }
+    current_bindings = {
+        binding["id"]: binding for binding in current_document["formBindings"]
+    }
 
     for element_id, element in current_elements.items():
         if element_id not in previous_elements:
@@ -525,6 +543,73 @@ def _collect_graph_audit_events(
                 )
             )
 
+    for field_id, field in current_fields.items():
+        if field_id not in previous_fields:
+            events.append(
+                (
+                    "workflow-design.process-field-created",
+                    {
+                        "workflowId": workflow_id,
+                        "draftId": draft_id,
+                        "revision": next_revision,
+                        "previousRevision": previous_revision,
+                        "fieldId": field_id,
+                        "fieldKind": field["kind"],
+                        "label": field["label"],
+                    },
+                )
+            )
+        elif previous_fields[field_id] != field:
+            events.append(
+                (
+                    "workflow-design.process-field-updated",
+                    {
+                        "workflowId": workflow_id,
+                        "draftId": draft_id,
+                        "revision": next_revision,
+                        "previousRevision": previous_revision,
+                        "fieldId": field_id,
+                        "fieldKind": field["kind"],
+                        "label": field["label"],
+                        "previousLabel": previous_fields[field_id]["label"],
+                    },
+                )
+            )
+
+    for binding_id, binding in current_bindings.items():
+        if binding_id not in previous_bindings:
+            events.append(
+                (
+                    "workflow-design.process-field-bound",
+                    {
+                        "workflowId": workflow_id,
+                        "draftId": draft_id,
+                        "revision": next_revision,
+                        "previousRevision": previous_revision,
+                        "bindingId": binding_id,
+                        "taskElementId": binding["taskElementId"],
+                        "fieldId": binding["fieldId"],
+                    },
+                )
+            )
+
+    for binding_id, binding in previous_bindings.items():
+        if binding_id not in current_bindings:
+            events.append(
+                (
+                    "workflow-design.process-field-unbound",
+                    {
+                        "workflowId": workflow_id,
+                        "draftId": draft_id,
+                        "revision": next_revision,
+                        "previousRevision": previous_revision,
+                        "bindingId": binding_id,
+                        "taskElementId": binding["taskElementId"],
+                        "fieldId": binding["fieldId"],
+                    },
+                )
+            )
+
     if not events:
         events.append(
             (
@@ -541,3 +626,58 @@ def _collect_graph_audit_events(
         )
 
     return events
+
+
+def _merge_process_fields(
+    *,
+    previous_document: dict[str, Any],
+    draft: dict[str, Any],
+) -> list[dict[str, Any]]:
+    submitted_fields = draft.get("processFields")
+    if submitted_fields is None:
+        return previous_document["processFields"]
+
+    previous_by_id = {
+        field["id"]: field for field in previous_document["processFields"]
+    }
+    merged_fields: list[dict[str, Any]] = []
+    next_ordinal = len(previous_by_id) + 1
+
+    for field in submitted_fields:
+        candidate = dict(field)
+        field_id = candidate.get("id")
+        if isinstance(field_id, str) and field_id.strip():
+            candidate["id"] = field_id.strip()
+        else:
+            candidate["id"] = f"field-{next_ordinal}"
+            next_ordinal += 1
+
+        previous = previous_by_id.get(candidate["id"])
+        if previous is not None and "kind" not in candidate:
+            candidate["kind"] = previous["kind"]
+        merged_fields.append(candidate)
+
+    return merged_fields
+
+
+def _merge_form_bindings(
+    *,
+    previous_document: dict[str, Any],
+    draft: dict[str, Any],
+) -> list[dict[str, Any]]:
+    submitted_bindings = draft.get("formBindings")
+    if submitted_bindings is None:
+        return previous_document["formBindings"]
+
+    merged_bindings: list[dict[str, Any]] = []
+    next_ordinal = len(previous_document["formBindings"]) + 1
+    for binding in submitted_bindings:
+        candidate = dict(binding)
+        binding_id = candidate.get("id")
+        if isinstance(binding_id, str) and binding_id.strip():
+            candidate["id"] = binding_id.strip()
+        else:
+            candidate["id"] = f"binding-{next_ordinal}"
+            next_ordinal += 1
+        merged_bindings.append(candidate)
+    return merged_bindings

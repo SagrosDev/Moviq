@@ -4,7 +4,7 @@ baseline_commit: 2f98b9ca3c7a4c07411afef45d0a0e867da87def
 
 # Story 1.21: Create a Workflow and Shared Draft
 
-Status: review
+Status: done
 
 ## Story
 
@@ -230,3 +230,4 @@ Codex
 ### Change Log
 
 - 2026-08-04: Implemented Story 1.21 end to end across backend workflow-design persistence/contracts, frontend workflow creation UI/state, schema artifacts, and automated coverage.
+- 2026-08-05: Review completed against the merged Story 1.21 implementation and verified evidence; status moved to done.

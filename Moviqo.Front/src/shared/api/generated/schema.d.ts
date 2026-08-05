@@ -116,6 +116,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/my-work/tasks/{task_id}/form/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["workflow_runtime_task_form_detail"];
+        put: operations["workflow_runtime_task_form_save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/protected-memberships/{membership_id}/": {
         parameters: {
             query?: never;
@@ -368,6 +384,47 @@ export interface components {
         SystemPing: {
             status: string;
         };
+        TaskFormActions: {
+            saveDraft: boolean;
+            complete: boolean;
+        };
+        TaskFormBody: {
+            controls: components["schemas"]["TaskFormControl"][];
+        };
+        TaskFormControl: {
+            controlId: string;
+            fieldId: string;
+            kind: string;
+            label: string;
+            helpText: string;
+            placeholder: string;
+            width: string;
+            position: number;
+            value: string;
+        };
+        TaskFormDocument: {
+            /** Format: uuid */
+            taskId: string;
+            /** Format: uuid */
+            workflowId: string;
+            workflowName: string;
+            taskTitle: string;
+            taskElementId: string;
+            status: string;
+            taskRevision: string;
+            definitionRevision: string;
+            actions: components["schemas"]["TaskFormActions"];
+            form: components["schemas"]["TaskFormBody"];
+        };
+        TaskFormSaveControl: {
+            controlId: string;
+            fieldId: string;
+            value: string;
+        };
+        TaskFormSaveRequest: {
+            expectedTaskRevision: string;
+            controls: components["schemas"]["TaskFormSaveControl"][];
+        };
         WorkflowCatalogItem: {
             /** Format: uuid */
             workflowId: string;
@@ -424,6 +481,9 @@ export interface components {
             id?: string;
             taskElementId: string;
             fieldId: string;
+            position?: number;
+            width?: string;
+            label?: string | null;
         };
         WorkflowProcessField: {
             id?: string;
@@ -633,6 +693,104 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_runtime_task_form_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskFormDocument"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_runtime_task_form_save: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskFormSaveRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TaskFormSaveRequest"];
+                "multipart/form-data": components["schemas"]["TaskFormSaveRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskFormDocument"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

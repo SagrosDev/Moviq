@@ -182,6 +182,8 @@ def test_schema_registry_round_trips_field_binding_document() -> None:
                     "id": "binding-1",
                     "taskElementId": "task-1",
                     "fieldId": "field-1",
+                    "position": 0,
+                    "width": "full",
                 }
             ],
         }
@@ -189,7 +191,47 @@ def test_schema_registry_round_trips_field_binding_document() -> None:
 
     assert loaded["processFields"][0]["id"] == "field-1"
     assert loaded["formBindings"] == [
-        {"id": "binding-1", "taskElementId": "task-1", "fieldId": "field-1"}
+        {
+            "id": "binding-1",
+            "taskElementId": "task-1",
+            "fieldId": "field-1",
+            "position": 0,
+            "width": "full",
+            "label": None,
+        }
+    ]
+
+
+def test_schema_registry_normalizes_task_form_control_defaults() -> None:
+    loaded = dump_current_draft(
+        {
+            "schemaVersion": 3,
+            "draftId": "draft-1",
+            "workflowId": "workflow-1",
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": [],
+            "connections": [],
+            "processFields": [],
+            "formBindings": [
+                {
+                    "id": "binding-1",
+                    "taskElementId": "task-1",
+                    "fieldId": "field-1",
+                }
+            ],
+        }
+    )
+
+    assert loaded["formBindings"] == [
+        {
+            "id": "binding-1",
+            "taskElementId": "task-1",
+            "fieldId": "field-1",
+            "position": 0,
+            "width": "full",
+            "label": None,
+        }
     ]
 
 

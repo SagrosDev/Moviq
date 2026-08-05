@@ -1,17 +1,31 @@
 from __future__ import annotations
 
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+import hashlib
+import json
+
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from moviqo.building_blocks.api.problem_details import ProblemDetailsSerializer
+from moviqo.building_blocks.api.problem_details import (
+    ProblemDetailsSerializer,
+    ProblemTemplate,
+    problem_response,
+)
+from moviqo.building_blocks.commands import IdempotencyKeyReuseConflict
 from moviqo.building_blocks.tenancy.runtime import apply_tenant_context, tenant_bootstrap_context
 from moviqo.modules.organizations.application import active_membership_for_user
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.application.views import AuthenticatedRequestPermission
 from moviqo.modules.workflow_runtime.application.my_work import read_my_work_dashboard
+from moviqo.modules.workflow_runtime.application.task_form import (
+    TaskFormRevisionConflictError,
+    TaskFormValidationAPIError,
+    read_task_form,
+    save_task_form_draft,
+)
 
 
 class StartWorkflowSummarySerializer(serializers.Serializer):
@@ -65,6 +79,51 @@ class MyWorkDashboardSerializer(serializers.Serializer):
     myProcesses = MyProcessCollectionSerializer()
 
 
+class TaskFormControlSerializer(serializers.Serializer):
+    controlId = serializers.CharField()
+    fieldId = serializers.CharField()
+    kind = serializers.CharField()
+    label = serializers.CharField()
+    helpText = serializers.CharField(allow_blank=True)
+    placeholder = serializers.CharField(allow_blank=True)
+    width = serializers.CharField()
+    position = serializers.IntegerField(min_value=0)
+    value = serializers.CharField(allow_blank=True)
+
+
+class TaskFormActionsSerializer(serializers.Serializer):
+    saveDraft = serializers.BooleanField()
+    complete = serializers.BooleanField()
+
+
+class TaskFormBodySerializer(serializers.Serializer):
+    controls = TaskFormControlSerializer(many=True)
+
+
+class TaskFormDocumentSerializer(serializers.Serializer):
+    taskId = serializers.UUIDField()
+    workflowId = serializers.UUIDField()
+    workflowName = serializers.CharField()
+    taskTitle = serializers.CharField()
+    taskElementId = serializers.CharField()
+    status = serializers.CharField()
+    taskRevision = serializers.CharField()
+    definitionRevision = serializers.CharField()
+    actions = TaskFormActionsSerializer()
+    form = TaskFormBodySerializer()
+
+
+class TaskFormSaveControlSerializer(serializers.Serializer):
+    controlId = serializers.CharField()
+    fieldId = serializers.CharField()
+    value = serializers.CharField(allow_blank=True)
+
+
+class TaskFormSaveRequestSerializer(serializers.Serializer):
+    expectedTaskRevision = serializers.CharField()
+    controls = TaskFormSaveControlSerializer(many=True)
+
+
 class MyWorkDashboardView(APIView):
     permission_classes = [AuthenticatedRequestPermission]
 
@@ -77,14 +136,152 @@ class MyWorkDashboardView(APIView):
         },
     )
     def get(self, request) -> Response:
-        with tenant_bootstrap_context(user_id=request.user.pk):
-            tenant_context = resolve_tenant_context(request)
-            apply_tenant_context(tenant_context)
-            membership = active_membership_for_user(request.user)
-            if (
-                membership is None
-                or membership.id != tenant_context.membership_id
-                or membership.organization_id != tenant_context.organization_id
-            ):
-                raise NotFound("my-work")
-            return Response(read_my_work_dashboard(tenant_context))
+        tenant_context = _require_runtime_membership(request)
+        return Response(read_my_work_dashboard(tenant_context))
+
+
+class TaskFormDetailView(APIView):
+    permission_classes = [AuthenticatedRequestPermission]
+
+    @extend_schema(
+        operation_id="workflow_runtime_task_form_detail",
+        responses={
+            200: TaskFormDocumentSerializer,
+            (403, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (404, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def get(self, request, task_id) -> Response:
+        tenant_context = _require_runtime_membership(request)
+        document = read_task_form(tenant_context=tenant_context, task_id=task_id)
+        if document is None:
+            raise NotFound("task-form")
+        return Response(document)
+
+    @extend_schema(
+        operation_id="workflow_runtime_task_form_save",
+        request=TaskFormSaveRequestSerializer,
+        parameters=[
+            OpenApiParameter(
+                name="Idempotency-Key",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                required=True,
+            )
+        ],
+        responses={
+            200: TaskFormDocumentSerializer,
+            (400, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (403, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (404, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (409, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def put(self, request, task_id) -> Response:
+        serializer = TaskFormSaveRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    status_code=400,
+                    code="task_form_invalid",
+                    title="Task form save failed",
+                ),
+                invalid_params=_task_form_invalid_params(serializer.errors),
+            )
+
+        idempotency_key = request.headers.get("Idempotency-Key")
+        if not idempotency_key:
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    status_code=400,
+                    code="task_form_invalid",
+                    title="Task form save failed",
+                ),
+                invalid_params=[
+                    {
+                        "name": "idempotencyKey",
+                        "code": "required",
+                        "reason": "Provide an idempotency key to continue.",
+                    }
+                ],
+            )
+
+        tenant_context = _require_runtime_membership(request)
+        try:
+            result = save_task_form_draft(
+                tenant_context=tenant_context,
+                task_id=task_id,
+                expected_task_revision=serializer.validated_data["expectedTaskRevision"],
+                controls=serializer.validated_data["controls"],
+                idempotency_key=idempotency_key,
+                request_hash=_task_form_request_hash(serializer.validated_data),
+            )
+        except TaskFormValidationAPIError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(400, "task_form_invalid", "Task form save failed"),
+                invalid_params=exc.invalid_params,
+            )
+        except TaskFormRevisionConflictError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(409, "task_form_revision_conflict", "Task form save failed"),
+                invalid_params=exc.invalid_params,
+            )
+        except IdempotencyKeyReuseConflict:
+            return problem_response(
+                request,
+                ProblemTemplate(409, "idempotency_key_reused", "Conflict"),
+            )
+
+        if result is None:
+            raise NotFound("task-form")
+        return Response(result)
+
+
+def _require_runtime_membership(request):
+    with tenant_bootstrap_context(user_id=request.user.pk):
+        tenant_context = resolve_tenant_context(request)
+        apply_tenant_context(tenant_context)
+        membership = active_membership_for_user(request.user)
+        if (
+            membership is None
+            or membership.id != tenant_context.membership_id
+            or membership.organization_id != tenant_context.organization_id
+        ):
+            raise NotFound("my-work")
+        return tenant_context
+
+
+def _task_form_request_hash(payload: dict[str, object]) -> str:
+    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _task_form_invalid_params(errors) -> list[dict[str, str]]:
+    invalid_params: list[dict[str, str]] = []
+    if "expectedTaskRevision" in errors:
+        invalid_params.append(
+            {
+                "name": "expectedTaskRevision",
+                "code": "required",
+                "reason": "Reload the assigned task before saving again.",
+            }
+        )
+    if "controls" in errors:
+        invalid_params.append(
+            {
+                "name": "controls",
+                "code": "invalid",
+                "reason": "Correct the marked values and try again.",
+            }
+        )
+    return invalid_params or [
+        {
+            "name": "nonFieldErrors",
+            "code": "invalid_request",
+            "reason": "Correct the marked values and try again.",
+        }
+    ]

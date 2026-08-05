@@ -397,6 +397,9 @@ def test_workflow_draft_save_returns_authoritative_graph_payload(
                     "id": "binding-1",
                     "taskElementId": "task-1",
                     "fieldId": "field-1",
+                    "position": 0,
+                    "width": "full",
+                    "label": None,
                 }
             ],
         },
@@ -604,6 +607,8 @@ def test_workflow_draft_save_rejects_binding_to_second_task(
                     {
                         "taskElementId": "task-2",
                         "fieldId": "field-1",
+                        "position": 0,
+                        "width": "full",
                     }
                 ],
             },

@@ -395,6 +395,62 @@ p {
   padding: var(--space-lg);
 }
 
+.task-form-shell {
+  display: grid;
+  gap: var(--space-xl);
+  margin-top: var(--space-xl);
+}
+
+.task-form-panel {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-guidance);
+  display: grid;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+}
+
+.task-form-panel__meta {
+  color: var(--ink-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.task-form-grid {
+  display: grid;
+  gap: var(--space-lg);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+}
+
+.task-form-field {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.task-form-field > span {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.task-form-field small {
+  color: var(--ink-secondary);
+}
+
+.task-form-field input {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field);
+  color: var(--ink-primary);
+  min-height: var(--target-min);
+  padding: 0 var(--space-md);
+}
+
+.task-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
 .workflow-editor__meta {
   color: var(--ink-secondary);
   display: flex;

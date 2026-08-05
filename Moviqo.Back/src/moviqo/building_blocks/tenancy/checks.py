@@ -99,6 +99,20 @@ PROTECTED_TENANT_RESOURCES = (
         isolation_test_id="atomic_command_probe",
         evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[atomic-command-probe]",
     ),
+    TenantIsolationGateRegistration(
+        resource_name="task-occurrence",
+        table_name="workflow_runtime_task_occurrence",
+        policy_name="workflow_runtime_task_occurrence_tenant_isolation",
+        isolation_test_id="task_occurrence",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[task-occurrence]",
+    ),
+    TenantIsolationGateRegistration(
+        resource_name="task-process-field-value",
+        table_name="workflow_runtime_task_process_field_value",
+        policy_name="workflow_runtime_task_process_field_value_tenant_isolation",
+        isolation_test_id="task_process_field_value",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[task-process-field-value]",
+    ),
 )
 
 PROTECTED_TENANT_TABLES = tuple(

@@ -78,6 +78,9 @@ class WorkflowDraftDocumentSerializer(serializers.Serializer):
         id = serializers.CharField(required=False, allow_blank=True)
         taskElementId = serializers.CharField(allow_blank=True)
         fieldId = serializers.CharField(allow_blank=True)
+        position = serializers.IntegerField(required=False, min_value=0)
+        width = serializers.CharField(required=False, allow_blank=True)
+        label = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     elements = WorkflowElementSerializer(many=True, required=False)
     connections = WorkflowConnectionSerializer(many=True, required=False)

@@ -24,3 +24,55 @@ class AtomicCommandProbe(models.Model):
                 name="workflow_runtime_atomic_command_probe_reference_unique",
             )
         ]
+
+
+class TaskOccurrence(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.PROTECT,
+        related_name="task_occurrences",
+    )
+    workflow = models.ForeignKey(
+        "workflow_design.WorkflowDefinition",
+        on_delete=models.PROTECT,
+        related_name="task_occurrences",
+    )
+    task_element_id = models.CharField(max_length=64)
+    assignee_membership_id = models.UUIDField()
+    assignee_user_id = models.BigIntegerField()
+    status = models.CharField(max_length=32, default="assigned")
+    definition_revision = models.CharField(max_length=32, default="1")
+    revision = models.CharField(max_length=32, default="1")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "workflow_runtime_task_occurrence"
+
+
+class TaskProcessFieldValue(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.PROTECT,
+        related_name="task_process_field_values",
+    )
+    task = models.ForeignKey(
+        TaskOccurrence,
+        on_delete=models.PROTECT,
+        related_name="process_field_values",
+    )
+    field_id = models.CharField(max_length=64)
+    value_text = models.TextField(default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "workflow_runtime_task_process_field_value"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("task", "field_id"),
+                name="workflow_runtime_task_process_field_value_unique",
+            )
+        ]

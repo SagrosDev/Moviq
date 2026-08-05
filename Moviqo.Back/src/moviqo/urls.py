@@ -22,7 +22,10 @@ from moviqo.modules.workflow_design.application import (
     WorkflowCollectionView,
     WorkflowDraftDetailView,
 )
-from moviqo.modules.workflow_runtime.application import MyWorkDashboardView
+from moviqo.modules.workflow_runtime.application import (
+    MyWorkDashboardView,
+    TaskFormDetailView,
+)
 
 
 def health_start(_request):
@@ -52,6 +55,11 @@ urlpatterns = [
     path("api/v1/auth/session/", CurrentSessionView.as_view(), name="api-v1-auth-session"),
     path("api/v1/auth/sign-out/", SignOutView.as_view(), name="api-v1-auth-sign-out"),
     path("api/v1/my-work/", MyWorkDashboardView.as_view(), name="api-v1-my-work-dashboard"),
+    path(
+        "api/v1/my-work/tasks/<uuid:task_id>/form/",
+        TaskFormDetailView.as_view(),
+        name="api-v1-my-work-task-form-detail",
+    ),
     path(
         "api/v1/workflow-design/workflows/",
         WorkflowCollectionView.as_view(),

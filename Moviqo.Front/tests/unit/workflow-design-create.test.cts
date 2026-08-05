@@ -9,6 +9,8 @@ import {
   createWorkflowDraftState,
   reduceWorkflowDraftEditorState,
   reduceWorkflowCreationForm,
+  setFirstTaskFieldBinding,
+  upsertShortTextProcessField,
   type WorkflowCreationAccepted,
   type WorkflowCreationFormState,
   type WorkflowDraftDocument
@@ -29,13 +31,15 @@ test("workflow draft state seeds revision 1 from the authoritative server respon
     name: "Workflow intake",
     revision: "1",
     draft: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       draftId: "01987df4-ae8a-7000-8000-000000000111",
       workflowId: "01987df4-ae8a-7000-8000-000000000110",
       name: "Workflow intake",
       status: "draft",
       elements: [],
-      connections: []
+      connections: [],
+      processFields: [],
+      formBindings: []
     }
   };
 
@@ -86,13 +90,15 @@ test("guided controls can build the minimum start task end draft without drag", 
     name: "Workflow intake",
     revision: "1",
     draft: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       draftId: "01987df4-ae8a-7000-8000-000000000111",
       workflowId: "01987df4-ae8a-7000-8000-000000000110",
       name: "Workflow intake",
       status: "draft",
       elements: [],
-      connections: []
+      connections: [],
+      processFields: [],
+      formBindings: []
     }
   };
   const draftState = createWorkflowDraftState(accepted);
@@ -133,13 +139,15 @@ test("authoritative save replaces the local draft with the server revision", () 
     name: "Workflow intake",
     revision: "1",
     draft: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       draftId: "01987df4-ae8a-7000-8000-000000000111",
       workflowId: "01987df4-ae8a-7000-8000-000000000110",
       name: "Workflow intake",
       status: "draft",
       elements: [],
-      connections: []
+      connections: [],
+      processFields: [],
+      formBindings: []
     }
   };
 
@@ -166,7 +174,9 @@ test("authoritative save replaces the local draft with the server revision", () 
           sourceId: "task-1",
           targetId: "end-1"
         }
-      ]
+      ],
+      processFields: [],
+      formBindings: []
     }
   }, "1" as never);
 
@@ -178,13 +188,15 @@ test("authoritative save replaces the local draft with the server revision", () 
 test("guided controls do not create a second task in the single-path editor", () => {
   const labels = { start: "Start", task: "Task", end: "End" };
   const draft: WorkflowDraftDocument = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     draftId: "draft-1",
     workflowId: "workflow-1",
     name: "Workflow intake",
     status: "draft",
     elements: [{ id: "task-1", type: "task", label: "Task" }],
-    connections: []
+    connections: [],
+    processFields: [],
+    formBindings: []
   };
 
   const updated = addGuidedWorkflowElement(draft, "task", labels);
@@ -201,13 +213,15 @@ test("server sync preserves local edits until a save is accepted", () => {
     name: "Workflow intake",
     revision: "1",
     draft: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       draftId: "01987df4-ae8a-7000-8000-000000000111",
       workflowId: "01987df4-ae8a-7000-8000-000000000110",
       name: "Workflow intake",
       status: "draft",
       elements: [],
-      connections: []
+      connections: [],
+      processFields: [],
+      formBindings: []
     }
   };
   const draftState = createWorkflowDraftState(accepted);
@@ -225,4 +239,109 @@ test("server sync preserves local edits until a save is accepted", () => {
   assert.equal(synced.localDraft.elements.length, 1);
   assert.equal(synced.localDraft.elements[0]?.label, "Start");
   assert.equal(synced.hasLocalChanges, true);
+});
+
+test("guided controls can create one reusable short text field for the first task", () => {
+  const draft: WorkflowDraftDocument = {
+    schemaVersion: 3,
+    draftId: "draft-1",
+    workflowId: "workflow-1",
+    name: "Workflow intake",
+    status: "draft",
+    elements: [{ id: "task-1", type: "task", label: "Task" }],
+    connections: [],
+    processFields: [],
+    formBindings: []
+  };
+
+  const updated = upsertShortTextProcessField(draft, {
+    label: "Requester name",
+    helpText: "Use the full name.",
+    placeholder: "Example",
+    defaultValue: "",
+    minimumLength: 1,
+    maximumLength: 32
+  });
+
+  assert.deepEqual(updated.processFields, [
+    {
+      id: "field-1",
+      kind: "shortText",
+      label: "Requester name",
+      helpText: "Use the full name.",
+      placeholder: "Example",
+      defaultValue: null,
+      minimumLength: 1,
+      maximumLength: 32
+    }
+  ]);
+});
+
+test("rebinding keeps the same field identity instead of duplicating the definition", () => {
+  const draft: WorkflowDraftDocument = {
+    schemaVersion: 3,
+    draftId: "draft-1",
+    workflowId: "workflow-1",
+    name: "Workflow intake",
+    status: "draft",
+    elements: [{ id: "task-1", type: "task", label: "Task" }],
+    connections: [],
+    processFields: [
+      {
+        id: "field-1",
+        kind: "shortText",
+        label: "Requester name",
+        helpText: "",
+        placeholder: "",
+        defaultValue: null,
+        minimumLength: 0,
+        maximumLength: 255
+      }
+    ],
+    formBindings: []
+  };
+
+  const bound = setFirstTaskFieldBinding(draft, true);
+  const unbound = setFirstTaskFieldBinding(bound, false);
+  const rebound = setFirstTaskFieldBinding(unbound, true);
+
+  assert.equal(rebound.processFields.length, 1);
+  assert.equal(rebound.processFields[0]?.id, "field-1");
+  assert.equal(rebound.formBindings.length, 1);
+  assert.equal(rebound.formBindings[0]?.fieldId, "field-1");
+});
+
+test("save failures retain field-level invalid param targets for guided inputs", () => {
+  const accepted: WorkflowCreationAccepted = {
+    workflowId: "01987df4-ae8a-7000-8000-000000000110",
+    organizationId: "01987df4-ae8a-7000-8000-000000000101",
+    createdByMembershipId: "01987df4-ae8a-7000-8000-000000000102",
+    name: "Workflow intake",
+    revision: "1",
+    draft: {
+      schemaVersion: 3,
+      draftId: "01987df4-ae8a-7000-8000-000000000111",
+      workflowId: "01987df4-ae8a-7000-8000-000000000110",
+      name: "Workflow intake",
+      status: "draft",
+      elements: [],
+      connections: [],
+      processFields: [],
+      formBindings: []
+    }
+  };
+
+  const state = reduceWorkflowDraftEditorState(
+    createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
+    {
+      type: "save-failed",
+      errorCode: "workflow_draft_invalid",
+      errorMessages: ["Use 255 or fewer for maximum length."],
+      invalidFieldNames: ["processFields.field-1.maximumLength"]
+    }
+  );
+
+  assert.equal(state.saveStatus, "error");
+  assert.deepEqual(state.invalidFieldNames, ["processFields.field-1.maximumLength"]);
+  assert.deepEqual(state.errorMessages, ["Use 255 or fewer for maximum length."]);
 });

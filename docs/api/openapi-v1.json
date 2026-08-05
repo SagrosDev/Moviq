@@ -1437,6 +1437,29 @@
                     "items"
                 ]
             },
+            "WorkflowConnection": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "sourceId": {
+                        "type": "string"
+                    },
+                    "targetId": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "sourceId",
+                    "targetId",
+                    "type"
+                ]
+            },
             "WorkflowCreateRequest": {
                 "type": "object",
                 "properties": {
@@ -1505,15 +1528,25 @@
                     "elements": {
                         "type": "array",
                         "items": {
-                            "type": "object",
-                            "additionalProperties": {}
+                            "$ref": "#/components/schemas/WorkflowElement"
                         }
                     },
                     "connections": {
                         "type": "array",
                         "items": {
-                            "type": "object",
-                            "additionalProperties": {}
+                            "$ref": "#/components/schemas/WorkflowConnection"
+                        }
+                    },
+                    "processFields": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WorkflowProcessField"
+                        }
+                    },
+                    "formBindings": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WorkflowFormBinding"
                         }
                     }
                 },
@@ -1538,6 +1571,79 @@
                 "required": [
                     "draft",
                     "expectedRevision"
+                ]
+            },
+            "WorkflowElement": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "label",
+                    "type"
+                ]
+            },
+            "WorkflowFormBinding": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "taskElementId": {
+                        "type": "string"
+                    },
+                    "fieldId": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "fieldId",
+                    "taskElementId"
+                ]
+            },
+            "WorkflowProcessField": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "kind": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "helpText": {
+                        "type": "string"
+                    },
+                    "placeholder": {
+                        "type": "string"
+                    },
+                    "defaultValue": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "minimumLength": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "maximumLength": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "kind",
+                    "label"
                 ]
             }
         },

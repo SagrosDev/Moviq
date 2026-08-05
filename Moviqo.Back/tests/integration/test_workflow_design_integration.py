@@ -111,7 +111,7 @@ def test_workflow_graph_save_advances_revision_once_and_records_semantic_audit(
         workflow_id=created["workflowId"],
         expected_revision="1",
         draft={
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "draftId": created["draft"]["draftId"],
             "workflowId": created["workflowId"],
             "name": "Workflow intake",
@@ -135,6 +135,18 @@ def test_workflow_graph_save_advances_revision_once_and_records_semantic_audit(
                     "targetId": "end-1",
                 },
             ],
+            "processFields": [
+                {
+                    "kind": "shortText",
+                    "label": "Requester name",
+                }
+            ],
+            "formBindings": [
+                {
+                    "taskElementId": "task-1",
+                    "fieldId": "field-1",
+                }
+            ],
         },
         idempotency_key="workflow-save-1",
         request_hash=_request_hash("workflow-save-1"),
@@ -149,20 +161,23 @@ def test_workflow_graph_save_advances_revision_once_and_records_semantic_audit(
             command_type="workflow-design.save-draft"
         ).order_by("created_at")
     )
-    assert len(audit_records) == 5
+    assert len(audit_records) == 7
     assert {record.event_type for record in audit_records} == {
         "workflow-design.graph-element-added",
         "workflow-design.graph-connection-added",
+        "workflow-design.process-field-created",
+        "workflow-design.process-field-bound",
     }
     assert any(record.payload.get("elementId") == "start-1" for record in audit_records)
     assert any(record.payload.get("connectionId") == "connection-1" for record in audit_records)
+    assert any(record.payload.get("fieldId") == "field-1" for record in audit_records)
 
     updated = save_workflow_draft(
         tenant_context=tenant_context,
         workflow_id=created["workflowId"],
         expected_revision="2",
         draft={
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "draftId": created["draft"]["draftId"],
             "workflowId": created["workflowId"],
             "name": "Workflow intake",
@@ -186,6 +201,20 @@ def test_workflow_graph_save_advances_revision_once_and_records_semantic_audit(
                     "targetId": "end-1",
                 },
             ],
+            "processFields": [
+                {
+                    "id": "field-1",
+                    "kind": "shortText",
+                    "label": "Requester full name",
+                }
+            ],
+            "formBindings": [
+                {
+                    "id": "binding-1",
+                    "taskElementId": "task-1",
+                    "fieldId": "field-1",
+                }
+            ],
         },
         idempotency_key="workflow-save-2",
         request_hash=_request_hash("workflow-save-2"),
@@ -195,6 +224,10 @@ def test_workflow_graph_save_advances_revision_once_and_records_semantic_audit(
     assert TransactionalAuditRecord.objects.filter(
         command_type="workflow-design.save-draft",
         event_type="workflow-design.graph-element-updated",
+    ).count() == 1
+    assert TransactionalAuditRecord.objects.filter(
+        command_type="workflow-design.save-draft",
+        event_type="workflow-design.process-field-updated",
     ).count() == 1
 
 
@@ -216,7 +249,7 @@ def test_rejected_graph_save_keeps_last_valid_draft_unchanged(django_user_model)
             workflow_id=created["workflowId"],
             expected_revision="1",
             draft={
-                "schemaVersion": 2,
+                "schemaVersion": 3,
                 "draftId": created["draft"]["draftId"],
                 "workflowId": created["workflowId"],
                 "name": "Workflow intake",
@@ -226,6 +259,14 @@ def test_rejected_graph_save_keeps_last_valid_draft_unchanged(django_user_model)
                     {"id": "task-1", "type": "task", "label": "Task"},
                 ],
                 "connections": [],
+                "processFields": [
+                    {
+                        "kind": "shortText",
+                        "label": "Requester name",
+                        "maximumLength": 400,
+                    }
+                ],
+                "formBindings": [],
             },
             idempotency_key="workflow-save-1",
             request_hash=_request_hash("workflow-invalid"),
@@ -237,7 +278,7 @@ def test_rejected_graph_save_keeps_last_valid_draft_unchanged(django_user_model)
     assert draft.document["elements"] == []
     rejection_audit = TransactionalAuditRecord.objects.get(
         command_type="workflow-design.save-draft",
-        event_type="workflow-design.graph-edit-rejected",
+        event_type="workflow-design.draft-edit-rejected",
     )
     assert rejection_audit.payload["draftId"] == created["draft"]["draftId"]
 
@@ -255,7 +296,7 @@ def test_rejected_graph_save_replays_one_audit_result(django_user_model) -> None
     )
     request_hash = _request_hash("workflow-invalid")
     invalid_draft = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "draftId": created["draft"]["draftId"],
         "workflowId": created["workflowId"],
         "name": "Workflow intake",
@@ -265,6 +306,8 @@ def test_rejected_graph_save_replays_one_audit_result(django_user_model) -> None
             {"id": "task-1", "type": "task", "label": "Task"},
         ],
         "connections": [],
+        "processFields": [],
+        "formBindings": [],
     }
 
     for _ in range(2):
@@ -284,5 +327,91 @@ def test_rejected_graph_save_replays_one_audit_result(django_user_model) -> None
     ).count() == 1
     assert TransactionalAuditRecord.objects.filter(
         command_type="workflow-design.save-draft",
-        event_type="workflow-design.graph-edit-rejected",
+        event_type="workflow-design.draft-edit-rejected",
     ).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_rebinding_keeps_same_field_id_without_duplicate_definition(
+    django_user_model,
+) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow intake",
+        idempotency_key="workflow-create-1",
+        request_hash=_request_hash("Workflow intake"),
+    )
+    base_draft = {
+        "schemaVersion": 3,
+        "draftId": created["draft"]["draftId"],
+        "workflowId": created["workflowId"],
+        "name": "Workflow intake",
+        "status": "draft",
+        "elements": [
+            {"id": "start-1", "type": "start", "label": "Start"},
+            {"id": "task-1", "type": "task", "label": "Task"},
+            {"id": "end-1", "type": "end", "label": "End"},
+        ],
+        "connections": [
+            {
+                "id": "connection-1",
+                "type": "sequence",
+                "sourceId": "start-1",
+                "targetId": "task-1",
+            },
+            {
+                "id": "connection-2",
+                "type": "sequence",
+                "sourceId": "task-1",
+                "targetId": "end-1",
+            },
+        ],
+        "processFields": [{"kind": "shortText", "label": "Requester name"}],
+        "formBindings": [{"taskElementId": "task-1", "fieldId": "field-1"}],
+    }
+
+    first_save = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft=base_draft,
+        idempotency_key="workflow-save-1",
+        request_hash=_request_hash("workflow-save-1"),
+    )
+    removed_binding = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="2",
+        draft={**first_save["draft"], "formBindings": []},
+        idempotency_key="workflow-save-2",
+        request_hash=_request_hash("workflow-save-2"),
+    )
+    rebound = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="3",
+        draft={
+            **removed_binding["draft"],
+            "formBindings": [{"taskElementId": "task-1", "fieldId": "field-1"}],
+        },
+        idempotency_key="workflow-save-3",
+        request_hash=_request_hash("workflow-save-3"),
+    )
+
+    assert rebound["draft"]["processFields"] == [
+        {
+            "id": "field-1",
+            "kind": "shortText",
+            "label": "Requester name",
+            "helpText": "",
+            "placeholder": "",
+            "defaultValue": None,
+            "minimumLength": 0,
+            "maximumLength": 255,
+        }
+    ]
+    assert len(rebound["draft"]["formBindings"]) == 1
+    assert rebound["draft"]["formBindings"][0]["fieldId"] == "field-1"

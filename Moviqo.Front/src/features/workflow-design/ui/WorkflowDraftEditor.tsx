@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { useLanguage } from "../../../shared/localization";
 import { type DraftState } from "../../../shared/drafts";
 import {
@@ -29,14 +29,42 @@ export const WorkflowDraftEditor = ({
     draftState,
     createWorkflowDraftEditorState
   );
+  const [fieldDraft, setFieldDraft] = useState({
+    label: "",
+    helpText: "",
+    placeholder: "",
+    defaultValue: "",
+    minimumLength: 0,
+    maximumLength: 255
+  });
 
   useEffect(() => {
     dispatch({ type: "server-synced", draftState });
   }, [draftState]);
 
+  useEffect(() => {
+    const currentField = draftState.value.processFields[0];
+    setFieldDraft({
+      label: currentField?.label ?? "",
+      helpText: currentField?.helpText ?? "",
+      placeholder: currentField?.placeholder ?? "",
+      defaultValue: currentField?.defaultValue ?? "",
+      minimumLength: currentField?.minimumLength ?? 0,
+      maximumLength: currentField?.maximumLength ?? 255
+    });
+  }, [draftState]);
+
   const start = editorState.localDraft.elements.find((element) => element.type === "start");
   const firstTask = editorState.localDraft.elements.find((element) => element.type === "task");
   const end = editorState.localDraft.elements.find((element) => element.type === "end");
+  const firstField = editorState.localDraft.processFields[0];
+  const firstBinding = firstTask
+    ? editorState.localDraft.formBindings.find(
+        (binding) =>
+          binding.taskElementId === firstTask.id &&
+          binding.fieldId === editorState.localDraft.processFields[0]?.id
+      )
+    : undefined;
   const elementLabels = {
     start: t("workflowDesign.editor.startLabel"),
     task: t("workflowDesign.editor.taskLabel"),
@@ -67,6 +95,8 @@ export const WorkflowDraftEditor = ({
       dispatch({
         type: "save-failed",
         errorCode: result.error.code,
+        invalidFieldNames:
+          result.error.invalidParams?.map((entry) => entry.name) ?? [],
         errorMessages:
           result.error.invalidParams?.map((entry) => entry.reason) ??
           [t("workflowDesign.editor.saveError")]
@@ -82,6 +112,24 @@ export const WorkflowDraftEditor = ({
     onAccepted(nextDraftState);
     dispatch({ type: "save-succeeded", draftState: nextDraftState });
   };
+
+  const updateFieldDraft = (
+    key: keyof typeof fieldDraft,
+    value: string | number
+  ) => {
+    setFieldDraft((current) => ({
+      ...current,
+      [key]: value
+    }));
+  };
+
+  const fieldMessagesFor = (...suffixes: string[]) =>
+    errorMessagesFor(editorState.invalidFieldNames, editorState.errorMessages, suffixes);
+
+  const labelErrors = fieldMessagesFor(".label");
+  const minimumLengthErrors = fieldMessagesFor(".minimumLength");
+  const maximumLengthErrors = fieldMessagesFor(".maximumLength");
+  const bindingErrors = fieldMessagesFor(".taskElementId", ".fieldId");
 
   return <section className="workflow-editor" aria-labelledby="workflow-editor-title">
     <article className="status-panel" aria-labelledby="workflow-editor-title">
@@ -189,6 +237,116 @@ export const WorkflowDraftEditor = ({
       ) : null}
     </article>
 
+    <article className="workflow-guidance" aria-labelledby="workflow-field-title">
+      <h3 id="workflow-field-title">{t("workflowDesign.editor.fieldTitle")}</h3>
+      <p>{t("workflowDesign.editor.fieldBody")}</p>
+      <div className="workflow-editor__field-grid">
+        <label>
+          <span>{t("workflowDesign.editor.fieldLabel")}</span>
+          <input
+            type="text"
+            value={fieldDraft.label}
+            aria-invalid={labelErrors.length > 0}
+            onChange={(event) => updateFieldDraft("label", event.target.value)}
+          />
+          {labelErrors.length > 0 ? <small>{labelErrors[0]}</small> : null}
+        </label>
+        <label>
+          <span>{t("workflowDesign.editor.fieldHelpText")}</span>
+          <input
+            type="text"
+            value={fieldDraft.helpText}
+            onChange={(event) => updateFieldDraft("helpText", event.target.value)}
+          />
+        </label>
+        <label>
+          <span>{t("workflowDesign.editor.fieldPlaceholder")}</span>
+          <input
+            type="text"
+            value={fieldDraft.placeholder}
+            onChange={(event) => updateFieldDraft("placeholder", event.target.value)}
+          />
+        </label>
+        <label>
+          <span>{t("workflowDesign.editor.fieldDefaultValue")}</span>
+          <input
+            type="text"
+            value={fieldDraft.defaultValue}
+            onChange={(event) => updateFieldDraft("defaultValue", event.target.value)}
+          />
+        </label>
+        <label>
+          <span>{t("workflowDesign.editor.fieldMinimumLength")}</span>
+          <input
+            type="number"
+            min={0}
+            max={255}
+            value={fieldDraft.minimumLength}
+            aria-invalid={minimumLengthErrors.length > 0}
+            onChange={(event) =>
+              updateFieldDraft("minimumLength", Number(event.target.value))
+            }
+          />
+          {minimumLengthErrors.length > 0 ? <small>{minimumLengthErrors[0]}</small> : null}
+        </label>
+        <label>
+          <span>{t("workflowDesign.editor.fieldMaximumLength")}</span>
+          <input
+            type="number"
+            min={0}
+            max={255}
+            value={fieldDraft.maximumLength}
+            aria-invalid={maximumLengthErrors.length > 0}
+            onChange={(event) =>
+              updateFieldDraft("maximumLength", Number(event.target.value))
+            }
+          />
+          {maximumLengthErrors.length > 0 ? <small>{maximumLengthErrors[0]}</small> : null}
+        </label>
+      </div>
+      <div className="button-row">
+        <button
+          className="button"
+          data-variant="secondary"
+          type="button"
+          disabled={!firstTask || !fieldDraft.label.trim()}
+          onClick={() =>
+            dispatch({
+              type: "short-text-configured",
+              field: fieldDraft
+            })
+          }
+        >
+          {firstField
+            ? t("workflowDesign.editor.updateShortText")
+            : t("workflowDesign.editor.addShortText")}
+        </button>
+        <button
+          className="button"
+          data-variant="secondary"
+          type="button"
+          aria-invalid={bindingErrors.length > 0}
+          disabled={!firstTask || !firstField}
+          onClick={() =>
+            dispatch({
+              type: "first-task-binding-toggled",
+              enabled: !firstBinding
+            })
+          }
+        >
+          {firstBinding
+            ? t("workflowDesign.editor.removeFromFirstTask")
+            : t("workflowDesign.editor.addToFirstTask")}
+        </button>
+      </div>
+      {bindingErrors.length > 0 ? <p>{bindingErrors[0]}</p> : null}
+      <p>
+        {firstField
+          ? `${t("workflowDesign.editor.fieldSummaryPrefix")} ${firstField.label}`
+          : t("workflowDesign.editor.fieldEmpty")}
+      </p>
+    </article>
+
     <article className="workflow-canvas" aria-labelledby="workflow-canvas-title">
       <h3 id="workflow-canvas-title">{t("workflowDesign.editor.previewTitle")}</h3>
       <p>{t("workflowDesign.editor.previewBody")}</p>
@@ -266,3 +424,12 @@ const savedPathSummary = (
   workflowPathPreview(draft)
     .map((item) => (isConnection(item) ? connectLabel : item.label))
     .join(" -> ");
+
+const errorMessagesFor = (
+  invalidFieldNames: string[],
+  errorMessages: string[],
+  suffixes: string[]
+) =>
+  errorMessages.filter((_message, index) =>
+    suffixes.some((suffix) => invalidFieldNames[index]?.endsWith(suffix))
+  );

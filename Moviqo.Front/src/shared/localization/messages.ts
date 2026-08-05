@@ -148,6 +148,20 @@ export type MessageKey =
   | "workflowDesign.editor.savedTitle"
   | "workflowDesign.editor.savedBody"
   | "workflowDesign.editor.savedEmpty"
+  | "workflowDesign.editor.fieldTitle"
+  | "workflowDesign.editor.fieldBody"
+  | "workflowDesign.editor.fieldLabel"
+  | "workflowDesign.editor.fieldHelpText"
+  | "workflowDesign.editor.fieldPlaceholder"
+  | "workflowDesign.editor.fieldDefaultValue"
+  | "workflowDesign.editor.fieldMinimumLength"
+  | "workflowDesign.editor.fieldMaximumLength"
+  | "workflowDesign.editor.addShortText"
+  | "workflowDesign.editor.updateShortText"
+  | "workflowDesign.editor.addToFirstTask"
+  | "workflowDesign.editor.removeFromFirstTask"
+  | "workflowDesign.editor.fieldSummaryPrefix"
+  | "workflowDesign.editor.fieldEmpty"
   | "passwordRecovery.eyebrow"
   | "passwordRecovery.title"
   | "passwordRecovery.lede"
@@ -394,6 +408,21 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.savedTitle": "Ultimo borrador guardado",
   "workflowDesign.editor.savedBody": "Si el servidor rechaza un cambio, este camino autorizado sigue disponible.",
   "workflowDesign.editor.savedEmpty": "Aun no hay un camino guardado.",
+  "workflowDesign.editor.fieldTitle": "Primer campo reutilizable",
+  "workflowDesign.editor.fieldBody":
+    "Define un campo Short text y agregalo a la primera Task sin duplicar su identidad.",
+  "workflowDesign.editor.fieldLabel": "Label",
+  "workflowDesign.editor.fieldHelpText": "Help text",
+  "workflowDesign.editor.fieldPlaceholder": "Placeholder",
+  "workflowDesign.editor.fieldDefaultValue": "Default value",
+  "workflowDesign.editor.fieldMinimumLength": "Minimum length",
+  "workflowDesign.editor.fieldMaximumLength": "Maximum length",
+  "workflowDesign.editor.addShortText": "Crear Short text",
+  "workflowDesign.editor.updateShortText": "Actualizar Short text",
+  "workflowDesign.editor.addToFirstTask": "Add to first task",
+  "workflowDesign.editor.removeFromFirstTask": "Quitar de la primera Task",
+  "workflowDesign.editor.fieldSummaryPrefix": "Campo listo:",
+  "workflowDesign.editor.fieldEmpty": "Todavia no has creado un campo reutilizable.",
   "passwordRecovery.eyebrow": "Recuperacion segura",
   "passwordRecovery.title": "Recupera tu contrasena",
   "passwordRecovery.lede": "Te enviaremos instrucciones si la cuenta puede recibirlas.",
@@ -642,6 +671,21 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.savedTitle": "Last saved draft",
   "workflowDesign.editor.savedBody": "If the server rejects a change, this authorized path remains available.",
   "workflowDesign.editor.savedEmpty": "There is no saved path yet.",
+  "workflowDesign.editor.fieldTitle": "First reusable field",
+  "workflowDesign.editor.fieldBody":
+    "Define one Short text field and place it on the first Task without duplicating its identity.",
+  "workflowDesign.editor.fieldLabel": "Label",
+  "workflowDesign.editor.fieldHelpText": "Help text",
+  "workflowDesign.editor.fieldPlaceholder": "Placeholder",
+  "workflowDesign.editor.fieldDefaultValue": "Default value",
+  "workflowDesign.editor.fieldMinimumLength": "Minimum length",
+  "workflowDesign.editor.fieldMaximumLength": "Maximum length",
+  "workflowDesign.editor.addShortText": "Create Short text",
+  "workflowDesign.editor.updateShortText": "Update Short text",
+  "workflowDesign.editor.addToFirstTask": "Add to first task",
+  "workflowDesign.editor.removeFromFirstTask": "Remove from first task",
+  "workflowDesign.editor.fieldSummaryPrefix": "Field ready:",
+  "workflowDesign.editor.fieldEmpty": "You have not created a reusable field yet.",
   "passwordRecovery.eyebrow": "Secure recovery",
   "passwordRecovery.title": "Recover your password",
   "passwordRecovery.lede": "We will send instructions if the account can receive them.",

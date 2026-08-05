@@ -52,8 +52,37 @@ class WorkflowDraftDocumentSerializer(serializers.Serializer):
     workflowId = serializers.CharField()
     name = serializers.CharField()
     status = serializers.CharField()
-    elements = serializers.ListField(child=serializers.DictField(), required=False)
-    connections = serializers.ListField(child=serializers.DictField(), required=False)
+
+    class WorkflowElementSerializer(serializers.Serializer):
+        id = serializers.CharField(allow_blank=True)
+        type = serializers.CharField()
+        label = serializers.CharField()
+
+    class WorkflowConnectionSerializer(serializers.Serializer):
+        id = serializers.CharField(allow_blank=True)
+        type = serializers.CharField()
+        sourceId = serializers.CharField(allow_blank=True)
+        targetId = serializers.CharField(allow_blank=True)
+
+    class WorkflowProcessFieldSerializer(serializers.Serializer):
+        id = serializers.CharField(required=False, allow_blank=True)
+        kind = serializers.CharField()
+        label = serializers.CharField(allow_blank=True)
+        helpText = serializers.CharField(required=False, allow_blank=True)
+        placeholder = serializers.CharField(required=False, allow_blank=True)
+        defaultValue = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+        minimumLength = serializers.IntegerField(required=False, min_value=0)
+        maximumLength = serializers.IntegerField(required=False, min_value=0)
+
+    class WorkflowFormBindingSerializer(serializers.Serializer):
+        id = serializers.CharField(required=False, allow_blank=True)
+        taskElementId = serializers.CharField(allow_blank=True)
+        fieldId = serializers.CharField(allow_blank=True)
+
+    elements = WorkflowElementSerializer(many=True, required=False)
+    connections = WorkflowConnectionSerializer(many=True, required=False)
+    processFields = WorkflowProcessFieldSerializer(many=True, required=False)
+    formBindings = WorkflowFormBindingSerializer(many=True, required=False)
 
 
 class WorkflowDraftSaveRequestSerializer(serializers.Serializer):

@@ -380,6 +380,12 @@ export interface components {
         WorkflowCatalogResponse: {
             items: components["schemas"]["WorkflowCatalogItem"][];
         };
+        WorkflowConnection: {
+            id: string;
+            type: string;
+            sourceId: string;
+            targetId: string;
+        };
         WorkflowCreateRequest: {
             name: string;
         };
@@ -400,16 +406,34 @@ export interface components {
             workflowId: string;
             name: string;
             status: string;
-            elements?: {
-                [key: string]: unknown;
-            }[];
-            connections?: {
-                [key: string]: unknown;
-            }[];
+            elements?: components["schemas"]["WorkflowElement"][];
+            connections?: components["schemas"]["WorkflowConnection"][];
+            processFields?: components["schemas"]["WorkflowProcessField"][];
+            formBindings?: components["schemas"]["WorkflowFormBinding"][];
         };
         WorkflowDraftSaveRequest: {
             expectedRevision: string;
             draft: components["schemas"]["WorkflowDraftDocument"];
+        };
+        WorkflowElement: {
+            id: string;
+            type: string;
+            label: string;
+        };
+        WorkflowFormBinding: {
+            id?: string;
+            taskElementId: string;
+            fieldId: string;
+        };
+        WorkflowProcessField: {
+            id?: string;
+            kind: string;
+            label: string;
+            helpText?: string;
+            placeholder?: string;
+            defaultValue?: string | null;
+            minimumLength?: number;
+            maximumLength?: number;
         };
     };
     responses: never;

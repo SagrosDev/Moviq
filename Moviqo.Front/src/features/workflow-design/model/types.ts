@@ -1,6 +1,7 @@
 export type WorkflowElementType = "start" | "task" | "end";
 
 export type WorkflowConnectionType = "sequence";
+export type WorkflowProcessFieldKind = "shortText";
 
 export type WorkflowDraftElement = {
   id: string;
@@ -15,6 +16,23 @@ export type WorkflowDraftConnection = {
   targetId: string;
 };
 
+export type WorkflowProcessField = {
+  id: string;
+  kind: WorkflowProcessFieldKind;
+  label: string;
+  helpText: string;
+  placeholder: string;
+  defaultValue: string | null;
+  minimumLength: number;
+  maximumLength: number;
+};
+
+export type WorkflowFormBinding = {
+  id: string;
+  taskElementId: string;
+  fieldId: string;
+};
+
 export type WorkflowDraftDocument = {
   schemaVersion: number;
   draftId: string;
@@ -23,6 +41,8 @@ export type WorkflowDraftDocument = {
   status: string;
   elements: WorkflowDraftElement[];
   connections: WorkflowDraftConnection[];
+  processFields: WorkflowProcessField[];
+  formBindings: WorkflowFormBinding[];
 };
 
 export type WorkflowCreationAccepted = {

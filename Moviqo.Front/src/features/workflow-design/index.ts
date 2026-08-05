@@ -5,7 +5,9 @@ export {
   connectWorkflowElements,
   createWorkflowDraftEditorState,
   reduceWorkflowDraftEditorState,
-  saveWorkflowDraft
+  saveWorkflowDraft,
+  setFirstTaskFieldBinding,
+  upsertShortTextProcessField
 } from "./model/editor";
 export { createWorkflowDraftState } from "./model/draft";
 export {
@@ -17,7 +19,9 @@ export type {
   WorkflowCreationAccepted,
   WorkflowCreationFormState,
   WorkflowDraftConnection,
-  WorkflowDraftDocument
+  WorkflowDraftDocument,
+  WorkflowFormBinding,
+  WorkflowProcessField
 } from "./model/types";
 export { WorkflowCreateForm } from "./ui/WorkflowCreateForm";
 export { WorkflowDraftEditor } from "./ui/WorkflowDraftEditor";

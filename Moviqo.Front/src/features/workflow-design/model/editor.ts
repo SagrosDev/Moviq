@@ -12,6 +12,7 @@ import type {
   WorkflowDraftConnection,
   WorkflowDraftDocument,
   WorkflowDraftElement,
+  WorkflowProcessField,
   WorkflowDraftSaveAccepted,
   WorkflowElementType
 } from "./types";
@@ -24,12 +25,22 @@ export type WorkflowDraftEditorState = {
   saveStatus: "idle" | "saving" | "error" | "success";
   errorCode: string | null;
   errorMessages: string[];
+  invalidFieldNames: string[];
 };
 
 export type WorkflowElementLabels = {
   start: string;
   task: string;
   end: string;
+};
+
+export type ShortTextFieldDraft = {
+  label: string;
+  helpText: string;
+  placeholder: string;
+  defaultValue: string;
+  minimumLength: number;
+  maximumLength: number;
 };
 
 export const createWorkflowDraftEditorState = (
@@ -39,7 +50,8 @@ export const createWorkflowDraftEditorState = (
   hasLocalChanges: false,
   saveStatus: "idle",
   errorCode: null,
-  errorMessages: []
+  errorMessages: [],
+  invalidFieldNames: []
 });
 
 export const syncWorkflowDraftEditorState = (
@@ -57,7 +69,8 @@ export const syncWorkflowDraftEditorState = (
         hasLocalChanges: false,
         saveStatus: force ? "success" : "idle",
         errorCode: null,
-        errorMessages: []
+        errorMessages: [],
+        invalidFieldNames: []
       };
 
 export const addGuidedWorkflowElement = (
@@ -110,6 +123,71 @@ export const connectWorkflowElements = (
   };
 };
 
+export const upsertShortTextProcessField = (
+  draft: WorkflowDraftDocument,
+  fieldDraft: ShortTextFieldDraft
+): WorkflowDraftDocument => {
+  const existingField = draft.processFields[0];
+  const nextField: WorkflowProcessField = {
+    id: existingField?.id ?? "field-1",
+    kind: "shortText",
+    label: fieldDraft.label.trim(),
+    helpText: fieldDraft.helpText.trim(),
+    placeholder: fieldDraft.placeholder.trim(),
+    defaultValue: fieldDraft.defaultValue.trim() || null,
+    minimumLength: fieldDraft.minimumLength,
+    maximumLength: fieldDraft.maximumLength
+  };
+
+  return {
+    ...draft,
+    processFields: existingField ? [nextField] : [nextField]
+  };
+};
+
+export const setFirstTaskFieldBinding = (
+  draft: WorkflowDraftDocument,
+  enabled: boolean
+): WorkflowDraftDocument => {
+  const firstTask = draft.elements.find((element) => element.type === "task");
+  const firstField = draft.processFields[0];
+  if (!firstTask || !firstField) {
+    return draft;
+  }
+
+  if (!enabled) {
+    return {
+      ...draft,
+      formBindings: draft.formBindings.filter(
+        (binding) =>
+          !(
+            binding.taskElementId === firstTask.id && binding.fieldId === firstField.id
+          )
+      )
+    };
+  }
+
+  const existingBinding = draft.formBindings.find(
+    (binding) =>
+      binding.taskElementId === firstTask.id && binding.fieldId === firstField.id
+  );
+  if (existingBinding) {
+    return draft;
+  }
+
+  return {
+    ...draft,
+    formBindings: [
+      ...draft.formBindings,
+      {
+        id: `binding-${draft.formBindings.length + 1}`,
+        taskElementId: firstTask.id,
+        fieldId: firstField.id
+      }
+    ]
+  };
+};
+
 export const reduceWorkflowDraftEditorState = (
   state: WorkflowDraftEditorState,
   action:
@@ -117,8 +195,15 @@ export const reduceWorkflowDraftEditorState = (
     | { type: "task-added"; labels: WorkflowElementLabels }
     | { type: "end-added"; labels: WorkflowElementLabels }
     | { type: "connected"; sourceId: string; targetId: string }
+    | { type: "short-text-configured"; field: ShortTextFieldDraft }
+    | { type: "first-task-binding-toggled"; enabled: boolean }
     | { type: "save-requested" }
-    | { type: "save-failed"; errorCode: string; errorMessages: string[] }
+    | {
+        type: "save-failed";
+        errorCode: string;
+        errorMessages: string[];
+        invalidFieldNames: string[];
+      }
     | { type: "save-succeeded"; draftState: DraftState<WorkflowDraftDocument> }
     | { type: "server-synced"; draftState: DraftState<WorkflowDraftDocument> }
 ): WorkflowDraftEditorState => {
@@ -129,7 +214,8 @@ export const reduceWorkflowDraftEditorState = (
       hasLocalChanges: true,
       saveStatus: "idle",
       errorCode: null,
-      errorMessages: []
+      errorMessages: [],
+      invalidFieldNames: []
     };
   }
 
@@ -140,7 +226,8 @@ export const reduceWorkflowDraftEditorState = (
       hasLocalChanges: true,
       saveStatus: "idle",
       errorCode: null,
-      errorMessages: []
+      errorMessages: [],
+      invalidFieldNames: []
     };
   }
 
@@ -151,7 +238,8 @@ export const reduceWorkflowDraftEditorState = (
       hasLocalChanges: true,
       saveStatus: "idle",
       errorCode: null,
-      errorMessages: []
+      errorMessages: [],
+      invalidFieldNames: []
     };
   }
 
@@ -166,7 +254,32 @@ export const reduceWorkflowDraftEditorState = (
       hasLocalChanges: true,
       saveStatus: "idle",
       errorCode: null,
-      errorMessages: []
+      errorMessages: [],
+      invalidFieldNames: []
+    };
+  }
+
+  if (action.type === "short-text-configured") {
+    return {
+      ...state,
+      localDraft: upsertShortTextProcessField(state.localDraft, action.field),
+      hasLocalChanges: true,
+      saveStatus: "idle",
+      errorCode: null,
+      errorMessages: [],
+      invalidFieldNames: []
+    };
+  }
+
+  if (action.type === "first-task-binding-toggled") {
+    return {
+      ...state,
+      localDraft: setFirstTaskFieldBinding(state.localDraft, action.enabled),
+      hasLocalChanges: true,
+      saveStatus: "idle",
+      errorCode: null,
+      errorMessages: [],
+      invalidFieldNames: []
     };
   }
 
@@ -175,7 +288,8 @@ export const reduceWorkflowDraftEditorState = (
       ...state,
       saveStatus: "saving",
       errorCode: null,
-      errorMessages: []
+      errorMessages: [],
+      invalidFieldNames: []
     };
   }
 
@@ -185,7 +299,8 @@ export const reduceWorkflowDraftEditorState = (
       hasLocalChanges: true,
       saveStatus: "error",
       errorCode: action.errorCode,
-      errorMessages: action.errorMessages
+      errorMessages: action.errorMessages,
+      invalidFieldNames: action.invalidFieldNames
     };
   }
 

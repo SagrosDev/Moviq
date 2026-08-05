@@ -412,7 +412,11 @@ def validate_workflow_graph_document(payload: dict[str, Any]) -> dict[str, Any]:
                     }
                 )
 
-    first_task_id = _first_task_id(elements=elements, outgoing=outgoing, element_by_id=element_by_id)
+    first_task_id = _first_task_id(
+        elements=elements,
+        outgoing=outgoing,
+        element_by_id=element_by_id,
+    )
 
     for binding in form_bindings:
         task_element = element_by_id.get(binding["taskElementId"])

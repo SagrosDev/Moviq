@@ -55,8 +55,6 @@ def workflow_design_directory(
         )
         .order_by("user__display_name", "user__username", "id")
     )
-    active_membership_ids = {option.membership_id for option in memberships}
-
     normalized_teams: list[WorkflowDesignTeamOption] = []
     for team in (
         Team.objects.filter(

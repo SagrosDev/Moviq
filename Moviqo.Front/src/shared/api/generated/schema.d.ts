@@ -473,6 +473,8 @@ export interface components {
             processId: string;
             /** Format: uuid */
             workflowId: string;
+            /** Format: uuid */
+            workflowVersionId: string | null;
             workflowName: string;
             taskTitle: string;
             taskStatus: string;
@@ -510,6 +512,8 @@ export interface components {
             processId: string;
             /** Format: uuid */
             workflowId: string;
+            /** Format: uuid */
+            workflowVersionId: string | null;
             workflowName: string;
             taskTitle: string;
             taskElementId: string;

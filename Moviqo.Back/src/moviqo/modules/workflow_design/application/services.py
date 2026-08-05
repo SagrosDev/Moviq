@@ -250,12 +250,12 @@ def _save_workflow_draft_side_effects(
     expected_revision: str,
     draft: dict[str, Any],
 ) -> dict[str, Any]:
-    workflow = (
-        WorkflowDefinition.objects.select_related("draft")
+    workflow_draft = (
+        WorkflowDraft.objects.select_related("workflow")
         .select_for_update()
-        .get(id=workflow_id, organization_id=tenant_context.organization_id)
+        .get(workflow_id=workflow_id, organization_id=tenant_context.organization_id)
     )
-    workflow_draft = workflow.draft
+    workflow = workflow_draft.workflow
 
     if workflow_draft.revision != expected_revision:
         return _rejected_save_outcome(

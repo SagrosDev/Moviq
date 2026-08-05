@@ -63,6 +63,8 @@ test("my-work shell renders semantic regions and localized empty states", () => 
         browserLanguages: [],
         children: createElement(MyWorkShell, {
           onRetry: () => undefined,
+          showWorkflowCreation: true,
+          workflowCreationHref: "/my-work/workflows/new",
           snapshot: {
             status: "success",
             data: {
@@ -81,5 +83,6 @@ test("my-work shell renders semantic regions and localized empty states", () => 
   assert.match(markup, /Mis tareas/);
   assert.match(markup, /Iniciar un proceso/);
   assert.match(markup, /Mis procesos/);
+  assert.match(markup, /Crear flujo/);
   assert.match(markup, /No tienes tareas autorizadas para atender ahora/);
 });

@@ -29,6 +29,7 @@ from moviqo.modules.organizations.models import (
     OrganizationRegistrationConsent,
     RegistrationVerification,
 )
+from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft
 from moviqo.modules.workflow_runtime.models import AtomicCommandProbe
 
 
@@ -342,6 +343,100 @@ def _assert_atomic_command_probe_isolation(seed: IsolationSeed) -> None:
 
     row_b.refresh_from_db()
     assert row_b.reference == "bravo"
+
+
+def _assert_workflow_definition_isolation(seed: IsolationSeed) -> None:
+    WorkflowDefinition.objects.create(
+        organization=seed.organization_a,
+        name="Workflow alpha",
+        normalized_name="workflow alpha",
+        draft_schema_version=1,
+        created_by_membership_id=seed.membership_a.id,
+        created_by_user_id=seed.user_a.id,
+    )
+    row_b = WorkflowDefinition.objects.create(
+        organization=seed.organization_b,
+        name="Workflow bravo",
+        normalized_name="workflow bravo",
+        draft_schema_version=1,
+        created_by_membership_id=seed.membership_b.id,
+        created_by_user_id=seed.user_b.id,
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert WorkflowDefinition.objects.count() == 1
+        assert not WorkflowDefinition.objects.filter(id=row_b.id).exists()
+        updated = WorkflowDefinition.objects.filter(id=row_b.id).update(name="cross-tenant")
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.name == "Workflow bravo"
+
+
+def _assert_workflow_draft_isolation(seed: IsolationSeed) -> None:
+    workflow_a = WorkflowDefinition.objects.create(
+        organization=seed.organization_a,
+        name="Workflow alpha",
+        normalized_name="workflow alpha",
+        draft_schema_version=1,
+        created_by_membership_id=seed.membership_a.id,
+        created_by_user_id=seed.user_a.id,
+    )
+    workflow_b = WorkflowDefinition.objects.create(
+        organization=seed.organization_b,
+        name="Workflow bravo",
+        normalized_name="workflow bravo",
+        draft_schema_version=1,
+        created_by_membership_id=seed.membership_b.id,
+        created_by_user_id=seed.user_b.id,
+    )
+    WorkflowDraft.objects.create(
+        organization=seed.organization_a,
+        workflow=workflow_a,
+        document={
+            "schemaVersion": 1,
+            "draftId": "alpha",
+            "workflowId": "alpha",
+            "name": "Workflow alpha",
+            "status": "draft",
+            "elements": [],
+        },
+        revision="1",
+    )
+    row_b = WorkflowDraft.objects.create(
+        organization=seed.organization_b,
+        workflow=workflow_b,
+        document={
+            "schemaVersion": 1,
+            "draftId": "bravo",
+            "workflowId": "bravo",
+            "name": "Workflow bravo",
+            "status": "draft",
+            "elements": [],
+        },
+        revision="1",
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert WorkflowDraft.objects.count() == 1
+        assert not WorkflowDraft.objects.filter(id=row_b.id).exists()
+        updated = WorkflowDraft.objects.filter(id=row_b.id).update(revision="2")
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.revision == "1"
 
 
 def _assertion_for_registration(

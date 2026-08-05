@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { protectedEntryPath, useSession } from "../../../features/authentication";
 import { MyWorkShell, useMyWorkDashboard } from "../../../features/my-work";
+import { canCreateWorkflow } from "../../../features/workflow-design";
 import { LanguageSelector, useLanguage } from "../../../shared/localization";
 
 export const MyWorkPage = () => {
@@ -42,7 +43,12 @@ export const MyWorkPage = () => {
       </div>
     </header>
     <main className="app-main">
-      <MyWorkShell snapshot={snapshot} onRetry={retry} />
+      <MyWorkShell
+        snapshot={snapshot}
+        onRetry={retry}
+        showWorkflowCreation={canCreateWorkflow(state.context.membership.role)}
+        workflowCreationHref="/my-work/workflows/new"
+      />
     </main>
   </div>;
 };

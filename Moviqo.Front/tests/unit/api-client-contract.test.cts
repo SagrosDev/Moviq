@@ -5,6 +5,8 @@ import {
   normalizeApiProblem,
   type ApiProblemDetails
 } from "../../src/shared/api";
+import { normalizeAppPath } from "../../src/app/ui/App";
+import type { components, operations } from "../../src/shared/api/generated/schema";
 import { fieldErrorMapFromProblem } from "../../src/features/registration/model/registrationForm";
 
 test("API problem details type preserves stable error fields", () => {
@@ -25,6 +27,16 @@ test("API client seam is created from generated OpenAPI paths", () => {
   const client = createApiClient({ baseUrl: "/api/v1" });
 
   assert.equal(typeof client.GET, "function");
+});
+
+test("workflow creation contract requires a name body field and idempotency header", () => {
+  const request: components["schemas"]["WorkflowCreateRequest"] = { name: "Workflow intake" };
+  const header: operations["workflow_design_workflow_create"]["parameters"]["header"] = {
+    "Idempotency-Key": "workflow-create-1"
+  };
+
+  assert.equal(request.name, "Workflow intake");
+  assert.equal(header["Idempotency-Key"], "workflow-create-1");
 });
 
 test("API client does not double-prefix versioned generated paths", async () => {
@@ -61,6 +73,11 @@ test("API problem normalization keeps safe fields and supplies generic fallbacks
     { name: "nonFieldErrors", reason: "should not be a field" }
   ]);
   assert.equal(normalizeApiProblem(undefined).code, "api_error");
+});
+
+test("app route normalization accepts a trailing slash for workflow creation", () => {
+  assert.equal(normalizeAppPath("/my-work/workflows/new/"), "/my-work/workflows/new");
+  assert.equal(normalizeAppPath("/"), "/");
 });
 
 test("API problem normalization bounds untrusted values and prefers a valid header correlation", () => {

@@ -18,6 +18,10 @@ from moviqo.modules.organizations.application import (
     SignInView,
     SignOutView,
 )
+from moviqo.modules.workflow_design.application import (
+    WorkflowCollectionView,
+    WorkflowDraftDetailView,
+)
 from moviqo.modules.workflow_runtime.application import MyWorkDashboardView
 
 
@@ -48,6 +52,16 @@ urlpatterns = [
     path("api/v1/auth/session/", CurrentSessionView.as_view(), name="api-v1-auth-session"),
     path("api/v1/auth/sign-out/", SignOutView.as_view(), name="api-v1-auth-sign-out"),
     path("api/v1/my-work/", MyWorkDashboardView.as_view(), name="api-v1-my-work-dashboard"),
+    path(
+        "api/v1/workflow-design/workflows/",
+        WorkflowCollectionView.as_view(),
+        name="api-v1-workflow-design-workflow-collection",
+    ),
+    path(
+        "api/v1/workflow-design/workflows/<uuid:workflow_id>/draft/",
+        WorkflowDraftDetailView.as_view(),
+        name="api-v1-workflow-design-draft-detail",
+    ),
     path(
         "api/v1/organizations/registrations/",
         InitialRegistrationView.as_view(),

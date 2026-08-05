@@ -79,6 +79,7 @@ def session_context(user: MoviqoUser) -> dict[str, object]:
         "membership": {
             "id": membership.id,
             "organizationId": membership.organization_id,
+            "organizationTimezone": membership.organization.timezone_name,
             "role": membership.role,
         },
     }

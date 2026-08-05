@@ -1,27 +1,37 @@
 import { useCallback, useEffect, useState } from "react";
 import { queryRegistry, type QuerySnapshot } from "../../../shared/api";
-import { loadMyWorkDashboard, myWorkQueryKey, type MyWorkDashboard } from "./myWork";
+import {
+  createMyWorkQueryKey,
+  loadMyWorkDashboard,
+  type MyProcessesQuery,
+  type MyWorkDashboard
+} from "./myWork";
 
-export const useMyWorkDashboard = (enabled = true) => {
+export const useMyWorkDashboard = (
+  query: MyProcessesQuery,
+  enabled = true
+) => {
+  const queryKey = createMyWorkQueryKey(query);
   const [snapshot, setSnapshot] = useState<QuerySnapshot<MyWorkDashboard>>(() =>
-    queryRegistry.getSnapshot(myWorkQueryKey)
+    queryRegistry.getSnapshot(queryKey)
   );
 
   const load = useCallback(async (force = false) => {
-    await loadMyWorkDashboard(force);
-  }, []);
+    await loadMyWorkDashboard(query, force);
+  }, [query]);
 
   useEffect(() => {
-    const unsubscribe = queryRegistry.subscribe(myWorkQueryKey, () => {
-      setSnapshot(queryRegistry.getSnapshot(myWorkQueryKey));
+    setSnapshot(queryRegistry.getSnapshot(queryKey));
+    const unsubscribe = queryRegistry.subscribe(queryKey, () => {
+      setSnapshot(queryRegistry.getSnapshot(queryKey));
     });
 
-    if (enabled && queryRegistry.getSnapshot(myWorkQueryKey).status === "idle") {
+    if (enabled && queryRegistry.getSnapshot(queryKey).status === "idle") {
       void load();
     }
 
     return unsubscribe;
-  }, [enabled, load]);
+  }, [enabled, load, queryKey]);
 
   return {
     snapshot,

@@ -10,6 +10,7 @@ const authenticatedSession = {
   membership: {
     id: "018f6d8c-6a58-7000-8000-000000000001",
     organizationId: "018f6d8c-6a58-7000-8000-000000000002",
+    organizationTimezone: "America/Bogota",
     role: "owner"
   }
 };

@@ -111,6 +111,34 @@ export type MessageKey =
   | "myWork.myProcesses.title"
   | "myWork.myProcesses.summary"
   | "myWork.myProcesses.empty"
+  | "myWork.myProcesses.reference"
+  | "myWork.myProcesses.status"
+  | "myWork.myProcesses.step"
+  | "myWork.myProcesses.involvement"
+  | "myWork.myProcesses.lastActivity"
+  | "myWork.myProcesses.searchLabel"
+  | "myWork.myProcesses.searchPlaceholder"
+  | "myWork.myProcesses.searchAction"
+  | "myWork.myProcesses.discoveryHint"
+  | "myWork.myProcesses.previousPage"
+  | "myWork.myProcesses.nextPage"
+  | "myWork.myProcesses.view"
+  | "processDetail.eyebrow"
+  | "processDetail.title"
+  | "processDetail.back"
+  | "processDetail.loading"
+  | "processDetail.loadError"
+  | "processDetail.retry"
+  | "processDetail.reference"
+  | "processDetail.version"
+  | "processDetail.status"
+  | "processDetail.step"
+  | "processDetail.startedAt"
+  | "processDetail.completedAt"
+  | "processDetail.lastActivity"
+  | "processDetail.contribution"
+  | "processDetail.timelineTitle"
+  | "processDetail.timelineEmpty"
   | "workflowDesign.create.eyebrow"
   | "workflowDesign.create.title"
   | "workflowDesign.create.lede"
@@ -447,6 +475,34 @@ export const spanishMessages: MessageDictionary = {
   "myWork.myProcesses.title": "Mis procesos",
   "myWork.myProcesses.summary": "Procesos en los que has participado o que puedes seguir.",
   "myWork.myProcesses.empty": "No tienes procesos autorizados para seguir ahora.",
+  "myWork.myProcesses.reference": "Proceso:",
+  "myWork.myProcesses.status": "Estado:",
+  "myWork.myProcesses.step": "Paso actual:",
+  "myWork.myProcesses.involvement": "Tu participacion:",
+  "myWork.myProcesses.lastActivity": "Ultima actividad:",
+  "myWork.myProcesses.searchLabel": "Buscar procesos completados",
+  "myWork.myProcesses.searchPlaceholder": "Busca por proceso, flujo o participacion",
+  "myWork.myProcesses.searchAction": "Buscar",
+  "myWork.myProcesses.discoveryHint": "Usa la busqueda o cambia de pagina para encontrar procesos completados anteriores.",
+  "myWork.myProcesses.previousPage": "Pagina anterior",
+  "myWork.myProcesses.nextPage": "Pagina siguiente",
+  "myWork.myProcesses.view": "Ver proceso",
+  "processDetail.eyebrow": "Proceso completado",
+  "processDetail.title": "Detalle del proceso",
+  "processDetail.back": "Volver a Mi trabajo",
+  "processDetail.loading": "Cargando el seguimiento autorizado del proceso.",
+  "processDetail.loadError": "No pudimos cargar este proceso autorizado. Intenta de nuevo.",
+  "processDetail.retry": "Reintentar",
+  "processDetail.reference": "Proceso:",
+  "processDetail.version": "Version:",
+  "processDetail.status": "Estado:",
+  "processDetail.step": "Paso actual:",
+  "processDetail.startedAt": "Inicio:",
+  "processDetail.completedAt": "Completado:",
+  "processDetail.lastActivity": "Ultima actividad:",
+  "processDetail.contribution": "Tu aporte:",
+  "processDetail.timelineTitle": "Linea de tiempo",
+  "processDetail.timelineEmpty": "Aun no hay eventos autorizados para mostrar.",
   "workflowDesign.create.eyebrow": "Diseno de flujos",
   "workflowDesign.create.title": "Crear flujo",
   "workflowDesign.create.lede":
@@ -808,6 +864,34 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.myProcesses.title": "My processes",
   "myWork.myProcesses.summary": "Processes you have participated in or may follow.",
   "myWork.myProcesses.empty": "You do not have any authorized processes to follow right now.",
+  "myWork.myProcesses.reference": "Process:",
+  "myWork.myProcesses.status": "Status:",
+  "myWork.myProcesses.step": "Current step:",
+  "myWork.myProcesses.involvement": "Your involvement:",
+  "myWork.myProcesses.lastActivity": "Last activity:",
+  "myWork.myProcesses.searchLabel": "Search completed processes",
+  "myWork.myProcesses.searchPlaceholder": "Search by process, workflow, or involvement",
+  "myWork.myProcesses.searchAction": "Search",
+  "myWork.myProcesses.discoveryHint": "Use search or change the page to find older completed processes.",
+  "myWork.myProcesses.previousPage": "Previous page",
+  "myWork.myProcesses.nextPage": "Next page",
+  "myWork.myProcesses.view": "View process",
+  "processDetail.eyebrow": "Completed process",
+  "processDetail.title": "Process detail",
+  "processDetail.back": "Back to My work",
+  "processDetail.loading": "Loading the authorized process timeline.",
+  "processDetail.loadError": "We could not load this authorized process. Try again.",
+  "processDetail.retry": "Retry",
+  "processDetail.reference": "Process:",
+  "processDetail.version": "Version:",
+  "processDetail.status": "Status:",
+  "processDetail.step": "Current step:",
+  "processDetail.startedAt": "Started:",
+  "processDetail.completedAt": "Completed:",
+  "processDetail.lastActivity": "Last activity:",
+  "processDetail.contribution": "Your contribution:",
+  "processDetail.timelineTitle": "Timeline",
+  "processDetail.timelineEmpty": "There are no authorized events to show yet.",
   "workflowDesign.create.eyebrow": "Workflow design",
   "workflowDesign.create.title": "Create workflow",
   "workflowDesign.create.lede":

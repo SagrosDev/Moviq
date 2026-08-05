@@ -116,6 +116,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/my-work/processes/{process_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["workflow_runtime_process_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/my-work/start-workflows/{workflow_id}/start/": {
         parameters: {
             query?: never;
@@ -350,15 +366,22 @@ export interface components {
         MyProcessSummary: {
             /** Format: uuid */
             processId: string;
+            processNumber: string;
             workflowName: string;
+            workflowVersionNumber: number;
             involvement: string;
             currentStep: string;
-            instanceState: string;
             systemStatus: string;
             /** Format: date-time */
             startedAt: string;
             /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
             lastActivityAt: string;
+            viewRoute: string;
+            contributionSummary: {
+                [key: string]: string;
+            };
         };
         MyTaskCollection: {
             items: components["schemas"]["MyTaskSummary"][];
@@ -404,6 +427,36 @@ export interface components {
             invalidParams?: {
                 [key: string]: string;
             }[];
+        };
+        ProcessDetail: {
+            header: components["schemas"]["ProcessDetailHeader"];
+            timeline: components["schemas"]["ProcessTimelineEvent"][];
+        };
+        ProcessDetailHeader: {
+            /** Format: uuid */
+            processId: string;
+            processNumber: string;
+            workflowName: string;
+            workflowVersionNumber: number;
+            systemStatus: string;
+            currentStep: string;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            lastActivityAt: string;
+            contributionSummary: {
+                [key: string]: string;
+            };
+        };
+        ProcessTimelineEvent: {
+            eventKind: string;
+            label: string;
+            actorDisplay: string;
+            /** Format: date-time */
+            occurredAt: string;
+            taskPosition: string;
         };
         ProtectedMembership: {
             /** Format: uuid */
@@ -866,6 +919,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MyWorkDashboard"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_runtime_process_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                process_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessDetail"];
                 };
             };
             403: {

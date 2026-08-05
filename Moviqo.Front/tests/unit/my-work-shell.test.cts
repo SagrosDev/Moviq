@@ -137,3 +137,52 @@ test("my-work shell renders startable workflow cards with the start action and f
   assert.match(markup, /Iniciando/);
   assert.match(markup, /Abriremos la primera tarea autorizada/);
 });
+
+test("my-work shell renders assigned task cards with one open-task action", () => {
+  const markup = renderToStaticMarkup(
+    createElement(
+      LanguageProvider,
+      {
+        adapter: memoryLanguagePreferenceAdapter(),
+        browserLanguages: [],
+        children: createElement(MyWorkShell, {
+          onStartWorkflow: () => undefined,
+          onRetry: () => undefined,
+          showWorkflowCreation: false,
+          startFeedbackByWorkflowId: {},
+          startingWorkflowId: null,
+          snapshot: {
+            status: "success",
+            data: {
+              myProcesses: { items: [], limit: 12, hasMore: false },
+              myTasks: {
+                items: [
+                  {
+                    taskId: "task-1",
+                    title: "Revisar solicitud",
+                    workflowName: "Aprobaciones",
+                    status: "assigned",
+                    processId: "process-1",
+                    activatedAt: "2026-08-05T00:00:00+00:00",
+                    openTaskRoute: "/my-work/tasks/task-1"
+                  }
+                ],
+                limit: 12,
+                hasMore: false
+              },
+              startWorkflows: { items: [], limit: 6, hasMore: false }
+            },
+            updatedAt: Date.now()
+          },
+          workflowCreationHref: null
+        })
+      }
+    )
+  );
+
+  assert.match(markup, /Revisar solicitud/);
+  assert.match(markup, /Estado: Asignada/);
+  assert.match(markup, /Proceso: process-/);
+  assert.match(markup, /Abrir tarea/);
+  assert.match(markup, /href="\/my-work\/tasks\/task-1"/);
+});

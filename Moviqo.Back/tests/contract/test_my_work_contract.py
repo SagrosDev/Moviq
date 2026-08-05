@@ -18,7 +18,7 @@ from moviqo.modules.workflow_design.application import (
     publish_workflow_version,
     save_workflow_draft,
 )
-from moviqo.modules.workflow_design.models import WorkflowDefinition
+from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowVersion
 from moviqo.modules.workflow_runtime.models import ProcessInstance, TaskOccurrence
 
 
@@ -554,6 +554,110 @@ def test_start_workflow_uses_published_snapshot_title_when_workflow_head_changes
     ]
     assert start_response.status_code == 200
     assert start_response.json()["workflow"]["title"] == "Published title"
+
+
+@pytest.mark.django_db
+def test_my_work_dashboard_returns_direct_assigned_open_tasks(active_member) -> None:
+    user, _organization, owner_membership = active_member
+    workflow_id = _publish_workflow(
+        membership=owner_membership,
+        name="Assigned workflow",
+        starter_mode="allActiveMembers",
+    )
+    client = Client()
+    client.force_login(user)
+    start_response = client.post(
+        f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-start-my-tasks"},
+    )
+
+    response = client.get("/api/v1/my-work/")
+
+    assert start_response.status_code == 200
+    assert response.status_code == 200
+    assert response.json()["myTasks"]["items"] == [
+        {
+            "taskId": start_response.json()["taskId"],
+            "title": "Task",
+            "workflowName": "Assigned workflow",
+            "status": "assigned",
+            "processId": start_response.json()["processId"],
+            "activatedAt": response.json()["myTasks"]["items"][0]["activatedAt"],
+            "openTaskRoute": f"/my-work/tasks/{start_response.json()['taskId']}",
+        }
+    ]
+
+
+@pytest.mark.django_db
+def test_my_work_dashboard_hides_tasks_assigned_to_another_member(active_member) -> None:
+    user, organization, owner_membership = active_member
+    assignee = user.__class__.objects.create_user(
+        username="direct-assignee",
+        email="direct-assignee@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+    )
+    assignee_membership = Membership.objects.create(
+        organization=organization,
+        user=assignee,
+        role=MembershipRole.MEMBER,
+    )
+    workflow_id = _publish_workflow(
+        membership=owner_membership,
+        name="Specific assignee workflow",
+        starter_mode="allActiveMembers",
+        assignment_mode="specificMember",
+        assignment_membership_id=str(assignee_membership.id),
+    )
+    owner_client = Client()
+    owner_client.force_login(user)
+    assignee_client = Client()
+    assignee_client.force_login(assignee)
+
+    start_response = owner_client.post(
+        f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-start-hidden-task"},
+    )
+    owner_dashboard = owner_client.get("/api/v1/my-work/")
+    assignee_dashboard = assignee_client.get("/api/v1/my-work/")
+
+    assert start_response.status_code == 200
+    assert owner_dashboard.status_code == 200
+    assert owner_dashboard.json()["myTasks"]["items"] == []
+    assert assignee_dashboard.status_code == 200
+    assert [item["taskId"] for item in assignee_dashboard.json()["myTasks"]["items"]] == [
+        start_response.json()["taskId"]
+    ]
+
+
+@pytest.mark.django_db
+def test_my_work_dashboard_hides_tasks_with_drifted_runtime_snapshot(active_member) -> None:
+    user, _organization, owner_membership = active_member
+    workflow_id = _publish_workflow(
+        membership=owner_membership,
+        name="Drifted workflow",
+        starter_mode="allActiveMembers",
+    )
+    client = Client()
+    client.force_login(user)
+    start_response = client.post(
+        f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-start-drifted-task"},
+    )
+    task_id = start_response.json()["taskId"]
+    task = TaskOccurrence.objects.get(id=task_id)
+    WorkflowVersion.objects.filter(id=task.workflow_version_id).update(
+        source_draft_revision="999",
+    )
+
+    response = client.get("/api/v1/my-work/")
+
+    assert start_response.status_code == 200
+    assert response.status_code == 200
+    assert response.json()["myTasks"]["items"] == []
 
 
 @pytest.mark.django_db

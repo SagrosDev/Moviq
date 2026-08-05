@@ -5,8 +5,8 @@ from django.test import Client
 
 from moviqo.modules.governance.models import CommandResult
 from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
-from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft
-from moviqo.modules.workflow_runtime.models import TaskOccurrence, TaskProcessFieldValue
+from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft, WorkflowVersion
+from moviqo.modules.workflow_runtime.models import ProcessInstance, TaskOccurrence, TaskProcessFieldValue
 
 
 @pytest.fixture
@@ -88,9 +88,28 @@ def assigned_task_member(django_user_model):
             ],
         },
     )
+    workflow_version = WorkflowVersion.objects.create(
+        organization=organization,
+        workflow=workflow,
+        version_number=1,
+        source_draft_revision="2",
+        snapshot_schema_version=3,
+        snapshot=WorkflowDraft.objects.get(workflow=workflow).document,
+        published_by_membership_id=membership.id,
+        published_by_user_id=user.id,
+    )
+    process = ProcessInstance.objects.create(
+        organization=organization,
+        workflow=workflow,
+        workflow_version=workflow_version,
+        initiator_membership_id=membership.id,
+        initiator_user_id=user.id,
+    )
     task = TaskOccurrence.objects.create(
         organization=organization,
         workflow=workflow,
+        workflow_version=workflow_version,
+        process=process,
         task_element_id="task-1",
         assignee_membership_id=membership.id,
         assignee_user_id=user.id,
@@ -112,6 +131,7 @@ def test_task_form_read_returns_authorized_projection(assigned_task_member) -> N
     assert response.status_code == 200
     assert response.json() == {
         "taskId": str(task.id),
+        "processId": str(task.process_id),
         "workflowId": str(workflow.id),
         "workflowName": "Workflow intake",
         "taskTitle": "Review request",
@@ -286,6 +306,76 @@ def test_task_form_save_hides_cross_tenant_task_existence(
 
 
 @pytest.mark.django_db
+def test_task_form_read_hides_same_organization_non_assignee_task(
+    assigned_task_member,
+    django_user_model,
+) -> None:
+    _user, organization, _membership, _workflow, task = assigned_task_member
+    other_user = django_user_model.objects.create_user(
+        username="same-org-other-member",
+        email="same-org-other-member@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Other Member",
+    )
+    Membership.objects.create(
+        organization=organization,
+        user=other_user,
+        role=MembershipRole.MEMBER,
+    )
+    client = Client()
+    client.force_login(other_user)
+
+    response = client.get(f"/api/v1/my-work/tasks/{task.id}/form/")
+
+    assert response.status_code == 404
+    payload = response.content.decode("utf-8")
+    assert str(task.id) not in payload
+
+
+@pytest.mark.django_db
+def test_task_form_save_hides_same_organization_non_assignee_task(
+    assigned_task_member,
+    django_user_model,
+) -> None:
+    _user, organization, _membership, _workflow, task = assigned_task_member
+    other_user = django_user_model.objects.create_user(
+        username="same-org-other-saver",
+        email="same-org-other-saver@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Other Saver",
+    )
+    Membership.objects.create(
+        organization=organization,
+        user=other_user,
+        role=MembershipRole.MEMBER,
+    )
+    client = Client()
+    client.force_login(other_user)
+
+    response = client.put(
+        f"/api/v1/my-work/tasks/{task.id}/form/",
+        data={
+            "expectedTaskRevision": "1",
+            "controls": [
+                {
+                    "controlId": "binding-1",
+                    "fieldId": "field-1",
+                    "value": "Same organization guess",
+                }
+            ],
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "task-form-save-same-org-non-assignee"},
+    )
+
+    assert response.status_code == 404
+    payload = response.content.decode("utf-8")
+    assert str(task.id) not in payload
+
+
+@pytest.mark.django_db
 def test_task_form_save_rejects_stale_task_revision(assigned_task_member) -> None:
     user, _organization, _membership, _workflow, task = assigned_task_member
     client = Client()
@@ -326,6 +416,94 @@ def test_task_form_save_rejects_stale_task_revision(assigned_task_member) -> Non
 
     assert stale.status_code == 409
     assert stale.json()["code"] == "task_form_revision_conflict"
+
+
+@pytest.mark.django_db
+def test_task_form_read_hides_closed_task_existence(assigned_task_member) -> None:
+    user, _organization, _membership, _workflow, task = assigned_task_member
+    task.status = "completed"
+    task.save(update_fields=["status", "updated_at"])
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(f"/api/v1/my-work/tasks/{task.id}/form/")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "resource_not_found"
+
+
+@pytest.mark.django_db
+def test_task_form_save_hides_closed_task_existence(assigned_task_member) -> None:
+    user, _organization, _membership, _workflow, task = assigned_task_member
+    task.status = "completed"
+    task.save(update_fields=["status", "updated_at"])
+    client = Client()
+    client.force_login(user)
+
+    response = client.put(
+        f"/api/v1/my-work/tasks/{task.id}/form/",
+        data={
+            "expectedTaskRevision": "1",
+            "controls": [
+                {
+                    "controlId": "binding-1",
+                    "fieldId": "field-1",
+                    "value": "Ana Perez",
+                }
+            ],
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "task-form-save-closed-task"},
+    )
+
+    assert response.status_code == 404
+    payload = response.content.decode("utf-8")
+    assert str(task.id) not in payload
+
+
+@pytest.mark.django_db
+def test_task_form_save_hides_reassigned_task_existence(
+    assigned_task_member,
+    django_user_model,
+) -> None:
+    user, organization, _membership, _workflow, task = assigned_task_member
+    other_user = django_user_model.objects.create_user(
+        username="reassigned-member",
+        email="reassigned-member@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Reassigned Member",
+    )
+    other_membership = Membership.objects.create(
+        organization=organization,
+        user=other_user,
+        role=MembershipRole.MEMBER,
+    )
+    task.assignee_membership_id = other_membership.id
+    task.assignee_user_id = other_user.id
+    task.save(update_fields=["assignee_membership_id", "assignee_user_id", "updated_at"])
+    client = Client()
+    client.force_login(user)
+
+    response = client.put(
+        f"/api/v1/my-work/tasks/{task.id}/form/",
+        data={
+            "expectedTaskRevision": "1",
+            "controls": [
+                {
+                    "controlId": "binding-1",
+                    "fieldId": "field-1",
+                    "value": "Ana Perez",
+                }
+            ],
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "task-form-save-reassigned-task"},
+    )
+
+    assert response.status_code == 404
+    payload = response.content.decode("utf-8")
+    assert str(task.id) not in payload
 
 
 @pytest.mark.django_db

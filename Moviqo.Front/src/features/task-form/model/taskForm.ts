@@ -19,6 +19,7 @@ export type TaskFormControl = {
 
 export type TaskFormDocument = {
   taskId: string;
+  processId: string;
   workflowId: string;
   workflowName: string;
   taskTitle: string;
@@ -34,6 +35,7 @@ export type TaskFormEditorControl = TaskFormControl;
 
 export type TaskFormEditorState = {
   taskId: string;
+  processId: string;
   workflowName: string;
   taskTitle: string;
   status: string;
@@ -42,6 +44,7 @@ export type TaskFormEditorState = {
   controls: TaskFormEditorControl[];
   hasLocalChanges: boolean;
   saveStatus: "idle" | "saving" | "error" | "success";
+  saveRequestKey: string | null;
   errorCode: string | null;
   errorMessages: string[];
   invalidFieldNames: string[];
@@ -58,6 +61,7 @@ export const createTaskFormEditorState = (
   document: TaskFormDocument
 ): TaskFormEditorState => ({
   taskId: document.taskId,
+  processId: document.processId,
   workflowName: document.workflowName,
   taskTitle: document.taskTitle,
   status: document.status,
@@ -66,6 +70,7 @@ export const createTaskFormEditorState = (
   controls: structuredClone(document.form.controls),
   hasLocalChanges: false,
   saveStatus: "idle",
+  saveRequestKey: null,
   errorCode: null,
   errorMessages: [],
   invalidFieldNames: [],
@@ -76,7 +81,7 @@ export const reduceTaskFormEditorState = (
   state: TaskFormEditorState,
   action:
     | { type: "value-updated"; controlId: string; value: string }
-    | { type: "save-requested" }
+    | { type: "save-requested"; requestKey: string }
     | {
         type: "save-failed";
         errorCode: string;
@@ -96,6 +101,7 @@ export const reduceTaskFormEditorState = (
       ),
       hasLocalChanges: true,
       saveStatus: "idle",
+      saveRequestKey: null,
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
@@ -106,6 +112,7 @@ export const reduceTaskFormEditorState = (
     return {
       ...state,
       saveStatus: "saving",
+      saveRequestKey: action.requestKey,
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
@@ -116,6 +123,7 @@ export const reduceTaskFormEditorState = (
     return {
       ...state,
       saveStatus: "error",
+      saveRequestKey: state.saveRequestKey,
       errorCode: action.errorCode,
       errorMessages: action.errorMessages,
       invalidFieldNames: action.invalidFieldNames,
@@ -155,7 +163,8 @@ export const readTaskFormDocument = async (taskId: string): Promise<TaskFormResu
 };
 
 export const saveTaskFormDocument = async (
-  state: TaskFormEditorState
+  state: TaskFormEditorState,
+  requestKey: string
 ): Promise<TaskFormResult> => {
   try {
     const response = await (
@@ -172,7 +181,7 @@ export const saveTaskFormDocument = async (
         }))
       },
       headers: {
-        "Idempotency-Key": createTaskFormSaveIdempotencyKey(state.taskId)
+        "Idempotency-Key": requestKey
       }
     });
 
@@ -189,5 +198,5 @@ export const saveTaskFormDocument = async (
   }
 };
 
-const createTaskFormSaveIdempotencyKey = (taskId: string) =>
+export const createTaskFormSaveIdempotencyKey = (taskId: string) =>
   `task-form-save-${taskId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;

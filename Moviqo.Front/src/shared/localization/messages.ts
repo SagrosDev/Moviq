@@ -32,6 +32,8 @@ export type MessageKey =
   | "status.ready"
   | "status.blocked"
   | "status.needsAttention"
+  | "status.assigned"
+  | "status.inProgress"
   | "validation.required"
   | "validation.generic"
   | "validation.email"
@@ -94,6 +96,9 @@ export type MessageKey =
   | "myWork.myTasks.title"
   | "myWork.myTasks.summary"
   | "myWork.myTasks.empty"
+  | "myWork.myTasks.status"
+  | "myWork.myTasks.process"
+  | "myWork.myTasks.open"
   | "myWork.startWorkflows.title"
   | "myWork.startWorkflows.summary"
   | "myWork.startWorkflows.empty"
@@ -219,10 +224,12 @@ export type MessageKey =
   | "workflowDesign.editor.fieldSummaryPrefix"
   | "workflowDesign.editor.fieldEmpty"
   | "taskForm.eyebrow"
+  | "taskForm.process"
   | "taskForm.status"
   | "taskForm.revision"
   | "taskForm.errorTitle"
   | "taskForm.retry"
+  | "taskForm.reloadLatest"
   | "taskForm.save"
   | "taskForm.saving"
   | "taskForm.saveSuccess"
@@ -343,6 +350,8 @@ export const spanishMessages: MessageDictionary = {
   "status.ready": "Listo",
   "status.blocked": "Bloqueado",
   "status.needsAttention": "Necesita atencion",
+  "status.assigned": "Asignada",
+  "status.inProgress": "En curso",
   "validation.required": "Completa este campo para continuar.",
   "validation.generic": "Revisa este campo e intenta de nuevo.",
   "validation.email": "Escribe un correo electronico valido.",
@@ -417,6 +426,9 @@ export const spanishMessages: MessageDictionary = {
   "myWork.myTasks.title": "Mis tareas",
   "myWork.myTasks.summary": "Trabajo accionable asignado a tu membresia activa.",
   "myWork.myTasks.empty": "No tienes tareas autorizadas para atender ahora.",
+  "myWork.myTasks.status": "Estado:",
+  "myWork.myTasks.process": "Proceso:",
+  "myWork.myTasks.open": "Abrir tarea",
   "myWork.startWorkflows.title": "Iniciar un proceso",
   "myWork.startWorkflows.summary": "Flujos publicados que tu membresia puede iniciar.",
   "myWork.startWorkflows.empty": "No hay procesos autorizados para iniciar ahora.",
@@ -565,10 +577,12 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.fieldSummaryPrefix": "Campo listo:",
   "workflowDesign.editor.fieldEmpty": "Todavia no has creado un campo reutilizable.",
   "taskForm.eyebrow": "Tarea activa",
+  "taskForm.process": "Proceso:",
   "taskForm.status": "Estado:",
   "taskForm.revision": "Revision:",
   "taskForm.errorTitle": "Corrige este formulario antes de guardar",
   "taskForm.retry": "Reintentar",
+  "taskForm.reloadLatest": "Recargar lo ultimo",
   "taskForm.save": "Guardar borrador",
   "taskForm.saving": "Guardando borrador",
   "taskForm.saveSuccess": "El servidor guardo el avance autorizado.",
@@ -690,6 +704,8 @@ export const englishMessages: Partial<MessageDictionary> = {
   "status.ready": "Ready",
   "status.blocked": "Blocked",
   "status.needsAttention": "Needs attention",
+  "status.assigned": "Assigned",
+  "status.inProgress": "In progress",
   "validation.required": "Complete this field to continue.",
   "validation.generic": "Review this field and try again.",
   "validation.email": "Enter a valid email address.",
@@ -765,6 +781,9 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.myTasks.title": "My tasks",
   "myWork.myTasks.summary": "Actionable work assigned to your active membership.",
   "myWork.myTasks.empty": "You do not have any authorized tasks to work on right now.",
+  "myWork.myTasks.status": "Status:",
+  "myWork.myTasks.process": "Process:",
+  "myWork.myTasks.open": "Open task",
   "myWork.startWorkflows.title": "Start a process",
   "myWork.startWorkflows.summary": "Published workflows your membership may start.",
   "myWork.startWorkflows.empty": "There are no authorized processes to start right now.",
@@ -914,10 +933,12 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.fieldSummaryPrefix": "Field ready:",
   "workflowDesign.editor.fieldEmpty": "You have not created a reusable field yet.",
   "taskForm.eyebrow": "Active task",
+  "taskForm.process": "Process:",
   "taskForm.status": "Status:",
   "taskForm.revision": "Revision:",
   "taskForm.errorTitle": "Correct this form before saving",
   "taskForm.retry": "Retry",
+  "taskForm.reloadLatest": "Reload latest",
   "taskForm.save": "Save draft",
   "taskForm.saving": "Saving draft",
   "taskForm.saveSuccess": "The server saved the authorized progress.",

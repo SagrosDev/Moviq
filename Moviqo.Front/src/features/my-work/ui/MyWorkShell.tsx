@@ -23,6 +23,16 @@ type MyWorkShellProps = {
 type Translate = ReturnType<typeof useLanguage>["t"];
 
 const regionOrder: MyWorkRegion[] = ["myTasks", "startWorkflows", "myProcesses"];
+const toProcessReference = (processId: string) => processId.slice(0, 8);
+const statusLabelFor = (status: string, t: Translate) => {
+  if (status === "assigned") {
+    return t("status.assigned");
+  }
+  if (status === "in_progress") {
+    return t("status.inProgress");
+  }
+  return status;
+};
 
 export const MyWorkShell = ({
   snapshot,
@@ -140,9 +150,13 @@ const renderMyTasks = (
     (item) => <article key={item.taskId} className="my-work-card">
       <h3>{item.title}</h3>
       <p>{item.workflowName}</p>
-      <p>{item.status}</p>
-      <p>{item.currentStep}</p>
-      <p>{item.assignee}</p>
+      <p>{`${t("myWork.myTasks.status")} ${statusLabelFor(item.status, t)}`}</p>
+      <p>{`${t("myWork.myTasks.process")} ${toProcessReference(item.processId)}`}</p>
+      <div className="button-row">
+        <a className="button" href={item.openTaskRoute}>
+          {t("myWork.myTasks.open")}
+        </a>
+      </div>
     </article>,
     (dashboard) => dashboard.myTasks
   );

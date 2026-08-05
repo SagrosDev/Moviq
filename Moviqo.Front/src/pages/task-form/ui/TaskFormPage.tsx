@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useState } from "react";
 import { protectedEntryPath, useSession } from "../../../features/authentication";
 import {
+  createTaskFormSaveIdempotencyKey,
   createTaskFormEditorState,
   readTaskFormDocument,
   reduceTaskFormEditorState,
@@ -36,6 +37,7 @@ export const TaskFormPage = ({ taskId }: TaskFormPageProps) => {
     reduceTaskFormEditorState,
     document ?? {
       taskId,
+      processId: "",
       workflowId: "",
       workflowName: "",
       taskTitle: "",
@@ -88,8 +90,9 @@ export const TaskFormPage = ({ taskId }: TaskFormPageProps) => {
   }
 
   const save = async () => {
-    dispatch({ type: "save-requested" });
-    const result = await saveTaskFormDocument(editorState);
+    const requestKey = editorState.saveRequestKey ?? createTaskFormSaveIdempotencyKey(editorState.taskId);
+    dispatch({ type: "save-requested", requestKey });
+    const result = await saveTaskFormDocument(editorState, requestKey);
     if (!result.ok) {
       dispatch({
         type: "save-failed",
@@ -142,7 +145,8 @@ export const TaskFormPage = ({ taskId }: TaskFormPageProps) => {
       ) : (
         <TaskFormPanel
           state={editorState}
-          onRetry={() => void retry()}
+          onRetrySave={() => void save()}
+          onReloadLatest={() => void retry()}
           onSave={() => void save()}
           onValueChange={(controlId, value) =>
             dispatch({ type: "value-updated", controlId, value })

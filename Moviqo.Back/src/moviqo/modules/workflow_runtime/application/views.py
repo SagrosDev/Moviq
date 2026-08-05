@@ -59,8 +59,9 @@ class MyTaskSummarySerializer(serializers.Serializer):
     title = serializers.CharField()
     workflowName = serializers.CharField()
     status = serializers.CharField()
-    assignee = serializers.CharField()
-    currentStep = serializers.CharField()
+    processId = serializers.UUIDField()
+    activatedAt = serializers.DateTimeField()
+    openTaskRoute = serializers.CharField()
 
 
 class MyProcessSummarySerializer(serializers.Serializer):
@@ -121,6 +122,7 @@ class TaskFormBodySerializer(serializers.Serializer):
 
 class TaskFormDocumentSerializer(serializers.Serializer):
     taskId = serializers.UUIDField()
+    processId = serializers.UUIDField()
     workflowId = serializers.UUIDField()
     workflowName = serializers.CharField()
     taskTitle = serializers.CharField()

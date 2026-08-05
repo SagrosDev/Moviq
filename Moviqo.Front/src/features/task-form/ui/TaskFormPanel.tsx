@@ -5,26 +5,41 @@ type TaskFormPanelProps = {
   state: TaskFormEditorState;
   onValueChange: (controlId: string, value: string) => void;
   onSave: () => void;
-  onRetry: () => void;
+  onRetrySave: () => void;
+  onReloadLatest: () => void;
+};
+
+const toProcessReference = (processId: string) => processId.slice(0, 8);
+const statusLabelFor = (status: string, t: ReturnType<typeof useLanguage>["t"]) => {
+  if (status === "assigned") {
+    return t("status.assigned");
+  }
+  if (status === "in_progress") {
+    return t("status.inProgress");
+  }
+  return status;
 };
 
 export const TaskFormPanel = ({
   state,
   onValueChange,
   onSave,
-  onRetry
+  onRetrySave,
+  onReloadLatest
 }: TaskFormPanelProps) => {
   const { t } = useLanguage();
+  const inputsDisabled = state.saveStatus === "saving";
 
   return <section className="task-form-shell" aria-labelledby="task-form-title">
     <header className="page-heading">
       <p className="eyebrow">{t("taskForm.eyebrow")}</p>
       <h1 id="task-form-title">{state.taskTitle}</h1>
       <p className="lede">{state.workflowName}</p>
+      <p>{`${t("taskForm.process")} ${toProcessReference(state.processId)}`}</p>
     </header>
     <article className="task-form-panel">
       <div className="task-form-panel__meta">
-        <span>{t("taskForm.status")} {state.status}</span>
+        <span>{t("taskForm.status")} {statusLabelFor(state.status, t)}</span>
         <span>{t("taskForm.revision")} {state.taskRevision}</span>
       </div>
       {state.errorMessages.length > 0 ? <div className="workflow-editor__errors" role="alert">
@@ -32,9 +47,14 @@ export const TaskFormPanel = ({
         <ul>
           {state.errorMessages.map((message) => <li key={message}>{message}</li>)}
         </ul>
-        <button className="button" data-variant="secondary" type="button" onClick={onRetry}>
-          {t("taskForm.retry")}
-        </button>
+        <div className="button-row">
+          <button className="button" data-variant="secondary" type="button" onClick={onRetrySave}>
+            {t("taskForm.retry")}
+          </button>
+          <button className="button" data-variant="secondary" type="button" onClick={onReloadLatest}>
+            {t("taskForm.reloadLatest")}
+          </button>
+        </div>
       </div> : null}
       <div className="task-form-grid">
         {state.controls.map((control) => {
@@ -50,6 +70,7 @@ export const TaskFormPanel = ({
               type="text"
               value={control.value}
               placeholder={control.placeholder}
+              disabled={inputsDisabled}
               aria-invalid={Boolean(invalidMessage)}
               onChange={(event) => onValueChange(control.controlId, event.target.value)}
             />

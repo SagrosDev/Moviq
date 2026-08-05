@@ -13,10 +13,12 @@ from moviqo.modules.workflow_design.application import (
     read_workflow_draft_snapshot,
 )
 from moviqo.modules.workflow_runtime.models import TaskOccurrence, TaskProcessFieldValue
+from moviqo.modules.workflow_runtime.application.my_work import OPEN_TASK_STATUSES
 
 TASK_FORM_SAVE_COMMAND = "workflow-runtime.save-task-form-draft"
 SAVE_OUTCOME_ACCEPTED = "accepted"
 SAVE_OUTCOME_REJECTED = "rejected"
+SAVE_ERROR_RESOURCE_NOT_FOUND = "resource_not_found"
 
 
 class TaskFormValidationAPIError(APIException):
@@ -44,6 +46,7 @@ class TaskFormProjection:
     task: TaskOccurrence
     workflow_name: str
     task_title: str
+    process_id: str
     controls: list[dict[str, Any]]
 
 
@@ -63,19 +66,6 @@ def save_task_form_draft(
     idempotency_key: str,
     request_hash: str,
 ) -> dict[str, Any] | None:
-    existing_task = (
-        TaskOccurrence.objects.filter(
-            id=task_id,
-            organization_id=tenant_context.organization_id,
-            assignee_membership_id=tenant_context.membership_id,
-            assignee_user_id=tenant_context.user_id,
-        )
-        .only("id")
-        .first()
-    )
-    if existing_task is None:
-        return None
-
     execution = execute_atomic_command(
         tenant_context=tenant_context,
         command_type=TASK_FORM_SAVE_COMMAND,
@@ -95,6 +85,8 @@ def save_task_form_draft(
         return outcome["payload"]
 
     error = outcome["error"]
+    if error["code"] == SAVE_ERROR_RESOURCE_NOT_FOUND:
+        return None
     if error["code"] == TaskFormRevisionConflictError.default_code:
         raise TaskFormRevisionConflictError(invalid_params=error["invalidParams"])
     raise TaskFormValidationAPIError(invalid_params=error["invalidParams"])
@@ -109,19 +101,21 @@ def _save_task_form_side_effects(
     submitted_controls: list[dict[str, Any]],
 ) -> dict[str, Any]:
     task = (
-        TaskOccurrence.objects.select_related("workflow")
-        .select_for_update()
+        TaskOccurrence.objects.select_related("workflow", "workflow_version")
+        .select_for_update(of=("self",))
         .filter(
             id=task_id,
             organization_id=tenant_context.organization_id,
             assignee_membership_id=tenant_context.membership_id,
             assignee_user_id=tenant_context.user_id,
+            process__isnull=False,
+            status__in=OPEN_TASK_STATUSES,
         )
         .first()
     )
     if task is None:
         return _rejected_save_outcome(
-            code=TaskFormValidationAPIError.default_code,
+            code=SAVE_ERROR_RESOURCE_NOT_FOUND,
             invalid_params=[
                 {
                     "name": "nonFieldErrors",
@@ -218,12 +212,14 @@ def _load_task_form_projection(
     task_id,
 ) -> TaskFormProjection | None:
     task = (
-        TaskOccurrence.objects.select_related("workflow")
+        TaskOccurrence.objects.select_related("workflow", "workflow_version", "process")
         .filter(
             id=task_id,
             organization_id=tenant_context.organization_id,
             assignee_membership_id=tenant_context.membership_id,
             assignee_user_id=tenant_context.user_id,
+            process__isnull=False,
+            status__in=OPEN_TASK_STATUSES,
         )
         .first()
     )
@@ -280,6 +276,7 @@ def _build_task_form_projection(task: TaskOccurrence) -> TaskFormProjection | No
         task=task,
         workflow_name=_workflow_name_from_document(document=document, fallback=task.workflow.name),
         task_title=task_title,
+        process_id=str(task.process_id),
         controls=controls,
     )
 
@@ -410,6 +407,7 @@ def _workflow_name_from_document(*, document: dict[str, Any], fallback: str) -> 
 def _task_form_response(*, projection: TaskFormProjection) -> dict[str, Any]:
     return {
         "taskId": str(projection.task.id),
+        "processId": projection.process_id,
         "workflowId": str(projection.task.workflow_id),
         "workflowName": projection.workflow_name,
         "taskTitle": projection.task_title,

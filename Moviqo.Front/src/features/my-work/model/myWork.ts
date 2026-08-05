@@ -32,8 +32,9 @@ export type MyWorkTask = {
   title: string;
   workflowName: string;
   status: string;
-  assignee: string;
-  currentStep: string;
+  processId: string;
+  activatedAt: string;
+  openTaskRoute: string;
 };
 
 export type MyWorkProcess = {

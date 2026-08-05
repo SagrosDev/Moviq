@@ -115,3 +115,96 @@ test("my-work shows loading, safe retry, mobile resilience, and revoked-session 
   await expect(page.getByRole("heading", { name: "Ingresa a Moviqo" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mi trabajo" })).toHaveCount(0);
 });
+
+test("assigned task opens from my-work and saves authorized progress without false success", async ({
+  page
+}) => {
+  const taskDocument = {
+    taskId: "01987df4-ae8a-7000-8000-000000000311",
+    processId: "01987df4-ae8a-7000-8000-000000000211",
+    workflowId: "01987df4-ae8a-7000-8000-000000000110",
+    workflowName: "Aprobaciones",
+    taskTitle: "Revisar solicitud",
+    taskElementId: "task-1",
+    status: "assigned",
+    taskRevision: "1",
+    definitionRevision: "2",
+    actions: { saveDraft: true, complete: false },
+    form: {
+      controls: [
+        {
+          controlId: "binding-1",
+          fieldId: "field-1",
+          kind: "shortText",
+          label: "Nombre del solicitante",
+          helpText: "Usa el nombre completo.",
+          placeholder: "Ejemplo: Ana Perez",
+          width: "full",
+          position: 0,
+          value: ""
+        }
+      ]
+    }
+  };
+  const savedDocument = {
+    ...taskDocument,
+    status: "in_progress",
+    taskRevision: "2",
+    form: {
+      controls: [{ ...taskDocument.form.controls[0], value: "Ana Perez" }]
+    }
+  };
+  const dashboard = {
+    myProcesses: { items: [], limit: 12, hasMore: false },
+    myTasks: {
+      items: [
+        {
+          taskId: taskDocument.taskId,
+          title: taskDocument.taskTitle,
+          workflowName: taskDocument.workflowName,
+          status: "assigned",
+          processId: taskDocument.processId,
+          activatedAt: "2026-08-05T00:00:00Z",
+          openTaskRoute: `/my-work/tasks/${taskDocument.taskId}`
+        }
+      ],
+      limit: 12,
+      hasMore: false
+    },
+    startWorkflows: { items: [], limit: 6, hasMore: false }
+  };
+  let saveRequestSeen = false;
+
+  await page.route("**/api/v1/auth/session/", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(authenticatedSession) });
+  });
+  await page.route("**/api/v1/my-work/", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(dashboard) });
+  });
+  await page.route(`**/api/v1/my-work/tasks/${taskDocument.taskId}/form/`, async (route, request) => {
+    if (request.method() === "GET") {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(taskDocument) });
+      return;
+    }
+
+    saveRequestSeen = true;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(savedDocument) });
+  });
+
+  await page.goto("/my-work");
+  await page.getByRole("link", { name: "Abrir tarea" }).click();
+
+  await expect(page).toHaveURL(new RegExp(`/my-work/tasks/${taskDocument.taskId}$`));
+  await expect(page.getByRole("heading", { name: "Revisar solicitud" })).toBeVisible();
+  await expect(page.getByText("Proceso: 01987df4")).toBeVisible();
+
+  await page.getByRole("textbox", { name: "Nombre del solicitante" }).fill("Ana Perez");
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+
+  await expect(page.getByRole("button", { name: "Guardando borrador" })).toBeVisible();
+  await expect(page.getByText("El servidor guardo el avance autorizado.")).toHaveCount(0);
+  await expect(page.getByText("El servidor guardo el avance autorizado.")).toBeVisible();
+  expect(saveRequestSeen).toBe(true);
+  await expect(page.getByRole("textbox", { name: "Nombre del solicitante" })).toHaveValue("Ana Perez");
+});

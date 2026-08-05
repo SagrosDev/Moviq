@@ -18,8 +18,8 @@ from moviqo.modules.workflow_design.application import (
     publish_workflow_version,
     save_workflow_draft,
 )
-from moviqo.modules.workflow_runtime.application.complete_task import complete_task
 from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowVersion
+from moviqo.modules.workflow_runtime.application.complete_task import complete_task
 from moviqo.modules.workflow_runtime.models import ProcessInstance, TaskOccurrence
 
 
@@ -918,7 +918,9 @@ def test_my_work_dashboard_returns_completed_process_summaries_for_authorized_pa
             "systemStatus": "completed",
             "startedAt": participant_dashboard.json()["myProcesses"]["items"][0]["startedAt"],
             "completedAt": participant_dashboard.json()["myProcesses"]["items"][0]["completedAt"],
-            "lastActivityAt": participant_dashboard.json()["myProcesses"]["items"][0]["lastActivityAt"],
+            "lastActivityAt": participant_dashboard.json()["myProcesses"]["items"][0][
+                "lastActivityAt"
+            ],
             "viewRoute": f"/my-work/processes/{start_response.json()['processId']}",
             "contributionSummary": {
                 "kind": "submittedValue",
@@ -1133,8 +1135,20 @@ def test_completed_process_summary_uses_bound_task_field_order_for_safe_contribu
             {"id": "field-2", "kind": "shortText", "label": "Secondary note"},
         ],
         "formBindings": [
-            {"id": "binding-2", "taskElementId": "task-1", "fieldId": "field-2", "width": "full", "position": 1},
-            {"id": "binding-1", "taskElementId": "task-1", "fieldId": "field-1", "width": "full", "position": 0},
+            {
+                "id": "binding-2",
+                "taskElementId": "task-1",
+                "fieldId": "field-2",
+                "width": "full",
+                "position": 1,
+            },
+            {
+                "id": "binding-1",
+                "taskElementId": "task-1",
+                "fieldId": "field-1",
+                "width": "full",
+                "position": 0,
+            },
         ],
         "publication": {
             "starter": {

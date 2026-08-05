@@ -16,7 +16,11 @@ from moviqo.modules.workflow_design.application import (
 from moviqo.modules.workflow_runtime.application.start_process import (
     list_startable_workflows,
 )
-from moviqo.modules.workflow_runtime.models import ProcessInstance, TaskOccurrence, TaskProcessFieldValue
+from moviqo.modules.workflow_runtime.models import (
+    ProcessInstance,
+    TaskOccurrence,
+    TaskProcessFieldValue,
+)
 
 OPEN_TASK_STATUSES = {"assigned", "in_progress"}
 
@@ -273,7 +277,10 @@ def _build_authorized_process_summary(
 
     return AuthorizedProcessSummary(
         process=process,
-        workflow_name=_workflow_name_from_document(document=document, fallback=process.workflow.name),
+        workflow_name=_workflow_name_from_document(
+            document=document,
+            fallback=process.workflow.name,
+        ),
         workflow_version_number=process.workflow_version.version_number,
         current_step=_resolve_process_current_step(process=process, document=document),
         involvement=involvement,
@@ -440,7 +447,10 @@ def _build_process_timeline(
             {
                 "eventKind": event_kind,
                 "label": label,
-                "actorDisplay": actor_display_names.get(str(audit.actor_membership_id), "Authorized member"),
+                "actorDisplay": actor_display_names.get(
+                    str(audit.actor_membership_id),
+                    "Authorized member",
+                ),
                 "occurredAt": audit.created_at.isoformat(),
                 "taskPosition": task_position,
             }

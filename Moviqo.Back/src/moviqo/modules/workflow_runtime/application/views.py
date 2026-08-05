@@ -211,7 +211,10 @@ class MyWorkDashboardView(APIView):
     )
     def get(self, request) -> Response:
         tenant_context = _require_runtime_membership(request)
-        my_processes_page = _positive_integer(request.query_params.get("myProcessesPage"), default=1)
+        my_processes_page = _positive_integer(
+            request.query_params.get("myProcessesPage"),
+            default=1,
+        )
         my_processes_search = request.query_params.get("myProcessesSearch", "")
         return Response(
             read_my_work_dashboard(

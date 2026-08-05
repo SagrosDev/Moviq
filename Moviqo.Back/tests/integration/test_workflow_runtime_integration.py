@@ -22,8 +22,8 @@ from moviqo.modules.workflow_runtime.application.my_work import (
     read_my_work_dashboard,
     read_process_detail,
 )
-from moviqo.modules.workflow_runtime.application.task_form import save_task_form_draft
 from moviqo.modules.workflow_runtime.application.start_process import start_process
+from moviqo.modules.workflow_runtime.application.task_form import save_task_form_draft
 from moviqo.modules.workflow_runtime.models import ProcessInstance, TaskOccurrence
 
 
@@ -259,7 +259,10 @@ def test_completed_process_tracking_reads_committed_audit_order(
         "task_completed",
         "process_completed",
     ]
-    assert [audit.event_type for audit in TransactionalAuditRecord.objects.order_by("created_at", "id")] == [
+    assert [
+        audit.event_type
+        for audit in TransactionalAuditRecord.objects.order_by("created_at", "id")
+    ] == [
         "workflow-runtime.process-started",
         "workflow-runtime.task-draft-saved",
         "workflow-runtime.task-completed",

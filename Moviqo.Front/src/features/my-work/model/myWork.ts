@@ -1,6 +1,7 @@
 import {
   createApiClient,
   createQueryKey,
+  normalizeApiProblem,
   queryRegistry,
   readApiProblem,
   type NormalizedApiProblem,
@@ -12,6 +13,18 @@ export type MyWorkStartWorkflow = {
   title: string;
   description: string;
   availability: string;
+  versionNumber: number;
+};
+
+export type StartWorkflowAccepted = {
+  processId: string;
+  taskId: string;
+  workflow: {
+    workflowId: string;
+    title: string;
+    versionNumber: number;
+  };
+  destinationRoute: string;
 };
 
 export type MyWorkTask = {
@@ -49,6 +62,9 @@ export type MyWorkDashboard = {
 export type MyWorkRegion = "myTasks" | "startWorkflows" | "myProcesses";
 export type MyWorkDashboardResult =
   | { ok: true; data: MyWorkDashboard }
+  | { ok: false; error: NormalizedApiProblem };
+export type StartWorkflowResult =
+  | { ok: true; data: StartWorkflowAccepted }
   | { ok: false; error: NormalizedApiProblem };
 
 export const myWorkQueryKey = createQueryKey("my-work", "dashboard");
@@ -96,3 +112,35 @@ export const loadMyWorkDashboard = async (force = false) => {
   queryRegistry.setSnapshot(myWorkQueryKey, snapshot);
   return snapshot;
 };
+
+export const startWorkflow = async (
+  workflowId: string,
+  idempotencyKey: string
+): Promise<StartWorkflowResult> => {
+  try {
+    const response = await myWorkClient.POST("/api/v1/my-work/start-workflows/{workflow_id}/start/", {
+      params: {
+        header: {
+          "Idempotency-Key": idempotencyKey
+        },
+        path: {
+          workflow_id: workflowId
+        }
+      }
+    });
+    if (!response.response.ok) {
+      return { ok: false, error: await readApiProblem(response.response) };
+    }
+
+    queryRegistry.invalidate(myWorkQueryKey, "workflow-started");
+    return {
+      ok: true,
+      data: response.data as StartWorkflowAccepted
+    };
+  } catch {
+    return { ok: false, error: normalizeApiProblem(undefined, 0) };
+  }
+};
+
+export const createWorkflowStartIdempotencyKey = (workflowId: string) =>
+  `workflow-start-${workflowId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;

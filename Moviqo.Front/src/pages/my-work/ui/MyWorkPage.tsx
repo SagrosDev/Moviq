@@ -1,6 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { protectedEntryPath, useSession } from "../../../features/authentication";
-import { MyWorkShell, useMyWorkDashboard } from "../../../features/my-work";
+import {
+  MyWorkShell,
+  createWorkflowStartIdempotencyKey,
+  startWorkflow,
+  useMyWorkDashboard
+} from "../../../features/my-work";
 import { canCreateWorkflow } from "../../../features/workflow-design";
 import { LanguageSelector, useLanguage } from "../../../shared/localization";
 
@@ -8,6 +13,9 @@ export const MyWorkPage = () => {
   const { t } = useLanguage();
   const { signOutCurrentSession, state } = useSession();
   const { retry, snapshot } = useMyWorkDashboard(state.status === "authenticated");
+  const [startingWorkflowId, setStartingWorkflowId] = useState<string | null>(null);
+  const [startFeedbackByWorkflowId, setStartFeedbackByWorkflowId] = useState<Record<string, string | undefined>>({});
+  const [startKeyByWorkflowId, setStartKeyByWorkflowId] = useState<Record<string, string | undefined>>({});
 
   useEffect(() => {
     if (state.status === "anonymous") {
@@ -27,6 +35,39 @@ export const MyWorkPage = () => {
     </div>;
   }
 
+  const handleStartWorkflow = async (workflowId: string) => {
+    const idempotencyKey = startKeyByWorkflowId[workflowId] ?? createWorkflowStartIdempotencyKey(workflowId);
+    if (!startKeyByWorkflowId[workflowId]) {
+      setStartKeyByWorkflowId((current) => ({
+        ...current,
+        [workflowId]: idempotencyKey
+      }));
+    }
+    setStartingWorkflowId(workflowId);
+    setStartFeedbackByWorkflowId((current) => ({
+      ...current,
+      [workflowId]: undefined
+    }));
+    const result = await startWorkflow(workflowId, idempotencyKey);
+    if (!result.ok) {
+      setStartingWorkflowId(null);
+      setStartFeedbackByWorkflowId((current) => ({
+        ...current,
+        [workflowId]: t("myWork.startWorkflows.startError")
+      }));
+      return;
+    }
+
+    setStartFeedbackByWorkflowId((current) => ({
+      ...current,
+      [workflowId]: t("myWork.startWorkflows.openingTask")
+    }));
+    setStartingWorkflowId(null);
+    window.setTimeout(() => {
+      window.location.assign(result.data.destinationRoute);
+    }, 0);
+  };
+
   return <div className="app-shell">
     <header className="app-header">
       <a className="brand" href={protectedEntryPath}>{t("app.nav.work")}</a>
@@ -44,8 +85,11 @@ export const MyWorkPage = () => {
     </header>
     <main className="app-main">
       <MyWorkShell
+        onStartWorkflow={(workflowId) => void handleStartWorkflow(workflowId)}
         snapshot={snapshot}
         onRetry={retry}
+        startFeedbackByWorkflowId={startFeedbackByWorkflowId}
+        startingWorkflowId={startingWorkflowId}
         showWorkflowCreation={canCreateWorkflow(state.context.membership.role)}
         workflowCreationHref="/my-work/workflows/new"
       />

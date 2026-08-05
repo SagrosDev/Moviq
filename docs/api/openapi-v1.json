@@ -273,6 +273,90 @@
                 }
             }
         },
+        "/api/v1/my-work/start-workflows/{workflow_id}/start/": {
+            "post": {
+                "operationId": "workflow_runtime_start_process",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "workflow_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "my-work"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StartProcessAccepted"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "403": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "409": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/my-work/tasks/{task_id}/form/": {
             "get": {
                 "operationId": "workflow_runtime_task_form_detail",
@@ -1701,6 +1785,52 @@
                     "password"
                 ]
             },
+            "StartProcessAccepted": {
+                "type": "object",
+                "properties": {
+                    "processId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "taskId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "workflow": {
+                        "$ref": "#/components/schemas/StartProcessAcceptedWorkflow"
+                    },
+                    "destinationRoute": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "destinationRoute",
+                    "processId",
+                    "taskId",
+                    "workflow"
+                ]
+            },
+            "StartProcessAcceptedWorkflow": {
+                "type": "object",
+                "properties": {
+                    "workflowId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "versionNumber": {
+                        "type": "integer",
+                        "minimum": 1
+                    }
+                },
+                "required": [
+                    "title",
+                    "versionNumber",
+                    "workflowId"
+                ]
+            },
             "StartWorkflowCollection": {
                 "type": "object",
                 "properties": {
@@ -1739,12 +1869,17 @@
                     },
                     "availability": {
                         "type": "string"
+                    },
+                    "versionNumber": {
+                        "type": "integer",
+                        "minimum": 1
                     }
                 },
                 "required": [
                     "availability",
                     "description",
                     "title",
+                    "versionNumber",
                     "workflowId"
                 ]
             },

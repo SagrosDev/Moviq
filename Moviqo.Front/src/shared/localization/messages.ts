@@ -97,6 +97,11 @@ export type MessageKey =
   | "myWork.startWorkflows.title"
   | "myWork.startWorkflows.summary"
   | "myWork.startWorkflows.empty"
+  | "myWork.startWorkflows.version"
+  | "myWork.startWorkflows.start"
+  | "myWork.startWorkflows.starting"
+  | "myWork.startWorkflows.startError"
+  | "myWork.startWorkflows.openingTask"
   | "myWork.myProcesses.title"
   | "myWork.myProcesses.summary"
   | "myWork.myProcesses.empty"
@@ -415,6 +420,11 @@ export const spanishMessages: MessageDictionary = {
   "myWork.startWorkflows.title": "Iniciar un proceso",
   "myWork.startWorkflows.summary": "Flujos publicados que tu membresia puede iniciar.",
   "myWork.startWorkflows.empty": "No hay procesos autorizados para iniciar ahora.",
+  "myWork.startWorkflows.version": "Version",
+  "myWork.startWorkflows.start": "Iniciar",
+  "myWork.startWorkflows.starting": "Iniciando",
+  "myWork.startWorkflows.startError": "No pudimos iniciar este proceso. Intenta de nuevo.",
+  "myWork.startWorkflows.openingTask": "Abriremos la primera tarea autorizada.",
   "myWork.myProcesses.title": "Mis procesos",
   "myWork.myProcesses.summary": "Procesos en los que has participado o que puedes seguir.",
   "myWork.myProcesses.empty": "No tienes procesos autorizados para seguir ahora.",
@@ -758,6 +768,11 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.startWorkflows.title": "Start a process",
   "myWork.startWorkflows.summary": "Published workflows your membership may start.",
   "myWork.startWorkflows.empty": "There are no authorized processes to start right now.",
+  "myWork.startWorkflows.version": "Version",
+  "myWork.startWorkflows.start": "Start",
+  "myWork.startWorkflows.starting": "Starting",
+  "myWork.startWorkflows.startError": "We could not start this process. Try again.",
+  "myWork.startWorkflows.openingTask": "Opening the first authorized task.",
   "myWork.myProcesses.title": "My processes",
   "myWork.myProcesses.summary": "Processes you have participated in or may follow.",
   "myWork.myProcesses.empty": "You do not have any authorized processes to follow right now.",

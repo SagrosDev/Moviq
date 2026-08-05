@@ -62,8 +62,11 @@ test("my-work shell renders semantic regions and localized empty states", () => 
         adapter: memoryLanguagePreferenceAdapter(),
         browserLanguages: [],
         children: createElement(MyWorkShell, {
+          onStartWorkflow: () => undefined,
           onRetry: () => undefined,
           showWorkflowCreation: true,
+          startFeedbackByWorkflowId: {},
+          startingWorkflowId: null,
           workflowCreationHref: "/my-work/workflows/new",
           snapshot: {
             status: "success",
@@ -85,4 +88,52 @@ test("my-work shell renders semantic regions and localized empty states", () => 
   assert.match(markup, /Mis procesos/);
   assert.match(markup, /Crear flujo/);
   assert.match(markup, /No tienes tareas autorizadas para atender ahora/);
+});
+
+test("my-work shell renders startable workflow cards with the start action and feedback", () => {
+  const markup = renderToStaticMarkup(
+    createElement(
+      LanguageProvider,
+      {
+        adapter: memoryLanguagePreferenceAdapter(),
+        browserLanguages: [],
+        children: createElement(MyWorkShell, {
+          onStartWorkflow: () => undefined,
+          onRetry: () => undefined,
+          showWorkflowCreation: false,
+          startFeedbackByWorkflowId: {
+            "workflow-1": "Abriremos la primera tarea autorizada."
+          },
+          startingWorkflowId: "workflow-1",
+          snapshot: {
+            status: "success",
+            data: {
+              myProcesses: { items: [], limit: 12, hasMore: false },
+              myTasks: { items: [], limit: 12, hasMore: false },
+              startWorkflows: {
+                items: [
+                  {
+                    workflowId: "workflow-1",
+                    title: "Aprobaciones",
+                    description: "",
+                    availability: "Disponible para miembros activos de tu organizacion.",
+                    versionNumber: 3
+                  }
+                ],
+                limit: 6,
+                hasMore: false
+              }
+            },
+            updatedAt: Date.now()
+          },
+          workflowCreationHref: null
+        })
+      }
+    )
+  );
+
+  assert.match(markup, /Aprobaciones/);
+  assert.match(markup, /Version 3/);
+  assert.match(markup, /Iniciando/);
+  assert.match(markup, /Abriremos la primera tarea autorizada/);
 });

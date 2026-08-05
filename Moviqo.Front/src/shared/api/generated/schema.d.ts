@@ -226,7 +226,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["workflow_design_draft_detail"];
-        put?: never;
+        put: operations["workflow_design_draft_save"];
         post?: never;
         delete?: never;
         options?: never;
@@ -403,6 +403,13 @@ export interface components {
             elements?: {
                 [key: string]: unknown;
             }[];
+            connections?: {
+                [key: string]: unknown;
+            }[];
+        };
+        WorkflowDraftSaveRequest: {
+            expectedRevision: string;
+            draft: components["schemas"]["WorkflowDraftDocument"];
         };
     };
     responses: never;
@@ -910,6 +917,67 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_design_draft_save: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowDraftSaveRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WorkflowDraftSaveRequest"];
+                "multipart/form-data": components["schemas"]["WorkflowDraftSaveRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowCreateResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

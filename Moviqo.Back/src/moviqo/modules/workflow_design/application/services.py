@@ -12,13 +12,19 @@ from moviqo.building_blocks.commands import execute_atomic_command
 from moviqo.building_blocks.tenancy.runtime import TenantContext
 from moviqo.modules.workflow_design.application.schema import (
     CURRENT_DRAFT_SCHEMA_VERSION,
+    WorkflowDraftSchemaError,
+    WorkflowDraftValidationError,
     load_draft_document,
     new_workflow_draft_document,
+    validate_workflow_graph_document,
 )
 from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft
 
 MAX_WORKFLOW_NAME_LENGTH = 120
 WORKFLOW_CREATE_COMMAND = "workflow-design.create"
+WORKFLOW_SAVE_COMMAND = "workflow-design.save-draft"
+SAVE_OUTCOME_ACCEPTED = "accepted"
+SAVE_OUTCOME_REJECTED = "rejected"
 
 
 class WorkflowNameValidationError(APIException):
@@ -35,6 +41,26 @@ class WorkflowNameConflictError(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = "Workflow name is already in use."
     default_code = "workflow_name_conflict"
+
+    def __init__(self, *, invalid_params: list[dict[str, str]]) -> None:
+        super().__init__(detail=self.default_detail, code=self.default_code)
+        self.invalid_params = invalid_params
+
+
+class WorkflowDraftValidationAPIError(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Workflow draft is invalid."
+    default_code = "workflow_draft_invalid"
+
+    def __init__(self, *, invalid_params: list[dict[str, str]]) -> None:
+        super().__init__(detail=self.default_detail, code=self.default_code)
+        self.invalid_params = invalid_params
+
+
+class WorkflowDraftRevisionConflictError(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "Workflow draft revision does not match the latest server state."
+    default_code = "workflow_draft_revision_conflict"
 
     def __init__(self, *, invalid_params: list[dict[str, str]]) -> None:
         super().__init__(detail=self.default_detail, code=self.default_code)
@@ -127,6 +153,48 @@ def read_workflow_draft(*, tenant_context: TenantContext, workflow_id) -> dict[s
     }
 
 
+def save_workflow_draft(
+    *,
+    tenant_context: TenantContext,
+    workflow_id,
+    expected_revision: str,
+    draft: dict[str, Any],
+    idempotency_key: str,
+    request_hash: str,
+) -> dict[str, Any]:
+    workflow = (
+        WorkflowDefinition.objects.select_related("draft")
+        .filter(id=workflow_id, organization_id=tenant_context.organization_id)
+        .first()
+    )
+    if workflow is None:
+        return None
+
+    execution = execute_atomic_command(
+        tenant_context=tenant_context,
+        command_type=WORKFLOW_SAVE_COMMAND,
+        idempotency_key=idempotency_key,
+        request_hash=request_hash,
+        handler=lambda command_context: _save_workflow_draft_side_effects(
+            tenant_context=tenant_context,
+            command_context=command_context,
+            workflow_id=workflow_id,
+            expected_revision=expected_revision,
+            draft=draft,
+        ),
+    )
+
+    outcome = execution.result
+    if outcome["outcome"] == SAVE_OUTCOME_ACCEPTED:
+        return outcome["payload"]
+
+    error = outcome["error"]
+    if error["code"] == WorkflowDraftRevisionConflictError.default_code:
+        raise WorkflowDraftRevisionConflictError(invalid_params=error["invalidParams"])
+
+    raise WorkflowDraftValidationAPIError(invalid_params=error["invalidParams"])
+
+
 def _create_workflow_side_effects(
     *,
     tenant_context: TenantContext,
@@ -174,6 +242,111 @@ def _create_workflow_side_effects(
     return payload
 
 
+def _save_workflow_draft_side_effects(
+    *,
+    tenant_context: TenantContext,
+    command_context,
+    workflow_id,
+    expected_revision: str,
+    draft: dict[str, Any],
+) -> dict[str, Any]:
+    workflow_draft = (
+        WorkflowDraft.objects.select_related("workflow")
+        .select_for_update()
+        .get(workflow_id=workflow_id, organization_id=tenant_context.organization_id)
+    )
+    workflow = workflow_draft.workflow
+
+    if workflow_draft.revision != expected_revision:
+        return _rejected_save_outcome(
+            code=WorkflowDraftRevisionConflictError.default_code,
+            invalid_params=[
+                {
+                    "name": "expectedRevision",
+                    "code": "stale",
+                    "reason": "Reload the last saved draft before saving again.",
+                }
+            ],
+        )
+
+    previous_document = load_draft_document(workflow_draft.document)
+    candidate_document = {
+        "schemaVersion": draft.get("schemaVersion", CURRENT_DRAFT_SCHEMA_VERSION),
+        "draftId": previous_document["draftId"],
+        "workflowId": str(workflow.id),
+        "name": workflow.name,
+        "status": previous_document["status"],
+        "elements": draft.get("elements", previous_document["elements"]),
+        "connections": draft.get("connections", previous_document["connections"]),
+    }
+    try:
+        validated_document = validate_workflow_graph_document(candidate_document)
+    except WorkflowDraftValidationError as exc:
+        command_context.append_audit(
+            event_type="workflow-design.graph-edit-rejected",
+            payload={
+                "workflowId": str(workflow.id),
+                "draftId": previous_document["draftId"],
+                "expectedRevision": expected_revision,
+                "issues": exc.issues,
+            },
+        )
+        return _rejected_save_outcome(
+            code=WorkflowDraftValidationAPIError.default_code,
+            invalid_params=_build_graph_invalid_params(exc.issues),
+        )
+    except WorkflowDraftSchemaError as exc:
+        issues = [
+            {
+                "field": "draft",
+                "code": "invalid",
+                "reason": str(exc),
+            }
+        ]
+        command_context.append_audit(
+            event_type="workflow-design.graph-edit-rejected",
+            payload={
+                "workflowId": str(workflow.id),
+                "draftId": previous_document["draftId"],
+                "expectedRevision": expected_revision,
+                "issues": issues,
+            },
+        )
+        return _rejected_save_outcome(
+            code=WorkflowDraftValidationAPIError.default_code,
+            invalid_params=_build_graph_invalid_params(issues),
+        )
+
+    next_revision = str(int(workflow_draft.revision) + 1)
+    workflow_draft.document = validated_document
+    workflow_draft.revision = next_revision
+    workflow_draft.save(update_fields=["document", "revision", "updated_at"])
+    workflow.draft_schema_version = CURRENT_DRAFT_SCHEMA_VERSION
+    workflow.save(update_fields=["draft_schema_version", "updated_at"])
+
+    for event_type, payload in _collect_graph_audit_events(
+        previous_document=previous_document,
+        current_document=validated_document,
+        workflow_id=str(workflow.id),
+        draft_id=validated_document["draftId"],
+        previous_revision=expected_revision,
+        next_revision=next_revision,
+    ):
+        command_context.append_audit(event_type=event_type, payload=payload)
+
+    return {
+        "outcome": SAVE_OUTCOME_ACCEPTED,
+        "payload": {
+            "workflowId": str(workflow.id),
+            "organizationId": str(workflow.organization_id),
+            "createdByMembershipId": str(workflow.created_by_membership_id),
+            "name": workflow.name,
+            "revision": next_revision,
+            "draft": validated_document,
+        },
+    }
+
+
 def _validate_workflow_name(name: str) -> str:
     safe_name = " ".join(name.split())
     if not safe_name:
@@ -201,3 +374,170 @@ def _validate_workflow_name(name: str) -> str:
 
 def _normalize_workflow_name(name: str) -> str:
     return name.casefold()
+
+
+def _build_graph_invalid_params(issues: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [
+        {
+            "name": issue.get("field", "draft"),
+            "code": issue.get("code", "invalid"),
+            "reason": issue.get("reason", "Correct the workflow draft and try again."),
+        }
+        for issue in issues
+    ]
+
+
+def _rejected_save_outcome(
+    *,
+    code: str,
+    invalid_params: list[dict[str, str]],
+) -> dict[str, Any]:
+    return {
+        "outcome": SAVE_OUTCOME_REJECTED,
+        "error": {
+            "code": code,
+            "invalidParams": invalid_params,
+        },
+    }
+
+
+def _collect_graph_audit_events(
+    *,
+    previous_document: dict[str, Any],
+    current_document: dict[str, Any],
+    workflow_id: str,
+    draft_id: str,
+    previous_revision: str,
+    next_revision: str,
+) -> list[tuple[str, dict[str, Any]]]:
+    events: list[tuple[str, dict[str, Any]]] = []
+
+    previous_elements = {element["id"]: element for element in previous_document["elements"]}
+    current_elements = {element["id"]: element for element in current_document["elements"]}
+    previous_connections = {
+        connection["id"]: connection for connection in previous_document["connections"]
+    }
+    current_connections = {
+        connection["id"]: connection for connection in current_document["connections"]
+    }
+
+    for element_id, element in current_elements.items():
+        if element_id not in previous_elements:
+            events.append(
+                (
+                    "workflow-design.graph-element-added",
+                    {
+                        "workflowId": workflow_id,
+                        "draftId": draft_id,
+                        "revision": next_revision,
+                        "previousRevision": previous_revision,
+                        "elementId": element_id,
+                        "elementType": element["type"],
+                        "label": element["label"],
+                    },
+                )
+            )
+        elif previous_elements[element_id] != element:
+            events.append(
+                (
+                    "workflow-design.graph-element-updated",
+                    {
+                        "workflowId": workflow_id,
+                        "draftId": draft_id,
+                        "revision": next_revision,
+                        "previousRevision": previous_revision,
+                        "elementId": element_id,
+                        "elementType": element["type"],
+                        "previousLabel": previous_elements[element_id]["label"],
+                        "label": element["label"],
+                    },
+                )
+            )
+
+    for element_id, element in previous_elements.items():
+        if element_id not in current_elements:
+            events.append(
+                (
+                    "workflow-design.graph-element-removed",
+                    {
+                        "workflowId": workflow_id,
+                        "draftId": draft_id,
+                        "revision": next_revision,
+                        "previousRevision": previous_revision,
+                        "elementId": element_id,
+                        "elementType": element["type"],
+                        "label": element["label"],
+                    },
+                )
+            )
+
+    for connection_id, connection in current_connections.items():
+        if connection_id not in previous_connections:
+            events.append(
+                (
+                    "workflow-design.graph-connection-added",
+                    {
+                        "workflowId": workflow_id,
+                        "draftId": draft_id,
+                        "revision": next_revision,
+                        "previousRevision": previous_revision,
+                        "connectionId": connection_id,
+                        "connectionType": connection["type"],
+                        "sourceId": connection["sourceId"],
+                        "targetId": connection["targetId"],
+                    },
+                )
+            )
+        elif previous_connections[connection_id] != connection:
+            events.append(
+                (
+                    "workflow-design.graph-connection-updated",
+                    {
+                        "workflowId": workflow_id,
+                        "draftId": draft_id,
+                        "revision": next_revision,
+                        "previousRevision": previous_revision,
+                        "connectionId": connection_id,
+                        "connectionType": connection["type"],
+                        "previousSourceId": previous_connections[connection_id]["sourceId"],
+                        "previousTargetId": previous_connections[connection_id]["targetId"],
+                        "sourceId": connection["sourceId"],
+                        "targetId": connection["targetId"],
+                    },
+                )
+            )
+
+    for connection_id, connection in previous_connections.items():
+        if connection_id not in current_connections:
+            events.append(
+                (
+                    "workflow-design.graph-connection-removed",
+                    {
+                        "workflowId": workflow_id,
+                        "draftId": draft_id,
+                        "revision": next_revision,
+                        "previousRevision": previous_revision,
+                        "connectionId": connection_id,
+                        "connectionType": connection["type"],
+                        "sourceId": connection["sourceId"],
+                        "targetId": connection["targetId"],
+                    },
+                )
+            )
+
+    if not events:
+        events.append(
+            (
+                "workflow-design.graph-saved",
+                {
+                    "workflowId": workflow_id,
+                    "draftId": draft_id,
+                    "revision": next_revision,
+                    "previousRevision": previous_revision,
+                    "elementCount": len(current_document["elements"]),
+                    "connectionCount": len(current_document["connections"]),
+                },
+            )
+        )
+
+    return events

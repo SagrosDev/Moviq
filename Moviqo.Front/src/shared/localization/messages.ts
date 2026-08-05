@@ -116,6 +116,38 @@ export type MessageKey =
   | "workflowDesign.draft.revision"
   | "workflowDesign.draft.schemaVersion"
   | "workflowDesign.draft.save"
+  | "workflowDesign.editor.eyebrow"
+  | "workflowDesign.editor.title"
+  | "workflowDesign.editor.body"
+  | "workflowDesign.editor.guidanceTitle"
+  | "workflowDesign.editor.guidanceStart"
+  | "workflowDesign.editor.guidanceTask"
+  | "workflowDesign.editor.guidanceEnd"
+  | "workflowDesign.editor.guidanceConnectStartTask"
+  | "workflowDesign.editor.guidanceConnectTaskEnd"
+  | "workflowDesign.editor.guidanceSave"
+  | "workflowDesign.editor.addStart"
+  | "workflowDesign.editor.addTask"
+  | "workflowDesign.editor.addEnd"
+  | "workflowDesign.editor.connectStartTask"
+  | "workflowDesign.editor.connectTaskEnd"
+  | "workflowDesign.editor.saving"
+  | "workflowDesign.editor.saveSuccess"
+  | "workflowDesign.editor.saveError"
+  | "workflowDesign.editor.errorTitle"
+  | "workflowDesign.editor.conflictTitle"
+  | "workflowDesign.editor.previewTitle"
+  | "workflowDesign.editor.previewBody"
+  | "workflowDesign.editor.connectLabel"
+  | "workflowDesign.editor.startLabel"
+  | "workflowDesign.editor.taskLabel"
+  | "workflowDesign.editor.endLabel"
+  | "workflowDesign.editor.startBody"
+  | "workflowDesign.editor.taskBody"
+  | "workflowDesign.editor.endBody"
+  | "workflowDesign.editor.savedTitle"
+  | "workflowDesign.editor.savedBody"
+  | "workflowDesign.editor.savedEmpty"
   | "passwordRecovery.eyebrow"
   | "passwordRecovery.title"
   | "passwordRecovery.lede"
@@ -329,6 +361,39 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.draft.revision": "Revision",
   "workflowDesign.draft.schemaVersion": "Version de esquema",
   "workflowDesign.draft.save": "Guardar borrador",
+  "workflowDesign.editor.eyebrow": "Primer camino ejecutable",
+  "workflowDesign.editor.title": "Diseña Inicio, Tarea y Fin",
+  "workflowDesign.editor.body":
+    "Agrega cada paso con controles visibles, conecta el camino y guarda solo cuando el servidor acepte la revision.",
+  "workflowDesign.editor.guidanceTitle": "Siguiente accion",
+  "workflowDesign.editor.guidanceStart": "Agrega Start para abrir el flujo.",
+  "workflowDesign.editor.guidanceTask": "Agrega Task para definir el trabajo minimo.",
+  "workflowDesign.editor.guidanceEnd": "Agrega End para cerrar el camino.",
+  "workflowDesign.editor.guidanceConnectStartTask": "Conecta Start con Task para iniciar el camino.",
+  "workflowDesign.editor.guidanceConnectTaskEnd": "Conecta Task con End para completar el camino.",
+  "workflowDesign.editor.guidanceSave": "Guarda el borrador para confirmar el camino Start -> Task -> End.",
+  "workflowDesign.editor.addStart": "Agregar Start",
+  "workflowDesign.editor.addTask": "Agregar Task",
+  "workflowDesign.editor.addEnd": "Agregar End",
+  "workflowDesign.editor.connectStartTask": "Conectar Start con Task",
+  "workflowDesign.editor.connectTaskEnd": "Conectar Task con End",
+  "workflowDesign.editor.saving": "Guardando borrador",
+  "workflowDesign.editor.saveSuccess": "El servidor guardo el camino autorizado.",
+  "workflowDesign.editor.saveError": "No pudimos guardar este borrador. Corrige el camino e intenta de nuevo.",
+  "workflowDesign.editor.errorTitle": "Corrige este borrador antes de guardar",
+  "workflowDesign.editor.conflictTitle": "El servidor tiene una revision mas reciente",
+  "workflowDesign.editor.previewTitle": "Vista previa del camino",
+  "workflowDesign.editor.previewBody": "Esta vista muestra el orden actual del borrador local.",
+  "workflowDesign.editor.connectLabel": "Conectar",
+  "workflowDesign.editor.startLabel": "Inicio",
+  "workflowDesign.editor.taskLabel": "Tarea",
+  "workflowDesign.editor.endLabel": "Fin",
+  "workflowDesign.editor.startBody": "Abre el flujo.",
+  "workflowDesign.editor.taskBody": "Representa el trabajo minimo.",
+  "workflowDesign.editor.endBody": "Cierra el flujo.",
+  "workflowDesign.editor.savedTitle": "Ultimo borrador guardado",
+  "workflowDesign.editor.savedBody": "Si el servidor rechaza un cambio, este camino autorizado sigue disponible.",
+  "workflowDesign.editor.savedEmpty": "Aun no hay un camino guardado.",
   "passwordRecovery.eyebrow": "Recuperacion segura",
   "passwordRecovery.title": "Recupera tu contrasena",
   "passwordRecovery.lede": "Te enviaremos instrucciones si la cuenta puede recibirlas.",
@@ -544,6 +609,39 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.draft.revision": "Revision",
   "workflowDesign.draft.schemaVersion": "Schema version",
   "workflowDesign.draft.save": "Save draft",
+  "workflowDesign.editor.eyebrow": "First executable path",
+  "workflowDesign.editor.title": "Design Start, Task, and End",
+  "workflowDesign.editor.body":
+    "Add each step with visible controls, connect the path, and save only when the server accepts the revision.",
+  "workflowDesign.editor.guidanceTitle": "Next action",
+  "workflowDesign.editor.guidanceStart": "Add Start to open the workflow.",
+  "workflowDesign.editor.guidanceTask": "Add Task to define the minimum work.",
+  "workflowDesign.editor.guidanceEnd": "Add End to close the path.",
+  "workflowDesign.editor.guidanceConnectStartTask": "Connect Start to Task to begin the path.",
+  "workflowDesign.editor.guidanceConnectTaskEnd": "Connect Task to End to complete the path.",
+  "workflowDesign.editor.guidanceSave": "Save the draft to confirm the Start -> Task -> End path.",
+  "workflowDesign.editor.addStart": "Add Start",
+  "workflowDesign.editor.addTask": "Add Task",
+  "workflowDesign.editor.addEnd": "Add End",
+  "workflowDesign.editor.connectStartTask": "Connect Start to Task",
+  "workflowDesign.editor.connectTaskEnd": "Connect Task to End",
+  "workflowDesign.editor.saving": "Saving draft",
+  "workflowDesign.editor.saveSuccess": "The server saved the authorized path.",
+  "workflowDesign.editor.saveError": "We could not save this draft. Correct the path and try again.",
+  "workflowDesign.editor.errorTitle": "Correct this draft before saving",
+  "workflowDesign.editor.conflictTitle": "The server has a newer revision",
+  "workflowDesign.editor.previewTitle": "Path preview",
+  "workflowDesign.editor.previewBody": "This view shows the current order of the local draft.",
+  "workflowDesign.editor.connectLabel": "Connect",
+  "workflowDesign.editor.startLabel": "Start",
+  "workflowDesign.editor.taskLabel": "Task",
+  "workflowDesign.editor.endLabel": "End",
+  "workflowDesign.editor.startBody": "Opens the workflow.",
+  "workflowDesign.editor.taskBody": "Represents the minimum work.",
+  "workflowDesign.editor.endBody": "Closes the workflow.",
+  "workflowDesign.editor.savedTitle": "Last saved draft",
+  "workflowDesign.editor.savedBody": "If the server rejects a change, this authorized path remains available.",
+  "workflowDesign.editor.savedEmpty": "There is no saved path yet.",
   "passwordRecovery.eyebrow": "Secure recovery",
   "passwordRecovery.title": "Recover your password",
   "passwordRecovery.lede": "We will send instructions if the account can receive them.",

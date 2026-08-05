@@ -10,6 +10,10 @@ from rest_framework.exceptions import APIException
 
 from moviqo.building_blocks.commands import execute_atomic_command
 from moviqo.building_blocks.tenancy.runtime import TenantContext
+from moviqo.modules.organizations.application import workflow_design_directory
+from moviqo.modules.workflow_design.application.publication_configuration import (
+    validate_publication_configuration,
+)
 from moviqo.modules.workflow_design.application.publication_validation import (
     validate_workflow_for_publication,
 )
@@ -163,6 +167,9 @@ def read_workflow_draft(*, tenant_context: TenantContext, workflow_id) -> dict[s
         "workflowId": str(workflow.id),
         "organizationId": str(workflow.organization_id),
         "createdByMembershipId": str(workflow.created_by_membership_id),
+        "configurationDirectory": _serialize_workflow_design_directory(
+            tenant_context=tenant_context
+        ),
         "name": workflow.name,
         "revision": workflow.draft.revision,
         "draft": draft_document,
@@ -299,6 +306,9 @@ def _create_workflow_side_effects(
         "workflowId": str(workflow.id),
         "organizationId": str(workflow.organization_id),
         "createdByMembershipId": str(workflow.created_by_membership_id),
+        "configurationDirectory": _serialize_workflow_design_directory(
+            tenant_context=tenant_context
+        ),
         "name": workflow.name,
         "revision": draft.revision,
         "draft": load_draft_document(draft.document),
@@ -360,9 +370,30 @@ def _save_workflow_draft_side_effects(
             previous_document=previous_document,
             draft=draft,
         ),
+        "publication": _merge_publication(
+            previous_document=previous_document,
+            draft=draft,
+        ),
     }
     try:
         validated_document = validate_workflow_graph_document(candidate_document)
+        publication_issues = validate_publication_configuration(
+            tenant_context=tenant_context,
+            publication=validated_document["publication"],
+        )
+        blocking_configuration_issues = [
+            {
+                "field": issue["target"],
+                "code": issue["code"],
+                "reason": issue["message"],
+            }
+            for issue in publication_issues
+            if issue["code"] not in {"starter_missing", "assignment_missing"}
+        ]
+        if blocking_configuration_issues:
+            raise WorkflowDraftValidationError(
+                blocking_configuration_issues
+            )
     except WorkflowDraftValidationError as exc:
         command_context.append_audit(
             event_type="workflow-design.draft-edit-rejected",
@@ -422,6 +453,9 @@ def _save_workflow_draft_side_effects(
             "workflowId": str(workflow.id),
             "organizationId": str(workflow.organization_id),
             "createdByMembershipId": str(workflow.created_by_membership_id),
+            "configurationDirectory": _serialize_workflow_design_directory(
+                tenant_context=tenant_context
+            ),
             "name": workflow.name,
             "revision": next_revision,
             "draft": validated_document,
@@ -497,7 +531,14 @@ def _validate_workflow_publication_side_effects(
             ],
         )
 
-    validation = validate_workflow_for_publication(normalized_document)
+    publication_issues = validate_publication_configuration(
+        tenant_context=tenant_context,
+        publication=normalized_document["publication"],
+    )
+    validation = validate_workflow_for_publication(
+        normalized_document,
+        publication_configuration_issues=publication_issues,
+    )
     payload = {
         "workflowId": str(workflow.id),
         "revision": workflow_draft.revision,
@@ -869,4 +910,30 @@ def _merge_publication(
         "assignment": dict(assignment)
         if isinstance(assignment, dict)
         else dict(previous_publication["assignment"]),
+    }
+
+
+def _serialize_workflow_design_directory(
+    *,
+    tenant_context: TenantContext,
+) -> dict[str, list[dict[str, Any]]]:
+    directory = workflow_design_directory(tenant_context=tenant_context)
+    return {
+        "memberships": [
+            {
+                "membershipId": option.membership_id,
+                "displayName": option.display_name,
+                "role": option.role,
+            }
+            for option in directory.memberships
+        ],
+        "teams": [
+            {
+                "teamId": option.team_id,
+                "name": option.name,
+                "activeMemberCount": option.active_member_count,
+                "membershipIds": list(option.membership_ids),
+            }
+            for option in directory.teams
+        ],
     }

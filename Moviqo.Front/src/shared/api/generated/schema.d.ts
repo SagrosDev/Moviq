@@ -441,6 +441,10 @@ export interface components {
             expectedTaskRevision: string;
             controls: components["schemas"]["TaskFormSaveControl"][];
         };
+        WorkflowAssignmentConfiguration: {
+            mode?: string;
+            membershipId?: string | null;
+        };
         WorkflowCatalogItem: {
             /** Format: uuid */
             workflowId: string;
@@ -452,6 +456,10 @@ export interface components {
         };
         WorkflowCatalogResponse: {
             items: components["schemas"]["WorkflowCatalogItem"][];
+        };
+        WorkflowConfigurationDirectory: {
+            memberships: components["schemas"]["WorkflowDirectoryMembership"][];
+            teams: components["schemas"]["WorkflowDirectoryTeam"][];
         };
         WorkflowConnection: {
             id: string;
@@ -469,9 +477,23 @@ export interface components {
             organizationId: string;
             /** Format: uuid */
             createdByMembershipId: string;
+            configurationDirectory: components["schemas"]["WorkflowConfigurationDirectory"];
             name: string;
             revision: string;
             draft: components["schemas"]["WorkflowDraftDocument"];
+        };
+        WorkflowDirectoryMembership: {
+            /** Format: uuid */
+            membershipId: string;
+            displayName: string;
+            role: string;
+        };
+        WorkflowDirectoryTeam: {
+            /** Format: uuid */
+            teamId: string;
+            name: string;
+            activeMemberCount: number;
+            membershipIds: string[];
         };
         WorkflowDraftDocument: {
             schemaVersion: number;
@@ -513,8 +535,8 @@ export interface components {
             maximumLength?: number;
         };
         WorkflowPublication: {
-            starter?: components["schemas"]["WorkflowPublicationSection"];
-            assignment?: components["schemas"]["WorkflowPublicationSection"];
+            starter?: components["schemas"]["WorkflowStarterConfiguration"];
+            assignment?: components["schemas"]["WorkflowAssignmentConfiguration"];
         };
         WorkflowPublicationIssue: {
             code: string;
@@ -526,9 +548,6 @@ export interface components {
             message: string;
             actionLabel: string;
         };
-        WorkflowPublicationSection: {
-            isConfigured?: boolean;
-        };
         WorkflowPublicationValidationRequest: {
             expectedRevision: string;
             draft: components["schemas"]["WorkflowDraftDocument"];
@@ -539,6 +558,11 @@ export interface components {
             revision: string;
             publishable: boolean;
             issues: components["schemas"]["WorkflowPublicationIssue"][];
+        };
+        WorkflowStarterConfiguration: {
+            mode?: string;
+            teamIds?: string[];
+            membershipIds?: string[];
         };
     };
     responses: never;

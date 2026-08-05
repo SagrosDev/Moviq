@@ -9,10 +9,13 @@ import {
   focusChecklistTarget,
   reduceWorkflowDraftEditorState,
   saveWorkflowDraft,
+  summarizeStarterSelection,
   validateWorkflowPublication,
   workflowPathPreview
 } from "../model/editor";
 import type {
+  WorkflowCreationAccepted,
+  WorkflowConfigurationDirectory,
   WorkflowDraftConnection,
   WorkflowDraftDocument,
   WorkflowDraftElement,
@@ -20,11 +23,16 @@ import type {
 } from "../model/types";
 
 type WorkflowDraftEditorProps = {
+  configurationDirectory: WorkflowConfigurationDirectory;
   draftState: DraftState<WorkflowDraftDocument>;
-  onAccepted: (draftState: DraftState<WorkflowDraftDocument>) => void;
+  onAccepted: (
+    draftState: DraftState<WorkflowDraftDocument>,
+    accepted: WorkflowCreationAccepted
+  ) => void;
 };
 
 export const WorkflowDraftEditor = ({
+  configurationDirectory,
   draftState,
   onAccepted
 }: WorkflowDraftEditorProps) => {
@@ -63,10 +71,25 @@ export const WorkflowDraftEditor = ({
   const firstTask = editorState.localDraft.elements.find((element) => element.type === "task");
   const end = editorState.localDraft.elements.find((element) => element.type === "end");
   const firstField = editorState.localDraft.processFields[0];
-  const starterConfigured =
-    editorState.localDraft.publication?.starter.isConfigured ?? false;
-  const assignmentConfigured =
-    editorState.localDraft.publication?.assignment.isConfigured ?? false;
+  const starterMode =
+    editorState.localDraft.publication?.starter.mode ?? "unconfigured";
+  const assignmentMode =
+    editorState.localDraft.publication?.assignment.mode ?? "unconfigured";
+  const starterSummary = summarizeStarterSelection(
+    editorState.localDraft,
+    configurationDirectory
+  );
+  const starterSummaryText =
+    starterMode === "allActiveMembers"
+      ? t("workflowDesign.editor.starterAllActiveMembers")
+      : starterSummary;
+  const showScopedStarterSelections =
+    starterMode === "selectedTeams" || starterMode === "selectedMembers";
+  const assignmentMembershipId =
+    editorState.localDraft.publication?.assignment.membershipId ?? null;
+  const assignmentMember = configurationDirectory.memberships.find(
+    (membership) => membership.membershipId === assignmentMembershipId
+  );
   const firstBinding = firstTask
     ? editorState.localDraft.formBindings.find(
         (binding) =>
@@ -94,6 +117,8 @@ export const WorkflowDraftEditor = ({
             connection.sourceId === firstTask.id && connection.targetId === end.id
         )
       : false;
+  const isEditingDisabled =
+    editorState.saveStatus === "saving" || editorState.publicationStatus === "validating";
 
   const save = async () => {
     dispatch({ type: "save-requested" });
@@ -118,7 +143,7 @@ export const WorkflowDraftEditor = ({
       result.data,
       expectedRevision
     );
-    onAccepted(nextDraftState);
+    onAccepted(nextDraftState, result.data);
     dispatch({ type: "save-succeeded", draftState: nextDraftState });
   };
 
@@ -189,7 +214,7 @@ export const WorkflowDraftEditor = ({
           className="button"
           data-variant="secondary"
           type="button"
-          disabled={Boolean(start)}
+          disabled={Boolean(start) || isEditingDisabled}
           onClick={() => dispatch({ type: "start-added", labels: elementLabels })}
         >
           {t("workflowDesign.editor.addStart")}
@@ -198,7 +223,7 @@ export const WorkflowDraftEditor = ({
           className="button"
           data-variant="secondary"
           type="button"
-          disabled={Boolean(firstTask)}
+          disabled={Boolean(firstTask) || isEditingDisabled}
           onClick={() => dispatch({ type: "task-added", labels: elementLabels })}
         >
           {t("workflowDesign.editor.addTask")}
@@ -207,7 +232,7 @@ export const WorkflowDraftEditor = ({
           className="button"
           data-variant="secondary"
           type="button"
-          disabled={Boolean(end)}
+          disabled={Boolean(end) || isEditingDisabled}
           onClick={() => dispatch({ type: "end-added", labels: elementLabels })}
         >
           {t("workflowDesign.editor.addEnd")}
@@ -218,7 +243,7 @@ export const WorkflowDraftEditor = ({
           className="button"
           data-variant="secondary"
           type="button"
-          disabled={!start || !firstTask || startConnectedToTask}
+          disabled={!start || !firstTask || startConnectedToTask || isEditingDisabled}
           onClick={() =>
             start && firstTask
               ? dispatch({
@@ -235,7 +260,7 @@ export const WorkflowDraftEditor = ({
           className="button"
           data-variant="secondary"
           type="button"
-          disabled={!firstTask || !end || taskConnectedToEnd}
+          disabled={!firstTask || !end || taskConnectedToEnd || isEditingDisabled}
           onClick={() =>
             firstTask && end
               ? dispatch({
@@ -251,7 +276,7 @@ export const WorkflowDraftEditor = ({
         <button
           className="button"
           type="button"
-          disabled={editorState.saveStatus === "saving"}
+          disabled={isEditingDisabled}
           onClick={() => void save()}
         >
           {editorState.saveStatus === "saving"
@@ -263,8 +288,7 @@ export const WorkflowDraftEditor = ({
           data-variant="secondary"
           type="button"
           disabled={
-            editorState.saveStatus === "saving" ||
-            editorState.publicationStatus === "validating"
+            isEditingDisabled
           }
           onClick={() => void validatePublication()}
         >
@@ -295,41 +319,158 @@ export const WorkflowDraftEditor = ({
         {t("workflowDesign.editor.publicationSetupTitle")}
       </h3>
       <p>{t("workflowDesign.editor.publicationSetupBody")}</p>
-      <div className="button-row">
-        <button
-          id="workflow-starter-config-button"
-          className="button"
-          data-variant="secondary"
-          type="button"
-          aria-pressed={starterConfigured}
-          onClick={() =>
-            dispatch({
-              type: "starter-configuration-toggled",
-              isConfigured: !starterConfigured
-            })
-          }
-        >
-          {starterConfigured
-            ? t("workflowDesign.editor.starterConfigured")
-            : t("workflowDesign.editor.configureStarter")}
-        </button>
-        <button
-          id="workflow-assignment-config-button"
-          className="button"
-          data-variant="secondary"
-          type="button"
-          aria-pressed={assignmentConfigured}
-          onClick={() =>
-            dispatch({
-              type: "assignment-configuration-toggled",
-              isConfigured: !assignmentConfigured
-            })
-          }
-        >
-          {assignmentConfigured
-            ? t("workflowDesign.editor.assignmentConfigured")
-            : t("workflowDesign.editor.configureAssignment")}
-        </button>
+      <div className="workflow-editor__field-grid">
+        <fieldset id="workflow-starter-config-button" tabIndex={-1}>
+          <legend>{t("workflowDesign.editor.starterSectionTitle")}</legend>
+          <label>
+            <input
+              checked={starterMode === "allActiveMembers"}
+              name="starter-mode"
+              type="radio"
+              disabled={isEditingDisabled}
+              onChange={() =>
+                dispatch({ type: "starter-mode-selected", mode: "allActiveMembers" })
+              }
+            />
+            <span>{t("workflowDesign.editor.starterAllActiveMembers")}</span>
+          </label>
+          <label>
+            <input
+              checked={starterMode === "selectedTeams"}
+              name="starter-mode"
+              type="radio"
+              disabled={isEditingDisabled}
+              onChange={() =>
+                dispatch({ type: "starter-mode-selected", mode: "selectedTeams" })
+              }
+            />
+            <span>{t("workflowDesign.editor.starterSelectedTeams")}</span>
+          </label>
+          {showScopedStarterSelections ? (
+            <div role="group" aria-label={t("workflowDesign.editor.starterSelectedTeams")}>
+              {configurationDirectory.teams.map((team) => (
+                <label key={team.teamId}>
+                  <input
+                    checked={
+                      editorState.localDraft.publication?.starter.teamIds.includes(team.teamId) ??
+                      false
+                    }
+                    type="checkbox"
+                    disabled={isEditingDisabled}
+                    onChange={() =>
+                      dispatch({ type: "starter-team-toggled", teamId: team.teamId })
+                    }
+                  />
+                  <span>{team.name}</span>
+                </label>
+              ))}
+            </div>
+          ) : null}
+          <label>
+            <input
+              checked={starterMode === "selectedMembers"}
+              name="starter-mode"
+              type="radio"
+              disabled={isEditingDisabled}
+              onChange={() =>
+                dispatch({ type: "starter-mode-selected", mode: "selectedMembers" })
+              }
+            />
+            <span>{t("workflowDesign.editor.starterSelectedMembers")}</span>
+          </label>
+          {showScopedStarterSelections ? (
+            <div role="group" aria-label={t("workflowDesign.editor.starterSelectedMembers")}>
+              {configurationDirectory.memberships.map((membership) => (
+                <label key={membership.membershipId}>
+                  <input
+                    checked={
+                      editorState.localDraft.publication?.starter.membershipIds.includes(
+                        membership.membershipId
+                      ) ?? false
+                    }
+                    type="checkbox"
+                    disabled={isEditingDisabled}
+                    onChange={() =>
+                      dispatch({
+                        type: "starter-membership-toggled",
+                        membershipId: membership.membershipId
+                      })
+                    }
+                  />
+                  <span>{membership.displayName}</span>
+                </label>
+              ))}
+            </div>
+          ) : null}
+          <p>
+            {starterSummaryText
+              ? `${t("workflowDesign.editor.starterSummaryPrefix")} ${starterSummaryText}`
+              : t("workflowDesign.editor.starterEmpty")}
+          </p>
+        </fieldset>
+
+        <fieldset id="workflow-assignment-config-button" tabIndex={-1}>
+          <legend>{t("workflowDesign.editor.assignmentSectionTitle")}</legend>
+          <label>
+            <input
+              checked={assignmentMode === "workflowInitiator"}
+              name="assignment-mode"
+              type="radio"
+              disabled={isEditingDisabled}
+              onChange={() =>
+                dispatch({
+                  type: "assignment-mode-selected",
+                  mode: "workflowInitiator"
+                })
+              }
+            />
+            <span>{t("workflowDesign.editor.assignmentWorkflowInitiator")}</span>
+          </label>
+          <label>
+            <input
+              checked={assignmentMode === "specificMember"}
+              name="assignment-mode"
+              type="radio"
+              disabled={isEditingDisabled}
+              onChange={() =>
+                dispatch({
+                  type: "assignment-mode-selected",
+                  mode: "specificMember"
+                })
+              }
+            />
+            <span>{t("workflowDesign.editor.assignmentSpecificMember")}</span>
+          </label>
+          {assignmentMode === "specificMember" ? (
+            <label>
+              <span>{t("workflowDesign.editor.assignmentSpecificMember")}</span>
+              <select
+                disabled={isEditingDisabled}
+                value={assignmentMembershipId ?? ""}
+                onChange={(event) =>
+                  dispatch({
+                    type: "assignment-membership-selected",
+                    membershipId: event.target.value
+                  })
+                }
+              >
+                <option value="">{t("workflowDesign.editor.assignmentEmpty")}</option>
+                {configurationDirectory.memberships.map((membership) => (
+                  <option key={membership.membershipId} value={membership.membershipId}>
+                    {membership.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <p>
+            {assignmentMode === "workflowInitiator"
+              ? `${t("workflowDesign.editor.assignmentSummaryPrefix")} ${t("workflowDesign.editor.assignmentWorkflowInitiator")}`
+              : assignmentMember
+                ? `${t("workflowDesign.editor.assignmentSummaryPrefix")} ${assignmentMember.displayName}`
+                : t("workflowDesign.editor.assignmentEmpty")}
+          </p>
+        </fieldset>
       </div>
     </article>
 
@@ -379,6 +520,7 @@ export const WorkflowDraftEditor = ({
             type="text"
             value={fieldDraft.label}
             aria-invalid={labelErrors.length > 0}
+            disabled={isEditingDisabled}
             onChange={(event) => updateFieldDraft("label", event.target.value)}
           />
           {labelErrors.length > 0 ? <small>{labelErrors[0]}</small> : null}
@@ -388,6 +530,7 @@ export const WorkflowDraftEditor = ({
           <input
             type="text"
             value={fieldDraft.helpText}
+            disabled={isEditingDisabled}
             onChange={(event) => updateFieldDraft("helpText", event.target.value)}
           />
         </label>
@@ -396,6 +539,7 @@ export const WorkflowDraftEditor = ({
           <input
             type="text"
             value={fieldDraft.placeholder}
+            disabled={isEditingDisabled}
             onChange={(event) => updateFieldDraft("placeholder", event.target.value)}
           />
         </label>
@@ -404,6 +548,7 @@ export const WorkflowDraftEditor = ({
           <input
             type="text"
             value={fieldDraft.defaultValue}
+            disabled={isEditingDisabled}
             onChange={(event) => updateFieldDraft("defaultValue", event.target.value)}
           />
         </label>
@@ -415,6 +560,7 @@ export const WorkflowDraftEditor = ({
             max={255}
             value={fieldDraft.minimumLength}
             aria-invalid={minimumLengthErrors.length > 0}
+            disabled={isEditingDisabled}
             onChange={(event) =>
               updateFieldDraft("minimumLength", Number(event.target.value))
             }
@@ -429,6 +575,7 @@ export const WorkflowDraftEditor = ({
             max={255}
             value={fieldDraft.maximumLength}
             aria-invalid={maximumLengthErrors.length > 0}
+            disabled={isEditingDisabled}
             onChange={(event) =>
               updateFieldDraft("maximumLength", Number(event.target.value))
             }
@@ -442,7 +589,7 @@ export const WorkflowDraftEditor = ({
           className="button"
           data-variant="secondary"
           type="button"
-          disabled={!firstTask || !fieldDraft.label.trim()}
+          disabled={!firstTask || !fieldDraft.label.trim() || isEditingDisabled}
           onClick={() =>
             dispatch({
               type: "short-text-configured",
@@ -459,7 +606,7 @@ export const WorkflowDraftEditor = ({
           data-variant="secondary"
           type="button"
           aria-invalid={bindingErrors.length > 0}
-          disabled={!firstTask || !firstField}
+          disabled={!firstTask || !firstField || isEditingDisabled}
           onClick={() =>
             dispatch({
               type: "first-task-binding-toggled",
@@ -543,8 +690,12 @@ const localizedIssueMessage = (
   switch (issue.code) {
     case "starter_missing":
       return t("workflowDesign.editor.issue.starterMissing");
+    case "starter_invalid":
+      return issue.message;
     case "assignment_missing":
       return t("workflowDesign.editor.issue.assignmentMissing");
+    case "assignment_invalid":
+      return issue.message;
     case "start_step_invalid":
       return t("workflowDesign.editor.issue.startStepInvalid");
     case "first_task_missing":
@@ -574,8 +725,10 @@ const localizedIssueActionLabel = (
 ) => {
   switch (issue.code) {
     case "starter_missing":
+    case "starter_invalid":
       return t("workflowDesign.editor.issueAction.configureStarter");
     case "assignment_missing":
+    case "assignment_invalid":
       return t("workflowDesign.editor.issueAction.configureAssignment");
     case "start_step_invalid":
     case "first_task_missing":

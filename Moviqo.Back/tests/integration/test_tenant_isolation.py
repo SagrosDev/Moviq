@@ -28,6 +28,8 @@ from moviqo.modules.organizations.models import (
     Organization,
     OrganizationRegistrationConsent,
     RegistrationVerification,
+    Team,
+    TeamMembership,
 )
 from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowDraft
 from moviqo.modules.workflow_runtime.models import (
@@ -225,6 +227,72 @@ def _assert_registration_verification_isolation(seed: IsolationSeed) -> None:
 
     row_b.refresh_from_db()
     assert row_b.consumed_at is None
+
+
+def _assert_team_isolation(seed: IsolationSeed) -> None:
+    Team.objects.create(
+        organization=seed.organization_a,
+        name="Alpha Team",
+        normalized_name="alpha-team",
+    )
+    row_b = Team.objects.create(
+        organization=seed.organization_b,
+        name="Bravo Team",
+        normalized_name="bravo-team",
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert Team.objects.count() == 1
+        assert not Team.objects.filter(id=row_b.id).exists()
+        updated = Team.objects.filter(id=row_b.id).update(name="cross-tenant")
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.name == "Bravo Team"
+
+
+def _assert_team_membership_isolation(seed: IsolationSeed) -> None:
+    team_a = Team.objects.create(
+        organization=seed.organization_a,
+        name="Alpha Team",
+        normalized_name="alpha-team",
+    )
+    team_b = Team.objects.create(
+        organization=seed.organization_b,
+        name="Bravo Team",
+        normalized_name="bravo-team",
+    )
+    TeamMembership.objects.create(
+        organization=seed.organization_a,
+        team=team_a,
+        membership=seed.membership_a,
+    )
+    row_b = TeamMembership.objects.create(
+        organization=seed.organization_b,
+        team=team_b,
+        membership=seed.membership_b,
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert TeamMembership.objects.count() == 1
+        assert not TeamMembership.objects.filter(id=row_b.id).exists()
+        updated = TeamMembership.objects.filter(id=row_b.id).update(is_active=False)
+        assert updated == 0
+
+    row_b.refresh_from_db()
+    assert row_b.is_active is True
 
 
 def _assert_command_result_isolation(seed: IsolationSeed) -> None:

@@ -21,6 +21,7 @@ export {
 export type {
   WorkflowCreationAccepted,
   WorkflowCreationFormState,
+  WorkflowConfigurationDirectory,
   WorkflowDraftConnection,
   WorkflowDraftDocument,
   WorkflowPublicationIssue,

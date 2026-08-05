@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Any
 
-CURRENT_DRAFT_SCHEMA_VERSION = 3
+CURRENT_DRAFT_SCHEMA_VERSION = 4
 CURRENT_DRAFT_FIELDS = frozenset(
     {
         "schemaVersion",
@@ -40,7 +40,23 @@ SUPPORTED_CONNECTION_TYPES = frozenset({"sequence"})
 SUPPORTED_PROCESS_FIELD_KINDS = frozenset({"shortText"})
 LEGACY_DRAFT_SCHEMA_VERSION = 1
 GRAPH_DRAFT_SCHEMA_VERSION = 2
+PUBLICATION_DRAFT_SCHEMA_VERSION = 3
 SHORT_TEXT_MAXIMUM_LENGTH = 255
+STARTER_MODES = frozenset(
+    {
+        "unconfigured",
+        "allActiveMembers",
+        "selectedTeams",
+        "selectedMembers",
+    }
+)
+ASSIGNMENT_MODES = frozenset(
+    {
+        "unconfigured",
+        "workflowInitiator",
+        "specificMember",
+    }
+)
 
 
 class WorkflowDraftSchemaError(ValueError):
@@ -73,6 +89,10 @@ def load_draft_document(payload: dict[str, Any]) -> dict[str, Any]:
 
     if schema_version == GRAPH_DRAFT_SCHEMA_VERSION:
         payload = _upcast_v2_to_v3(payload)
+        schema_version = payload["schemaVersion"]
+
+    if schema_version == PUBLICATION_DRAFT_SCHEMA_VERSION:
+        payload = _upcast_v3_to_v4(payload)
     elif schema_version != CURRENT_DRAFT_SCHEMA_VERSION:
         raise UnsupportedDraftSchemaVersionError(
             f"Unsupported draft schema version: {schema_version}"
@@ -180,7 +200,7 @@ def _upcast_v1_to_v2(payload: dict[str, Any]) -> dict[str, Any]:
 
 def _upcast_v2_to_v3(payload: dict[str, Any]) -> dict[str, Any]:
     return {
-        "schemaVersion": CURRENT_DRAFT_SCHEMA_VERSION,
+        "schemaVersion": PUBLICATION_DRAFT_SCHEMA_VERSION,
         "draftId": payload["draftId"],
         "workflowId": payload["workflowId"],
         "name": payload["name"],
@@ -193,7 +213,44 @@ def _upcast_v2_to_v3(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _normalize_publication(payload: dict[str, Any]) -> dict[str, dict[str, bool]]:
+def _upcast_v3_to_v4(payload: dict[str, Any]) -> dict[str, Any]:
+    legacy_publication = payload.get("publication", {})
+    legacy_starter = legacy_publication.get("starter", {})
+    legacy_assignment = legacy_publication.get("assignment", {})
+
+    return {
+        "schemaVersion": CURRENT_DRAFT_SCHEMA_VERSION,
+        "draftId": payload["draftId"],
+        "workflowId": payload["workflowId"],
+        "name": payload["name"],
+        "status": payload.get("status", "draft"),
+        "elements": list(payload.get("elements", [])),
+        "connections": list(payload.get("connections", [])),
+        "processFields": list(payload.get("processFields", [])),
+        "formBindings": list(payload.get("formBindings", [])),
+        "publication": {
+            "starter": {
+                "mode": (
+                    "allActiveMembers"
+                    if bool(legacy_starter.get("isConfigured", False))
+                    else "unconfigured"
+                ),
+                "teamIds": [],
+                "membershipIds": [],
+            },
+            "assignment": {
+                "mode": (
+                    "workflowInitiator"
+                    if bool(legacy_assignment.get("isConfigured", False))
+                    else "unconfigured"
+                ),
+                "membershipId": None,
+            },
+        },
+    }
+
+
+def _normalize_publication(payload: dict[str, Any]) -> dict[str, Any]:
     starter = payload.get("starter", {})
     assignment = payload.get("assignment", {})
     if not isinstance(starter, dict):
@@ -203,9 +260,36 @@ def _normalize_publication(payload: dict[str, Any]) -> dict[str, dict[str, bool]
             "Workflow draft publication assignment must be an object."
         )
 
+    starter_mode = starter.get("mode") or (
+        "allActiveMembers" if bool(starter.get("isConfigured", False)) else "unconfigured"
+    )
+    assignment_mode = assignment.get("mode") or (
+        "workflowInitiator"
+        if bool(assignment.get("isConfigured", False))
+        else "unconfigured"
+    )
+    if starter_mode not in STARTER_MODES:
+        raise WorkflowDraftSchemaError(
+            f"Unsupported workflow draft starter mode: {starter_mode}"
+        )
+    if assignment_mode not in ASSIGNMENT_MODES:
+        raise WorkflowDraftSchemaError(
+            f"Unsupported workflow draft assignment mode: {assignment_mode}"
+        )
+
     return {
-        "starter": {"isConfigured": bool(starter.get("isConfigured", False))},
-        "assignment": {"isConfigured": bool(assignment.get("isConfigured", False))},
+        "starter": {
+            "mode": starter_mode,
+            "teamIds": _normalize_identifier_list(starter, "teamIds"),
+            "membershipIds": _normalize_identifier_list(starter, "membershipIds"),
+        },
+        "assignment": {
+            "mode": assignment_mode,
+            "membershipId": _normalize_optional_nullable_string(
+                assignment,
+                "membershipId",
+            ),
+        },
     }
 
 
@@ -528,6 +612,30 @@ def _normalize_optional_nullable_string(
         )
     normalized = value.strip()
     return normalized if normalized else None
+
+
+def _normalize_identifier_list(payload: dict[str, Any], field_name: str) -> list[str]:
+    value = payload.get(field_name, [])
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise WorkflowDraftSchemaError(
+            f"Workflow draft field '{field_name}' must be a list."
+        )
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        if not isinstance(item, str):
+            raise WorkflowDraftSchemaError(
+                f"Workflow draft field '{field_name}' must contain string identifiers."
+            )
+        candidate = item.strip()
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        normalized.append(candidate)
+    return normalized
 
 
 def _normalize_element(payload: Any) -> dict[str, str]:

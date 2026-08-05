@@ -148,6 +148,17 @@ export type MessageKey =
   | "workflowDesign.editor.starterConfigured"
   | "workflowDesign.editor.configureAssignment"
   | "workflowDesign.editor.assignmentConfigured"
+  | "workflowDesign.editor.starterSectionTitle"
+  | "workflowDesign.editor.assignmentSectionTitle"
+  | "workflowDesign.editor.starterAllActiveMembers"
+  | "workflowDesign.editor.starterSelectedTeams"
+  | "workflowDesign.editor.starterSelectedMembers"
+  | "workflowDesign.editor.assignmentWorkflowInitiator"
+  | "workflowDesign.editor.assignmentSpecificMember"
+  | "workflowDesign.editor.starterSummaryPrefix"
+  | "workflowDesign.editor.assignmentSummaryPrefix"
+  | "workflowDesign.editor.starterEmpty"
+  | "workflowDesign.editor.assignmentEmpty"
   | "workflowDesign.editor.issue.starterMissing"
   | "workflowDesign.editor.issue.assignmentMissing"
   | "workflowDesign.editor.issue.startStepInvalid"
@@ -453,6 +464,17 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.starterConfigured": "Inicio listo",
   "workflowDesign.editor.configureAssignment": "Configurar asignacion",
   "workflowDesign.editor.assignmentConfigured": "Asignacion lista",
+  "workflowDesign.editor.starterSectionTitle": "Quien puede iniciar",
+  "workflowDesign.editor.assignmentSectionTitle": "Quien recibe la primera tarea",
+  "workflowDesign.editor.starterAllActiveMembers": "Todas las personas activas",
+  "workflowDesign.editor.starterSelectedTeams": "Equipos seleccionados",
+  "workflowDesign.editor.starterSelectedMembers": "Personas seleccionadas",
+  "workflowDesign.editor.assignmentWorkflowInitiator": "Quien inicia el flujo",
+  "workflowDesign.editor.assignmentSpecificMember": "Una persona especifica",
+  "workflowDesign.editor.starterSummaryPrefix": "Puede iniciar:",
+  "workflowDesign.editor.assignmentSummaryPrefix": "Primera tarea para:",
+  "workflowDesign.editor.starterEmpty": "Aun no definiste quien puede iniciar este flujo.",
+  "workflowDesign.editor.assignmentEmpty": "Selecciona una opcion de asignacion.",
   "workflowDesign.editor.issue.starterMissing":
     "Necesitamos un detalle mas antes de publicar: define quien puede iniciar este flujo.",
   "workflowDesign.editor.issue.assignmentMissing":
@@ -772,6 +794,17 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.starterConfigured": "Starter ready",
   "workflowDesign.editor.configureAssignment": "Configure assignment",
   "workflowDesign.editor.assignmentConfigured": "Assignment ready",
+  "workflowDesign.editor.starterSectionTitle": "Who can start",
+  "workflowDesign.editor.assignmentSectionTitle": "Who receives the first task",
+  "workflowDesign.editor.starterAllActiveMembers": "All active members",
+  "workflowDesign.editor.starterSelectedTeams": "Selected teams",
+  "workflowDesign.editor.starterSelectedMembers": "Selected members",
+  "workflowDesign.editor.assignmentWorkflowInitiator": "The workflow initiator",
+  "workflowDesign.editor.assignmentSpecificMember": "One specific member",
+  "workflowDesign.editor.starterSummaryPrefix": "Can start:",
+  "workflowDesign.editor.assignmentSummaryPrefix": "First task goes to:",
+  "workflowDesign.editor.starterEmpty": "You have not chosen who can start this workflow yet.",
+  "workflowDesign.editor.assignmentEmpty": "Choose one assignment option.",
   "workflowDesign.editor.issue.starterMissing":
     "We need one more detail before publishing: choose who can start this workflow.",
   "workflowDesign.editor.issue.assignmentMissing":

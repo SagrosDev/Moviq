@@ -1814,6 +1814,18 @@
                     "expectedTaskRevision"
                 ]
             },
+            "WorkflowAssignmentConfiguration": {
+                "type": "object",
+                "properties": {
+                    "mode": {
+                        "type": "string"
+                    },
+                    "membershipId": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
             "WorkflowCatalogItem": {
                 "type": "object",
                 "properties": {
@@ -1856,6 +1868,27 @@
                 },
                 "required": [
                     "items"
+                ]
+            },
+            "WorkflowConfigurationDirectory": {
+                "type": "object",
+                "properties": {
+                    "memberships": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WorkflowDirectoryMembership"
+                        }
+                    },
+                    "teams": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WorkflowDirectoryTeam"
+                        }
+                    }
+                },
+                "required": [
+                    "memberships",
+                    "teams"
                 ]
             },
             "WorkflowConnection": {
@@ -1908,6 +1941,9 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "configurationDirectory": {
+                        "$ref": "#/components/schemas/WorkflowConfigurationDirectory"
+                    },
                     "name": {
                         "type": "string"
                     },
@@ -1919,12 +1955,62 @@
                     }
                 },
                 "required": [
+                    "configurationDirectory",
                     "createdByMembershipId",
                     "draft",
                     "name",
                     "organizationId",
                     "revision",
                     "workflowId"
+                ]
+            },
+            "WorkflowDirectoryMembership": {
+                "type": "object",
+                "properties": {
+                    "membershipId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "displayName",
+                    "membershipId",
+                    "role"
+                ]
+            },
+            "WorkflowDirectoryTeam": {
+                "type": "object",
+                "properties": {
+                    "teamId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "activeMemberCount": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "membershipIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                },
+                "required": [
+                    "activeMemberCount",
+                    "membershipIds",
+                    "name",
+                    "teamId"
                 ]
             },
             "WorkflowDraftDocument": {
@@ -2085,10 +2171,10 @@
                 "type": "object",
                 "properties": {
                     "starter": {
-                        "$ref": "#/components/schemas/WorkflowPublicationSection"
+                        "$ref": "#/components/schemas/WorkflowStarterConfiguration"
                     },
                     "assignment": {
-                        "$ref": "#/components/schemas/WorkflowPublicationSection"
+                        "$ref": "#/components/schemas/WorkflowAssignmentConfiguration"
                     }
                 }
             },
@@ -2134,14 +2220,6 @@
                     "target"
                 ]
             },
-            "WorkflowPublicationSection": {
-                "type": "object",
-                "properties": {
-                    "isConfigured": {
-                        "type": "boolean"
-                    }
-                }
-            },
             "WorkflowPublicationValidationRequest": {
                 "type": "object",
                 "properties": {
@@ -2183,6 +2261,26 @@
                     "revision",
                     "workflowId"
                 ]
+            },
+            "WorkflowStarterConfiguration": {
+                "type": "object",
+                "properties": {
+                    "mode": {
+                        "type": "string"
+                    },
+                    "teamIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "membershipIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
         "securitySchemes": {

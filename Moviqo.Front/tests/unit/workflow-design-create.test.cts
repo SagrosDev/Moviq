@@ -19,6 +19,39 @@ import {
   type WorkflowPublicationValidationAccepted
 } from "../../src/features/workflow-design";
 
+const createAccepted = (
+  draftOverrides: Partial<WorkflowDraftDocument> = {},
+  revision = "1"
+): WorkflowCreationAccepted => ({
+  workflowId: "01987df4-ae8a-7000-8000-000000000110",
+  organizationId: "01987df4-ae8a-7000-8000-000000000101",
+  createdByMembershipId: "01987df4-ae8a-7000-8000-000000000102",
+  configurationDirectory: {
+    memberships: [
+      {
+        membershipId: "01987df4-ae8a-7000-8000-000000000102",
+        displayName: "Designer",
+        role: "designer"
+      }
+    ],
+    teams: []
+  },
+  name: "Workflow intake",
+  revision,
+  draft: {
+    schemaVersion: 4,
+    draftId: "01987df4-ae8a-7000-8000-000000000111",
+    workflowId: "01987df4-ae8a-7000-8000-000000000110",
+    name: "Workflow intake",
+    status: "draft",
+    elements: [],
+    connections: [],
+    processFields: [],
+    formBindings: [],
+    ...draftOverrides
+  }
+});
+
 test("only designer-capable roles can create workflows", () => {
   assert.equal(canCreateWorkflow("owner"), true);
   assert.equal(canCreateWorkflow("administrator"), true);
@@ -27,24 +60,7 @@ test("only designer-capable roles can create workflows", () => {
 });
 
 test("workflow draft state seeds revision 1 from the authoritative server response", () => {
-  const accepted: WorkflowCreationAccepted = {
-    workflowId: "01987df4-ae8a-7000-8000-000000000110",
-    organizationId: "01987df4-ae8a-7000-8000-000000000101",
-    createdByMembershipId: "01987df4-ae8a-7000-8000-000000000102",
-    name: "Workflow intake",
-    revision: "1",
-    draft: {
-      schemaVersion: 3,
-      draftId: "01987df4-ae8a-7000-8000-000000000111",
-      workflowId: "01987df4-ae8a-7000-8000-000000000110",
-      name: "Workflow intake",
-      status: "draft",
-      elements: [],
-      connections: [],
-      processFields: [],
-      formBindings: []
-    }
-  };
+  const accepted = createAccepted();
 
   const state = createWorkflowDraftState(accepted);
 
@@ -86,24 +102,7 @@ test("the UI does not report success before the server confirms creation", () =>
 });
 
 test("guided controls can build the minimum start task end draft without drag", () => {
-  const accepted: WorkflowCreationAccepted = {
-    workflowId: "01987df4-ae8a-7000-8000-000000000110",
-    organizationId: "01987df4-ae8a-7000-8000-000000000101",
-    createdByMembershipId: "01987df4-ae8a-7000-8000-000000000102",
-    name: "Workflow intake",
-    revision: "1",
-    draft: {
-      schemaVersion: 3,
-      draftId: "01987df4-ae8a-7000-8000-000000000111",
-      workflowId: "01987df4-ae8a-7000-8000-000000000110",
-      name: "Workflow intake",
-      status: "draft",
-      elements: [],
-      connections: [],
-      processFields: [],
-      formBindings: []
-    }
-  };
+  const accepted = createAccepted();
   const draftState = createWorkflowDraftState(accepted);
   const labels = { start: "Start", task: "Task", end: "End" };
 
@@ -135,24 +134,7 @@ test("guided controls can build the minimum start task end draft without drag", 
 });
 
 test("authoritative save replaces the local draft with the server revision", () => {
-  const accepted: WorkflowCreationAccepted = {
-    workflowId: "01987df4-ae8a-7000-8000-000000000110",
-    organizationId: "01987df4-ae8a-7000-8000-000000000101",
-    createdByMembershipId: "01987df4-ae8a-7000-8000-000000000102",
-    name: "Workflow intake",
-    revision: "1",
-    draft: {
-      schemaVersion: 3,
-      draftId: "01987df4-ae8a-7000-8000-000000000111",
-      workflowId: "01987df4-ae8a-7000-8000-000000000110",
-      name: "Workflow intake",
-      status: "draft",
-      elements: [],
-      connections: [],
-      processFields: [],
-      formBindings: []
-    }
-  };
+  const accepted = createAccepted();
 
   const saved = applyWorkflowDraftSave(createWorkflowDraftState(accepted), {
     ...accepted,
@@ -209,24 +191,7 @@ test("guided controls do not create a second task in the single-path editor", ()
 });
 
 test("server sync preserves local edits until a save is accepted", () => {
-  const accepted: WorkflowCreationAccepted = {
-    workflowId: "01987df4-ae8a-7000-8000-000000000110",
-    organizationId: "01987df4-ae8a-7000-8000-000000000101",
-    createdByMembershipId: "01987df4-ae8a-7000-8000-000000000102",
-    name: "Workflow intake",
-    revision: "1",
-    draft: {
-      schemaVersion: 3,
-      draftId: "01987df4-ae8a-7000-8000-000000000111",
-      workflowId: "01987df4-ae8a-7000-8000-000000000110",
-      name: "Workflow intake",
-      status: "draft",
-      elements: [],
-      connections: [],
-      processFields: [],
-      formBindings: []
-    }
-  };
+  const accepted = createAccepted();
   const draftState = createWorkflowDraftState(accepted);
   const labels = { start: "Start", task: "Task", end: "End" };
 
@@ -315,24 +280,7 @@ test("rebinding keeps the same field identity instead of duplicating the definit
 });
 
 test("save failures retain field-level invalid param targets for guided inputs", () => {
-  const accepted: WorkflowCreationAccepted = {
-    workflowId: "01987df4-ae8a-7000-8000-000000000110",
-    organizationId: "01987df4-ae8a-7000-8000-000000000101",
-    createdByMembershipId: "01987df4-ae8a-7000-8000-000000000102",
-    name: "Workflow intake",
-    revision: "1",
-    draft: {
-      schemaVersion: 3,
-      draftId: "01987df4-ae8a-7000-8000-000000000111",
-      workflowId: "01987df4-ae8a-7000-8000-000000000110",
-      name: "Workflow intake",
-      status: "draft",
-      elements: [],
-      connections: [],
-      processFields: [],
-      formBindings: []
-    }
-  };
+  const accepted = createAccepted();
 
   const state = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
@@ -350,24 +298,12 @@ test("save failures retain field-level invalid param targets for guided inputs",
 });
 
 test("publication validation stores authoritative checklist issues without discarding local edits", () => {
-  const accepted: WorkflowCreationAccepted = {
-    workflowId: "01987df4-ae8a-7000-8000-000000000110",
-    organizationId: "01987df4-ae8a-7000-8000-000000000101",
-    createdByMembershipId: "01987df4-ae8a-7000-8000-000000000102",
-    name: "Workflow intake",
-    revision: "2",
-    draft: {
-      schemaVersion: 3,
-      draftId: "01987df4-ae8a-7000-8000-000000000111",
-      workflowId: "01987df4-ae8a-7000-8000-000000000110",
-      name: "Workflow intake",
-      status: "draft",
-      elements: [{ id: "start-1", type: "start", label: "Start" }],
-      connections: [],
-      processFields: [],
-      formBindings: []
-    }
-  };
+  const accepted = createAccepted(
+    {
+      elements: [{ id: "start-1", type: "start", label: "Start" }]
+    },
+    "2"
+  );
   const draftState = createWorkflowDraftState(accepted);
   const edited = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(draftState),
@@ -408,24 +344,7 @@ test("publication validation stores authoritative checklist issues without disca
 });
 
 test("publication validation failure keeps the checklist retry state explicit", () => {
-  const accepted: WorkflowCreationAccepted = {
-    workflowId: "01987df4-ae8a-7000-8000-000000000110",
-    organizationId: "01987df4-ae8a-7000-8000-000000000101",
-    createdByMembershipId: "01987df4-ae8a-7000-8000-000000000102",
-    name: "Workflow intake",
-    revision: "2",
-    draft: {
-      schemaVersion: 3,
-      draftId: "01987df4-ae8a-7000-8000-000000000111",
-      workflowId: "01987df4-ae8a-7000-8000-000000000110",
-      name: "Workflow intake",
-      status: "draft",
-      elements: [],
-      connections: [],
-      processFields: [],
-      formBindings: []
-    }
-  };
+  const accepted = createAccepted({}, "2");
 
   const validating = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
@@ -454,6 +373,49 @@ test("checklist target focus maps to stable editor sections", () => {
   assert.equal(focusChecklistTarget("configuration.assignment"), "assignment");
   assert.equal(focusChecklistTarget("elements.task-1"), "canvas");
   assert.equal(focusChecklistTarget("processFields.field-1"), "field");
+});
+
+test("starter selection preserves both chosen teams and chosen members", () => {
+  const accepted = createAccepted();
+  accepted.configurationDirectory = {
+    memberships: [
+      {
+        membershipId: "01987df4-ae8a-7000-8000-000000000102",
+        displayName: "Designer",
+        role: "designer"
+      },
+      {
+        membershipId: "01987df4-ae8a-7000-8000-000000000103",
+        displayName: "Operator",
+        role: "member"
+      }
+    ],
+    teams: [
+      {
+        teamId: "01987df4-ae8a-7000-8000-000000000104",
+        name: "Operations",
+        activeMemberCount: 1,
+        membershipIds: ["01987df4-ae8a-7000-8000-000000000103"]
+      }
+    ]
+  };
+
+  const state = createWorkflowDraftEditorState(createWorkflowDraftState(accepted));
+  const withTeam = reduceWorkflowDraftEditorState(state, {
+    type: "starter-team-toggled",
+    teamId: "01987df4-ae8a-7000-8000-000000000104"
+  });
+  const withMember = reduceWorkflowDraftEditorState(withTeam, {
+    type: "starter-membership-toggled",
+    membershipId: "01987df4-ae8a-7000-8000-000000000103"
+  });
+
+  assert.deepEqual(withMember.localDraft.publication?.starter.teamIds, [
+    "01987df4-ae8a-7000-8000-000000000104"
+  ]);
+  assert.deepEqual(withMember.localDraft.publication?.starter.membershipIds, [
+    "01987df4-ae8a-7000-8000-000000000103"
+  ]);
 });
 
 test("resolved checklist issues clear only after authoritative validation", () => {

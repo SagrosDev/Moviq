@@ -113,6 +113,60 @@ class Membership(models.Model):
         ]
 
 
+class Team(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        related_name="teams",
+    )
+    name = models.CharField(max_length=120)
+    normalized_name = models.CharField(max_length=120)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "organizations_team"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("organization", "normalized_name"),
+                name="organizations_team_organization_name_unique",
+            )
+        ]
+
+
+class TeamMembership(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.PROTECT,
+        related_name="team_memberships",
+    )
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.PROTECT,
+        related_name="memberships",
+    )
+    membership = models.ForeignKey(
+        Membership,
+        on_delete=models.PROTECT,
+        related_name="team_memberships",
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "organizations_team_membership"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("team", "membership"),
+                name="organizations_team_membership_team_membership_unique",
+            )
+        ]
+
+
 class OrganizationRegistrationConsent(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey(

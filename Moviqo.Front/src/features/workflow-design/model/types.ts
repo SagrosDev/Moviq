@@ -36,13 +36,49 @@ export type WorkflowTaskFormControl = {
   label: string | null;
 };
 
-export type WorkflowPublicationSection = {
-  isConfigured: boolean;
+export type WorkflowStarterMode =
+  | "unconfigured"
+  | "allActiveMembers"
+  | "selectedTeams"
+  | "selectedMembers";
+
+export type WorkflowAssignmentMode =
+  | "unconfigured"
+  | "workflowInitiator"
+  | "specificMember";
+
+export type WorkflowStarterConfiguration = {
+  mode: WorkflowStarterMode;
+  teamIds: string[];
+  membershipIds: string[];
+};
+
+export type WorkflowAssignmentConfiguration = {
+  mode: WorkflowAssignmentMode;
+  membershipId: string | null;
 };
 
 export type WorkflowPublicationConfiguration = {
-  starter: WorkflowPublicationSection;
-  assignment: WorkflowPublicationSection;
+  starter: WorkflowStarterConfiguration;
+  assignment: WorkflowAssignmentConfiguration;
+};
+
+export type WorkflowConfigurationDirectoryMembership = {
+  membershipId: string;
+  displayName: string;
+  role: string;
+};
+
+export type WorkflowConfigurationDirectoryTeam = {
+  teamId: string;
+  name: string;
+  activeMemberCount: number;
+  membershipIds: string[];
+};
+
+export type WorkflowConfigurationDirectory = {
+  memberships: WorkflowConfigurationDirectoryMembership[];
+  teams: WorkflowConfigurationDirectoryTeam[];
 };
 
 export type WorkflowDraftDocument = {
@@ -62,6 +98,7 @@ export type WorkflowCreationAccepted = {
   workflowId: string;
   organizationId: string;
   createdByMembershipId: string;
+  configurationDirectory: WorkflowConfigurationDirectory;
   name: string;
   revision: string;
   draft: WorkflowDraftDocument;

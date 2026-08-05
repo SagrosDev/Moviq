@@ -9,7 +9,10 @@ from django.conf import settings
 from moviqo.building_blocks.tenancy.runtime import TenantContext
 from moviqo.modules.governance.models import CommandResult, TransactionalAuditRecord
 from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
-from moviqo.modules.workflow_design.application import create_workflow_definition, save_workflow_draft
+from moviqo.modules.workflow_design.application import (
+    create_workflow_definition,
+    save_workflow_draft,
+)
 from moviqo.modules.workflow_design.models import WorkflowDraft
 from moviqo.modules.workflow_runtime.application.task_form import (
     TaskFormRevisionConflictError,
@@ -135,7 +138,10 @@ def test_task_form_save_commits_one_value_audit_and_idempotency_result(django_us
 
     assert saved["taskRevision"] == "2"
     assert saved["status"] == "in_progress"
-    assert TaskProcessFieldValue.objects.get(task=task, field_id="field-1").value_text == "Ana Perez"
+    assert (
+        TaskProcessFieldValue.objects.get(task=task, field_id="field-1").value_text
+        == "Ana Perez"
+    )
     assert CommandResult.objects.filter(
         command_type="workflow-runtime.save-task-form-draft",
         idempotency_key="task-form-save-1",
@@ -176,7 +182,10 @@ def test_invalid_task_form_save_keeps_prior_value_intact(django_user_model) -> N
             "reason": "Use at least 1 character for this field.",
         }
     ]
-    assert TaskProcessFieldValue.objects.get(task=task, field_id="field-1").value_text == "Ana Perez"
+    assert (
+        TaskProcessFieldValue.objects.get(task=task, field_id="field-1").value_text
+        == "Ana Perez"
+    )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -190,7 +199,9 @@ def test_task_form_read_hides_cross_tenant_task_existence(django_user_model) -> 
 
 
 @pytest.mark.django_db(transaction=True)
-def test_task_form_becomes_unavailable_when_the_workflow_draft_revision_moves(django_user_model) -> None:
+def test_task_form_becomes_unavailable_when_the_workflow_draft_revision_moves(
+    django_user_model,
+) -> None:
     _integration_only()
     tenant_context, created, task = _seed_task_form(django_user_model)
     draft = WorkflowDraft.objects.get(workflow_id=created["workflowId"])

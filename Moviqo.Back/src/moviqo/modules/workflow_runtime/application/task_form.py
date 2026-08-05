@@ -335,23 +335,28 @@ def _validate_submitted_controls(
             )
             continue
         if len(value) < allowed_control["minimumLength"]:
+            minimum_length = allowed_control["minimumLength"]
+            minimum_length_reason = (
+                f"Use at least {minimum_length} character for this field."
+                if minimum_length == 1
+                else f"Use at least {minimum_length} characters for this field."
+            )
             invalid_params.append(
                 {
                     "name": f"controls.{control_id}.value",
                     "code": "too_short",
-                    "reason": (
-                        f"Use at least {allowed_control['minimumLength']} character for this field."
-                        if allowed_control["minimumLength"] == 1
-                        else f"Use at least {allowed_control['minimumLength']} characters for this field."
-                    ),
+                    "reason": minimum_length_reason,
                 }
             )
         if len(value) > allowed_control["maximumLength"]:
+            maximum_length = allowed_control["maximumLength"]
             invalid_params.append(
                 {
                     "name": f"controls.{control_id}.value",
                     "code": "too_long",
-                    "reason": f"Use {allowed_control['maximumLength']} characters or fewer for this field.",
+                    "reason": (
+                        f"Use {maximum_length} characters or fewer for this field."
+                    ),
                 }
             )
 

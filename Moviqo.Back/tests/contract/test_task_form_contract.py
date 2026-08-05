@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from django.test import Client
 import pytest
+from django.test import Client
 
 from moviqo.modules.governance.models import CommandResult
 from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
@@ -240,7 +240,10 @@ def test_task_form_save_rejects_missing_visible_controls(assigned_task_member) -
 
 
 @pytest.mark.django_db
-def test_task_form_save_hides_cross_tenant_task_existence(assigned_task_member, django_user_model) -> None:
+def test_task_form_save_hides_cross_tenant_task_existence(
+    assigned_task_member,
+    django_user_model,
+) -> None:
     _user, _organization, _membership, _workflow, task = assigned_task_member
     other_user = django_user_model.objects.create_user(
         username="other-member",

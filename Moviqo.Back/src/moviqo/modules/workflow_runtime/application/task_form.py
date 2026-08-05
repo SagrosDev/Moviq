@@ -8,8 +8,10 @@ from rest_framework.exceptions import APIException
 
 from moviqo.building_blocks.commands import execute_atomic_command
 from moviqo.building_blocks.tenancy.runtime import TenantContext
-from moviqo.modules.workflow_design.application import read_workflow_draft_snapshot
-from moviqo.modules.workflow_design.models import WorkflowVersion
+from moviqo.modules.workflow_design.application import (
+    read_published_workflow_version,
+    read_workflow_draft_snapshot,
+)
 from moviqo.modules.workflow_runtime.models import TaskOccurrence, TaskProcessFieldValue
 
 TASK_FORM_SAVE_COMMAND = "workflow-runtime.save-task-form-draft"
@@ -375,14 +377,10 @@ def _validate_submitted_controls(
 
 def _load_authoritative_task_document(task: TaskOccurrence) -> dict[str, Any] | None:
     if task.workflow_version_id:
-        version = (
-            WorkflowVersion.objects.filter(
-                id=task.workflow_version_id,
-                organization_id=task.organization_id,
-                workflow_id=task.workflow_id,
-            )
-            .only("snapshot", "source_draft_revision")
-            .first()
+        version = read_published_workflow_version(
+            workflow_version_id=task.workflow_version_id,
+            organization_id=task.organization_id,
+            workflow_id=task.workflow_id,
         )
         if version is None or version.source_draft_revision != task.definition_revision:
             return None

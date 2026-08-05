@@ -111,6 +111,16 @@ class WorkflowPublishedVersionSummary:
     schema_version: int
 
 
+@dataclass(frozen=True)
+class PublishedWorkflowVersionRecord:
+    version_id: str
+    workflow_id: str
+    workflow_name: str
+    version_number: int
+    source_draft_revision: str
+    snapshot: dict[str, Any]
+
+
 def create_workflow_definition(
     *,
     tenant_context: TenantContext,
@@ -205,6 +215,62 @@ def read_workflow_draft_snapshot(
         return None
 
     return workflow.draft.revision, load_draft_document(workflow.draft.document)
+
+
+def list_latest_published_workflow_versions(
+    *,
+    tenant_context: TenantContext,
+) -> list[PublishedWorkflowVersionRecord]:
+    versions = list(
+        WorkflowVersion.objects.select_related("workflow")
+        .filter(
+            organization_id=tenant_context.organization_id,
+            workflow__organization_id=tenant_context.organization_id,
+        )
+        .order_by("workflow_id", "-version_number")
+    )
+    latest_by_workflow: dict[str, WorkflowVersion] = {}
+    for version in versions:
+        workflow_key = str(version.workflow_id)
+        latest_by_workflow.setdefault(workflow_key, version)
+    return [_published_workflow_version_record(version) for version in latest_by_workflow.values()]
+
+
+def read_latest_published_workflow_version(
+    *,
+    tenant_context: TenantContext,
+    workflow_id,
+) -> PublishedWorkflowVersionRecord | None:
+    version = (
+        WorkflowVersion.objects.select_related("workflow")
+        .filter(
+            organization_id=tenant_context.organization_id,
+            workflow_id=workflow_id,
+            workflow__organization_id=tenant_context.organization_id,
+        )
+        .order_by("-version_number")
+        .first()
+    )
+    return _published_workflow_version_record(version)
+
+
+def read_published_workflow_version(
+    *,
+    organization_id,
+    workflow_id,
+    workflow_version_id,
+) -> PublishedWorkflowVersionRecord | None:
+    version = (
+        WorkflowVersion.objects.select_related("workflow")
+        .filter(
+            id=workflow_version_id,
+            organization_id=organization_id,
+            workflow_id=workflow_id,
+            workflow__organization_id=organization_id,
+        )
+        .first()
+    )
+    return _published_workflow_version_record(version)
 
 
 def save_workflow_draft(
@@ -824,6 +890,21 @@ def _normalize_candidate_document(
         ),
     }
     return validate_workflow_graph_document(candidate_document)
+
+
+def _published_workflow_version_record(
+    version: WorkflowVersion | None,
+) -> PublishedWorkflowVersionRecord | None:
+    if version is None:
+        return None
+    return PublishedWorkflowVersionRecord(
+        version_id=str(version.id),
+        workflow_id=str(version.workflow_id),
+        workflow_name=version.workflow.name,
+        version_number=version.version_number,
+        source_draft_revision=version.source_draft_revision,
+        snapshot=version.snapshot,
+    )
 
 
 def _build_workflow_payload(

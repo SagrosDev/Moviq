@@ -5,12 +5,21 @@ from typing import Any
 
 from moviqo.building_blocks.commands import execute_atomic_command
 from moviqo.building_blocks.tenancy.runtime import TenantContext
-from moviqo.modules.organizations.models import Membership, TeamMembership
+from moviqo.modules.organizations.application import (
+    ActiveMembershipRecord,
+    list_active_team_ids,
+    read_active_membership,
+    read_active_membership_by_id,
+)
+from moviqo.modules.workflow_design.application import (
+    PublishedWorkflowVersionRecord,
+    list_latest_published_workflow_versions,
+    read_latest_published_workflow_version,
+)
 from moviqo.modules.workflow_design.application.publication_configuration import (
     WorkflowStarterAuthorizationDecision,
     evaluate_workflow_starter_authorization,
 )
-from moviqo.modules.workflow_design.models import WorkflowVersion
 from moviqo.modules.workflow_runtime.models import ProcessInstance, TaskOccurrence
 
 PROCESS_START_COMMAND = "workflow-runtime.start-process"
@@ -29,13 +38,13 @@ def list_startable_workflows(
     *,
     tenant_context: TenantContext,
 ) -> list[StartableWorkflowSummary]:
-    membership = _active_membership(tenant_context=tenant_context)
+    membership = read_active_membership(tenant_context=tenant_context)
     if membership is None:
         return []
 
-    active_team_ids = _active_team_ids(tenant_context=tenant_context)
+    active_team_ids = list_active_team_ids(tenant_context=tenant_context)
     summaries: list[StartableWorkflowSummary] = []
-    for version in _latest_published_versions(tenant_context=tenant_context):
+    for version in list_latest_published_workflow_versions(tenant_context=tenant_context):
         decision = _starter_decision(
             version=version,
             membership=membership,
@@ -66,18 +75,18 @@ def start_process(
     idempotency_key: str,
     request_hash: str,
 ) -> dict[str, Any] | None:
-    membership = _active_membership(tenant_context=tenant_context)
+    membership = read_active_membership(tenant_context=tenant_context)
     if membership is None:
         return None
 
-    version = _latest_published_version_for_workflow(
+    version = read_latest_published_workflow_version(
         tenant_context=tenant_context,
         workflow_id=workflow_id,
     )
     if version is None:
         return None
 
-    active_team_ids = _active_team_ids(tenant_context=tenant_context)
+    active_team_ids = list_active_team_ids(tenant_context=tenant_context)
     decision = _starter_decision(
         version=version,
         membership=membership,
@@ -104,8 +113,8 @@ def start_process(
 def _start_process_side_effects(
     *,
     command_context,
-    membership: Membership,
-    version: WorkflowVersion,
+    membership: ActiveMembershipRecord,
+    version: PublishedWorkflowVersionRecord,
     decision: WorkflowStarterAuthorizationDecision,
 ) -> dict[str, Any]:
     snapshot = version.snapshot
@@ -124,19 +133,19 @@ def _start_process_side_effects(
     process = ProcessInstance.objects.create(
         organization_id=membership.organization_id,
         workflow_id=version.workflow_id,
-        workflow_version=version,
-        initiator_membership_id=membership.id,
+        workflow_version_id=version.version_id,
+        initiator_membership_id=membership.membership_id,
         initiator_user_id=membership.user_id,
     )
     task = TaskOccurrence.objects.create(
         organization_id=membership.organization_id,
         workflow_id=version.workflow_id,
-        workflow_version=version,
+        workflow_version_id=version.version_id,
         process=process,
         task_element_id=first_task_element_id,
-        assignee_membership_id=assignee_membership.id,
+        assignee_membership_id=assignee_membership.membership_id,
         assignee_user_id=assignee_membership.user_id,
-        activated_by_membership_id=membership.id,
+        activated_by_membership_id=membership.membership_id,
         activated_by_user_id=membership.user_id,
         definition_revision=version.source_draft_revision,
         revision="1",
@@ -147,11 +156,11 @@ def _start_process_side_effects(
         event_type="workflow-runtime.process-started",
         payload={
             "workflowId": str(version.workflow_id),
-            "workflowVersionId": str(version.id),
+            "workflowVersionId": str(version.version_id),
             "versionNumber": version.version_number,
             "processId": str(process.id),
             "taskId": str(task.id),
-            "initiatorMembershipId": str(membership.id),
+            "initiatorMembershipId": str(membership.membership_id),
             "initiatorUserId": membership.user_id,
             "startedAt": process.started_at.isoformat(),
             "viaOperationalAuthority": decision.via_operational_authority,
@@ -167,85 +176,17 @@ def _start_process_side_effects(
             "versionNumber": version.version_number,
         },
         "destinationRoute": f"/my-work/tasks/{task.id}",
-    }
-
-
-def _latest_published_versions(
-    *,
-    tenant_context: TenantContext,
-) -> list[WorkflowVersion]:
-    versions = list(
-        WorkflowVersion.objects.select_related("workflow")
-        .filter(
-            organization_id=tenant_context.organization_id,
-            workflow__organization_id=tenant_context.organization_id,
-        )
-        .order_by("workflow_id", "-version_number")
-    )
-    latest_by_workflow: dict[str, WorkflowVersion] = {}
-    for version in versions:
-        workflow_key = str(version.workflow_id)
-        latest_by_workflow.setdefault(workflow_key, version)
-    return list(latest_by_workflow.values())
-
-
-def _latest_published_version_for_workflow(
-    *,
-    tenant_context: TenantContext,
-    workflow_id,
-) -> WorkflowVersion | None:
-    return (
-        WorkflowVersion.objects.select_related("workflow")
-        .filter(
-            organization_id=tenant_context.organization_id,
-            workflow_id=workflow_id,
-            workflow__organization_id=tenant_context.organization_id,
-        )
-        .order_by("-version_number")
-        .first()
-    )
-
-
-def _active_membership(*, tenant_context: TenantContext) -> Membership | None:
-    return (
-        Membership.objects.select_related("user", "organization")
-        .filter(
-            id=tenant_context.membership_id,
-            organization_id=tenant_context.organization_id,
-            is_active=True,
-            user__is_active=True,
-            organization__is_active=True,
-            registration_state="active",
-            organization__registration_state="active",
-        )
-        .first()
-    )
-
-
-def _active_team_ids(*, tenant_context: TenantContext) -> set[str]:
-    return {
-        str(team_membership.team_id)
-        for team_membership in TeamMembership.objects.select_related("team", "membership")
-        .filter(
-            organization_id=tenant_context.organization_id,
-            membership_id=tenant_context.membership_id,
-            is_active=True,
-            membership__is_active=True,
-            membership__user__is_active=True,
-            team__is_active=True,
-        )
-    }
-
+}
 
 def _starter_decision(
     *,
-    version: WorkflowVersion,
-    membership: Membership,
+    version: PublishedWorkflowVersionRecord,
+    membership: ActiveMembershipRecord,
     active_team_ids: set[str],
 ) -> WorkflowStarterAuthorizationDecision:
     return evaluate_workflow_starter_authorization(
         publication=version.snapshot.get("publication", {}),
-        membership_id=str(membership.id),
+        membership_id=membership.membership_id,
         membership_role=membership.role,
         active_team_ids=active_team_ids,
     )
@@ -266,9 +207,9 @@ def _availability_message(
     return "Available through your starter access."
 
 
-def _workflow_title_from_snapshot(version: WorkflowVersion) -> str:
+def _workflow_title_from_snapshot(version: PublishedWorkflowVersionRecord) -> str:
     title = version.snapshot.get("name")
-    return title if isinstance(title, str) and title.strip() else version.workflow.name
+    return title if isinstance(title, str) and title.strip() else version.workflow_name
 
 
 def _first_task_element_id(*, snapshot: dict[str, Any]) -> str | None:
@@ -304,9 +245,9 @@ def _first_task_element_id(*, snapshot: dict[str, Any]) -> str | None:
 def _resolve_first_task_assignee(
     *,
     organization_id,
-    workflow_version: WorkflowVersion,
-    initiator_membership: Membership,
-) -> Membership | None:
+    workflow_version: PublishedWorkflowVersionRecord,
+    initiator_membership: ActiveMembershipRecord,
+) -> ActiveMembershipRecord | None:
     assignment = workflow_version.snapshot.get("publication", {}).get("assignment", {})
     assignment_mode = assignment.get("mode")
     if assignment_mode == "workflowInitiator":
@@ -317,16 +258,7 @@ def _resolve_first_task_assignee(
     membership_id = assignment.get("membershipId")
     if not membership_id:
         return None
-    return (
-        Membership.objects.select_related("user", "organization")
-        .filter(
-            id=membership_id,
-            organization_id=organization_id,
-            is_active=True,
-            registration_state="active",
-            user__is_active=True,
-            organization__is_active=True,
-            organization__registration_state="active",
-        )
-        .first()
+    return read_active_membership_by_id(
+        organization_id=organization_id,
+        membership_id=membership_id,
     )

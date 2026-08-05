@@ -53,6 +53,22 @@ _LAZY_EXPORTS = {
         "moviqo.modules.workflow_design.application.services",
         "publish_workflow_version",
     ),
+    "list_latest_published_workflow_versions": (
+        "moviqo.modules.workflow_design.application.services",
+        "list_latest_published_workflow_versions",
+    ),
+    "read_latest_published_workflow_version": (
+        "moviqo.modules.workflow_design.application.services",
+        "read_latest_published_workflow_version",
+    ),
+    "read_published_workflow_version": (
+        "moviqo.modules.workflow_design.application.services",
+        "read_published_workflow_version",
+    ),
+    "PublishedWorkflowVersionRecord": (
+        "moviqo.modules.workflow_design.application.services",
+        "PublishedWorkflowVersionRecord",
+    ),
 }
 
 

@@ -477,12 +477,21 @@ export interface components {
         };
         SessionContext: {
             authenticated: boolean;
-            user: {
-                [key: string]: unknown;
-            };
-            membership: {
-                [key: string]: unknown;
-            };
+            user: components["schemas"]["SessionUser"];
+            membership: components["schemas"]["SessionMembership"];
+        };
+        SessionMembership: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            organizationTimezone: string;
+            role: string;
+        };
+        SessionUser: {
+            id: number;
+            displayName: string;
+            preferredLanguage: string;
         };
         SignInRequest: {
             /** Format: email */

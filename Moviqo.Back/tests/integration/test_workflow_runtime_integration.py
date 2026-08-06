@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 from django.conf import settings
 from django.db import close_old_connections
+from django.db.models import Q
 
 from moviqo.building_blocks.tenancy.runtime import TenantContext
 from moviqo.modules.governance.models import TransactionalAuditRecord
@@ -261,7 +262,9 @@ def test_completed_process_tracking_reads_committed_audit_order(
     ]
     assert [
         audit.event_type
-        for audit in TransactionalAuditRecord.objects.order_by("created_at", "id")
+        for audit in TransactionalAuditRecord.objects.filter(
+            Q(payload__processId=started["processId"]) | Q(payload__taskId=started["taskId"])
+        ).order_by("created_at", "id")
     ] == [
         "workflow-runtime.process-started",
         "workflow-runtime.task-draft-saved",

@@ -79,6 +79,7 @@ def session_context(user: MoviqoUser) -> dict[str, object]:
         "membership": {
             "id": membership.id,
             "organizationId": membership.organization_id,
+            "organizationTimezone": membership.organization.timezone_name,
             "role": membership.role,
         },
     }
@@ -140,6 +141,14 @@ def list_active_team_ids(*, tenant_context: TenantContext) -> set[str]:
             membership__user__is_active=True,
             team__is_active=True,
         )
+    }
+
+
+def read_membership_display_names(*, membership_ids) -> dict[str, str]:
+    memberships = Membership.objects.select_related("user").filter(id__in=membership_ids)
+    return {
+        str(membership.id): membership.user.display_name or membership.user.username
+        for membership in memberships
     }
 
 

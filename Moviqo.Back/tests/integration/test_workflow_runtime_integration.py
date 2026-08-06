@@ -8,15 +8,23 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 from django.conf import settings
 from django.db import close_old_connections
+from django.db.models import Q
 
 from moviqo.building_blocks.tenancy.runtime import TenantContext
+from moviqo.modules.governance.models import TransactionalAuditRecord
 from moviqo.modules.organizations.models import Membership, MembershipRole, Organization
 from moviqo.modules.workflow_design.application import (
     create_workflow_definition,
     publish_workflow_version,
     save_workflow_draft,
 )
+from moviqo.modules.workflow_runtime.application.complete_task import complete_task
+from moviqo.modules.workflow_runtime.application.my_work import (
+    read_my_work_dashboard,
+    read_process_detail,
+)
 from moviqo.modules.workflow_runtime.application.start_process import start_process
+from moviqo.modules.workflow_runtime.application.task_form import save_task_form_draft
 from moviqo.modules.workflow_runtime.models import ProcessInstance, TaskOccurrence
 
 
@@ -171,3 +179,95 @@ def test_distinct_idempotency_keys_create_distinct_processes(
     assert first["processId"] != second["processId"]
     assert ProcessInstance.objects.count() == 2
     assert TaskOccurrence.objects.count() == 2
+
+
+@pytest.mark.django_db(transaction=True)
+def test_completed_process_tracking_reads_committed_audit_order(
+    django_user_model,
+) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+    workflow_id = _publish_workflow(tenant_context)
+
+    started = start_process(
+        tenant_context=tenant_context,
+        workflow_id=workflow_id,
+        idempotency_key="workflow-start-track-1",
+        request_hash=_request_hash("workflow-start-track-1"),
+    )
+    assert started is not None
+
+    saved = save_task_form_draft(
+        tenant_context=tenant_context,
+        task_id=started["taskId"],
+        expected_task_revision="1",
+        controls=[
+            {
+                "controlId": "binding-1",
+                "fieldId": "field-1",
+                "value": "Ana Perez",
+            }
+        ],
+        idempotency_key="workflow-save-track-1",
+        request_hash=_request_hash("workflow-save-track-1"),
+    )
+    completed = complete_task(
+        tenant_context=tenant_context,
+        task_id=started["taskId"],
+        expected_task_revision="2",
+        controls=[
+            {
+                "controlId": "binding-1",
+                "fieldId": "field-1",
+                "value": "Ana Perez",
+            }
+        ],
+        idempotency_key="workflow-complete-track-1",
+        request_hash=_request_hash("workflow-complete-track-1"),
+    )
+
+    dashboard = read_my_work_dashboard(tenant_context)
+    detail = read_process_detail(
+        tenant_context=tenant_context,
+        process_id=started["processId"],
+    )
+
+    assert saved is not None
+    assert completed is not None
+    assert dashboard["myProcesses"]["items"] == [
+        {
+            "processId": started["processId"],
+            "processNumber": started["processId"][:8],
+            "workflowName": "Workflow intake",
+            "workflowVersionNumber": 1,
+            "involvement": "Initiator",
+            "currentStep": "End",
+            "systemStatus": "completed",
+            "startedAt": dashboard["myProcesses"]["items"][0]["startedAt"],
+            "completedAt": dashboard["myProcesses"]["items"][0]["completedAt"],
+            "lastActivityAt": dashboard["myProcesses"]["items"][0]["lastActivityAt"],
+            "viewRoute": f"/my-work/processes/{started['processId']}",
+            "contributionSummary": {
+                "kind": "initiated",
+                "label": "You started this process.",
+            },
+        }
+    ]
+    assert detail is not None
+    assert [event["eventKind"] for event in detail["timeline"]] == [
+        "process_started",
+        "task_progress_saved",
+        "task_completed",
+        "process_completed",
+    ]
+    assert [
+        audit.event_type
+        for audit in TransactionalAuditRecord.objects.filter(
+            Q(payload__processId=started["processId"]) | Q(payload__taskId=started["taskId"])
+        ).order_by("created_at", "id")
+    ] == [
+        "workflow-runtime.process-started",
+        "workflow-runtime.task-draft-saved",
+        "workflow-runtime.task-completed",
+        "workflow-runtime.process-completed",
+    ]

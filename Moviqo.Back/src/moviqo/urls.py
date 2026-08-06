@@ -26,6 +26,7 @@ from moviqo.modules.workflow_design.application import (
 )
 from moviqo.modules.workflow_runtime.application import (
     MyWorkDashboardView,
+    ProcessDetailView,
     StartWorkflowProcessView,
     TaskFormCompletionView,
     TaskFormDetailView,
@@ -73,6 +74,11 @@ urlpatterns = [
         "api/v1/my-work/tasks/<uuid:task_id>/complete/",
         TaskFormCompletionView.as_view(),
         name="api-v1-my-work-task-form-complete",
+    ),
+    path(
+        "api/v1/my-work/processes/<uuid:process_id>/",
+        ProcessDetailView.as_view(),
+        name="api-v1-my-work-process-detail",
     ),
     path(
         "api/v1/workflow-design/workflows/",

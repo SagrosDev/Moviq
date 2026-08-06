@@ -52,10 +52,23 @@ class SignInRequestSerializer(serializers.Serializer):
     password = serializers.CharField(max_length=128, trim_whitespace=False)
 
 
+class SessionUserSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    displayName = serializers.CharField(allow_blank=True)
+    preferredLanguage = serializers.CharField()
+
+
+class SessionMembershipSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    organizationId = serializers.UUIDField()
+    organizationTimezone = serializers.CharField()
+    role = serializers.CharField()
+
+
 class SessionContextSerializer(serializers.Serializer):
     authenticated = serializers.BooleanField()
-    user = serializers.DictField()
-    membership = serializers.DictField()
+    user = SessionUserSerializer()
+    membership = SessionMembershipSerializer()
 
 
 class CsrfTokenResponseSerializer(serializers.Serializer):

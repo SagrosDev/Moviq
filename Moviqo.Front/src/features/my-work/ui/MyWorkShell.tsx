@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { QuerySnapshot } from "../../../shared/api";
 import { useLanguage } from "../../../shared/localization";
 import type {
+  MyProcessesQuery,
   MyWorkCollection,
   MyWorkDashboard,
   MyWorkProcess,
@@ -9,6 +10,7 @@ import type {
   MyWorkStartWorkflow,
   MyWorkTask
 } from "../model/myWork";
+import { formatDateTimeInTimeZone } from "../model/myWork";
 
 type MyWorkShellProps = {
   snapshot: QuerySnapshot<MyWorkDashboard>;
@@ -18,6 +20,12 @@ type MyWorkShellProps = {
   startingWorkflowId: string | null;
   workflowCreationHref?: string | null;
   showWorkflowCreation: boolean;
+  myProcessesQuery: MyProcessesQuery;
+  myProcessesSearchDraft: string;
+  myProcessesTimeZone: string;
+  onMyProcessesSearchChange(value: string): void;
+  onMyProcessesSearchSubmit(): void;
+  onMyProcessesPageChange(page: number): void;
 };
 
 type Translate = ReturnType<typeof useLanguage>["t"];
@@ -31,6 +39,9 @@ const statusLabelFor = (status: string, t: Translate) => {
   if (status === "in_progress") {
     return t("status.inProgress");
   }
+  if (status === "completed") {
+    return t("status.completed");
+  }
   return status;
 };
 
@@ -41,7 +52,13 @@ export const MyWorkShell = ({
   startFeedbackByWorkflowId,
   startingWorkflowId,
   workflowCreationHref,
-  showWorkflowCreation
+  showWorkflowCreation,
+  myProcessesQuery,
+  myProcessesSearchDraft,
+  myProcessesTimeZone,
+  onMyProcessesSearchChange,
+  onMyProcessesSearchSubmit,
+  onMyProcessesPageChange
 }: MyWorkShellProps) => {
   const { t } = useLanguage();
   const [activeRegion, setActiveRegion] = useState<MyWorkRegion>("myTasks");
@@ -99,7 +116,17 @@ export const MyWorkShell = ({
         summary={t("myWork.myProcesses.summary")}
         isActive={activeRegion === "myProcesses"}
       >
-        {renderMyProcesses(snapshot, onRetry, t)}
+        {renderMyProcesses(
+          snapshot,
+          onRetry,
+          t,
+          myProcessesQuery,
+          myProcessesSearchDraft,
+          myProcessesTimeZone,
+          onMyProcessesSearchChange,
+          onMyProcessesSearchSubmit,
+          onMyProcessesPageChange
+        )}
       </MyWorkRegionSection>
     </div>
   </section>;
@@ -205,24 +232,102 @@ const renderStartWorkflows = (
 const renderMyProcesses = (
   snapshot: QuerySnapshot<MyWorkDashboard>,
   onRetry: () => void,
-  t: Translate
+  t: Translate,
+  query: MyProcessesQuery,
+  searchDraft: string,
+  timeZone: string,
+  onSearchChange: (value: string) => void,
+  onSearchSubmit: () => void,
+  onPageChange: (page: number) => void
 ) => {
-  return renderRegionState<MyWorkProcess>(
-    snapshot,
-    t("myWork.myProcesses.empty"),
-    t("myWork.error"),
-    t("myWork.loading"),
-    t("myWork.retry"),
-    onRetry,
-    (item) => <article key={item.processId} className="my-work-card">
-      <h3>{item.workflowName}</h3>
-      <p>{item.systemStatus}</p>
-      <p>{item.instanceState}</p>
-      <p>{item.currentStep}</p>
-      <p>{item.involvement}</p>
-    </article>,
-    (dashboard) => dashboard.myProcesses
-  );
+  const controls = <div>
+    <form
+      className="my-work-search"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSearchSubmit();
+      }}
+    >
+      <label className="my-work-search__field">
+        <span>{t("myWork.myProcesses.searchLabel")}</span>
+        <input
+          type="search"
+          value={searchDraft}
+          placeholder={t("myWork.myProcesses.searchPlaceholder")}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+      </label>
+      <button className="button my-work-search__action" type="submit">
+        {t("myWork.myProcesses.searchAction")}
+      </button>
+    </form>
+    <p>{t("myWork.myProcesses.discoveryHint")}</p>
+  </div>;
+
+  if (snapshot.status === "idle" || snapshot.status === "loading") {
+    return <div>
+      {controls}
+      <p className="status-panel" role="status">{t("myWork.loading")}</p>
+    </div>;
+  }
+
+  if (snapshot.status === "error") {
+    return <div>
+      {controls}
+      <div className="status-panel" role="alert">
+        <p>{t("myWork.error")}</p>
+        <button className="button" type="button" onClick={onRetry}>{t("myWork.retry")}</button>
+      </div>
+    </div>;
+  }
+
+  const collection = snapshot.data.myProcesses;
+  const hasPreviousPage = query.page > 1;
+  const hasNextPage = collection.hasMore;
+
+  return <div>
+    {controls}
+    {collection.items.length === 0 ? (
+      <p className="status-panel" role="status">{t("myWork.myProcesses.empty")}</p>
+    ) : (
+      <div className="my-work-cards">
+        {collection.items.map((item) => <article key={item.processId} className="my-work-card">
+          <h3>{item.workflowName}</h3>
+          <p>{`${t("myWork.myProcesses.reference")} ${item.processNumber}`}</p>
+          <p>{`${t("myWork.myProcesses.status")} ${statusLabelFor(item.systemStatus, t)}`}</p>
+          <p>{`${t("myWork.myProcesses.step")} ${item.currentStep}`}</p>
+          <p>{`${t("myWork.myProcesses.involvement")} ${item.involvement}`}</p>
+          <p>{`${t("myWork.myProcesses.lastActivity")} ${formatDateTimeInTimeZone(item.completedAt ?? item.lastActivityAt, timeZone)}`}</p>
+          <p>{item.contributionSummary.label}</p>
+          <div className="button-row">
+            <a className="button" href={item.viewRoute}>
+              {t("myWork.myProcesses.view")}
+            </a>
+          </div>
+        </article>)}
+      </div>
+    )}
+    <div className="button-row">
+      <button
+        className="button"
+        data-variant="secondary"
+        type="button"
+        disabled={!hasPreviousPage}
+        onClick={() => onPageChange(query.page - 1)}
+      >
+        {t("myWork.myProcesses.previousPage")}
+      </button>
+      <button
+        className="button"
+        data-variant="secondary"
+        type="button"
+        disabled={!hasNextPage}
+        onClick={() => onPageChange(query.page + 1)}
+      >
+        {t("myWork.myProcesses.nextPage")}
+      </button>
+    </div>
+  </div>;
 };
 
 const renderRegionState = <TItem,>(

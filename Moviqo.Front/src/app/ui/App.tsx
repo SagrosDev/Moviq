@@ -6,6 +6,7 @@ import { SignInPage } from "../../pages/sign-in";
 import { PasswordRecoveryPage } from "../../pages/password-recovery";
 import { PasswordResetPage } from "../../pages/password-reset";
 import { MyWorkPage } from "../../pages/my-work";
+import { ProcessDetailPage } from "../../pages/process-detail";
 import { TaskFormPage } from "../../pages/task-form";
 import { WorkflowCreatePage } from "../../pages/workflow-create";
 import { protectedEntryPath, useSession } from "../../features/authentication";
@@ -20,11 +21,17 @@ const matchTaskFormPath = (path: string) => {
   return match?.[1] ?? null;
 };
 
+export const matchProcessDetailPath = (path: string) => {
+  const match = /^\/my-work\/processes\/([0-9a-fA-F-]+)$/.exec(path);
+  return match?.[1] ?? null;
+};
+
 const AppRouter = () => {
   const { state } = useSession();
   const path = typeof window === "undefined" ? "/" : window.location.pathname;
   const normalizedPath = normalizeAppPath(path);
   const taskId = matchTaskFormPath(normalizedPath);
+  const processId = matchProcessDetailPath(normalizedPath);
   const isPublicLanding =
     normalizedPath === "/" || normalizedPath === "/es" || normalizedPath === "/en";
   const shouldRouteAuthenticatedRoot =
@@ -49,6 +56,8 @@ const AppRouter = () => {
         <WorkflowCreatePage />
       ) : taskId ? (
         <TaskFormPage taskId={taskId} />
+      ) : processId ? (
+        <ProcessDetailPage processId={processId} />
       ) : normalizedPath === protectedEntryPath || shouldRouteAuthenticatedRoot ? (
         <MyWorkPage />
       ) : (

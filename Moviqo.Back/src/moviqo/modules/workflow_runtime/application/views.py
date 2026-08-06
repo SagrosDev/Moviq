@@ -20,7 +20,10 @@ from moviqo.modules.organizations.application import active_membership_for_user
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.application.views import AuthenticatedRequestPermission
 from moviqo.modules.workflow_runtime.application.complete_task import complete_task
-from moviqo.modules.workflow_runtime.application.my_work import read_my_work_dashboard
+from moviqo.modules.workflow_runtime.application.my_work import (
+    read_my_work_dashboard,
+    read_process_detail,
+)
 from moviqo.modules.workflow_runtime.application.start_process import start_process
 from moviqo.modules.workflow_runtime.application.task_form import (
     TaskCompletionRouteError,
@@ -68,13 +71,17 @@ class MyTaskSummarySerializer(serializers.Serializer):
 
 class MyProcessSummarySerializer(serializers.Serializer):
     processId = serializers.UUIDField()
+    processNumber = serializers.CharField()
     workflowName = serializers.CharField()
+    workflowVersionNumber = serializers.IntegerField(min_value=1)
     involvement = serializers.CharField()
     currentStep = serializers.CharField()
-    instanceState = serializers.CharField()
     systemStatus = serializers.CharField()
     startedAt = serializers.DateTimeField()
+    completedAt = serializers.DateTimeField(allow_null=True)
     lastActivityAt = serializers.DateTimeField()
+    viewRoute = serializers.CharField()
+    contributionSummary = serializers.DictField(child=serializers.CharField())
 
 
 class StartWorkflowCollectionSerializer(serializers.Serializer):
@@ -99,6 +106,32 @@ class MyWorkDashboardSerializer(serializers.Serializer):
     startWorkflows = StartWorkflowCollectionSerializer()
     myTasks = MyTaskCollectionSerializer()
     myProcesses = MyProcessCollectionSerializer()
+
+
+class ProcessDetailHeaderSerializer(serializers.Serializer):
+    processId = serializers.UUIDField()
+    processNumber = serializers.CharField()
+    workflowName = serializers.CharField()
+    workflowVersionNumber = serializers.IntegerField(min_value=1)
+    systemStatus = serializers.CharField()
+    currentStep = serializers.CharField()
+    startedAt = serializers.DateTimeField()
+    completedAt = serializers.DateTimeField(allow_null=True)
+    lastActivityAt = serializers.DateTimeField()
+    contributionSummary = serializers.DictField(child=serializers.CharField())
+
+
+class ProcessTimelineEventSerializer(serializers.Serializer):
+    eventKind = serializers.CharField()
+    label = serializers.CharField()
+    actorDisplay = serializers.CharField()
+    occurredAt = serializers.DateTimeField()
+    taskPosition = serializers.CharField()
+
+
+class ProcessDetailSerializer(serializers.Serializer):
+    header = ProcessDetailHeaderSerializer()
+    timeline = ProcessTimelineEventSerializer(many=True)
 
 
 class TaskFormControlSerializer(serializers.Serializer):
@@ -178,7 +211,37 @@ class MyWorkDashboardView(APIView):
     )
     def get(self, request) -> Response:
         tenant_context = _require_runtime_membership(request)
-        return Response(read_my_work_dashboard(tenant_context))
+        my_processes_page = _positive_integer(
+            request.query_params.get("myProcessesPage"),
+            default=1,
+        )
+        my_processes_search = request.query_params.get("myProcessesSearch", "")
+        return Response(
+            read_my_work_dashboard(
+                tenant_context,
+                my_processes_page=my_processes_page,
+                my_processes_search=my_processes_search,
+            )
+        )
+
+
+class ProcessDetailView(APIView):
+    permission_classes = [AuthenticatedRequestPermission]
+
+    @extend_schema(
+        operation_id="workflow_runtime_process_detail",
+        responses={
+            200: ProcessDetailSerializer,
+            (403, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (404, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def get(self, request, process_id) -> Response:
+        tenant_context = _require_runtime_membership(request)
+        document = read_process_detail(tenant_context=tenant_context, process_id=process_id)
+        if document is None:
+            raise NotFound("my-work")
+        return Response(document)
 
 
 class StartWorkflowProcessView(APIView):
@@ -519,3 +582,13 @@ def _task_form_invalid_params(
             "reason": "Correct the marked values and try again.",
         }
     ]
+
+
+def _positive_integer(value: str | None, *, default: int) -> int:
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default

@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { protectedEntryPath, useSession } from "../../../features/authentication";
 import {
   MyWorkShell,
+  defaultMyProcessesQuery,
   createWorkflowStartIdempotencyKey,
   startWorkflow,
+  type MyProcessesQuery,
   useMyWorkDashboard
 } from "../../../features/my-work";
 import { canCreateWorkflow } from "../../../features/workflow-design";
@@ -12,7 +14,14 @@ import { LanguageSelector, useLanguage } from "../../../shared/localization";
 export const MyWorkPage = () => {
   const { t } = useLanguage();
   const { signOutCurrentSession, state } = useSession();
-  const { retry, snapshot } = useMyWorkDashboard(state.status === "authenticated");
+  const [myProcessesQuery, setMyProcessesQuery] = useState<MyProcessesQuery>(defaultMyProcessesQuery);
+  const [myProcessesSearchDraft, setMyProcessesSearchDraft] = useState(
+    defaultMyProcessesQuery.search
+  );
+  const { retry, snapshot } = useMyWorkDashboard(
+    myProcessesQuery,
+    state.status === "authenticated"
+  );
   const [startingWorkflowId, setStartingWorkflowId] = useState<string | null>(null);
   const [startFeedbackByWorkflowId, setStartFeedbackByWorkflowId] = useState<Record<string, string | undefined>>({});
   const [startKeyByWorkflowId, setStartKeyByWorkflowId] = useState<Record<string, string | undefined>>({});
@@ -34,6 +43,14 @@ export const MyWorkPage = () => {
       </main>
     </div>;
   }
+
+  const handleMyProcessesSearchSubmit = () => {
+    setMyProcessesQuery((current) => ({
+      ...current,
+      page: 1,
+      search: myProcessesSearchDraft.trim()
+    }));
+  };
 
   const handleStartWorkflow = async (workflowId: string) => {
     const idempotencyKey = startKeyByWorkflowId[workflowId] ?? createWorkflowStartIdempotencyKey(workflowId);
@@ -92,6 +109,17 @@ export const MyWorkPage = () => {
         startingWorkflowId={startingWorkflowId}
         showWorkflowCreation={canCreateWorkflow(state.context.membership.role)}
         workflowCreationHref="/my-work/workflows/new"
+        myProcessesQuery={myProcessesQuery}
+        myProcessesSearchDraft={myProcessesSearchDraft}
+        myProcessesTimeZone={state.context.membership.organizationTimezone}
+        onMyProcessesSearchChange={setMyProcessesSearchDraft}
+        onMyProcessesSearchSubmit={handleMyProcessesSearchSubmit}
+        onMyProcessesPageChange={(page) => {
+          setMyProcessesQuery((current) => ({
+            ...current,
+            page: page > 0 ? page : 1
+          }));
+        }}
       />
     </main>
   </div>;

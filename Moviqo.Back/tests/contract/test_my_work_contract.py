@@ -19,6 +19,7 @@ from moviqo.modules.workflow_design.application import (
     save_workflow_draft,
 )
 from moviqo.modules.workflow_design.models import WorkflowDefinition, WorkflowVersion
+from moviqo.modules.workflow_runtime.application.complete_task import complete_task
 from moviqo.modules.workflow_runtime.models import ProcessInstance, TaskOccurrence
 
 
@@ -217,6 +218,29 @@ def _publish_workflow(
         request_hash=_request_hash(f"publish-{name}"),
     )
     return created["workflowId"]
+
+
+def _complete_started_task(
+    *,
+    membership: Membership,
+    task_id: str,
+    request_hash_suffix: str,
+    value: str = "Ana Perez",
+) -> dict[str, object] | None:
+    return complete_task(
+        tenant_context=_tenant_context(membership),
+        task_id=task_id,
+        expected_task_revision="1",
+        controls=[
+            {
+                "controlId": "binding-1",
+                "fieldId": "field-1",
+                "value": value,
+            }
+        ],
+        idempotency_key=f"workflow-complete-{request_hash_suffix}",
+        request_hash=_request_hash(f"workflow-complete-{request_hash_suffix}"),
+    )
 
 
 @pytest.mark.django_db
@@ -798,3 +822,451 @@ def test_owner_operational_start_records_audit_flag(active_member) -> None:
     assert response.status_code == 200
     audit = TransactionalAuditRecord.objects.get(event_type="workflow-runtime.process-started")
     assert audit.payload["viaOperationalAuthority"] is True
+
+
+@pytest.mark.django_db
+def test_my_work_dashboard_returns_completed_process_summaries_for_authorized_participants(
+    active_member,
+) -> None:
+    user, organization, owner_membership = active_member
+    participant = user.__class__.objects.create_user(
+        username="process-participant",
+        email="process-participant@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Ana Perez",
+    )
+    outsider = user.__class__.objects.create_user(
+        username="process-outsider",
+        email="process-outsider@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Outside User",
+    )
+    participant_membership = Membership.objects.create(
+        organization=organization,
+        user=participant,
+        role=MembershipRole.MEMBER,
+    )
+    Membership.objects.create(
+        organization=organization,
+        user=outsider,
+        role=MembershipRole.MEMBER,
+    )
+    workflow_id = _publish_workflow(
+        membership=owner_membership,
+        name="Completed tracking",
+        starter_mode="selectedMembers",
+        starter_membership_ids=[str(owner_membership.id)],
+        assignment_mode="specificMember",
+        assignment_membership_id=str(participant_membership.id),
+    )
+    owner_client = Client()
+    owner_client.force_login(user)
+    participant_client = Client()
+    participant_client.force_login(participant)
+    outsider_client = Client()
+    outsider_client.force_login(outsider)
+
+    start_response = owner_client.post(
+        f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-start-completed-tracking"},
+    )
+    completed = _complete_started_task(
+        membership=participant_membership,
+        task_id=start_response.json()["taskId"],
+        request_hash_suffix="completed-tracking",
+    )
+
+    owner_dashboard = owner_client.get("/api/v1/my-work/")
+    participant_dashboard = participant_client.get("/api/v1/my-work/")
+    outsider_dashboard = outsider_client.get("/api/v1/my-work/")
+
+    assert start_response.status_code == 200
+    assert completed is not None
+    assert owner_dashboard.status_code == 200
+    assert participant_dashboard.status_code == 200
+    assert outsider_dashboard.status_code == 200
+    assert owner_dashboard.json()["myProcesses"]["items"] == [
+        {
+            "processId": start_response.json()["processId"],
+            "processNumber": start_response.json()["processId"][:8],
+            "workflowName": "Completed tracking",
+            "workflowVersionNumber": 1,
+            "involvement": "Initiator",
+            "currentStep": "End",
+            "systemStatus": "completed",
+            "startedAt": owner_dashboard.json()["myProcesses"]["items"][0]["startedAt"],
+            "completedAt": owner_dashboard.json()["myProcesses"]["items"][0]["completedAt"],
+            "lastActivityAt": owner_dashboard.json()["myProcesses"]["items"][0]["lastActivityAt"],
+            "viewRoute": f"/my-work/processes/{start_response.json()['processId']}",
+            "contributionSummary": {
+                "kind": "initiated",
+                "label": "You started this process."
+            },
+        }
+    ]
+    assert participant_dashboard.json()["myProcesses"]["items"] == [
+        {
+            "processId": start_response.json()["processId"],
+            "processNumber": start_response.json()["processId"][:8],
+            "workflowName": "Completed tracking",
+            "workflowVersionNumber": 1,
+            "involvement": "Previous participant",
+            "currentStep": "End",
+            "systemStatus": "completed",
+            "startedAt": participant_dashboard.json()["myProcesses"]["items"][0]["startedAt"],
+            "completedAt": participant_dashboard.json()["myProcesses"]["items"][0]["completedAt"],
+            "lastActivityAt": participant_dashboard.json()["myProcesses"]["items"][0][
+                "lastActivityAt"
+            ],
+            "viewRoute": f"/my-work/processes/{start_response.json()['processId']}",
+            "contributionSummary": {
+                "kind": "submittedValue",
+                "label": "Requester: Ana Perez"
+            },
+        }
+    ]
+    assert outsider_dashboard.json()["myProcesses"]["items"] == []
+
+
+@pytest.mark.django_db
+def test_my_work_dashboard_supports_completed_process_search_and_pagination(active_member) -> None:
+    user, _organization, owner_membership = active_member
+    workflow_ids = [
+        _publish_workflow(
+            membership=owner_membership,
+            name=f"Completed intake {index}",
+            starter_mode="allActiveMembers",
+        )
+        for index in range(13)
+    ]
+    client = Client()
+    client.force_login(user)
+    process_ids: list[str] = []
+    for index, workflow_id in enumerate(workflow_ids):
+        start_response = client.post(
+            f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
+            content_type="application/json",
+            **{"HTTP_IDEMPOTENCY_KEY": f"workflow-start-completed-{index}"},
+        )
+        _complete_started_task(
+            membership=owner_membership,
+            task_id=start_response.json()["taskId"],
+            request_hash_suffix=f"completed-{index}",
+            value=f"Owner {index}",
+        )
+        process_ids.append(start_response.json()["processId"])
+
+    default_response = client.get("/api/v1/my-work/")
+    searched_response = client.get("/api/v1/my-work/?myProcessesSearch=intake%2012")
+    paged_response = client.get("/api/v1/my-work/?myProcessesPage=2")
+
+    assert default_response.status_code == 200
+    assert searched_response.status_code == 200
+    assert paged_response.status_code == 200
+    assert default_response.json()["myProcesses"]["limit"] == 12
+    assert default_response.json()["myProcesses"]["hasMore"] is True
+    assert len(default_response.json()["myProcesses"]["items"]) == 12
+    assert default_response.json()["myProcesses"]["items"][0]["processId"] == process_ids[-1]
+    assert searched_response.json()["myProcesses"]["items"] == [
+        {
+            **searched_response.json()["myProcesses"]["items"][0],
+            "workflowName": "Completed intake 12",
+        }
+    ]
+    assert [item["processId"] for item in paged_response.json()["myProcesses"]["items"]] == [
+        process_ids[0]
+    ]
+
+
+@pytest.mark.django_db
+def test_process_detail_returns_authorized_header_and_safe_timeline(active_member) -> None:
+    user, organization, owner_membership = active_member
+    participant = user.__class__.objects.create_user(
+        username="timeline-participant",
+        email="timeline-participant@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Ana Perez",
+    )
+    participant_membership = Membership.objects.create(
+        organization=organization,
+        user=participant,
+        role=MembershipRole.MEMBER,
+    )
+    workflow_id = _publish_workflow(
+        membership=owner_membership,
+        name="Timeline workflow",
+        starter_mode="selectedMembers",
+        starter_membership_ids=[str(owner_membership.id)],
+        assignment_mode="specificMember",
+        assignment_membership_id=str(participant_membership.id),
+    )
+    owner_client = Client()
+    owner_client.force_login(user)
+
+    start_response = owner_client.post(
+        f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-start-timeline"},
+    )
+    participant_client = Client()
+    participant_client.force_login(participant)
+    save_response = participant_client.put(
+        f"/api/v1/my-work/tasks/{start_response.json()['taskId']}/form/",
+        data={
+            "expectedTaskRevision": "1",
+            "controls": [
+                {
+                    "controlId": "binding-1",
+                    "fieldId": "field-1",
+                    "value": "Private participant value",
+                }
+            ],
+        },
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-save-timeline"},
+    )
+    complete_response = participant_client.post(
+        f"/api/v1/my-work/tasks/{start_response.json()['taskId']}/complete/",
+        data={
+            "expectedTaskRevision": "2",
+            "controls": [
+                {
+                    "controlId": "binding-1",
+                    "fieldId": "field-1",
+                    "value": "Private participant value",
+                }
+            ],
+        },
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-complete-timeline"},
+    )
+
+    detail_response = participant_client.get(
+        f"/api/v1/my-work/processes/{start_response.json()['processId']}/"
+    )
+
+    assert save_response.status_code == 200
+    assert complete_response.status_code == 200
+    assert detail_response.status_code == 200
+    assert detail_response.json()["header"] == {
+        "processId": start_response.json()["processId"],
+        "processNumber": start_response.json()["processId"][:8],
+        "workflowName": "Timeline workflow",
+        "workflowVersionNumber": 1,
+        "systemStatus": "completed",
+        "currentStep": "End",
+        "startedAt": detail_response.json()["header"]["startedAt"],
+        "completedAt": detail_response.json()["header"]["completedAt"],
+        "lastActivityAt": detail_response.json()["header"]["lastActivityAt"],
+        "contributionSummary": {
+            "kind": "submittedValue",
+            "label": "Requester: Private participant value",
+        },
+    }
+    assert [event["eventKind"] for event in detail_response.json()["timeline"]] == [
+        "process_started",
+        "task_progress_saved",
+        "task_completed",
+        "process_completed",
+    ]
+    assert detail_response.json()["timeline"][0]["actorDisplay"] == "Owner"
+    assert detail_response.json()["timeline"][1]["actorDisplay"] == "Ana Perez"
+    assert detail_response.json()["timeline"][1]["label"] == "Task progress saved"
+    assert detail_response.json()["timeline"][2]["taskPosition"] == "Task"
+    assert "fieldValues" not in str(detail_response.json())
+    assert "routeTargetId" not in str(detail_response.json())
+    assert "workflow-runtime.task-completed" not in str(detail_response.json())
+
+
+@pytest.mark.django_db
+def test_completed_process_summary_uses_bound_task_field_order_for_safe_contribution(
+    active_member,
+) -> None:
+    user, organization, owner_membership = active_member
+    participant = user.__class__.objects.create_user(
+        username="ordered-field-participant",
+        email="ordered-field-participant@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Ana Perez",
+    )
+    participant_membership = Membership.objects.create(
+        organization=organization,
+        user=participant,
+        role=MembershipRole.MEMBER,
+    )
+    created = create_workflow_definition(
+        tenant_context=_tenant_context(owner_membership),
+        name="Ordered field workflow",
+        idempotency_key=f"workflow-create-{uuid.uuid4().hex}",
+        request_hash=_request_hash("ordered-field-create"),
+    )
+    draft = {
+        "schemaVersion": 4,
+        "draftId": created["draft"]["draftId"],
+        "workflowId": created["workflowId"],
+        "name": "Ordered field workflow",
+        "status": "draft",
+        "elements": [
+            {"id": "start-1", "type": "start", "label": "Start"},
+            {"id": "task-1", "type": "task", "label": "Task"},
+            {"id": "end-1", "type": "end", "label": "End"},
+        ],
+        "connections": [
+            {
+                "id": "connection-1",
+                "type": "sequence",
+                "sourceId": "start-1",
+                "targetId": "task-1",
+            },
+            {
+                "id": "connection-2",
+                "type": "sequence",
+                "sourceId": "task-1",
+                "targetId": "end-1",
+            },
+        ],
+        "processFields": [
+            {"id": "field-1", "kind": "shortText", "label": "Visible contribution"},
+            {"id": "field-2", "kind": "shortText", "label": "Secondary note"},
+        ],
+        "formBindings": [
+            {
+                "id": "binding-2",
+                "taskElementId": "task-1",
+                "fieldId": "field-2",
+                "width": "full",
+                "position": 1,
+            },
+            {
+                "id": "binding-1",
+                "taskElementId": "task-1",
+                "fieldId": "field-1",
+                "width": "full",
+                "position": 0,
+            },
+        ],
+        "publication": {
+            "starter": {
+                "mode": "selectedMembers",
+                "teamIds": [],
+                "membershipIds": [str(owner_membership.id)],
+            },
+            "assignment": {
+                "mode": "specificMember",
+                "membershipId": str(participant_membership.id),
+            },
+        },
+    }
+    saved = save_workflow_draft(
+        tenant_context=_tenant_context(owner_membership),
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft=draft,
+        idempotency_key=f"workflow-save-{uuid.uuid4().hex}",
+        request_hash=_request_hash("ordered-field-save"),
+    )
+    publish_workflow_version(
+        tenant_context=_tenant_context(owner_membership),
+        workflow_id=created["workflowId"],
+        expected_revision=saved["revision"],
+        draft=saved["draft"],
+        idempotency_key=f"workflow-publish-{uuid.uuid4().hex}",
+        request_hash=_request_hash("ordered-field-publish"),
+    )
+    owner_client = Client()
+    owner_client.force_login(user)
+    participant_client = Client()
+    participant_client.force_login(participant)
+
+    start_response = owner_client.post(
+        f"/api/v1/my-work/start-workflows/{created['workflowId']}/start/",
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-start-ordered-field"},
+    )
+    complete_response = participant_client.post(
+        f"/api/v1/my-work/tasks/{start_response.json()['taskId']}/complete/",
+        data={
+            "expectedTaskRevision": "1",
+            "controls": [
+                {
+                    "controlId": "binding-2",
+                    "fieldId": "field-2",
+                    "value": "Second field",
+                },
+                {
+                    "controlId": "binding-1",
+                    "fieldId": "field-1",
+                    "value": "First visible field",
+                },
+            ],
+        },
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-complete-ordered-field"},
+    )
+    participant_dashboard = participant_client.get("/api/v1/my-work/")
+
+    assert complete_response.status_code == 200
+    assert participant_dashboard.status_code == 200
+    assert participant_dashboard.json()["myProcesses"]["items"][0]["contributionSummary"] == {
+        "kind": "submittedValue",
+        "label": "Visible contribution: First visible field",
+    }
+
+
+@pytest.mark.django_db
+def test_process_detail_fails_closed_for_unauthorized_members(active_member) -> None:
+    user, organization, owner_membership = active_member
+    outsider = user.__class__.objects.create_user(
+        username="timeline-outsider",
+        email="timeline-outsider@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+    )
+    outsider_membership = Membership.objects.create(
+        organization=organization,
+        user=outsider,
+        role=MembershipRole.MEMBER,
+    )
+    workflow_id = _publish_workflow(
+        membership=owner_membership,
+        name="Denied timeline workflow",
+        starter_mode="allActiveMembers",
+    )
+    owner_client = Client()
+    owner_client.force_login(user)
+    outsider_client = Client()
+    outsider_client.force_login(outsider)
+
+    start_response = owner_client.post(
+        f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-start-denied-timeline"},
+    )
+    _complete_started_task(
+        membership=owner_membership,
+        task_id=start_response.json()["taskId"],
+        request_hash_suffix="denied-timeline",
+    )
+
+    hidden_response = outsider_client.get(
+        f"/api/v1/my-work/processes/{start_response.json()['processId']}/"
+    )
+    guessed_response = outsider_client.get(
+        f"/api/v1/my-work/processes/{uuid.uuid4()}/"
+    )
+    Membership.objects.filter(id=outsider_membership.id).update(is_active=False)
+    revoked_response = outsider_client.get(
+        f"/api/v1/my-work/processes/{start_response.json()['processId']}/"
+    )
+
+    assert hidden_response.status_code == 404
+    assert guessed_response.status_code == 404
+    assert revoked_response.status_code == 404
+    assert hidden_response.json()["code"] == "resource_not_found"
+    assert guessed_response.json()["code"] == "resource_not_found"
+    assert revoked_response.json()["code"] == "resource_not_found"

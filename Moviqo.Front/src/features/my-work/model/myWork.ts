@@ -37,21 +37,61 @@ export type MyWorkTask = {
   openTaskRoute: string;
 };
 
+export type MyWorkContributionSummary = {
+  kind: string;
+  label: string;
+};
+
 export type MyWorkProcess = {
   processId: string;
+  processNumber: string;
   workflowName: string;
+  workflowVersionNumber: number;
   involvement: string;
   currentStep: string;
-  instanceState: string;
   systemStatus: string;
   startedAt: string;
+  completedAt: string | null;
   lastActivityAt: string;
+  viewRoute: string;
+  contributionSummary: MyWorkContributionSummary;
+};
+
+export type ProcessDetailHeader = {
+  processId: string;
+  processNumber: string;
+  workflowName: string;
+  workflowVersionNumber: number;
+  systemStatus: string;
+  currentStep: string;
+  startedAt: string;
+  completedAt: string | null;
+  lastActivityAt: string;
+  contributionSummary: MyWorkContributionSummary;
+};
+
+export type ProcessTimelineEvent = {
+  eventKind: string;
+  label: string;
+  actorDisplay: string;
+  occurredAt: string;
+  taskPosition: string;
+};
+
+export type ProcessDetailDocument = {
+  header: ProcessDetailHeader;
+  timeline: ProcessTimelineEvent[];
 };
 
 export type MyWorkCollection<TItem> = {
   items: TItem[];
   limit: number;
   hasMore: boolean;
+};
+
+export type MyProcessesQuery = {
+  page: number;
+  search: string;
 };
 
 export type MyWorkDashboard = {
@@ -67,17 +107,61 @@ export type MyWorkDashboardResult =
 export type StartWorkflowResult =
   | { ok: true; data: StartWorkflowAccepted }
   | { ok: false; error: NormalizedApiProblem };
+export type ProcessDetailResult =
+  | { ok: true; data: ProcessDetailDocument }
+  | { ok: false; error: NormalizedApiProblem };
 
-export const myWorkQueryKey = createQueryKey("my-work", "dashboard");
+export const createMyWorkQueryKey = (query: MyProcessesQuery) =>
+  createQueryKey("my-work", `dashboard:${query.page}:${query.search.trim().toLowerCase()}`);
+
+export const defaultMyProcessesQuery: MyProcessesQuery = {
+  page: 1,
+  search: ""
+};
+
+export const myWorkQueryKey = createMyWorkQueryKey(defaultMyProcessesQuery);
 
 const myWorkClient = createApiClient({ baseUrl: "/api/v1" });
 
-export const readMyWorkDashboard = async (): Promise<MyWorkDashboardResult> => {
+const buildMyWorkDashboardPath = (query: MyProcessesQuery) => {
+  const params = new URLSearchParams();
+  if (query.page > 1) {
+    params.set("myProcessesPage", String(query.page));
+  }
+  if (query.search.trim()) {
+    params.set("myProcessesSearch", query.search.trim());
+  }
+  const serialized = params.toString();
+  return serialized ? `/api/v1/my-work/?${serialized}` : "/api/v1/my-work/";
+};
+
+export const formatDateTimeInTimeZone = (
+  value: string | null,
+  timeZone: string
+) => {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone
+  }).format(date);
+};
+
+export const readMyWorkDashboard = async (
+  query: MyProcessesQuery = defaultMyProcessesQuery
+): Promise<MyWorkDashboardResult> => {
   const response = await (
     myWorkClient as {
       GET(path: string, init?: object): Promise<{ data?: unknown; response: Response }>;
     }
-  ).GET("/api/v1/my-work/", {});
+  ).GET(buildMyWorkDashboardPath(query), {});
   if (!response.response.ok) {
     return { ok: false, error: await readApiProblem(response.response) };
   }
@@ -88,12 +172,34 @@ export const readMyWorkDashboard = async (): Promise<MyWorkDashboardResult> => {
   };
 };
 
-export const loadMyWorkDashboard = async (force = false) => {
-  const current = queryRegistry.getSnapshot<MyWorkDashboard, NormalizedApiProblem>(myWorkQueryKey);
+export const readProcessDetailDocument = async (
+  processId: string
+): Promise<ProcessDetailResult> => {
+  const response = await (
+    myWorkClient as {
+      GET(path: string, init?: object): Promise<{ data?: unknown; response: Response }>;
+    }
+  ).GET(`/api/v1/my-work/processes/${processId}/`, {});
+  if (!response.response.ok) {
+    return { ok: false, error: await readApiProblem(response.response) };
+  }
+
+  return {
+    ok: true,
+    data: response.data as unknown as ProcessDetailDocument
+  };
+};
+
+export const loadMyWorkDashboard = async (
+  query: MyProcessesQuery = defaultMyProcessesQuery,
+  force = false
+) => {
+  const queryKey = createMyWorkQueryKey(query);
+  const current = queryRegistry.getSnapshot<MyWorkDashboard, NormalizedApiProblem>(queryKey);
   if (!force && current.status === "loading") return current;
 
-  queryRegistry.setSnapshot(myWorkQueryKey, { status: "loading" });
-  const result = await readMyWorkDashboard();
+  queryRegistry.setSnapshot(queryKey, { status: "loading" });
+  const result = await readMyWorkDashboard(query);
 
   if (result.ok) {
     const snapshot: QuerySnapshot<MyWorkDashboard> = {
@@ -101,7 +207,7 @@ export const loadMyWorkDashboard = async (force = false) => {
       data: result.data,
       updatedAt: Date.now()
     };
-    queryRegistry.setSnapshot(myWorkQueryKey, snapshot);
+    queryRegistry.setSnapshot(queryKey, snapshot);
     return snapshot;
   }
 
@@ -110,7 +216,7 @@ export const loadMyWorkDashboard = async (force = false) => {
     error: result.error,
     updatedAt: Date.now()
   };
-  queryRegistry.setSnapshot(myWorkQueryKey, snapshot);
+  queryRegistry.setSnapshot(queryKey, snapshot);
   return snapshot;
 };
 

@@ -1,7 +1,12 @@
 export type SessionContext = {
   authenticated: true;
   user: { id: number; displayName: string; preferredLanguage: string };
-  membership: { id: string; organizationId: string; role: string };
+  membership: {
+    id: string;
+    organizationId: string;
+    organizationTimezone: string;
+    role: string;
+  };
 };
 
 export type SessionCredentials = { email: string; password: string };

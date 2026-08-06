@@ -66,15 +66,22 @@ export const HomePage = () => {
   const privacy = configuredMetaDestination("moviqo-privacy-url", landingDestinations.privacy, { kind: "document" });
   const prohibitedData = configuredMetaDestination("moviqo-prohibited-data-url", landingDestinations.prohibitedData, { kind: "document" });
   const support = configuredMetaDestination("moviqo-support-url", landingDestinations.support, { kind: "support" });
-  const withCrossOriginLanguage = (destination: string, selectedLanguage: typeof language) => {
+  const withSelectedLanguage = (destination: string, selectedLanguage: typeof language) => {
     if (typeof window === "undefined") return destination;
     const url = new URL(destination, window.location.origin);
-    if (url.origin === window.location.origin) return destination;
+    if (url.origin === window.location.origin) {
+      if (selectedLanguage === "en") {
+        url.searchParams.set("lang", selectedLanguage);
+        return `${url.pathname}${url.search}${url.hash}`;
+      }
+      url.searchParams.delete("lang");
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
     url.searchParams.set("lang", selectedLanguage);
     return url.toString();
   };
-  const registerDestination = withCrossOriginLanguage(register, language);
-  const signInDestination = withCrossOriginLanguage(signIn, language);
+  const registerDestination = withSelectedLanguage(register, language);
+  const signInDestination = withSelectedLanguage(signIn, language);
 
   useEffect(() => {
     const metadata = resolveLandingMetadata(language, window.location.origin);

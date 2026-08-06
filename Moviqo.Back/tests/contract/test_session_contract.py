@@ -35,6 +35,7 @@ def test_sign_in_returns_safe_context_and_rotates_session(active_identity):
     )
     assert response.status_code == 200
     assert response.json()["membership"]["role"] == "owner"
+    assert response.json()["membership"]["organizationTimezone"] == "UTC"
     assert "password" not in response.json()
     assert client.session.get("_auth_user_id") == str(active_identity[0].id)
 

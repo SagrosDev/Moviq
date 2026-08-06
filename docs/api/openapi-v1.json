@@ -273,6 +273,62 @@
                 }
             }
         },
+        "/api/v1/my-work/processes/{process_id}/": {
+            "get": {
+                "operationId": "workflow_runtime_process_detail",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "process_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "my-work"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProcessDetail"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "403": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/v1/my-work/start-workflows/{workflow_id}/start/": {
             "post": {
                 "operationId": "workflow_runtime_start_process",
@@ -1606,16 +1662,20 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "processNumber": {
+                        "type": "string"
+                    },
                     "workflowName": {
                         "type": "string"
+                    },
+                    "workflowVersionNumber": {
+                        "type": "integer",
+                        "minimum": 1
                     },
                     "involvement": {
                         "type": "string"
                     },
                     "currentStep": {
-                        "type": "string"
-                    },
-                    "instanceState": {
                         "type": "string"
                     },
                     "systemStatus": {
@@ -1625,20 +1685,38 @@
                         "type": "string",
                         "format": "date-time"
                     },
+                    "completedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
                     "lastActivityAt": {
                         "type": "string",
                         "format": "date-time"
+                    },
+                    "viewRoute": {
+                        "type": "string"
+                    },
+                    "contributionSummary": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
                     }
                 },
                 "required": [
+                    "completedAt",
+                    "contributionSummary",
                     "currentStep",
-                    "instanceState",
                     "involvement",
                     "lastActivityAt",
                     "processId",
+                    "processNumber",
                     "startedAt",
                     "systemStatus",
-                    "workflowName"
+                    "viewRoute",
+                    "workflowName",
+                    "workflowVersionNumber"
                 ]
             },
             "MyTaskCollection": {
@@ -1802,6 +1880,108 @@
                     "type"
                 ]
             },
+            "ProcessDetail": {
+                "type": "object",
+                "properties": {
+                    "header": {
+                        "$ref": "#/components/schemas/ProcessDetailHeader"
+                    },
+                    "timeline": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ProcessTimelineEvent"
+                        }
+                    }
+                },
+                "required": [
+                    "header",
+                    "timeline"
+                ]
+            },
+            "ProcessDetailHeader": {
+                "type": "object",
+                "properties": {
+                    "processId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "processNumber": {
+                        "type": "string"
+                    },
+                    "workflowName": {
+                        "type": "string"
+                    },
+                    "workflowVersionNumber": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "systemStatus": {
+                        "type": "string"
+                    },
+                    "currentStep": {
+                        "type": "string"
+                    },
+                    "startedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "completedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "lastActivityAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "contributionSummary": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "completedAt",
+                    "contributionSummary",
+                    "currentStep",
+                    "lastActivityAt",
+                    "processId",
+                    "processNumber",
+                    "startedAt",
+                    "systemStatus",
+                    "workflowName",
+                    "workflowVersionNumber"
+                ]
+            },
+            "ProcessTimelineEvent": {
+                "type": "object",
+                "properties": {
+                    "eventKind": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "actorDisplay": {
+                        "type": "string"
+                    },
+                    "occurredAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "taskPosition": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "actorDisplay",
+                    "eventKind",
+                    "label",
+                    "occurredAt",
+                    "taskPosition"
+                ]
+            },
             "ProtectedMembership": {
                 "type": "object",
                 "properties": {
@@ -1863,18 +2043,60 @@
                         "type": "boolean"
                     },
                     "user": {
-                        "type": "object",
-                        "additionalProperties": {}
+                        "$ref": "#/components/schemas/SessionUser"
                     },
                     "membership": {
-                        "type": "object",
-                        "additionalProperties": {}
+                        "$ref": "#/components/schemas/SessionMembership"
                     }
                 },
                 "required": [
                     "authenticated",
                     "membership",
                     "user"
+                ]
+            },
+            "SessionMembership": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "organizationId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "organizationTimezone": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "organizationId",
+                    "organizationTimezone",
+                    "role"
+                ]
+            },
+            "SessionUser": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "preferredLanguage": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "displayName",
+                    "id",
+                    "preferredLanguage"
                 ]
             },
             "SignInRequest": {

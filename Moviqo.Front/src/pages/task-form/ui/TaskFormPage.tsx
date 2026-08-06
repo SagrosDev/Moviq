@@ -106,6 +106,7 @@ export const TaskFormPage = ({ taskId }: TaskFormPageProps) => {
 
   const save = async () => {
     const requestKey = editorState.saveRequestKey ?? createTaskFormSaveIdempotencyKey(editorState.taskId);
+    const requestStartedAt = Date.now();
     dispatch({ type: "save-requested", requestKey });
     const result = await saveTaskFormDocument(editorState, requestKey);
     if (!result.ok) {
@@ -118,6 +119,11 @@ export const TaskFormPage = ({ taskId }: TaskFormPageProps) => {
           result.error.invalidParams?.map((entry) => entry.name) ?? []
       });
       return;
+    }
+    const minimumSavingDurationMs = 250;
+    const remainingDelay = minimumSavingDurationMs - (Date.now() - requestStartedAt);
+    if (remainingDelay > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, remainingDelay));
     }
     setDocument(result.data);
     dispatch({ type: "save-succeeded", document: result.data });

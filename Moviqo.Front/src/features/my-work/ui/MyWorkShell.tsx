@@ -242,13 +242,13 @@ const renderMyProcesses = (
 ) => {
   const controls = <div>
     <form
-      className="button-row"
+      className="my-work-search"
       onSubmit={(event) => {
         event.preventDefault();
         onSearchSubmit();
       }}
     >
-      <label>
+      <label className="my-work-search__field">
         <span>{t("myWork.myProcesses.searchLabel")}</span>
         <input
           type="search"
@@ -257,7 +257,7 @@ const renderMyProcesses = (
           onChange={(event) => onSearchChange(event.target.value)}
         />
       </label>
-      <button className="button" type="submit">
+      <button className="button my-work-search__action" type="submit">
         {t("myWork.myProcesses.searchAction")}
       </button>
     </form>

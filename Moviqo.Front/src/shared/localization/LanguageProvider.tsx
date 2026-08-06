@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { defaultLanguage, type Language, supportedLanguages } from "./messages";
 import {
   createLocalLanguagePreferenceAdapter,
@@ -60,7 +61,9 @@ export const LanguageProvider = ({
   const value = useMemo<LanguageContextValue>(() => {
     const setLanguage = (nextLanguage: Language) => {
       adapter.write(nextLanguage);
-      setLanguageState(nextLanguage);
+      flushSync(() => {
+        setLanguageState(nextLanguage);
+      });
     };
 
     return {

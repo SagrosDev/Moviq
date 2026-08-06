@@ -16,6 +16,7 @@ from moviqo.modules.organizations.application.session import (
     list_active_team_ids,
     read_active_membership,
     read_active_membership_by_id,
+    read_membership_display_names,
 )
 from moviqo.modules.organizations.application.tenant_access import resolve_tenant_context
 from moviqo.modules.organizations.application.views import (
@@ -53,6 +54,7 @@ __all__ = [
     "resolve_tenant_context",
     "read_active_membership",
     "read_active_membership_by_id",
+    "read_membership_display_names",
     "RegistrationVerificationView",
     "PasswordRecoveryView",
     "PasswordResetView",

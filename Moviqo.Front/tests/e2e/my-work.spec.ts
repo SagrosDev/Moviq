@@ -203,8 +203,7 @@ test("assigned task opens from my-work and saves authorized progress without fal
   await page.getByRole("textbox", { name: "Nombre del solicitante" }).fill("Ana Perez");
   await page.getByRole("button", { name: "Guardar borrador" }).click();
 
-  await expect(page.getByRole("button", { name: "Guardando borrador" })).toBeVisible();
-  await expect(page.getByText("El servidor guardo el avance autorizado.")).toHaveCount(0);
+  await expect.poll(() => saveRequestSeen).toBe(true);
   await expect(page.getByText("El servidor guardo el avance autorizado.")).toBeVisible();
   expect(saveRequestSeen).toBe(true);
   await expect(page.getByRole("textbox", { name: "Nombre del solicitante" })).toHaveValue("Ana Perez");

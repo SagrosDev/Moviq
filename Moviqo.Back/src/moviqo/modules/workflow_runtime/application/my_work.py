@@ -7,8 +7,12 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 
 from moviqo.building_blocks.tenancy.runtime import TenantContext
-from moviqo.modules.governance.models import TransactionalAuditRecord
-from moviqo.modules.organizations.models import Membership
+from moviqo.modules.governance.application import (
+    TransactionalAuditRecord,
+    find_latest_transactional_audit,
+    list_transactional_audits,
+)
+from moviqo.modules.organizations.application import read_membership_display_names
 from moviqo.modules.workflow_design.application import (
     read_published_workflow_version,
     read_workflow_draft_snapshot,
@@ -359,14 +363,10 @@ def _resolve_process_current_step(
     process: ProcessInstance,
     document: dict[str, object],
 ) -> str:
-    process_completed_audit = (
-        TransactionalAuditRecord.objects.filter(
-            organization_id=process.organization_id,
-            event_type="workflow-runtime.process-completed",
-            payload__processId=str(process.id),
-        )
-        .order_by("-created_at", "-id")
-        .first()
+    process_completed_audit = find_latest_transactional_audit(
+        organization_id=process.organization_id,
+        event_type="workflow-runtime.process-completed",
+        process_id=str(process.id),
     )
     if process_completed_audit is not None:
         route_target_id = str(process_completed_audit.payload.get("routeTargetId", "")).strip()
@@ -419,16 +419,11 @@ def _build_process_timeline(
     process: ProcessInstance,
     viewer_membership_id: str,
 ) -> list[dict[str, object]]:
-    audits = (
-        TransactionalAuditRecord.objects.filter(
-            organization_id=process.organization_id,
-            event_type__in=tuple(TIMELINE_EVENT_KIND_MAP),
-        )
-        .filter(
-            Q(payload__processId=str(process.id))
-            | Q(payload__taskId__in=list(_process_task_ids(process=process)))
-        )
-        .order_by("created_at", "id")
+    audits = list_transactional_audits(
+        organization_id=process.organization_id,
+        event_types=tuple(TIMELINE_EVENT_KIND_MAP),
+        process_id=str(process.id),
+        task_ids=_process_task_ids(process=process),
     )
     actor_display_names = _actor_display_names(audits)
     document = _load_authoritative_process_document(process)
@@ -464,12 +459,7 @@ def _actor_display_names(audits: Iterable[TransactionalAuditRecord]) -> dict[str
         for audit in audits
         if audit.actor_membership_id is not None
     ]
-    memberships = Membership.objects.select_related("user").filter(id__in=membership_ids)
-    display_names: dict[str, str] = {}
-    for membership in memberships:
-        display_name = membership.user.display_name or membership.user.username
-        display_names[str(membership.id)] = display_name
-    return display_names
+    return read_membership_display_names(membership_ids=membership_ids)
 
 
 def _process_task_ids(*, process: ProcessInstance) -> list[str]:

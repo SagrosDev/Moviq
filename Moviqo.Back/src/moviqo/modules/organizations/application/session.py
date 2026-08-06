@@ -144,6 +144,14 @@ def list_active_team_ids(*, tenant_context: TenantContext) -> set[str]:
     }
 
 
+def read_membership_display_names(*, membership_ids) -> dict[str, str]:
+    memberships = Membership.objects.select_related("user").filter(id__in=membership_ids)
+    return {
+        str(membership.id): membership.user.display_name or membership.user.username
+        for membership in memberships
+    }
+
+
 def _membership_record(membership: Membership | None) -> ActiveMembershipRecord | None:
     if membership is None:
         return None

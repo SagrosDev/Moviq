@@ -2043,18 +2043,60 @@
                         "type": "boolean"
                     },
                     "user": {
-                        "type": "object",
-                        "additionalProperties": {}
+                        "$ref": "#/components/schemas/SessionUser"
                     },
                     "membership": {
-                        "type": "object",
-                        "additionalProperties": {}
+                        "$ref": "#/components/schemas/SessionMembership"
                     }
                 },
                 "required": [
                     "authenticated",
                     "membership",
                     "user"
+                ]
+            },
+            "SessionMembership": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "organizationId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "organizationTimezone": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "organizationId",
+                    "organizationTimezone",
+                    "role"
+                ]
+            },
+            "SessionUser": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "preferredLanguage": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "displayName",
+                    "id",
+                    "preferredLanguage"
                 ]
             },
             "SignInRequest": {

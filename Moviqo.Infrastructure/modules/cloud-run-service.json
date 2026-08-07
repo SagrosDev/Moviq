@@ -18,6 +18,10 @@
     {
       "secret": "moviqo-uat-resend-api-key",
       "env": "MOVIQO_RESEND_API_KEY"
+    },
+    {
+      "secret": "moviqo-uat-synthetic-verification-api-key",
+      "env": "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY"
     }
   ],
   "env": {

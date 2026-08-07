@@ -89,7 +89,7 @@ Moviqo realizes an opportunity for Spanish- and English-speaking SMEs without au
 - Normal Claim, Save, Complete, and configuration operations target two-second p95; application views target three-second usability under the approved beta profile.
 - Internal E2E is company-only and synthetic-only. Real customer data is forbidden until live inspection, independent backup/restore evidence, lifecycle enforcement, security/isolation gates, and accessibility evidence pass.
 - The finalized architecture companion binds the Python/Django modular monolith, React SPA, PostgreSQL, deployment topology, data boundaries, and integration seams.
-- Project-authored Node.js runtime declarations, guards, and delivery artifacts use Node.js 26.6.0 so local verification, CI expectations, and written implementation guidance agree on one approved runtime.
+- Project-authored Node.js runtime declarations, guards, and delivery artifacts use Node.js 26.7.0 so local verification, CI expectations, and written implementation guidance agree on one approved runtime.
 - Delivery follows pragmatic TDD with real PostgreSQL, tenant-isolation, contract, architecture, and Playwright evidence; applicable failures block promotion.
 - Free-tier allowances are operating ceilings, not product guarantees; capacity is monitored at 60/80/90%, with paid upgrade before users are impaired.
 

@@ -17,6 +17,7 @@ from moviqo.modules.organizations.application import (
     RegistrationVerificationView,
     SignInView,
     SignOutView,
+    SyntheticVerificationLinkView,
 )
 from moviqo.modules.workflow_design.application import (
     WorkflowCollectionView,
@@ -109,6 +110,11 @@ urlpatterns = [
         "api/v1/organizations/registrations/verify-email/",
         RegistrationVerificationView.as_view(),
         name="api-v1-organizations-registration-verify-email",
+    ),
+    path(
+        "api/v1/organizations/testing/synthetic-verification-link/",
+        SyntheticVerificationLinkView.as_view(),
+        name="api-v1-organizations-synthetic-verification-link",
     ),
     path(
         "api/v1/organizations/protected-memberships/<uuid:membership_id>/",

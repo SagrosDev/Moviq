@@ -25,6 +25,7 @@ Operators must provide the following runtime values before deploying `moviqo-bac
 - `MOVIQO_DB_HOST`
 - `MOVIQO_DB_PORT`
 - `MOVIQO_CLOUD_PROJECT_ID`
+- `MOVIQO_SYNTHETIC_VERIFICATION_API_KEY`
 - `MOVIQO_DJANGO_SECRET_KEY_SECRET`
 - `MOVIQO_DB_PASSWORD_SECRET`
 - `MOVIQO_RESEND_API_KEY_SECRET`
@@ -43,5 +44,12 @@ Cloud Run injects server-side secrets into the runtime environment:
 - `MOVIQO_SECRET_KEY` from `MOVIQO_DJANGO_SECRET_KEY_SECRET`
 - `MOVIQO_DB_PASSWORD` from `MOVIQO_DB_PASSWORD_SECRET`
 - `MOVIQO_RESEND_API_KEY` from `MOVIQO_RESEND_API_KEY_SECRET`
+- `MOVIQO_SYNTHETIC_VERIFICATION_API_KEY` from the managed UAT secret `moviqo-uat-synthetic-verification-api-key`
+
+The deployed Playwright journey uses a matching client-side secret value through GitHub Actions:
+
+- GitHub Actions secret `MOVIQO_E2E_SYNTHETIC_KEY`
+
+That GitHub secret must match the backend runtime value of `MOVIQO_SYNTHETIC_VERIFICATION_API_KEY`.
 
 Firebase Hosting serves the built SPA from `Moviqo.Front/dist`, rewrites `/api/**` to the Cloud Run service in `us-east1`, applies `no-store` to the SPA shell and authenticated routes, and keeps only public landing content plus hashed assets cacheable.

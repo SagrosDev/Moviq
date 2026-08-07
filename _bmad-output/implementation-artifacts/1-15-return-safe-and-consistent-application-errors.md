@@ -106,7 +106,7 @@ Likely update locations (confirm against the current tree before editing):
 
 ### Testing and verification requirements
 
-- Preserve the locked stack: Python 3.14.6, Django 5.2.15, DRF 3.17.1, Psycopg 3.3.4, PostgreSQL 17.10, Node 26.6.0, TypeScript 6.0.x, React 19.2.7, Vite 8.2.x, pytest 9.1.1, and Playwright 1.62.x.
+- Preserve the locked stack: Python 3.14.6, Django 5.2.15, DRF 3.17.1, Psycopg 3.3.4, PostgreSQL 17.10, Node 26.7.0, TypeScript 6.0.x, React 19.2.7, Vite 8.2.x, pytest 9.1.1, and Playwright 1.62.x.
 - Verify schema generation has no warnings and the generated client is current. Keep `/health/start/` unchanged and do not expose deployment topology through errors.
 - Do not use coverage percentage as the acceptance gate. Evidence must show focused failing tests, passing behavior, and green refactoring across affected layers.
 

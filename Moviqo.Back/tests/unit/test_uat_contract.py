@@ -22,6 +22,7 @@ UAT_ENV = {
     "MOVIQO_SERVICE_CLASS": "uat-internal",
     "MOVIQO_SERVICE_NAME": "moviqo-back-uat",
     "MOVIQO_CLOUD_PROJECT_ID": "moviqo-uat-synthetic",
+    "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY": "synthetic-link-key-20260806",
     "MOVIQO_DJANGO_SECRET_KEY_SECRET": "moviqo-uat-django-secret",
     "MOVIQO_DB_PASSWORD_SECRET": "moviqo-uat-db-password",
     "MOVIQO_RESEND_API_KEY_SECRET": "moviqo-uat-resend-api-key",
@@ -112,6 +113,7 @@ def test_uat_contract_does_not_require_inline_resend_api_key(
     contract = load_uat_contract()
 
     assert contract["resend_api_key_secret"] == "moviqo-uat-resend-api-key"
+    assert contract["synthetic_verification_api_key"] == "synthetic-link-key-20260806"
 
 
 def _set_uat_env(monkeypatch: pytest.MonkeyPatch) -> None:

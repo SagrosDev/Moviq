@@ -84,7 +84,7 @@ so that backend and frontend changes remain compatible and verifiable.
   - `tests/architecture/test_backend_spine_contract.py` enforces module boundaries and forbidden dependencies; update it if new shared error/schema modules affect architecture scans.
   - `tests/integration/test_django_spine.py` verifies ASGI, custom user, and health; add API/schema/error tests nearby or under a new contract test folder.
 - Frontend root: `Moviqo.Front/`
-  - `package.json` already enforces Node 26.6.0, Vite/React/TypeScript/Playwright scripts, architecture tests, and static artifact scanning.
+  - `package.json` already enforces Node 26.7.0, Vite/React/TypeScript/Playwright scripts, architecture tests, and static artifact scanning.
   - `src/shared/api/index.ts` currently exports `ApiResult` and query registry helpers only. Generated OpenAPI code should live below `shared/api` and be exported intentionally.
   - `tests/architecture/frontend-boundaries.test.mjs` forbids upward layer imports and feature deep imports; generated client imports must not create violations.
 - Repository CI: `.github/workflows/` is absent. This story should add the first CI workflow instead of assuming one exists.
@@ -140,7 +140,7 @@ so that backend and frontend changes remain compatible and verifiable.
 - Story 1.1 established backend path discipline, module-boundary tests, deterministic build-input tests, secret-file exclusions, and fail-closed production settings. Reuse those patterns and update `tool.moviqo.verify_commands` if Story 1.3 adds required backend checks.
 - Story 1.1 local verification succeeded under `uv` with Python 3.14.6, but Docker daemon availability was a local limitation. Do not make Docker builds the only way to prove schema/error behavior.
 - Story 1.2 established a static Vite SPA, feature-sliced boundaries, one query registry seam, reducer-based draft-state primitives, artifact secret scanning, and Playwright smoke coverage. Generated client code should integrate with those seams rather than adding a parallel app structure.
-- Story 1.2 aligned the frontend runtime contract to Node 26.6.0. Keep that enforcement; do not weaken it for local convenience.
+- Story 1.2 aligned the frontend runtime contract to Node 26.7.0. Keep that enforcement; do not weaken it for local convenience.
 - Recent commits show Story 1.1 and 1.2 were hardened through review. Expect reviewers to reject vague CI claims, stale generated artifacts, and error responses that are only partially converted.
 
 ### Project Structure Notes
@@ -175,7 +175,7 @@ Codex
 
 - Branch preflight selected `story/1-3-establish-the-api-error-build-and-test-contract`.
 - Red phase confirmed with failing `uv run pytest tests/contract` and `npm run test:unit` before implementation.
-- Local Node guard preserved: `npm run typecheck` and `npm run build` stop when the runtime does not match the required Node `26.6.0`.
+- Local Node guard preserved: `npm run typecheck` and `npm run build` stop when the runtime does not match the required Node `26.7.0`.
 
 ### Completion Notes List
 

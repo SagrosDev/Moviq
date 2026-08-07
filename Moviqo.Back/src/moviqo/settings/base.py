@@ -104,6 +104,10 @@ MOVIQO_PUBLIC_APP_BASE_URL = os.getenv(
     "MOVIQO_PUBLIC_APP_BASE_URL",
     "https://moviqo.local",
 )
+MOVIQO_SYNTHETIC_VERIFICATION_API_KEY = os.getenv(
+    "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY",
+    "",
+)
 MOVIQO_DISABLED_SERVICES = {
     "liveMalwareScanning": os.getenv("MOVIQO_LIVE_MALWARE_SCANNING", "disabled-by-gate"),
     "independentBackups": os.getenv("MOVIQO_INDEPENDENT_BACKUPS", "disabled-by-gate"),

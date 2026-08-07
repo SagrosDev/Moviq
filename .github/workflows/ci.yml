@@ -100,7 +100,6 @@ jobs:
       - run: npm run test:e2e
 
   deployed-journey:
-    if: ${{ vars.MOVIQO_E2E_BASE_URL != '' && secrets.MOVIQO_E2E_SYNTHETIC_KEY != '' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -111,15 +110,30 @@ jobs:
       MOVIQO_E2E_SYNTHETIC_KEY: ${{ secrets.MOVIQO_E2E_SYNTHETIC_KEY }}
       MOVIQO_E2E_BUILD_ID: ${{ github.sha }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check deployed journey configuration
+        id: deployed_journey_gate
+        run: |
+          if [ -z "${MOVIQO_E2E_BASE_URL}" ] || [ -z "${MOVIQO_E2E_SYNTHETIC_KEY}" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping deployed journey because MOVIQO_E2E_BASE_URL or MOVIQO_E2E_SYNTHETIC_KEY is not configured."
+            exit 0
+          fi
+
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+      - if: steps.deployed_journey_gate.outputs.ready == 'true'
+        uses: actions/checkout@v4
+      - if: steps.deployed_journey_gate.outputs.ready == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 26.7.0
           cache: npm
           cache-dependency-path: Moviqo.Front/package-lock.json
-      - run: npm ci --legacy-peer-deps
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e:deployed-journey
+      - if: steps.deployed_journey_gate.outputs.ready == 'true'
+        run: npm ci --legacy-peer-deps
+      - if: steps.deployed_journey_gate.outputs.ready == 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.deployed_journey_gate.outputs.ready == 'true'
+        run: npm run test:e2e:deployed-journey
 
   infrastructure:
     runs-on: ubuntu-latest

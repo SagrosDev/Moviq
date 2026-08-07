@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
+from django.conf import settings
 from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
@@ -27,7 +28,9 @@ from moviqo.modules.organizations.application.password_recovery import (
 )
 from moviqo.modules.organizations.application.registration import (
     RegistrationValidationError,
+    VerificationLinkLookupError,
     VerificationActivationError,
+    read_latest_verification_link_for_email,
     register_initial_owner,
     verify_initial_registration,
 )
@@ -314,6 +317,15 @@ class RegistrationVerificationResponseSerializer(serializers.Serializer):
     nextStep = serializers.CharField()
 
 
+class SyntheticVerificationLinkRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=254)
+
+
+class SyntheticVerificationLinkResponseSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    verificationUrl = serializers.URLField()
+
+
 class InitialRegistrationView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -428,6 +440,41 @@ class RegistrationVerificationView(APIView):
                     title=exc.title,
                 ),
             )
+
+        return Response(result, status=200)
+
+
+class SyntheticVerificationLinkView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(
+        operation_id="organizations_read_synthetic_verification_link",
+        request=SyntheticVerificationLinkRequestSerializer,
+        responses={
+            200: SyntheticVerificationLinkResponseSerializer,
+            (404, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def post(self, request) -> Response:
+        configured_key = getattr(settings, "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY", "")
+        if (
+            settings.MOVIQO_ENVIRONMENT_CLASS != "synthetic-only"
+            or not configured_key
+            or request.headers.get("X-Moviqo-Synthetic-Key", "") != configured_key
+        ):
+            raise NotFound("synthetic-verification-link")
+
+        serializer = SyntheticVerificationLinkRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            raise NotFound("synthetic-verification-link")
+
+        try:
+            result = read_latest_verification_link_for_email(
+                email=serializer.validated_data["email"]
+            )
+        except VerificationLinkLookupError as exc:
+            raise NotFound("synthetic-verification-link") from exc
 
         return Response(result, status=200)
 

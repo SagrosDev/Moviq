@@ -3,6 +3,6 @@ import assert from "node:assert/strict";
 
 assert.equal(
   versions.node,
-  "26.6.0",
-  `Expected Node.js 26.6.0, received ${versions.node}`
+  "26.7.0",
+  `Expected Node.js 26.7.0, received ${versions.node}`
 );

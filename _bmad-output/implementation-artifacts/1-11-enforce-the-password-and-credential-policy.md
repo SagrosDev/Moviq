@@ -217,7 +217,7 @@ GPT-5 Codex
 - Branch used for implementation: `story/1-11-enforce-the-password-and-credential-policy`
 - Baseline commit at context-creation time: `ee7b982`
 - Verification completed on 2026-08-04 with `uv run ruff check src tests`, `uv run pytest`, `uv run python src/manage.py spectacular --file ../docs/api/openapi-v1.json --format openapi-json --validate --fail-on-warn --settings=moviqo.settings.test`, `uv run python src/manage.py makemigrations --settings=moviqo.settings.test --check --dry-run`, `uv run python src/manage.py health_start`, `npm run test:unit`, `node tests/architecture/frontend-boundaries.test.mjs`, and `npm run check:api-client`.
-- Frontend full `npm test` was previously blocked on 2026-08-04 by the old Node patch pin; the repository is now aligned to Node `26.6.0`.
+- Frontend full `npm test` was previously blocked on 2026-08-04 by the old Node patch pin; the repository is now aligned to Node `26.7.0`.
 - `uv run python src/manage.py check --deploy --settings=moviqo.settings.production` remained blocked on 2026-08-04 because `MOVIQO_SECRET_KEY` is not set for the production settings import in this workspace.
 
 ### Completion Notes List
@@ -229,7 +229,7 @@ GPT-5 Codex
 - Added a shared frontend `PasswordField` contract with reveal-button `aria-pressed` state, password-manager-friendly defaults, no client-side composition enforcement, and localized helper/reveal copy.
 - Added backend unit/contract coverage for length boundaries, Unicode/spaces, blocklist rejection, hash-only persistence, no partial updates, localized problem details, and password-bearing redaction.
 - Added frontend unit coverage for localized password-policy copy and the shared password-field reveal/autofill contract.
-- Full backend regression, schema generation, migration drift, and `health_start` checks passed on 2026-08-04. Frontend unit, architecture, and API-client checks passed; the former Node version gate mismatch is resolved by aligning the project to `26.6.0`.
+- Full backend regression, schema generation, migration drift, and `health_start` checks passed on 2026-08-04. Frontend unit, architecture, and API-client checks passed; the former Node version gate mismatch is resolved by aligning the project to `26.7.0`.
 - The production deploy check on 2026-08-04 could not run to completion because `MOVIQO_SECRET_KEY` is required by `moviqo.settings.production` and is not configured in this workspace.
 
 ### File List

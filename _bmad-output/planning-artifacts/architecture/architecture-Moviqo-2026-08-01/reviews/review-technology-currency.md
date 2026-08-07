@@ -14,7 +14,7 @@ Pass. Every named implementation technology was checked against its official pro
 | Psycopg | 3.3.4 | Current Psycopg 3 driver line |
 | drf-spectacular | 0.30.0 | Current published line and compatible with selected Django/DRF |
 | PostgreSQL | 17.10 | Supported; selected to match Supabase's current default major |
-| Node.js | 26.6.0 | Approved frontend runtime baseline |
+| Node.js | 26.7.0 | Approved frontend runtime baseline |
 | TypeScript | 6.0.x | Current release line |
 | React | 19.2.7 | Current stable release |
 | Vite | 8.2.x | Current regular patch line |

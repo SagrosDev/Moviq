@@ -23,6 +23,9 @@ def load_uat_contract() -> dict[str, object]:
         "service_name": required_env("MOVIQO_SERVICE_NAME"),
         "cloud_project_id": required_env("MOVIQO_CLOUD_PROJECT_ID"),
         "database_host": required_env("MOVIQO_DB_HOST"),
+        "synthetic_verification_api_key": required_env(
+            "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY"
+        ),
         "django_secret_key_secret": required_env("MOVIQO_DJANGO_SECRET_KEY_SECRET"),
         "database_password_secret": required_env("MOVIQO_DB_PASSWORD_SECRET"),
         "resend_api_key_secret": required_env("MOVIQO_RESEND_API_KEY_SECRET"),
@@ -64,6 +67,7 @@ def validate_uat_contract(contract: dict[str, object]) -> None:
     for name in (
         "cloud_project_id",
         "database_host",
+        "synthetic_verification_api_key",
         "django_secret_key_secret",
         "database_password_secret",
         "resend_api_key_secret",

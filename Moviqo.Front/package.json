@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": "26.6.0",
+    "node": "26.7.0",
     "npm": ">=11 <12"
   },
   "scripts": {
@@ -19,7 +19,8 @@
     "test:architecture": "node tests/architecture/frontend-boundaries.test.mjs",
     "test": "npm run check:node && npm run test:architecture && npm run check:api-client && npm run test:unit",
     "build": "npm run check:node && npm run check:api-client && npm run validate:landing && tsc --noEmit && vite build && node ./tests/build/scan-static-artifact.mjs",
-    "test:e2e": "npm run check:node && playwright test"
+    "test:e2e": "npm run check:node && playwright test",
+    "test:e2e:deployed-journey": "npm run check:node && playwright test --project=deployed-journey tests/e2e/first-workflow-journey.spec.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.5",

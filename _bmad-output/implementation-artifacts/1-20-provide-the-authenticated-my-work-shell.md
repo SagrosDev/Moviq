@@ -74,7 +74,7 @@ so that the first workflow journey has an understandable navigation anchor.
 - Every protected query must derive tenant context from the active session/Membership, use Organization-scoped relationships and explicit projections, and avoid unbounded collection loads. Do not accept a client Organization identifier as an authorization input.
 - Use `/api/v1`, OpenAPI-generated TypeScript types, RFC 9457 Problem Details, safe correlation IDs, and no Process Data, credentials, private links, or cross-tenant identifiers in telemetry.
 - No AI, broker, Redis, Celery, distributed cache, WebSocket, real-time channel, or public/anonymous initiation is in scope.
-- Stack is pinned by the repository: Python 3.14.6, Django 5.2.15, DRF 3.17.1, PostgreSQL 17.10, Node 26.6.0, TypeScript 6.0.x, React 19.2.7, Vite 8.2.x, and Playwright 1.62.x. Do not upgrade dependencies as part of this story.
+- Stack is pinned by the repository: Python 3.14.6, Django 5.2.15, DRF 3.17.1, PostgreSQL 17.10, Node 26.7.0, TypeScript 6.0.x, React 19.2.7, Vite 8.2.x, and Playwright 1.62.x. Do not upgrade dependencies as part of this story.
 
 ### File structure expectations
 

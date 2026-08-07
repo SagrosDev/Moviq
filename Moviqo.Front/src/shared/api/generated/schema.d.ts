@@ -228,6 +228,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/testing/synthetic-verification-link/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_read_synthetic_verification_link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/schema/": {
         parameters: {
             query?: never;
@@ -524,6 +540,16 @@ export interface components {
             description: string;
             availability: string;
             versionNumber: number;
+        };
+        SyntheticVerificationLinkRequest: {
+            /** Format: email */
+            email: string;
+        };
+        SyntheticVerificationLinkResponse: {
+            /** Format: email */
+            email: string;
+            /** Format: uri */
+            verificationUrl: string;
         };
         SystemPing: {
             status: string;
@@ -1301,6 +1327,39 @@ export interface operations {
                 };
             };
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    organizations_read_synthetic_verification_link: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyntheticVerificationLinkRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SyntheticVerificationLinkRequest"];
+                "multipart/form-data": components["schemas"]["SyntheticVerificationLinkRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyntheticVerificationLinkResponse"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

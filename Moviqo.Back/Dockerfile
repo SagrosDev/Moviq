@@ -15,4 +15,4 @@ COPY src ./src
 ENV PYTHONPATH=/app/src
 ENV DJANGO_SETTINGS_MODULE=moviqo.settings.production
 
-CMD ["/app/.venv/bin/python", "src/manage.py", "health_start"]
+CMD ["/bin/sh", "-c", "/app/.venv/bin/python src/manage.py runserver 0.0.0.0:${PORT:-8080}"]

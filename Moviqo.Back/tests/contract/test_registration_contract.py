@@ -15,6 +15,7 @@ from moviqo.modules.organizations.models import RegistrationVerification
 def _verification_token(verification: RegistrationVerification) -> str:
     return signing.TimestampSigner(salt=VERIFICATION_SALT).sign(str(verification.id))
 
+
 def _payload(**overrides):
     payload = {
         "ownerName": "Ana Gomez",
@@ -217,3 +218,54 @@ def test_verification_endpoint_hides_expired_and_consumed_distinctions() -> None
     assert expired_response.status_code == 400
     assert consumed_response.status_code == 400
     assert expired_response.json()["code"] == consumed_response.json()["code"]
+
+
+@pytest.mark.django_db
+def test_synthetic_verification_link_endpoint_returns_latest_safe_link(settings) -> None:
+    settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
+    settings.MOVIQO_SYNTHETIC_VERIFICATION_API_KEY = "synthetic-link-key"
+    Client(HTTP_IDEMPOTENCY_KEY="registration-1").post(
+        "/api/v1/organizations/registrations/",
+        data=json.dumps(_payload()),
+        content_type="application/json",
+    )
+
+    response = Client(HTTP_X_MOVIQO_SYNTHETIC_KEY="synthetic-link-key").post(
+        "/api/v1/organizations/testing/synthetic-verification-link/",
+        data=json.dumps({"email": "ana@example.com"}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "ana@example.com"
+    assert "/verify-email?token=" in response.json()["verificationUrl"]
+    assert "subject" not in response.content.decode("utf-8")
+    assert "text" not in response.content.decode("utf-8")
+
+
+@pytest.mark.django_db
+def test_synthetic_verification_link_endpoint_is_hidden_outside_synthetic_only(settings) -> None:
+    settings.MOVIQO_ENVIRONMENT_CLASS = "test"
+    settings.MOVIQO_SYNTHETIC_VERIFICATION_API_KEY = "synthetic-link-key"
+
+    response = Client(HTTP_X_MOVIQO_SYNTHETIC_KEY="synthetic-link-key").post(
+        "/api/v1/organizations/testing/synthetic-verification-link/",
+        data=json.dumps({"email": "ana@example.com"}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_synthetic_verification_link_endpoint_is_hidden_without_matching_key(settings) -> None:
+    settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
+    settings.MOVIQO_SYNTHETIC_VERIFICATION_API_KEY = "synthetic-link-key"
+
+    response = Client(HTTP_X_MOVIQO_SYNTHETIC_KEY="wrong-key").post(
+        "/api/v1/organizations/testing/synthetic-verification-link/",
+        data=json.dumps({"email": "ana@example.com"}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 404

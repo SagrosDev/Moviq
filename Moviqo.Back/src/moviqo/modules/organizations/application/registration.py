@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import timedelta
@@ -27,6 +28,7 @@ from moviqo.modules.governance.application import (
     create_pending_command_result,
 )
 from moviqo.modules.messaging.application import enqueue_outbox_message
+from moviqo.modules.messaging.models import OutboxMessage
 from moviqo.modules.organizations.application.identity_boundary import normalize_identity_email
 from moviqo.modules.organizations.application.password_policy import (
     CredentialValidationError,
@@ -48,6 +50,7 @@ SUPPORTED_LANGUAGES = frozenset({"es", "en"})
 SUPPORTED_REGIONS = frozenset({"CO", "US", "MX", "ES", "AR", "CL", "PE"})
 SUPPORTED_CURRENCIES = frozenset({"COP", "USD", "MXN", "EUR", "ARS", "CLP", "PEN"})
 VERIFICATION_SALT = "organizations.registration_verification"
+VERIFICATION_LINK_PATTERN = re.compile(r"https://[^\s]+/verify-email\?token=[^\s]+")
 
 
 @dataclass(frozen=True)
@@ -64,6 +67,15 @@ class RegistrationValidationError(Exception):
 class VerificationActivationError(Exception):
     problem_code: str = "verification_link_invalid"
     title: str = "Verification failed"
+
+    def __post_init__(self) -> None:
+        Exception.__init__(self, self.problem_code)
+
+
+@dataclass(frozen=True)
+class VerificationLinkLookupError(Exception):
+    problem_code: str = "verification_link_unavailable"
+    title: str = "Verification link unavailable"
 
     def __post_init__(self) -> None:
         Exception.__init__(self, self.problem_code)
@@ -381,6 +393,31 @@ def verify_initial_registration(*, token: str) -> dict[str, str]:
         "language": user.preferred_language,
         "nextStep": "sign_in",
     }
+
+
+def read_latest_verification_link_for_email(*, email: str) -> dict[str, str]:
+    normalized_email = normalize_identity_email(email)
+    if not normalized_email:
+        raise VerificationLinkLookupError()
+
+    messages = OutboxMessage.objects.filter(
+        message_type="email.registration_verification"
+    ).order_by("-created_at")
+    for message in messages:
+        recipients = message.payload.get("to", [])
+        if recipients != [normalized_email]:
+            continue
+
+        text = str(message.payload.get("text", ""))
+        match = VERIFICATION_LINK_PATTERN.search(text)
+        if match:
+            return {
+                "email": normalized_email,
+                "verificationUrl": match.group(0),
+            }
+        break
+
+    raise VerificationLinkLookupError()
 
 
 def _validate_registration_input(

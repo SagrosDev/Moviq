@@ -32,6 +32,16 @@ npm run build
 npm run test:e2e
 ```
 
+Run the deployed synthetic-only release journey from `Moviqo.Front/` when the UAT host and synthetic helper secret are available:
+
+```powershell
+$env:PLAYWRIGHT_DEPLOYED_JOURNEY="1"
+$env:MOVIQO_E2E_BASE_URL="https://your-uat-host"
+$env:MOVIQO_E2E_SYNTHETIC_KEY="your-synthetic-helper-key"
+$env:MOVIQO_E2E_BUILD_ID="build-identifier"
+npm run test:e2e:deployed-journey
+```
+
 Run infrastructure validation from the repository root:
 
 ```powershell

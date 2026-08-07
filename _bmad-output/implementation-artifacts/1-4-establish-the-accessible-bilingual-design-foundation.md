@@ -62,7 +62,7 @@ so that the first journey is understandable and operable across supported device
   - [x] Verify that operational surfaces reflow on mobile/tablet/laptop/desktop and that narrow Designer/catalog authoring examples explicitly provide view/light navigation instead of claiming full authoring support.
   - [x] Store screenshots/traces/reports as ignored generated artifacts; do not commit Playwright report output unless explicitly approved.
 - [x] Integrate the new evidence into the verification contract (AC: 1, 2, 3, 4)
-  - [x] Add any required dependencies deliberately to `Moviqo.Front/package.json` and `package-lock.json`; keep Node 26.6.0 enforcement intact.
+  - [x] Add any required dependencies deliberately to `Moviqo.Front/package.json` and `package-lock.json`; keep Node 26.7.0 enforcement intact.
   - [x] Extend frontend unit, architecture, typecheck, build, and e2e scripts only through the existing frontend root.
   - [x] Update `.github/workflows/ci.yml` so CI runs the new localization, design-system, accessibility, and browser/viewport checks.
   - [x] Update `README.md` verification commands if scripts change.
@@ -151,7 +151,7 @@ so that the first journey is understandable and operable across supported device
 
 - Story 1.1 established path discipline, deterministic build-input checks, secret exclusions, and fail-closed production settings. Apply the same discipline to generated Playwright reports, screenshots, traces, visual baselines, and any local language-preference storage.
 - Story 1.2 established the frontend source tree, React/Vite static SPA, feature-sliced architecture tests, a single query registry, reducer-based draft primitives, and Playwright smoke coverage. Reuse those seams and extend the existing tests.
-- Story 1.2 intentionally enforces Node 26.6.0. Do not weaken that guard.
+- Story 1.2 intentionally enforces Node 26.7.0. Do not weaken that guard.
 - Story 1.3 established `/api/v1` schema/client generation, Problem Details, CI, and the `src/shared/api/` generated-client seam. This story should not create hand-maintained duplicate DTOs or bypass generated contracts.
 - Recent commits show Story 1.3 was merged in `6c0659d`; CI and stale artifact checks are now part of the normal contract.
 
@@ -204,12 +204,12 @@ GPT-5 Codex
 
 - 2026-08-03: Activated `bmad-dev-story`; resolver fallback used because `python3` is unavailable on Windows environment.
 - 2026-08-03: Git branch preflight completed; created/switched to `story/1-4-establish-the-accessible-bilingual-design-foundation`.
-- 2026-08-03: `npm install axe-core --save-dev` completed with the repo aligned to Node 26.6.0.
+- 2026-08-03: `npm install axe-core --save-dev` completed with the repo aligned to Node 26.7.0.
 - 2026-08-03: Verification run: `npm run test:unit` passed.
 - 2026-08-03: Verification run: `npm run test:architecture` passed.
 - 2026-08-03: Verification run: `npm run check:api-client` passed; generated schema content remained unchanged.
 - 2026-08-03: Verification run: `npx tsc --noEmit` passed.
-- 2026-08-03: Guarded `npm run typecheck`, `npm run build`, and `npm run test:e2e` expect the aligned Node 26.6.0 runtime.
+- 2026-08-03: Guarded `npm run typecheck`, `npm run build`, and `npm run test:e2e` expect the aligned Node 26.7.0 runtime.
 - 2026-08-03: Raw build verification passed with `npx vite build`; static artifact scan passed with `node ./tests/build/scan-static-artifact.mjs`.
 - 2026-08-03: Installed missing Playwright Firefox/WebKit browsers with `npx playwright install chromium firefox webkit`.
 - 2026-08-03: Full browser/viewport matrix passed with `npx playwright test` across 30 tests.
@@ -223,7 +223,7 @@ GPT-5 Codex
 - Replaced the scaffold shell styling with approved design tokens, accessible focus treatment, practical 44px targets, non-color-only statuses, and reduced-motion handling.
 - Added the design-system catalog route and representative presentational components for button, guidance card, form field, guided step, workflow element, task card, assignment control, publish checklist, and timeline.
 - Added deterministic localization/design-token unit tests and Playwright coverage for keyboard focus, language switching/persistence, semantic component states, axe baseline checks, 200% text, and mobile/tablet/desktop browser projects.
-- Integrated `axe-core`, CI Playwright browser installation/e2e execution, and README verification updates while preserving Node 26.6.0 enforcement and existing API-client/architecture guards.
+- Integrated `axe-core`, CI Playwright browser installation/e2e execution, and README verification updates while preserving Node 26.7.0 enforcement and existing API-client/architecture guards.
 - Converted frontend functions in source and frontend test/build helper files to arrow function constants and added a repo-level agent instruction for future frontend implementation.
 
 ### File List

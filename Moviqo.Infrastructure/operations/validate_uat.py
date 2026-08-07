@@ -154,9 +154,14 @@ def _validate_cloud_run_service(
         != uat_environment["identity"]["cloudRunServiceAccount"]
     ):
         raise RuntimeError("Cloud Run service must use the declared UAT service identity.")
+    service_env = cloud_run_service["env"]
     for env_name in ("MOVIQO_SECRET_KEY", "MOVIQO_DB_PASSWORD", "MOVIQO_RESEND_API_KEY"):
-        if env_name in cloud_run_service["env"]:
+        if env_name in service_env:
             raise RuntimeError(f"Cloud Run must not inline the secret value for {env_name}.")
+    if "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY" in service_env:
+        raise RuntimeError(
+            "Cloud Run must not inline the secret value for MOVIQO_SYNTHETIC_VERIFICATION_API_KEY."
+        )
 
     secret_bindings = {
         binding["env"]: binding["secret"] for binding in cloud_run_service["secretEnv"]
@@ -165,6 +170,7 @@ def _validate_cloud_run_service(
         "MOVIQO_SECRET_KEY": "moviqo-uat-django-secret",
         "MOVIQO_DB_PASSWORD": "moviqo-uat-db-password",
         "MOVIQO_RESEND_API_KEY": "moviqo-uat-resend-api-key",
+        "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY": "moviqo-uat-synthetic-verification-api-key",
     }
     for env_name, secret_name in required_secret_bindings.items():
         if secret_bindings.get(env_name) != secret_name:
@@ -228,7 +234,12 @@ def _validate_runtime_secret_wiring(
     secret_env: list[dict[str, object]],
     required_secret_bindings: dict[str, str],
 ) -> None:
-    for env_name in ("MOVIQO_SECRET_KEY", "MOVIQO_DB_PASSWORD", "MOVIQO_RESEND_API_KEY"):
+    for env_name in (
+        "MOVIQO_SECRET_KEY",
+        "MOVIQO_DB_PASSWORD",
+        "MOVIQO_RESEND_API_KEY",
+        "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY",
+    ):
         if env_name in env:
             raise RuntimeError(f"{runtime_name} must not inline the secret value for {env_name}.")
 

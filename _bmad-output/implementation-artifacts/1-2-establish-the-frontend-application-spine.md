@@ -17,7 +17,7 @@ so that user-facing capabilities remain modular and backend-authoritative.
 
 ## Acceptance Criteria
 
-1. **Given** a clean checkout with Node.js 26.6.0
+1. **Given** a clean checkout with Node.js 26.7.0
    **When** frontend install, type-check, test, and production-build commands run
    **Then** TypeScript 6.0.x, React 19.2.7, Vite 8.2.x, React Flow 12.11.2, and Playwright 1.62.x produce one static SPA artifact
    **And** the artifact contains no server secret or environment-private credential.
@@ -36,7 +36,7 @@ so that user-facing capabilities remain modular and backend-authoritative.
 
 - [x] Establish the frontend workspace and locked dependency inputs (AC: 1)
   - [x] Create the frontend project under `Moviqo.Front/`, preserving that root and not placing SPA files at the repository root.
-  - [x] Pin or constrain the approved stack: Node.js 26.6.0, TypeScript 6.0.x, React 19.2.7, Vite 8.2.x, `@xyflow/react` 12.11.2, and Playwright 1.62.x.
+  - [x] Pin or constrain the approved stack: Node.js 26.7.0, TypeScript 6.0.x, React 19.2.7, Vite 8.2.x, `@xyflow/react` 12.11.2, and Playwright 1.62.x.
   - [x] Add reproducible commands for install, type-check, unit/architecture tests, Playwright tests, and production static build.
   - [x] Keep local dependency folders, build artifacts, Playwright reports, traces, screenshots, and environment-private files out of source control.
 - [x] Create the React/Vite SPA composition root (AC: 1, 3)
@@ -172,7 +172,7 @@ Codex
 ### Debug Log References
 
 - 2026-08-03: Implemented `Moviqo.Front/` React/Vite spine with package-lock, feature-sliced layers, query/draft primitives, architecture tests, unit tests, build artifact scanner, and Playwright smoke test.
-- 2026-08-03: Local Node runtime is `26.6.0`; `npm run check:node` is aligned with the story-required runtime.
+- 2026-08-03: Local Node runtime is `26.7.0`; `npm run check:node` is aligned with the story-required runtime.
 - 2026-08-03: Review patches applied for Node command enforcement and architecture guard coverage.
 
 ### Completion Notes List
@@ -184,7 +184,7 @@ Codex
 - Added one shared query registry seam for future `/api/v1` client integration and reducer-based draft state with explicit revision tokens.
 - Added non-authoritative UI fixtures and tests for access denial, route rejection, calculation rejection, and task completion rejection using safe server-style responses.
 - Added Playwright smoke coverage for semantic shell structure and keyboard-visible focus.
-- Review verification completed: `node tests/architecture/frontend-boundaries.test.mjs`, `npm run test:unit`, local TypeScript binary `tsc --noEmit`, local Vite build, local Playwright test, and static artifact scan passed. `npm run check:node`, `npm test`, and `npm run build` are expected to run under the aligned Node `26.6.0` runtime.
+- Review verification completed: `node tests/architecture/frontend-boundaries.test.mjs`, `npm run test:unit`, local TypeScript binary `tsc --noEmit`, local Vite build, local Playwright test, and static artifact scan passed. `npm run check:node`, `npm test`, and `npm run build` are expected to run under the aligned Node `26.7.0` runtime.
 
 ### File List
 

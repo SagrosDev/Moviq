@@ -24,6 +24,7 @@ test("deployed first workflow journey covers registration through completed time
   const identity = createSyntheticIdentity();
 
   await page.goto("/");
+  await page.getByRole("combobox", { name: /language|idioma/i }).selectOption("es");
   await expect(page.getByRole("link", { name: "Registrar organizacion" })).toBeVisible();
   await page.getByRole("link", { name: "Registrar organizacion" }).click();
 

@@ -1,9 +1,25 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Response } from "@playwright/test";
 import { createRequire } from "node:module";
+import { expectApiOk } from "./support/deployedJourney";
 import { mockCsrfBootstrap } from "./support/mockCsrf";
 
 const require = createRequire(import.meta.url);
 const axePath = require.resolve("axe-core/axe.min.js");
+
+test("deployed API success checks do not read discarded navigation response bodies", async () => {
+  let responseBodyRead = false;
+  const navigatedResponse = {
+    ok: () => true,
+    text: async () => {
+      responseBodyRead = true;
+      throw new Error("Response body is unavailable after navigation.");
+    }
+  } as unknown as Response;
+
+  await expectApiOk(navigatedResponse);
+
+  expect(responseBodyRead).toBe(false);
+});
 
 test("public landing exposes semantic sections and keyboard focus", async ({ browserName, page }) => {
   await page.goto("/");

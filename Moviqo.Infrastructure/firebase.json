@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "../Moviqo.Front/dist",
+    "public": "dist",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -21,7 +21,7 @@
     ],
     "headers": [
       {
-        "regex": "^(?!/(assets|landing)(/|$)).*",
+        "source": "**",
         "headers": [
           {
             "key": "Cache-Control",

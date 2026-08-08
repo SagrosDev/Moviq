@@ -57,7 +57,21 @@ export const requestSyntheticVerificationLink = async (
   return payload.verificationUrl;
 };
 
-export const assertNoAccessibilityViolations = async (page: Page) => {
+export const assertNoAccessibilityViolations = async (
+  page: Page,
+  axePath?: string
+) => {
+  const axePresent = await page.evaluate(() =>
+    Boolean((window as unknown as { axe?: unknown }).axe)
+  );
+
+  if (!axePresent) {
+    if (!axePath) {
+      throw new Error("axePath is required when the current page has not loaded axe.");
+    }
+    await page.addScriptTag({ path: axePath });
+  }
+
   const result = await page.evaluate(async () => {
     const axe = (window as unknown as { axe: typeof import("axe-core") }).axe;
     return axe.run(document, {

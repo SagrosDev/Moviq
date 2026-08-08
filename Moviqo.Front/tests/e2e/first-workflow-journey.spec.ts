@@ -55,8 +55,7 @@ test("deployed first workflow journey covers registration through completed time
   expect(registrationResponse.ok(), await registrationResponse.text()).toBe(true);
   await expect(page.locator(".success-message")).toContainText(identity.email);
 
-  await page.addScriptTag({ path: axePath });
-  await assertNoAccessibilityViolations(page);
+  await assertNoAccessibilityViolations(page, axePath);
 
   const verificationUrl = await requestSyntheticVerificationLink(request, {
     email: identity.email,
@@ -67,7 +66,7 @@ test("deployed first workflow journey covers registration through completed time
     page.getByRole("heading", { name: "Activa la organizacion al confirmar el correo." })
   ).toBeVisible();
   await expect(page.getByText(new RegExp(identity.email, "i"))).toBeVisible();
-  await assertNoAccessibilityViolations(page);
+  await assertNoAccessibilityViolations(page, axePath);
 
   await page.goto("/sign-in");
   await page.getByLabel("Correo electronico").fill(identity.email);
@@ -75,7 +74,7 @@ test("deployed first workflow journey covers registration through completed time
   await page.getByRole("button", { name: "Ingresar" }).click();
   await expect(page).toHaveURL(/\/my-work$/);
   await expect(page.getByRole("heading", { name: "Mi trabajo" })).toBeVisible();
-  await assertNoAccessibilityViolations(page);
+  await assertNoAccessibilityViolations(page, axePath);
 
   await page.getByRole("link", { name: "Crear flujo" }).click();
   await expect(page).toHaveURL(/\/my-work\/workflows\/new$/);

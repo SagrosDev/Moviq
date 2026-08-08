@@ -78,7 +78,9 @@ test("deployed first workflow journey covers registration through completed time
 
   await page.getByRole("link", { name: "Crear flujo" }).click();
   await expect(page).toHaveURL(/\/my-work\/workflows\/new$/);
-  await page.getByLabel("Workflow name").fill(`Primer flujo ${identity.runId}`);
+  await page
+    .getByLabel(/workflow name|nombre del flujo/i)
+    .fill(`Primer flujo ${identity.runId}`);
   await page.getByRole("button", { name: "Crear flujo" }).click();
   await expect(page.getByRole("heading", { name: /Dise.*Inicio, Tarea y Fin/ })).toBeVisible();
 

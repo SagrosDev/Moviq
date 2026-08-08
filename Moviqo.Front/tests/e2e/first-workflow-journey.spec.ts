@@ -43,10 +43,17 @@ test("deployed first workflow journey covers registration through completed time
   await page.getByLabel(/acepto los terminos beta vigentes/i).check();
   await page.getByLabel(/acepto el aviso de privacidad vigente/i).check();
   await page.getByLabel(/no ingresare datos personales reales/i).check();
+  const registrationResponsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === "POST" &&
+      url.pathname === "/api/v1/organizations/registrations/"
+    );
+  });
   await page.getByRole("button", { name: "Enviar registro" }).click();
-  await expect(
-    page.getByText(`Se envio un enlace de verificacion a ${identity.email}`)
-  ).toBeVisible();
+  const registrationResponse = await registrationResponsePromise;
+  expect(registrationResponse.ok(), await registrationResponse.text()).toBe(true);
+  await expect(page.locator(".success-message")).toContainText(identity.email);
 
   await page.addScriptTag({ path: axePath });
   await assertNoAccessibilityViolations(page);

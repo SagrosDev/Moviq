@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { createRequire } from "node:module";
+import { mockCsrfBootstrap } from "./support/mockCsrf";
 
 const require = createRequire(import.meta.url);
 const axePath = require.resolve("axe-core/axe.min.js");
@@ -176,6 +177,7 @@ test("assigned task opens from my-work and saves authorized progress without fal
   };
   let saveRequestSeen = false;
 
+  await mockCsrfBootstrap(page);
   await page.route("**/api/v1/auth/session/", async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(authenticatedSession) });
   });

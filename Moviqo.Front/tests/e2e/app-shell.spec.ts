@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { createRequire } from "node:module";
+import { mockCsrfBootstrap } from "./support/mockCsrf";
 
 const require = createRequire(import.meta.url);
 const axePath = require.resolve("axe-core/axe.min.js");
@@ -145,6 +146,7 @@ test("design-system page passes scoped axe checks", async ({ page }) => {
 });
 
 test("registration server errors stay localized and associated with consent controls", async ({ page }) => {
+  await mockCsrfBootstrap(page);
   await page.route("**/api/v1/organizations/registrations/", async (route) => {
     await route.fulfill({
       status: 400,

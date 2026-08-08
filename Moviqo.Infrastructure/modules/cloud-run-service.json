@@ -27,6 +27,7 @@
   "env": {
     "MOVIQO_ENVIRONMENT_CLASS": "synthetic-only",
     "MOVIQO_ALLOWED_HOSTS": "uat.moviqo.internal",
+    "MOVIQO_PUBLIC_APP_BASE_URL": "https://uat.moviqo.internal",
     "MOVIQO_CSRF_TRUSTED_ORIGINS": "https://uat.moviqo.internal",
     "MOVIQO_TRUST_X_FORWARDED_PROTO": "true",
     "MOVIQO_GCS_PRIVATE_BUCKET": "moviqo-uat-private",

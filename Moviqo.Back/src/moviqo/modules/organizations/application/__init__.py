@@ -29,6 +29,8 @@ from moviqo.modules.organizations.application.views import (
     RegistrationVerificationView,
     SignInView,
     SignOutView,
+    SyntheticJourneyRotationView,
+    SyntheticJourneyRunView,
     SyntheticVerificationLinkView,
 )
 from moviqo.modules.organizations.application.workflow_directory import (
@@ -61,6 +63,8 @@ __all__ = [
     "PasswordResetView",
     "SignInView",
     "SignOutView",
+    "SyntheticJourneyRotationView",
+    "SyntheticJourneyRunView",
     "SyntheticVerificationLinkView",
     "set_user_password",
     "validate_password_policy",

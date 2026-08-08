@@ -8,6 +8,7 @@
   },
   "routing": {
     "allowedHosts": ["uat.moviqo.internal"],
+    "publicAppBaseUrl": "https://uat.moviqo.internal",
     "csrfTrustedOrigins": ["https://uat.moviqo.internal"],
     "trustXForwardedProto": true
   },

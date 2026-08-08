@@ -1,5 +1,5 @@
 # generated: 2026-08-02
-# last_updated: 2026-08-05
+# last_updated: 2026-08-08
 # project: Moviqo
 # project_key: NOKEY
 # tracking_system: file-system
@@ -12,7 +12,7 @@
 # Retrospective Status: optional <-> done
 
 generated: 2026-08-02
-last_updated: 2026-08-05
+last_updated: 2026-08-08
 project: Moviqo
 project_key: NOKEY
 tracking_system: file-system
@@ -52,7 +52,7 @@ development_status:
   1-30-open-an-assigned-task-and-save-progress: done
   1-31-complete-the-task-and-reach-end: done
   1-32-track-the-completed-process-and-timeline: done
-  1-33-automate-the-first-workflow-e2e-journey: ready-for-dev
+  1-33-automate-the-first-workflow-e2e-journey: review
   1-34-qualify-the-stakeholder-preview-experience: backlog
   1-35-approve-the-stakeholder-e2e-preview: backlog
   epic-1-retrospective: optional

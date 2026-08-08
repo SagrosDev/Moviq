@@ -15,4 +15,4 @@ COPY src ./src
 ENV PYTHONPATH=/app/src
 ENV DJANGO_SETTINGS_MODULE=moviqo.settings.production
 
-CMD ["/bin/sh", "-c", "/app/.venv/bin/python src/manage.py runserver 0.0.0.0:${PORT:-8080}"]
+CMD ["/bin/sh", "-c", "exec /app/.venv/bin/gunicorn moviqo.wsgi:application --bind 0.0.0.0:${PORT:-8080} --workers 2 --threads 4 --timeout 60 --access-logfile - --error-logfile -"]

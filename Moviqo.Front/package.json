@@ -19,6 +19,7 @@
     "test:architecture": "node tests/architecture/frontend-boundaries.test.mjs",
     "test": "npm run check:node && npm run test:architecture && npm run check:api-client && npm run test:unit",
     "build": "npm run check:node && npm run check:api-client && npm run validate:landing && tsc --noEmit && vite build && node ./tests/build/scan-static-artifact.mjs",
+    "stage:firebase": "npm run build && uv run --project ../Moviqo.Back python ../Moviqo.Infrastructure/operations/stage_frontend.py",
     "test:e2e": "npm run check:node && playwright test",
     "test:e2e:deployed-journey": "npm run check:node && playwright test --project=deployed-journey tests/e2e/first-workflow-journey.spec.ts"
   },

@@ -1,6 +1,7 @@
 import {
   csrfHeaders,
-  ensureCsrfToken
+  ensureCsrfToken,
+  rememberCsrfToken
 } from "../../../shared/api/csrf";
 export { csrfHeaders } from "../../../shared/api/csrf";
 
@@ -21,6 +22,8 @@ export const signIn = async (credentials: SessionCredentials, fetchImplementatio
   await loadCsrfToken(fetchImplementation);
   const response = await fetchImplementation("/api/v1/auth/sign-in/", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", ...csrfHeaders() }, body: JSON.stringify(credentials) });
   if (!response.ok) throw (await response.json()) as unknown;
+  rememberCsrfToken("");
+  await ensureCsrfToken(fetchImplementation);
   return (await response.json()) as SessionContext;
 };
 
@@ -28,6 +31,7 @@ export const signOut = async (fetchImplementation: typeof fetch = fetch): Promis
   await loadCsrfToken(fetchImplementation);
   const response = await fetchImplementation("/api/v1/auth/sign-out/", { method: "POST", credentials: "same-origin", headers: csrfHeaders() });
   if (!response.ok) throw (await response.json()) as unknown;
+  rememberCsrfToken("");
 };
 
 export const bootstrapSession = async (fetchImplementation: typeof fetch = fetch): Promise<SessionContext | null> => {

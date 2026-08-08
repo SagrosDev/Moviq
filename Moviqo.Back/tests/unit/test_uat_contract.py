@@ -22,6 +22,7 @@ UAT_ENV = {
     "MOVIQO_SERVICE_CLASS": "uat-internal",
     "MOVIQO_SERVICE_NAME": "moviqo-back-uat",
     "MOVIQO_CLOUD_PROJECT_ID": "moviqo-uat-synthetic",
+    "MOVIQO_PUBLIC_APP_BASE_URL": "https://uat.moviqo.internal",
     "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY": "synthetic-link-key-20260806",
     "MOVIQO_DJANGO_SECRET_KEY_SECRET": "moviqo-uat-django-secret",
     "MOVIQO_DB_PASSWORD_SECRET": "moviqo-uat-db-password",
@@ -46,6 +47,7 @@ def test_uat_contract_loads_when_environment_is_explicitly_synthetic(
     contract = load_uat_contract()
 
     assert contract["environment_class"] == "synthetic-only"
+    assert contract["public_app_base_url"] == "https://uat.moviqo.internal"
     assert contract["file_inspection_adapter"] == "synthetic"
     assert contract["job_runners"] == {"outboxEmailDrain": "outbox-email-drain"}
     assert contract["disabled_services"] == {
@@ -68,6 +70,11 @@ def test_uat_contract_loads_when_environment_is_explicitly_synthetic(
             "MOVIQO_CLOUD_PROJECT_ID",
             "moviqo-production",
             "must not reference production resources",
+        ),
+        (
+            "MOVIQO_PUBLIC_APP_BASE_URL",
+            "http://uat.moviqo.internal/path",
+            "origin-only HTTPS URL",
         ),
         (
             "MOVIQO_LIVE_MALWARE_SCANNING",
@@ -114,6 +121,20 @@ def test_uat_contract_does_not_require_inline_resend_api_key(
 
     assert contract["resend_api_key_secret"] == "moviqo-uat-resend-api-key"
     assert contract["synthetic_verification_api_key"] == "synthetic-link-key-20260806"
+
+
+def test_uat_contract_does_not_treat_secret_material_as_a_resource_identifier(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_uat_env(monkeypatch)
+    monkeypatch.setenv(
+        "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY",
+        "random-prod-fragment-is-valid-secret-material",
+    )
+
+    contract = load_uat_contract()
+
+    assert contract["synthetic_verification_api_key"].startswith("random-prod-fragment")
 
 
 def _set_uat_env(monkeypatch: pytest.MonkeyPatch) -> None:

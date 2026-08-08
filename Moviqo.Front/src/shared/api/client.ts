@@ -3,6 +3,7 @@ import type { components, paths } from "./generated/schema";
 import {
   csrfHeaders,
   ensureCsrfToken,
+  rememberCsrfToken,
   requiresCsrfProtection
 } from "./csrf";
 
@@ -95,10 +96,7 @@ export type ApiClientOptions = {
 
 export const createApiClient = (options: ApiClientOptions) => {
   const normalizedBaseUrl = normalizeApiBaseUrl(options.baseUrl);
-  const csrfBootstrapEndpoint =
-    normalizedBaseUrl.startsWith("http://") || normalizedBaseUrl.startsWith("https://")
-      ? `${normalizedBaseUrl}${API_PATH_PREFIX}/auth/csrf/`
-      : `${API_PATH_PREFIX}/auth/csrf/`;
+  const csrfBootstrapEndpoint = `${normalizedBaseUrl}${API_PATH_PREFIX}/auth/csrf/`;
 
   const fetchImplementation: typeof fetch = (input, init) => {
     if (options.fetch) {
@@ -120,9 +118,23 @@ export const createApiClient = (options: ApiClientOptions) => {
       for (const [name, value] of Object.entries(csrfHeaders())) {
         headers.set(name, value);
       }
-      const response = await fetchImplementation(
-        new Request(input, { credentials: "same-origin", headers })
-      );
+      const requestWithHeaders = new Request(input, {
+        credentials: "same-origin",
+        headers
+      });
+      const retrySource = requestWithHeaders.clone();
+      let response = await fetchImplementation(requestWithHeaders);
+      if (response.status === 403 && requiresCsrfProtection(input.method)) {
+        rememberCsrfToken("");
+        await ensureCsrfToken(fetchImplementation, csrfBootstrapEndpoint);
+        const retryHeaders = new Headers(retrySource.headers);
+        for (const [name, value] of Object.entries(csrfHeaders())) {
+          retryHeaders.set(name, value);
+        }
+        response = await fetchImplementation(
+          new Request(retrySource, { credentials: "same-origin", headers: retryHeaders })
+        );
+      }
       if ((response.status === 401 || response.status === 403) && typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("moviqo:session-expired"));
       }

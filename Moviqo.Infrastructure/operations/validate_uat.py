@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from fnmatch import fnmatchcase
 import json
-from pathlib import Path
 import re
+from fnmatch import fnmatchcase
+from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +28,8 @@ def main() -> None:
 
 def _validate_firebase(firebase: dict[str, object]) -> None:
     hosting = firebase["hosting"]
+    if hosting["public"] != "dist":
+        raise RuntimeError("firebase.json must deploy the staged Infrastructure/dist artifact.")
     rewrites = hosting["rewrites"]
     api_rewrite = next(
         (entry for entry in rewrites if entry.get("source") == "/api/**"),
@@ -123,6 +125,11 @@ def _validate_cloud_run_service(
         != ",".join(uat_environment["routing"]["allowedHosts"])
     ):
         raise RuntimeError("Cloud Run must export the declared UAT allowed hosts.")
+    if (
+        cloud_run_service["env"]["MOVIQO_PUBLIC_APP_BASE_URL"]
+        != uat_environment["routing"]["publicAppBaseUrl"]
+    ):
+        raise RuntimeError("Cloud Run must export the declared UAT public application URL.")
     if (
         cloud_run_service["env"]["MOVIQO_CSRF_TRUSTED_ORIGINS"]
         != ",".join(uat_environment["routing"]["csrfTrustedOrigins"])

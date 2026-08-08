@@ -17,6 +17,8 @@ from moviqo.modules.organizations.application import (
     RegistrationVerificationView,
     SignInView,
     SignOutView,
+    SyntheticJourneyRotationView,
+    SyntheticJourneyRunView,
     SyntheticVerificationLinkView,
 )
 from moviqo.modules.workflow_design.application import (
@@ -40,6 +42,7 @@ def health_start(_request):
 
 urlpatterns = [
     path("health/start/", health_start, name="health-start"),
+    path("api/v1/health/start/", health_start, name="api-v1-health-start"),
     path(
         "api/v1/schema/",
         SpectacularAPIView.as_view(renderer_classes=[OpenApiJsonRenderer]),
@@ -112,9 +115,19 @@ urlpatterns = [
         name="api-v1-organizations-registration-verify-email",
     ),
     path(
-        "api/v1/organizations/testing/synthetic-verification-link/",
+        "api/v1/organizations/testing/synthetic-runs/",
+        SyntheticJourneyRunView.as_view(),
+        name="api-v1-organizations-synthetic-journey-run",
+    ),
+    path(
+        "api/v1/organizations/testing/synthetic-runs/verification-link/",
         SyntheticVerificationLinkView.as_view(),
         name="api-v1-organizations-synthetic-verification-link",
+    ),
+    path(
+        "api/v1/organizations/testing/synthetic-runs/rotate/",
+        SyntheticJourneyRotationView.as_view(),
+        name="api-v1-organizations-synthetic-journey-rotation",
     ),
     path(
         "api/v1/organizations/protected-memberships/<uuid:membership_id>/",

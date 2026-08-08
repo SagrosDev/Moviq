@@ -42,6 +42,8 @@ $env:MOVIQO_E2E_BUILD_ID="build-identifier"
 npm run test:e2e:deployed-journey
 ```
 
+`MOVIQO_E2E_BUILD_ID` must match the build reported by the deployed UAT health contract. The journey creates a short-lived synthetic run scope, waits for confirmed outbox delivery, and retires the generated account after the run. CI retains only sanitized JSON evidence and masked screenshots.
+
 Run infrastructure validation from the repository root:
 
 ```powershell

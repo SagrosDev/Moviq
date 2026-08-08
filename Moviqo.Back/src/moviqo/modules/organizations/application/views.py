@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import logging
 from uuid import UUID
 
@@ -28,10 +29,13 @@ from moviqo.modules.organizations.application.password_recovery import (
 )
 from moviqo.modules.organizations.application.registration import (
     RegistrationValidationError,
+    SyntheticJourneyScopeError,
     VerificationActivationError,
     VerificationLinkLookupError,
-    read_latest_verification_link_for_email,
+    create_synthetic_journey_scope,
+    read_latest_verification_link_for_run,
     register_initial_owner,
+    rotate_synthetic_journey,
     verify_initial_registration,
 )
 from moviqo.modules.organizations.application.session import (
@@ -317,13 +321,27 @@ class RegistrationVerificationResponseSerializer(serializers.Serializer):
     nextStep = serializers.CharField()
 
 
-class SyntheticVerificationLinkRequestSerializer(serializers.Serializer):
+class SyntheticJourneyRunRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=254)
+
+
+class SyntheticJourneyRunResponseSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    runToken = serializers.CharField()
+
+
+class SyntheticVerificationLinkRequestSerializer(serializers.Serializer):
+    runToken = serializers.CharField(max_length=2048, trim_whitespace=False)
 
 
 class SyntheticVerificationLinkResponseSerializer(serializers.Serializer):
     email = serializers.EmailField()
     verificationUrl = serializers.URLField()
+
+
+class SyntheticJourneyRotationResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    organizationRef = serializers.CharField()
 
 
 class InitialRegistrationView(APIView):
@@ -444,6 +462,34 @@ class RegistrationVerificationView(APIView):
         return Response(result, status=200)
 
 
+class SyntheticJourneyRunView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(
+        operation_id="organizations_create_synthetic_journey_run",
+        request=SyntheticJourneyRunRequestSerializer,
+        responses={
+            201: SyntheticJourneyRunResponseSerializer,
+            (404, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def post(self, request) -> Response:
+        if not _synthetic_operator_authorized(request):
+            raise NotFound("synthetic-journey-run")
+
+        serializer = SyntheticJourneyRunRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            raise NotFound("synthetic-journey-run")
+
+        try:
+            result = create_synthetic_journey_scope(email=serializer.validated_data["email"])
+        except SyntheticJourneyScopeError as exc:
+            raise NotFound("synthetic-journey-run") from exc
+
+        return Response(result, status=201)
+
+
 class SyntheticVerificationLinkView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -457,12 +503,7 @@ class SyntheticVerificationLinkView(APIView):
         },
     )
     def post(self, request) -> Response:
-        configured_key = getattr(settings, "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY", "")
-        if (
-            settings.MOVIQO_ENVIRONMENT_CLASS != "synthetic-only"
-            or not configured_key
-            or request.headers.get("X-Moviqo-Synthetic-Key", "") != configured_key
-        ):
+        if not _synthetic_operator_authorized(request):
             raise NotFound("synthetic-verification-link")
 
         serializer = SyntheticVerificationLinkRequestSerializer(data=request.data)
@@ -470,13 +511,50 @@ class SyntheticVerificationLinkView(APIView):
             raise NotFound("synthetic-verification-link")
 
         try:
-            result = read_latest_verification_link_for_email(
-                email=serializer.validated_data["email"]
+            result = read_latest_verification_link_for_run(
+                run_token=serializer.validated_data["runToken"]
             )
-        except VerificationLinkLookupError as exc:
+        except (SyntheticJourneyScopeError, VerificationLinkLookupError) as exc:
             raise NotFound("synthetic-verification-link") from exc
 
         return Response(result, status=200)
+
+
+class SyntheticJourneyRotationView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(
+        operation_id="organizations_rotate_synthetic_journey_run",
+        request=SyntheticVerificationLinkRequestSerializer,
+        responses={
+            200: SyntheticJourneyRotationResponseSerializer,
+            (404, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def post(self, request) -> Response:
+        if not _synthetic_operator_authorized(request):
+            raise NotFound("synthetic-journey-run")
+
+        serializer = SyntheticVerificationLinkRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            raise NotFound("synthetic-journey-run")
+
+        try:
+            result = rotate_synthetic_journey(run_token=serializer.validated_data["runToken"])
+        except SyntheticJourneyScopeError as exc:
+            raise NotFound("synthetic-journey-run") from exc
+        return Response(result, status=200)
+
+
+def _synthetic_operator_authorized(request) -> bool:
+    configured_key = getattr(settings, "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY", "")
+    provided_key = request.headers.get("X-Moviqo-Synthetic-Key", "")
+    return (
+        settings.MOVIQO_ENVIRONMENT_CLASS == "synthetic-only"
+        and bool(configured_key)
+        and hmac.compare_digest(provided_key, configured_key)
+    )
 
 
 def _registration_invalid_params(errors) -> list[dict[str, str]]:

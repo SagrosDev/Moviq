@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from os import getenv
+from urllib.parse import urlparse
 
 from moviqo.settings.env import required_env, required_env_choice
 
@@ -23,6 +24,7 @@ def load_uat_contract() -> dict[str, object]:
         "service_name": required_env("MOVIQO_SERVICE_NAME"),
         "cloud_project_id": required_env("MOVIQO_CLOUD_PROJECT_ID"),
         "database_host": required_env("MOVIQO_DB_HOST"),
+        "public_app_base_url": required_env("MOVIQO_PUBLIC_APP_BASE_URL"),
         "synthetic_verification_api_key": required_env(
             "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY"
         ),
@@ -57,6 +59,17 @@ def validate_uat_contract(contract: dict[str, object]) -> None:
     if contract["cache_policy"] != "firebase-hosting-no-store":
         raise RuntimeError("UAT must declare the firebase-hosting-no-store cache policy.")
 
+    public_app_url = urlparse(str(contract["public_app_base_url"]))
+    if (
+        public_app_url.scheme != "https"
+        or not public_app_url.hostname
+        or public_app_url.path not in ("", "/")
+        or public_app_url.params
+        or public_app_url.query
+        or public_app_url.fragment
+    ):
+        raise RuntimeError("UAT public application base URL must be an origin-only HTTPS URL.")
+
     for service_name, status in contract["disabled_services"].items():
         if status != DISABLED_BY_GATE:
             raise RuntimeError(
@@ -67,7 +80,7 @@ def validate_uat_contract(contract: dict[str, object]) -> None:
     for name in (
         "cloud_project_id",
         "database_host",
-        "synthetic_verification_api_key",
+        "public_app_base_url",
         "django_secret_key_secret",
         "database_password_secret",
         "resend_api_key_secret",

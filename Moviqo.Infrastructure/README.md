@@ -20,6 +20,7 @@ Operators must provide the following runtime values before deploying `moviqo-bac
 - `MOVIQO_SERVICE_NAME`
 - `MOVIQO_SECRET_KEY`
 - `MOVIQO_ALLOWED_HOSTS`
+- `MOVIQO_PUBLIC_APP_BASE_URL=https://uat.moviqo.internal`
 - `MOVIQO_DB_NAME`
 - `MOVIQO_DB_USER`
 - `MOVIQO_DB_HOST`
@@ -52,4 +53,11 @@ The deployed Playwright journey uses a matching client-side secret value through
 
 That GitHub secret must match the backend runtime value of `MOVIQO_SYNTHETIC_VERIFICATION_API_KEY`.
 
-Firebase Hosting serves the built SPA from `Moviqo.Front/dist`, rewrites `/api/**` to the Cloud Run service in `us-east1`, applies `no-store` to the SPA shell and authenticated routes, and keeps only public landing content plus hashed assets cacheable.
+Before Firebase deploys, stage the exact frontend build into the Hosting directory:
+
+```powershell
+cd Moviqo.Front
+npm run stage:firebase
+```
+
+The command builds `Moviqo.Front/dist` and safely refreshes `Moviqo.Infrastructure/dist`. Firebase Hosting serves that staged artifact, rewrites `/api/**` to the Cloud Run service in `us-east1`, applies `no-store` to the SPA shell and authenticated routes, and keeps only public landing content plus hashed assets cacheable.

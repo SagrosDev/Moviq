@@ -12,12 +12,8 @@ const readCookie = (name: string): string =>
         .find(([key]) => key === name)?.[1] ?? "";
 
 export const readCsrfToken = (): string => {
-  if (cachedCsrfToken) {
-    return cachedCsrfToken;
-  }
-
   const cookieToken = readCookie(CSRF_COOKIE_NAME);
-  return cookieToken ? decodeURIComponent(cookieToken) : "";
+  return cookieToken ? decodeURIComponent(cookieToken) : cachedCsrfToken;
 };
 
 export const csrfHeaders = (): HeadersInit => {

@@ -840,7 +840,107 @@
                 }
             }
         },
-        "/api/v1/organizations/testing/synthetic-verification-link/": {
+        "/api/v1/organizations/testing/synthetic-runs/": {
+            "post": {
+                "operationId": "organizations_create_synthetic_journey_run",
+                "tags": [
+                    "organizations"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyntheticJourneyRunRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyntheticJourneyRunRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyntheticJourneyRunRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyntheticJourneyRunResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations/testing/synthetic-runs/rotate/": {
+            "post": {
+                "operationId": "organizations_rotate_synthetic_journey_run",
+                "tags": [
+                    "organizations"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyntheticVerificationLinkRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyntheticVerificationLinkRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyntheticVerificationLinkRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyntheticJourneyRotationResponse"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetails"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations/testing/synthetic-runs/verification-link/": {
             "post": {
                 "operationId": "organizations_read_synthetic_verification_link",
                 "tags": [
@@ -2265,7 +2365,22 @@
                     "workflowId"
                 ]
             },
-            "SyntheticVerificationLinkRequest": {
+            "SyntheticJourneyRotationResponse": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string"
+                    },
+                    "organizationRef": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "organizationRef",
+                    "status"
+                ]
+            },
+            "SyntheticJourneyRunRequest": {
                 "type": "object",
                 "properties": {
                     "email": {
@@ -2276,6 +2391,34 @@
                 },
                 "required": [
                     "email"
+                ]
+            },
+            "SyntheticJourneyRunResponse": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "runToken": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "email",
+                    "runToken"
+                ]
+            },
+            "SyntheticVerificationLinkRequest": {
+                "type": "object",
+                "properties": {
+                    "runToken": {
+                        "type": "string",
+                        "maxLength": 2048
+                    }
+                },
+                "required": [
+                    "runToken"
                 ]
             },
             "SyntheticVerificationLinkResponse": {

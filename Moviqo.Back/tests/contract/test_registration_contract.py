@@ -8,8 +8,14 @@ from django.core import signing
 from django.test import Client
 from django.utils import timezone
 
+from moviqo.modules.messaging.models import OutboxMessage
 from moviqo.modules.organizations.application.registration import VERIFICATION_SALT
-from moviqo.modules.organizations.models import RegistrationVerification
+from moviqo.modules.organizations.models import (
+    MoviqoUser,
+    Organization,
+    RegistrationVerification,
+    RegistrationWorkflowState,
+)
 
 
 def _verification_token(verification: RegistrationVerification) -> str:
@@ -224,20 +230,40 @@ def test_verification_endpoint_hides_expired_and_consumed_distinctions() -> None
 def test_synthetic_verification_link_endpoint_returns_latest_safe_link(settings) -> None:
     settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
     settings.MOVIQO_SYNTHETIC_VERIFICATION_API_KEY = "synthetic-link-key"
+    email = "owner.run-one@synthetic.moviqo.test"
+    operator = Client(HTTP_X_MOVIQO_SYNTHETIC_KEY="synthetic-link-key")
+    run_response = operator.post(
+        "/api/v1/organizations/testing/synthetic-runs/",
+        data=json.dumps({"email": email}),
+        content_type="application/json",
+    )
+    assert run_response.status_code == 201
+    run_token = run_response.json()["runToken"]
+
     Client(HTTP_IDEMPOTENCY_KEY="registration-1").post(
         "/api/v1/organizations/registrations/",
-        data=json.dumps(_payload()),
+        data=json.dumps(_payload(email=email)),
         content_type="application/json",
     )
 
-    response = Client(HTTP_X_MOVIQO_SYNTHETIC_KEY="synthetic-link-key").post(
-        "/api/v1/organizations/testing/synthetic-verification-link/",
-        data=json.dumps({"email": "ana@example.com"}),
+    pending_response = operator.post(
+        "/api/v1/organizations/testing/synthetic-runs/verification-link/",
+        data=json.dumps({"runToken": run_token}),
+        content_type="application/json",
+    )
+    assert pending_response.status_code == 404
+
+    OutboxMessage.objects.filter(message_type="email.registration_verification").update(
+        delivered_at=timezone.now()
+    )
+    response = operator.post(
+        "/api/v1/organizations/testing/synthetic-runs/verification-link/",
+        data=json.dumps({"runToken": run_token}),
         content_type="application/json",
     )
 
     assert response.status_code == 200
-    assert response.json()["email"] == "ana@example.com"
+    assert response.json()["email"] == email
     assert "/verify-email?token=" in response.json()["verificationUrl"]
     assert "subject" not in response.content.decode("utf-8")
     assert "text" not in response.content.decode("utf-8")
@@ -249,8 +275,8 @@ def test_synthetic_verification_link_endpoint_is_hidden_outside_synthetic_only(s
     settings.MOVIQO_SYNTHETIC_VERIFICATION_API_KEY = "synthetic-link-key"
 
     response = Client(HTTP_X_MOVIQO_SYNTHETIC_KEY="synthetic-link-key").post(
-        "/api/v1/organizations/testing/synthetic-verification-link/",
-        data=json.dumps({"email": "ana@example.com"}),
+        "/api/v1/organizations/testing/synthetic-runs/",
+        data=json.dumps({"email": "owner.hidden@synthetic.moviqo.test"}),
         content_type="application/json",
     )
 
@@ -263,9 +289,74 @@ def test_synthetic_verification_link_endpoint_is_hidden_without_matching_key(set
     settings.MOVIQO_SYNTHETIC_VERIFICATION_API_KEY = "synthetic-link-key"
 
     response = Client(HTTP_X_MOVIQO_SYNTHETIC_KEY="wrong-key").post(
-        "/api/v1/organizations/testing/synthetic-verification-link/",
-        data=json.dumps({"email": "ana@example.com"}),
+        "/api/v1/organizations/testing/synthetic-runs/",
+        data=json.dumps({"email": "owner.hidden@synthetic.moviqo.test"}),
         content_type="application/json",
     )
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_synthetic_run_scope_cannot_be_created_for_an_existing_account(settings) -> None:
+    settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
+    settings.MOVIQO_SYNTHETIC_VERIFICATION_API_KEY = "synthetic-link-key"
+    email = "owner.existing@synthetic.moviqo.test"
+    Client(HTTP_IDEMPOTENCY_KEY="registration-1").post(
+        "/api/v1/organizations/registrations/",
+        data=json.dumps(_payload(email=email)),
+        content_type="application/json",
+    )
+
+    response = Client(HTTP_X_MOVIQO_SYNTHETIC_KEY="synthetic-link-key").post(
+        "/api/v1/organizations/testing/synthetic-runs/",
+        data=json.dumps({"email": email}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_synthetic_run_rotation_releases_capacity_and_deactivates_identity(settings) -> None:
+    settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
+    settings.MOVIQO_SYNTHETIC_VERIFICATION_API_KEY = "synthetic-link-key"
+    settings.MOVIQO_ACTIVE_ORGANIZATION_CAPACITY = 1
+    operator = Client(HTTP_X_MOVIQO_SYNTHETIC_KEY="synthetic-link-key")
+    first_email = "owner.rotate-one@synthetic.moviqo.test"
+    run_response = operator.post(
+        "/api/v1/organizations/testing/synthetic-runs/",
+        data=json.dumps({"email": first_email}),
+        content_type="application/json",
+    )
+    run_token = run_response.json()["runToken"]
+    first_registration = Client(HTTP_IDEMPOTENCY_KEY="registration-1").post(
+        "/api/v1/organizations/registrations/",
+        data=json.dumps(_payload(email=first_email)),
+        content_type="application/json",
+    )
+    assert first_registration.status_code == 201
+
+    rotation = operator.post(
+        "/api/v1/organizations/testing/synthetic-runs/rotate/",
+        data=json.dumps({"runToken": run_token}),
+        content_type="application/json",
+    )
+    assert rotation.status_code == 200
+    assert rotation.json()["status"] == "rotated"
+    assert MoviqoUser.objects.get(normalized_email=first_email).is_active is False
+    organization = Organization.objects.get(memberships__user__normalized_email=first_email)
+    assert organization.is_active is False
+    assert organization.registration_state == RegistrationWorkflowState.RETIRED
+
+    second_registration = Client(HTTP_IDEMPOTENCY_KEY="registration-2").post(
+        "/api/v1/organizations/registrations/",
+        data=json.dumps(
+            _payload(
+                email="owner.rotate-two@synthetic.moviqo.test",
+                organizationName="Equipo Sur",
+            )
+        ),
+        content_type="application/json",
+    )
+    assert second_registration.status_code == 201

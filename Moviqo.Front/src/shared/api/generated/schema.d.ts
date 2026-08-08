@@ -228,7 +228,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/testing/synthetic-verification-link/": {
+    "/api/v1/organizations/testing/synthetic-runs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_create_synthetic_journey_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/testing/synthetic-runs/rotate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_rotate_synthetic_journey_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/testing/synthetic-runs/verification-link/": {
         parameters: {
             query?: never;
             header?: never;
@@ -541,9 +573,21 @@ export interface components {
             availability: string;
             versionNumber: number;
         };
-        SyntheticVerificationLinkRequest: {
+        SyntheticJourneyRotationResponse: {
+            status: string;
+            organizationRef: string;
+        };
+        SyntheticJourneyRunRequest: {
             /** Format: email */
             email: string;
+        };
+        SyntheticJourneyRunResponse: {
+            /** Format: email */
+            email: string;
+            runToken: string;
+        };
+        SyntheticVerificationLinkRequest: {
+            runToken: string;
         };
         SyntheticVerificationLinkResponse: {
             /** Format: email */
@@ -1327,6 +1371,72 @@ export interface operations {
                 };
             };
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    organizations_create_synthetic_journey_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyntheticJourneyRunRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SyntheticJourneyRunRequest"];
+                "multipart/form-data": components["schemas"]["SyntheticJourneyRunRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyntheticJourneyRunResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    organizations_rotate_synthetic_journey_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyntheticVerificationLinkRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SyntheticVerificationLinkRequest"];
+                "multipart/form-data": components["schemas"]["SyntheticVerificationLinkRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyntheticJourneyRotationResponse"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

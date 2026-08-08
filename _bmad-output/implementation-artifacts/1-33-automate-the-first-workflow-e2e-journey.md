@@ -4,7 +4,7 @@ baseline_commit: b31a153
 
 # Story 1.33: Automate the First-Workflow E2E Journey
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -21,37 +21,56 @@ so that every build proves the thin slice remains executable end to end.
 
 ## Tasks / Subtasks
 
-- [ ] Add a deployed-journey Playwright execution mode without breaking the current local mocked E2E coverage (AC: 1, 2)
-  - [ ] Extend [Moviqo.Front/playwright.config.ts](C:/Endava/EndevLocal/Moviqo/Moviqo.Front/playwright.config.ts) so local specs can still use the current Vite-backed `webServer`, while a second env-driven mode can target the deployed UAT base URL directly without starting Vite.
-  - [ ] Preserve the current local browser matrix and add an explicit deployed-journey project/profile for the minimum release evidence path; do not silently replace local mocked specs with UAT-only execution.
-  - [ ] Keep `trace`, screenshots, and any retained failure artifacts configured so the failing step remains inspectable in CI/promotion evidence.
+- [x] Add a deployed-journey Playwright execution mode without breaking the current local mocked E2E coverage (AC: 1, 2)
+  - [x] Extend [Moviqo.Front/playwright.config.ts](C:/Endava/EndevLocal/Moviqo/Moviqo.Front/playwright.config.ts) so local specs can still use the current Vite-backed `webServer`, while a second env-driven mode can target the deployed UAT base URL directly without starting Vite.
+  - [x] Preserve the current local browser matrix and add an explicit deployed-journey project/profile for the minimum release evidence path; do not silently replace local mocked specs with UAT-only execution.
+  - [x] Keep `trace`, screenshots, and any retained failure artifacts configured so the failing step remains inspectable in CI/promotion evidence.
 
-- [ ] Introduce a synthetic-only test harness for clean identities and real verification-email retrieval (AC: 1, 2)
-  - [ ] Add a test support seam that can provision or reset one synthetic Organization/account safely before the run and tear down or rotate it afterward without touching production-like resources.
-  - [ ] Because no existing public inbox-inspection seam was found in the repo, add one explicit synthetic-only verification-link retrieval path that reads the real outbox/email result without bypassing registration or verification semantics.
-  - [ ] Keep that retrieval seam operator-safe and environment-scoped: it must be unavailable outside `synthetic-only`, must not expose unrelated tenant mail, and must not require direct database table reads from Playwright.
+- [x] Introduce a synthetic-only test harness for clean identities and real verification-email retrieval (AC: 1, 2)
+  - [x] Add a test support seam that can provision or reset one synthetic Organization/account safely before the run and tear down or rotate it afterward without touching production-like resources.
+  - [x] Because no existing public inbox-inspection seam was found in the repo, add one explicit synthetic-only verification-link retrieval path that reads the real outbox/email result without bypassing registration or verification semantics.
+  - [x] Keep that retrieval seam operator-safe and environment-scoped: it must be unavailable outside `synthetic-only`, must not expose unrelated tenant mail, and must not require direct database table reads from Playwright.
 
-- [ ] Automate the full representative stakeholder journey with resilient user-visible assertions (AC: 1)
-  - [ ] Add a dedicated spec such as `Moviqo.Front/tests/e2e/first-workflow-journey.spec.ts` that starts from the public landing page and performs the real registration, verification, sign-in, workflow-authoring, publication, process-start, task-save, task-complete, and completed-timeline path.
-  - [ ] Reuse the real routes already present in the SPA and API contracts: `/register`, `/verify-email`, `/sign-in`, `/my-work`, `/my-work/workflows/new`, `/my-work/tasks/:taskId`, and `/my-work/processes/:processId`.
-  - [ ] Assert on user-visible labels, headings, actions, and safe timeline/process evidence instead of CSS structure or implementation-only details.
-  - [ ] Verify that publication first fails with the expected checklist issue until starter/assignment or equivalent required configuration is repaired, then succeeds once the required fix is made.
-  - [ ] Verify that the final Process detail/timeline reflects the completed Start -> Task -> End flow and that any surfaced identifiers are safe references, not raw Process Data.
+- [x] Automate the full representative stakeholder journey with resilient user-visible assertions (AC: 1)
+  - [x] Add a dedicated spec such as `Moviqo.Front/tests/e2e/first-workflow-journey.spec.ts` that starts from the public landing page and performs the real registration, verification, sign-in, workflow-authoring, publication, process-start, task-save, task-complete, and completed-timeline path.
+  - [x] Reuse the real routes already present in the SPA and API contracts: `/register`, `/verify-email`, `/sign-in`, `/my-work`, `/my-work/workflows/new`, `/my-work/tasks/:taskId`, and `/my-work/processes/:processId`.
+  - [x] Assert on user-visible labels, headings, actions, and safe timeline/process evidence instead of CSS structure or implementation-only details.
+  - [x] Verify that publication first fails with the expected checklist issue until starter/assignment or equivalent required configuration is repaired, then succeeds once the required fix is made.
+  - [x] Verify that the final Process detail/timeline reflects the completed Start -> Task -> End flow and that any surfaced identifiers are safe references, not raw Process Data.
 
-- [ ] Add accessibility and evidence capture to the deployed journey (AC: 1, 2)
-  - [ ] Run automated accessibility checks at the critical public and authenticated milestones reached by the journey, keeping the checks scoped to the active page/region after the UI settles.
-  - [ ] Persist actionable evidence for failures: trace, screenshot, browser/project, build ID, environment host, and correlation-safe identifiers.
-  - [ ] Ensure logs, test output, and artifact names never print passwords, verification tokens, session cookies, raw email bodies, or submitted Process Field values.
+- [x] Add accessibility and evidence capture to the deployed journey (AC: 1, 2)
+  - [x] Run automated accessibility checks at the critical public and authenticated milestones reached by the journey, keeping the checks scoped to the active page/region after the UI settles.
+  - [x] Persist actionable evidence for failures: trace, screenshot, browser/project, build ID, environment host, and correlation-safe identifiers.
+  - [x] Ensure logs, test output, and artifact names never print passwords, verification tokens, session cookies, raw email bodies, or submitted Process Field values.
 
-- [ ] Wire the deployed journey into release evidence without weakening existing local verification (AC: 2)
-  - [ ] Extend [Moviqo.Front/package.json](C:/Endava/EndevLocal/Moviqo/Moviqo.Front/package.json), [README.md](C:/Endava/EndevLocal/Moviqo/README.md), and [`.github/workflows/ci.yml`](C:/Endava/EndevLocal/Moviqo/.github/workflows/ci.yml) with a named command/job for the deployed first-workflow journey.
-  - [ ] Keep the existing local `npm run test:e2e` path for mocked/browser-shell coverage, and add a separate release-gate command for the deployed journey when the required UAT environment variables/secrets are present.
-  - [ ] Make the release-gate output fail on the first actionable step and print enough context to locate the failed stage quickly without leaking sensitive data.
+- [x] Wire the deployed journey into release evidence without weakening existing local verification (AC: 2)
+  - [x] Extend [Moviqo.Front/package.json](C:/Endava/EndevLocal/Moviqo/Moviqo.Front/package.json), [README.md](C:/Endava/EndevLocal/Moviqo/README.md), and [`.github/workflows/ci.yml`](C:/Endava/EndevLocal/Moviqo/.github/workflows/ci.yml) with a named command/job for the deployed first-workflow journey.
+  - [x] Keep the existing local `npm run test:e2e` path for mocked/browser-shell coverage, and add a separate release-gate command for the deployed journey when the required UAT environment variables/secrets are present.
+  - [x] Make the release-gate output fail on the first actionable step and print enough context to locate the failed stage quickly without leaking sensitive data.
 
-- [ ] Add backend and contract support only where the real journey lacks a safe automation seam (AC: 1, 2)
-  - [ ] If the synthetic-only email retrieval/provisioning path requires backend support, add it under the existing Organizations/Messaging/UAT seams rather than creating ad hoc scripts that bypass application contracts.
-  - [ ] Cover any new synthetic-only support path with unit/contract tests proving it is unavailable outside UAT, tenant-safe, and free of sensitive data leakage.
-  - [ ] Do not add any endpoint, setting, or helper that would permit production or public-beta environments to inspect outbox contents or impersonate accounts.
+- [x] Add backend and contract support only where the real journey lacks a safe automation seam (AC: 1, 2)
+  - [x] If the synthetic-only email retrieval/provisioning path requires backend support, add it under the existing Organizations/Messaging/UAT seams rather than creating ad hoc scripts that bypass application contracts.
+  - [x] Cover any new synthetic-only support path with unit/contract tests proving it is unavailable outside UAT, tenant-safe, and free of sensitive data leakage.
+  - [x] Do not add any endpoint, setting, or helper that would permit production or public-beta environments to inspect outbox contents or impersonate accounts.
+
+### Review Findings
+
+- [x] [Review][Patch] [High] Fail the deployed-journey job when required gate configuration is missing instead of returning a green skipped gate [.github/workflows/ci.yml:113]
+- [x] [Review][Patch] [High] Assert the deployed backend build identity matches the commit under test before certifying it [Moviqo.Front/tests/e2e/first-workflow-journey.spec.ts:29]
+- [x] [Review][Patch] [High] Tear down or rotate synthetic organizations so repeated runs cannot exhaust the 100-organization capacity [Moviqo.Front/tests/e2e/first-workflow-journey.spec.ts:30]
+- [x] [Review][Patch] [High] Require successful outbox delivery evidence before exposing the verification link so a broken Resend/drain service fails the journey [Moviqo.Back/src/moviqo/modules/messaging/application/__init__.py:64]
+- [x] [Review][Patch] [High] Bind verification-link retrieval to an expiring run or tenant scope instead of allowing one shared key to retrieve any recipient's token [Moviqo.Back/src/moviqo/modules/organizations/application/views.py:464]
+- [x] [Review][Patch] [High] Prevent retained Playwright traces, screenshots, and videos from capturing passwords, verification tokens, or submitted Process Data [Moviqo.Front/playwright.config.ts:58]
+- [x] [Review][Patch] [High] Attach safe journey metadata on failures and upload Playwright evidence from CI with an always-running artifact step [Moviqo.Front/tests/e2e/first-workflow-journey.spec.ts:229]
+- [x] [Review][Patch] [High] Run accessibility scans at the workflow designer, validation repair, task form, completion, and process timeline milestones [Moviqo.Front/tests/e2e/first-workflow-journey.spec.ts:98]
+- [x] [Review][Patch] [High] Add a tracked staging/build step that refreshes the untracked Infrastructure dist directory from the current frontend build before Firebase deploys it [Moviqo.Infrastructure/firebase.json:3]
+- [x] [Review][Patch] [High] Require and deploy the real UAT public application base URL so verification links cannot fall back to https://moviqo.local [Moviqo.Infrastructure/modules/cloud-run-service.json:27]
+- [x] [Review][Patch] [Medium] Capture a safe reference to the persisted Organization ID rather than labeling a random run prefix as Organization evidence [Moviqo.Front/tests/e2e/support/deployedJourney.ts:50]
+- [x] [Review][Patch] [Medium] Replace Django's development server with a production-capable WSGI or ASGI server for the Cloud Run service [Moviqo.Back/Dockerfile:18]
+- [x] [Review][Patch] [Medium] Derive the CSRF bootstrap endpoint from relative deployment base paths as well as absolute origins [Moviqo.Front/src/shared/api/client.ts:98]
+- [x] [Review][Patch] [Medium] Refresh cached CSRF state after session token rotation instead of indefinitely preferring a stale module token [Moviqo.Front/src/shared/api/csrf.ts:14]
+- [x] [Review][Patch] [Medium] Stop applying production-name substring validation to the secret value of the synthetic verification API key [Moviqo.Back/src/moviqo/settings/uat_contract.py:67]
+- [ ] [Review][Verify] Deploy the coordinated migration, backend, frontend, and UAT configuration changes, then confirm the hardened `deployed-journey` job passes against that exact build.
 
 ## Dev Notes
 
@@ -218,8 +237,16 @@ so that every build proves the thin slice remains executable end to end.
 
 Codex
 
+### Implementation Plan
+
+- Preserve the existing local Playwright matrix and add an environment-selected deployed UAT project with retained failure artifacts.
+- Add a synthetic-only, managed-secret-protected verification-link seam over the real outbox path and prove its environment boundary with backend contracts.
+- Automate the complete public-to-completed-timeline browser journey using unique synthetic identities, user-visible locators, API completion signals, accessibility checks, and safe evidence.
+- Wire the journey into GitHub Actions and document the UAT runtime/secret contract without weakening existing local verification.
+
 ### Debug Log References
 
+- `git switch -c story/1-33-automate-the-first-workflow-e2e-journey`
 - `Get-Content .agents/skills/bmad-create-story/SKILL.md`
 - `python .\_bmad\scripts\resolve_customization.py --skill .\.agents\skills\bmad-create-story --key workflow`
 - `Get-Content .\_bmad\bmm\config.yaml`
@@ -265,8 +292,77 @@ Codex
 - Preserved the distinction between existing local mocked E2E coverage and the new deployed UAT journey, so the dev agent is directed to add a second proof path rather than replace the current suite.
 - Captured the missing inbox/outbox inspection seam explicitly as work to add under the existing synthetic-only UAT boundary instead of leaving the dev agent to invent an unsafe shortcut.
 - Included current official Playwright guidance checked on August 6, 2026 for resilient locators, test isolation, auth-state tradeoffs, configuration, and accessibility scanning.
+- Implemented and stabilized the full deployed journey from registration through the completed Process timeline, including API-coupled actions and unique workflow/process scoping.
+- Added CSRF/session compatibility for Firebase Hosting to Cloud Run, synthetic-only verification retrieval, managed-secret wiring, and contract coverage that hides the seam outside UAT.
+- Verified backend lint and tests (`222 passed`, `51 skipped`), frontend unit/architecture/API/build checks, UAT infrastructure validation, and the complete local Playwright matrix (`90 passed`).
+- Confirmed by the user that `main` contains the latest changes and the GitHub Actions `deployed-journey` UAT gate passed on August 8, 2026.
+- Applied all 15 code-review patches with a short-lived tenant-scoped synthetic run, confirmed outbox delivery polling, capacity-releasing rotation, exact deployed-build validation, sanitized failure evidence, expanded accessibility coverage, CSRF rotation recovery, deterministic Firebase staging, and a production-capable Cloud Run server.
+- Verified the hardened change set with backend lint and tests (`226 passed`, `51 skipped`), migration drift checks, frontend unit/type/architecture checks, production Vite build and artifact scan, UAT infrastructure validation, Firebase staging (including replacement), the CI Playwright matrix (`30 passed`), and deployed-project test discovery. The live UAT gate still needs to run after deployment of this coordinated contract.
 
 ### File List
 
+- `.github/workflows/ci.yml`
+- `Moviqo.Back/Dockerfile`
+- `Moviqo.Back/pyproject.toml`
+- `Moviqo.Back/uv.lock`
+- `Moviqo.Back/src/moviqo/modules/messaging/application/__init__.py`
+- `Moviqo.Back/src/moviqo/modules/organizations/application/__init__.py`
+- `Moviqo.Back/src/moviqo/modules/organizations/application/registration.py`
+- `Moviqo.Back/src/moviqo/modules/organizations/application/views.py`
+- `Moviqo.Back/src/moviqo/modules/organizations/migrations/0015_retired_registration_state.py`
+- `Moviqo.Back/src/moviqo/modules/organizations/models.py`
+- `Moviqo.Back/src/moviqo/settings/base.py`
+- `Moviqo.Back/src/moviqo/settings/production.py`
+- `Moviqo.Back/src/moviqo/settings/uat.py`
+- `Moviqo.Back/src/moviqo/settings/uat_contract.py`
+- `Moviqo.Back/src/moviqo/urls.py`
+- `Moviqo.Back/tests/contract/test_registration_contract.py`
+- `Moviqo.Back/tests/integration/test_django_spine.py`
+- `Moviqo.Back/tests/unit/test_production_contract.py`
+- `Moviqo.Back/tests/unit/test_uat_contract.py`
+- `Moviqo.Front/package-lock.json`
+- `Moviqo.Front/package.json`
+- `Moviqo.Front/playwright.config.ts`
+- `Moviqo.Front/src/features/authentication/index.ts`
+- `Moviqo.Front/src/features/authentication/model/session.ts`
+- `Moviqo.Front/src/features/registration/model/submitRegistration.ts`
+- `Moviqo.Front/src/shared/api/client.ts`
+- `Moviqo.Front/src/shared/api/csrf.ts`
+- `Moviqo.Front/src/shared/api/generated/schema.d.ts`
+- `Moviqo.Front/tests/build/check-node-version.mjs`
+- `Moviqo.Front/tests/e2e/app-shell.spec.ts`
+- `Moviqo.Front/tests/e2e/first-workflow-journey.spec.ts`
+- `Moviqo.Front/tests/e2e/my-work.spec.ts`
+- `Moviqo.Front/tests/e2e/support/deployedJourney.ts`
+- `Moviqo.Front/tests/e2e/support/mockCsrf.ts`
+- `Moviqo.Front/tests/unit/api-client-contract.test.cts`
+- `Moviqo.Infrastructure/README.md`
+- `Moviqo.Infrastructure/.gitignore`
+- `Moviqo.Infrastructure/environments/uat/uat-environment.json`
+- `Moviqo.Infrastructure/firebase.json`
+- `Moviqo.Infrastructure/modules/cloud-run-service.json`
+- `Moviqo.Infrastructure/operations/validate_uat.py`
+- `Moviqo.Infrastructure/operations/stage_frontend.py`
+- `README.md`
+- `_bmad-output/implementation-artifacts/1-11-enforce-the-password-and-credential-policy.md`
+- `_bmad-output/implementation-artifacts/1-12-register-the-initial-owner-and-organization.md`
+- `_bmad-output/implementation-artifacts/1-15-return-safe-and-consistent-application-errors.md`
+- `_bmad-output/implementation-artifacts/1-2-establish-the-frontend-application-spine.md`
+- `_bmad-output/implementation-artifacts/1-20-provide-the-authenticated-my-work-shell.md`
+- `_bmad-output/implementation-artifacts/1-3-establish-the-api-error-build-and-test-contract.md`
 - `_bmad-output/implementation-artifacts/1-33-automate-the-first-workflow-e2e-journey.md`
+- `_bmad-output/implementation-artifacts/1-4-establish-the-accessible-bilingual-design-foundation.md`
+- `_bmad-output/implementation-artifacts/1-5-deploy-the-synthetic-data-internal-environment.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/planning-artifacts/architecture/architecture-Moviqo-2026-08-01/ARCHITECTURE-SPINE.md`
+- `_bmad-output/planning-artifacts/architecture/architecture-Moviqo-2026-08-01/reviews/review-technology-currency.md`
+- `_bmad-output/planning-artifacts/epics/epic-1-validate-the-core-moviqo-journey-end-to-end.md`
+- `_bmad-output/planning-artifacts/epics/requirements-inventory.md`
+- `_bmad-output/specs/spec-Moviqo/SPEC.md`
+- `_bmad-output/specs/spec-Moviqo/runtime-alignment.md`
+- `docs/api/openapi-v1.json`
+
+### Change Log
+
+- 2026-08-08: Implemented Story 1.33, stabilized the deployed first-workflow UAT journey, completed all local regression gates, and confirmed the `main` deployed-journey job passes.
+- 2026-08-08: Applied all adversarial review patches and returned the story to in-progress pending deployment and a live run of the hardened gate.

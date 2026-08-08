@@ -4,9 +4,10 @@ import hashlib
 import hmac
 import json
 import re
+import secrets
 import uuid
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from zoneinfo import available_timezones
 
 from django.conf import settings
@@ -21,6 +22,8 @@ from moviqo.building_blocks.tenancy.runtime import (
     TenantContext,
     apply_tenant_context,
     registration_verification_bootstrap_context,
+    tenant_background_atomic_context,
+    tenant_bootstrap_context,
 )
 from moviqo.modules.governance.application import (
     append_transactional_audit,
@@ -52,6 +55,9 @@ SUPPORTED_LANGUAGES = frozenset({"es", "en"})
 SUPPORTED_REGIONS = frozenset({"CO", "US", "MX", "ES", "AR", "CL", "PE"})
 SUPPORTED_CURRENCIES = frozenset({"COP", "USD", "MXN", "EUR", "ARS", "CLP", "PEN"})
 VERIFICATION_SALT = "organizations.registration_verification"
+SYNTHETIC_JOURNEY_SALT = "organizations.synthetic_journey"
+SYNTHETIC_JOURNEY_MAX_AGE = timedelta(minutes=30)
+SYNTHETIC_EMAIL_SUFFIX = "@synthetic.moviqo.test"
 VERIFICATION_LINK_PATTERN = re.compile(r"https://[^\s]+/verify-email\?token=[^\s]+")
 
 
@@ -78,6 +84,20 @@ class VerificationActivationError(Exception):
 class VerificationLinkLookupError(Exception):
     problem_code: str = "verification_link_unavailable"
     title: str = "Verification link unavailable"
+
+    def __post_init__(self) -> None:
+        Exception.__init__(self, self.problem_code)
+
+
+@dataclass(frozen=True)
+class SyntheticJourneyScope:
+    email: str
+    issued_at: datetime
+
+
+@dataclass(frozen=True)
+class SyntheticJourneyScopeError(Exception):
+    problem_code: str = "synthetic_journey_unavailable"
 
     def __post_init__(self) -> None:
         Exception.__init__(self, self.problem_code)
@@ -397,25 +417,108 @@ def verify_initial_registration(*, token: str) -> dict[str, str]:
     }
 
 
-def read_latest_verification_link_for_email(*, email: str) -> dict[str, str]:
+def create_synthetic_journey_scope(*, email: str) -> dict[str, str]:
     normalized_email = normalize_identity_email(email)
-    if not normalized_email:
-        raise VerificationLinkLookupError()
+    if (
+        not normalized_email.endswith(SYNTHETIC_EMAIL_SUFFIX)
+        or MoviqoUser.objects.filter(normalized_email=normalized_email).exists()
+    ):
+        raise SyntheticJourneyScopeError()
 
-    payload = read_latest_outbox_message_payload_for_recipient(
-        message_type="email.registration_verification",
-        recipient_email=normalized_email,
+    issued_at = django_timezone.now()
+    run_token = signing.dumps(
+        {
+            "email": normalized_email,
+            "issuedAt": int(issued_at.timestamp()),
+            "nonce": secrets.token_urlsafe(24),
+        },
+        salt=SYNTHETIC_JOURNEY_SALT,
+        compress=True,
     )
+    return {"email": normalized_email, "runToken": run_token}
+
+
+def read_latest_verification_link_for_run(*, run_token: str) -> dict[str, str]:
+    scope = _read_synthetic_journey_scope(run_token)
+    membership = _synthetic_scope_membership(scope)
+    with tenant_background_atomic_context(organization_id=membership.organization_id):
+        payload = read_latest_outbox_message_payload_for_recipient(
+            organization_id=membership.organization_id,
+            message_type="email.registration_verification",
+            recipient_email=scope.email,
+            created_at_or_after=scope.issued_at,
+        )
     if payload is not None:
         text = str(payload.get("text", ""))
         match = VERIFICATION_LINK_PATTERN.search(text)
         if match:
             return {
-                "email": normalized_email,
+                "email": scope.email,
                 "verificationUrl": match.group(0),
             }
 
     raise VerificationLinkLookupError()
+
+
+def rotate_synthetic_journey(*, run_token: str) -> dict[str, str]:
+    scope = _read_synthetic_journey_scope(run_token)
+    membership = _synthetic_scope_membership(scope)
+    organization_id = membership.organization_id
+    with tenant_background_atomic_context(organization_id=organization_id):
+        Membership.objects.filter(id=membership.id).update(
+            is_active=False,
+            registration_state=RegistrationWorkflowState.RETIRED,
+        )
+        Organization.objects.filter(id=organization_id).update(
+            is_active=False,
+            registration_state=RegistrationWorkflowState.RETIRED,
+        )
+        MoviqoUser.objects.filter(id=membership.user_id).update(is_active=False)
+    return {
+        "status": "rotated",
+        "organizationRef": str(organization_id)[:8],
+    }
+
+
+def _read_synthetic_journey_scope(run_token: str) -> SyntheticJourneyScope:
+    try:
+        payload = signing.loads(
+            run_token,
+            salt=SYNTHETIC_JOURNEY_SALT,
+            max_age=SYNTHETIC_JOURNEY_MAX_AGE,
+        )
+        email = normalize_identity_email(str(payload["email"]))
+        issued_at = datetime.fromtimestamp(int(payload["issuedAt"]), tz=UTC)
+    except (BadSignature, KeyError, SignatureExpired, TypeError, ValueError) as exc:
+        raise SyntheticJourneyScopeError() from exc
+    if not email.endswith(SYNTHETIC_EMAIL_SUFFIX):
+        raise SyntheticJourneyScopeError()
+    return SyntheticJourneyScope(email=email, issued_at=issued_at)
+
+
+def _synthetic_scope_membership(scope: SyntheticJourneyScope) -> Membership:
+    user = MoviqoUser.objects.filter(
+        normalized_email=scope.email,
+        date_joined__gte=scope.issued_at,
+    ).first()
+    if user is None:
+        raise SyntheticJourneyScopeError()
+    with tenant_bootstrap_context(user_id=user.id):
+        membership = (
+            Membership.objects.select_related("organization", "user")
+            .filter(
+                user_id=user.id,
+                organization__created_at__gte=scope.issued_at,
+                organization__registration_state__in=(
+                    RegistrationWorkflowState.PENDING,
+                    RegistrationWorkflowState.ACTIVE,
+                ),
+            )
+            .first()
+        )
+    if membership is None:
+        raise SyntheticJourneyScopeError()
+    return membership
 
 
 def _validate_registration_input(

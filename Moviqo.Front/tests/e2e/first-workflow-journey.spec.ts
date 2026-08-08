@@ -3,12 +3,17 @@ import { createRequire } from "node:module";
 import {
   assertNoAccessibilityViolations,
   attachJourneyEvidence,
+  createSyntheticJourneyRun,
   createSyntheticIdentity,
   performApiAction,
   readRequiredEnvironment,
-  requestSyntheticVerificationLink,
+  recordJourneyEvent,
+  requestSyntheticVerificationToken,
+  rotateSyntheticJourneyRun,
   safeReference,
-  waitForWorkflowPublicationReady
+  verifyDeployedBuild,
+  waitForWorkflowPublicationReady,
+  type JourneyTraceEvent
 } from "./support/deployedJourney";
 
 const require = createRequire(import.meta.url);
@@ -22,16 +27,38 @@ test("deployed first workflow journey covers registration through completed time
   },
   testInfo
 ) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
 
   const startedAt = Date.now();
   const syntheticKey = readRequiredEnvironment("MOVIQO_E2E_SYNTHETIC_KEY");
+  const baseUrl = readRequiredEnvironment("MOVIQO_E2E_BASE_URL");
   const buildId = process.env.MOVIQO_E2E_BUILD_ID ?? "local-e2e";
   const identity = createSyntheticIdentity();
   const workflowName = `Primer flujo ${identity.runId}`;
+  const journeyTrace: JourneyTraceEvent[] = [];
+  const evidence = {
+    buildId,
+    durationMs: 0,
+    host: new URL(baseUrl).host,
+    organizationRef: "",
+    processRef: "",
+    taskRef: ""
+  };
+  let journeyError: unknown;
+  let runToken = "";
   let taskReference = "";
 
-  await test.step("register a clean synthetic owner organization", async () => {
+  try {
+    recordJourneyEvent(journeyTrace, startedAt, "verify deployed build", "started");
+    await verifyDeployedBuild(request, buildId);
+    recordJourneyEvent(journeyTrace, startedAt, "verify deployed build");
+    runToken = await createSyntheticJourneyRun(request, {
+      email: identity.email,
+      syntheticKey
+    });
+
+    recordJourneyEvent(journeyTrace, startedAt, "register owner", "started");
+    await test.step("register a clean synthetic owner organization", async () => {
     await page.goto("/");
     await page.getByRole("combobox", { name: /language|idioma/i }).selectOption("es");
     const registrationLink = page
@@ -63,42 +90,64 @@ test("deployed first workflow journey covers registration through completed time
     );
     await journeyExpect(page.locator(".success-message")).toContainText(identity.email);
     await assertNoAccessibilityViolations(page, axePath);
-  });
-
-  await test.step("verify the email through the synthetic outbox contract", async () => {
-    const verificationUrl = await requestSyntheticVerificationLink(request, {
-      email: identity.email,
-      syntheticKey
     });
-    await performApiAction(
-      page,
-      "POST",
-      "/api/v1/organizations/registrations/verify-email/",
-      () => page.goto(verificationUrl)
-    );
+    recordJourneyEvent(journeyTrace, startedAt, "register owner");
+
+    recordJourneyEvent(journeyTrace, startedAt, "verify delivered email", "started");
+    await test.step("verify the email through the synthetic outbox contract", async () => {
+      const verificationToken = await requestSyntheticVerificationToken(request, {
+        baseUrl,
+        email: identity.email,
+        runToken,
+        syntheticKey
+      });
+      await page.goto("/verify-email");
+      await page.evaluate((token) => {
+        window.history.replaceState(
+          null,
+          "",
+          `/verify-email?token=${encodeURIComponent(token)}`
+        );
+      }, verificationToken);
+      await performApiAction(
+        page,
+        "POST",
+        "/api/v1/organizations/registrations/verify-email/",
+        () => page.getByRole("combobox", { name: /language|idioma/i }).selectOption("en")
+      );
     await journeyExpect(
       page.getByRole("heading", { name: "Activa la organizacion al confirmar el correo." })
     ).toBeVisible();
     await journeyExpect(page.getByText(new RegExp(identity.email, "i"))).toBeVisible();
     await assertNoAccessibilityViolations(page, axePath);
-  });
+    });
+    recordJourneyEvent(journeyTrace, startedAt, "verify delivered email");
 
-  await test.step("sign in with the verified owner", async () => {
+    recordJourneyEvent(journeyTrace, startedAt, "sign in", "started");
+    await test.step("sign in with the verified owner", async () => {
     await page.goto("/sign-in");
     await page.getByLabel("Correo electronico").fill(identity.email);
     await page.locator("#sign-in-password").fill(identity.password);
-    await performApiAction(
+      const signInResponse = await performApiAction(
       page,
       "POST",
       "/api/v1/auth/sign-in/",
       () => page.getByRole("button", { name: "Ingresar" }).click()
-    );
+      );
+      const session = (await signInResponse.json()) as Partial<{
+        membership: { organizationId: string };
+      }>;
+      const organizationId = session.membership?.organizationId ?? "";
+      expect(organizationId).toMatch(/^[0-9a-f-]{36}$/i);
+      evidence.organizationRef = safeReference(organizationId);
     await journeyExpect(page).toHaveURL(/\/my-work$/);
     await journeyExpect(page.getByRole("heading", { name: "Mi trabajo" })).toBeVisible();
     await assertNoAccessibilityViolations(page, axePath);
-  });
+    });
+    recordJourneyEvent(journeyTrace, startedAt, "sign in");
 
-  await test.step("create and design the first workflow", async () => {
+    recordJourneyEvent(journeyTrace, startedAt, "design workflow", "started");
+    await test.step("create and design the first workflow", async () => {
     await page.getByRole("link", { name: "Crear flujo" }).click();
     await journeyExpect(page).toHaveURL(/\/my-work\/workflows\/new$/);
     await page.getByLabel(/workflow name|nombre del flujo/i).fill(workflowName);
@@ -117,9 +166,12 @@ test("deployed first workflow journey covers registration through completed time
     await page.getByRole("button", { name: "Agregar End" }).click();
     await page.getByRole("button", { name: "Conectar Start con Task" }).click();
     await page.getByRole("button", { name: "Conectar Task con End" }).click();
-  });
+      await assertNoAccessibilityViolations(page, axePath);
+    });
+    recordJourneyEvent(journeyTrace, startedAt, "design workflow");
 
-  await test.step("repair publication blockers and publish", async () => {
+    recordJourneyEvent(journeyTrace, startedAt, "repair and publish", "started");
+    await test.step("repair publication blockers and publish", async () => {
     const validationPath =
       /\/api\/v1\/workflow-design\/workflows\/[^/]+\/publication-validation\/$/;
     await performApiAction(
@@ -130,6 +182,7 @@ test("deployed first workflow journey covers registration through completed time
     );
     await journeyExpect(page.getByText(/define quien puede iniciar este flujo/i)).toBeVisible();
     await journeyExpect(page.getByText(/define quien recibe la primera tarea/i)).toBeVisible();
+      await assertNoAccessibilityViolations(page, axePath);
 
     await page.getByRole("radio", { name: "Todas las personas activas" }).check();
     await page.getByRole("radio", { name: "Quien inicia el flujo" }).check();
@@ -149,9 +202,12 @@ test("deployed first workflow journey covers registration through completed time
       /\/api\/v1\/workflow-design\/workflows\/[^/]+\/publish\/$/,
       () => page.getByRole("button", { name: "Publicar version" }).click()
     );
-  });
+      await assertNoAccessibilityViolations(page, axePath);
+    });
+    recordJourneyEvent(journeyTrace, startedAt, "repair and publish");
 
-  await test.step("start the published workflow", async () => {
+    recordJourneyEvent(journeyTrace, startedAt, "start process", "started");
+    await test.step("start the published workflow", async () => {
     await page.goto("/my-work");
     await journeyExpect(page.getByRole("heading", { name: "Mi trabajo" })).toBeVisible();
     const startRegion = page.getByRole("region", { name: "Iniciar un proceso" });
@@ -169,9 +225,13 @@ test("deployed first workflow journey covers registration through completed time
     await journeyExpect(page.getByRole("heading", { name: "Tarea" })).toBeVisible();
     const taskUrl = new URL(page.url());
     taskReference = safeReference(taskUrl.pathname.split("/").at(-1) ?? "");
-  });
+      evidence.taskRef = taskReference;
+      await assertNoAccessibilityViolations(page, axePath);
+    });
+    recordJourneyEvent(journeyTrace, startedAt, "start process");
 
-  await test.step("save and complete the assigned task", async () => {
+    recordJourneyEvent(journeyTrace, startedAt, "save and complete task", "started");
+    await test.step("save and complete the assigned task", async () => {
     await page.getByRole("textbox", { name: "Nombre del caso" }).fill(
       "Caso sintetico autorizado"
     );
@@ -193,9 +253,12 @@ test("deployed first workflow journey covers registration through completed time
     await journeyExpect(
       page.getByText("La tarea quedo completa y el proceso llego a su fin.")
     ).toBeVisible();
-  });
+      await assertNoAccessibilityViolations(page, axePath);
+    });
+    recordJourneyEvent(journeyTrace, startedAt, "save and complete task");
 
-  await test.step("inspect the completed process timeline", async () => {
+    recordJourneyEvent(journeyTrace, startedAt, "inspect timeline", "started");
+    await test.step("inspect the completed process timeline", async () => {
     await page.goto("/my-work");
     const processNavigation = page.getByRole("navigation", {
       name: "Navegacion de regiones de Mi trabajo"
@@ -224,15 +287,31 @@ test("deployed first workflow journey covers registration through completed time
     await journeyExpect(timeline.getByText("Task progress saved")).toBeVisible();
     await journeyExpect(timeline.getByText("Task completed")).toBeVisible();
     await journeyExpect(timeline.getByText("Process completed")).toBeVisible();
+      await assertNoAccessibilityViolations(page, axePath);
 
     const processUrl = new URL(page.url());
-    await attachJourneyEvidence(testInfo, {
-      buildId,
-      durationMs: Date.now() - startedAt,
-      host: processUrl.host,
-      organizationRef: identity.organizationReference,
-      processRef: safeReference(processUrl.pathname.split("/").at(-1) ?? ""),
-      taskRef: taskReference
+      evidence.processRef = safeReference(processUrl.pathname.split("/").at(-1) ?? "");
     });
-  });
+    recordJourneyEvent(journeyTrace, startedAt, "inspect timeline");
+  } catch (error) {
+    journeyError = error;
+    recordJourneyEvent(journeyTrace, startedAt, "journey", "failed");
+    throw error;
+  } finally {
+    let cleanupError: unknown;
+    if (runToken) {
+      try {
+        await rotateSyntheticJourneyRun(request, { runToken, syntheticKey });
+        recordJourneyEvent(journeyTrace, startedAt, "rotate synthetic identity");
+      } catch (error) {
+        cleanupError = error;
+        recordJourneyEvent(journeyTrace, startedAt, "rotate synthetic identity", "failed");
+      }
+    }
+    evidence.durationMs = Date.now() - startedAt;
+    await attachJourneyEvidence(page, testInfo, evidence, journeyTrace);
+    if (cleanupError && !journeyError) {
+      throw cleanupError;
+    }
+  }
 });

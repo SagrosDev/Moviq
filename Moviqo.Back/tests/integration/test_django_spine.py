@@ -27,10 +27,11 @@ def test_asgi_settings_and_custom_user_model() -> None:
     assert isinstance(application, ASGIHandler)
 
 
-def test_health_start_endpoint_is_minimal() -> None:
+@pytest.mark.parametrize("path", ["/health/start/", "/api/v1/health/start/"])
+def test_health_start_endpoint_is_minimal(path: str) -> None:
     client = Client()
 
-    response = client.get("/health/start/")
+    response = client.get(path)
 
     assert response.status_code == 200
     assert response.json() == {

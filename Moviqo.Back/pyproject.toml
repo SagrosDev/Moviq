@@ -8,6 +8,7 @@ dependencies = [
   "djangorestframework==3.17.1",
   "psycopg[binary]==3.3.4",
   "drf-spectacular==0.30.0",
+  "gunicorn==23.0.0",
 ]
 
 [dependency-groups]
@@ -41,6 +42,7 @@ select = ["E", "F", "I", "UP", "B"]
 python = "3.14.6"
 django = "5.2.15"
 djangorestframework = "3.17.1"
+gunicorn = "23.0.0"
 psycopg = "3.3.4"
 drf-spectacular = "0.30.0"
 postgresql = "17.10"

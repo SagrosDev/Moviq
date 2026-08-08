@@ -47,6 +47,7 @@ class Organization(models.Model):
         choices=[
             ("pending", "Pending"),
             ("active", "Active"),
+            ("retired", "Retired"),
         ],
         default="active",
     )
@@ -71,6 +72,7 @@ class MembershipRole(models.TextChoices):
 class RegistrationWorkflowState(models.TextChoices):
     PENDING = "pending", "Pending"
     ACTIVE = "active", "Active"
+    RETIRED = "retired", "Retired"
 
 
 class Membership(models.Model):

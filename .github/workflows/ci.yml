@@ -100,6 +100,7 @@ jobs:
       - run: npm run test:e2e
 
   deployed-journey:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       PLAYWRIGHT_DEPLOYED_JOURNEY: "1"
@@ -108,32 +109,31 @@ jobs:
       MOVIQO_E2E_BUILD_ID: ${{ github.sha }}
     steps:
       - name: Check deployed journey configuration
-        id: deployed_journey_gate
         run: |
           if [ -z "${MOVIQO_E2E_BASE_URL}" ] || [ -z "${MOVIQO_E2E_SYNTHETIC_KEY}" ]; then
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping deployed journey because MOVIQO_E2E_BASE_URL or MOVIQO_E2E_SYNTHETIC_KEY is not configured."
-            exit 0
+            echo "The deployed journey requires MOVIQO_E2E_BASE_URL and MOVIQO_E2E_SYNTHETIC_KEY."
+            exit 1
           fi
-
-          echo "ready=true" >> "$GITHUB_OUTPUT"
-      - if: steps.deployed_journey_gate.outputs.ready == 'true'
-        uses: actions/checkout@v4
-      - if: steps.deployed_journey_gate.outputs.ready == 'true'
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 26.7.0
           cache: npm
           cache-dependency-path: Moviqo.Front/package-lock.json
-      - if: steps.deployed_journey_gate.outputs.ready == 'true'
-        working-directory: Moviqo.Front
+      - working-directory: Moviqo.Front
         run: npm ci --legacy-peer-deps
-      - if: steps.deployed_journey_gate.outputs.ready == 'true'
-        working-directory: Moviqo.Front
+      - working-directory: Moviqo.Front
         run: npx playwright install --with-deps chromium
-      - if: steps.deployed_journey_gate.outputs.ready == 'true'
-        working-directory: Moviqo.Front
+      - working-directory: Moviqo.Front
         run: npm run test:e2e:deployed-journey
+      - name: Upload sanitized deployed-journey evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployed-journey-${{ github.sha }}
+          path: Moviqo.Front/test-results
+          if-no-files-found: ignore
+          retention-days: 7
 
   infrastructure:
     runs-on: ubuntu-latest

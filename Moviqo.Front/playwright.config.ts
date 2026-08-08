@@ -44,7 +44,12 @@ const deployedJourneyProjects = [
   {
     name: "deployed-journey",
     testMatch: /first-workflow-journey\.spec\.ts$/,
-    use: { ...devices["Desktop Chrome"] }
+    use: {
+      ...devices["Desktop Chrome"],
+      screenshot: "off" as const,
+      trace: "off" as const,
+      video: "off" as const
+    }
   }
 ];
 

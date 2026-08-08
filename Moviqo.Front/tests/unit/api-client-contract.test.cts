@@ -6,6 +6,10 @@ import {
   type ApiProblemDetails
 } from "../../src/shared/api";
 import { normalizeAppPath } from "../../src/app/ui/App";
+import {
+  readCsrfToken,
+  rememberCsrfToken
+} from "../../src/shared/api/csrf";
 import type { components, operations } from "../../src/shared/api/generated/schema";
 import { fieldErrorMapFromProblem } from "../../src/features/registration/model/registrationForm";
 
@@ -92,6 +96,105 @@ test("API client bootstraps CSRF from the token endpoint before unsafe requests"
     assert.equal(requests[0]?.url, "https://moviqo.test/api/v1/auth/csrf/");
     assert.equal(requests[1]?.headers.get("X-CSRFToken"), "session-token-123");
   } finally {
+    Object.defineProperty(globalThis, "document", {
+      value: originalDocument,
+      configurable: true
+    });
+  }
+});
+
+test("API client keeps a relative deployment prefix for CSRF bootstrap", async () => {
+  const requestedUrls: string[] = [];
+  const originalDocument = globalThis.document;
+  Object.defineProperty(globalThis, "document", {
+    value: { cookie: "" },
+    configurable: true
+  });
+  rememberCsrfToken("");
+
+  try {
+    const client = createApiClient({
+      baseUrl: "https://moviqo.test/moviqo/api/v1",
+      fetch: async (request) => {
+        requestedUrls.push(request.url);
+        if (request.url.endsWith("/auth/csrf/")) {
+          return new Response(JSON.stringify({ csrfToken: "prefixed-token" }), {
+            headers: { "Content-Type": "application/json" },
+            status: 200
+          });
+        }
+        return new Response(JSON.stringify({ status: "ok" }), { status: 200 });
+      }
+    });
+
+    await (client as {
+      POST(path: string, init?: object): Promise<{ response: Response }>;
+    }).POST("/api/v1/auth/sign-out/");
+
+    assert.equal(requestedUrls[0], "https://moviqo.test/moviqo/api/v1/auth/csrf/");
+  } finally {
+    rememberCsrfToken("");
+    Object.defineProperty(globalThis, "document", {
+      value: originalDocument,
+      configurable: true
+    });
+  }
+});
+
+test("CSRF reads a rotated cookie before the cached bootstrap token", () => {
+  const originalDocument = globalThis.document;
+  Object.defineProperty(globalThis, "document", {
+    value: { cookie: "csrftoken=rotated-session-token" },
+    configurable: true
+  });
+  rememberCsrfToken("stale-bootstrap-token");
+
+  try {
+    assert.equal(readCsrfToken(), "rotated-session-token");
+  } finally {
+    rememberCsrfToken("");
+    Object.defineProperty(globalThis, "document", {
+      value: originalDocument,
+      configurable: true
+    });
+  }
+});
+
+test("API client refreshes a session-backed CSRF token once after rotation", async () => {
+  const originalDocument = globalThis.document;
+  Object.defineProperty(globalThis, "document", {
+    value: { cookie: "" },
+    configurable: true
+  });
+  rememberCsrfToken("stale-session-token");
+  const unsafeTokens: Array<string | null> = [];
+
+  try {
+    const client = createApiClient({
+      baseUrl: "https://moviqo.test/api/v1",
+      fetch: async (request) => {
+        if (request.url.endsWith("/auth/csrf/")) {
+          return new Response(JSON.stringify({ csrfToken: "rotated-session-token" }), {
+            headers: { "Content-Type": "application/json" },
+            status: 200
+          });
+        }
+        unsafeTokens.push(request.headers.get("X-CSRFToken"));
+        return new Response(JSON.stringify({ status: "ok" }), {
+          headers: { "Content-Type": "application/json" },
+          status: unsafeTokens.length === 1 ? 403 : 200
+        });
+      }
+    });
+
+    const result = await (client as {
+      POST(path: string, init?: object): Promise<{ response: Response }>;
+    }).POST("/api/v1/auth/sign-out/");
+
+    assert.equal(result.response.status, 200);
+    assert.deepEqual(unsafeTokens, ["stale-session-token", "rotated-session-token"]);
+  } finally {
+    rememberCsrfToken("");
     Object.defineProperty(globalThis, "document", {
       value: originalDocument,
       configurable: true

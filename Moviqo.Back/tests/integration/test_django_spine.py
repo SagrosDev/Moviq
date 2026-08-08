@@ -28,6 +28,7 @@ def test_asgi_settings_and_custom_user_model() -> None:
     assert isinstance(application, ASGIHandler)
 
 
+@pytest.mark.django_db
 def test_wsgi_application_supports_the_gunicorn_entrypoint() -> None:
     from moviqo.wsgi import application
 

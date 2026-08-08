@@ -1,4 +1,11 @@
-export { bootstrapSession, loadCsrfToken, signIn, signOut, type SessionContext } from "./model/session";
+export {
+  bootstrapSession,
+  csrfHeaders,
+  loadCsrfToken,
+  signIn,
+  signOut,
+  type SessionContext
+} from "./model/session";
 export {
   isProtectedPath,
   protectedEntryPath,

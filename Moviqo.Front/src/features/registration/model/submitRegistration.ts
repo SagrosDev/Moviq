@@ -1,5 +1,5 @@
 import { readApiProblem } from "../../../shared/api";
-import { csrfHeaders, loadCsrfToken } from "../../authentication/model/session";
+import { csrfHeaders, loadCsrfToken } from "../../authentication";
 import type { RegistrationDraft } from "./registrationForm";
 
 type RegistrationResult = {

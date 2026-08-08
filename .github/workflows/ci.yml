@@ -101,9 +101,6 @@ jobs:
 
   deployed-journey:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: Moviqo.Front
     env:
       PLAYWRIGHT_DEPLOYED_JOURNEY: "1"
       MOVIQO_E2E_BASE_URL: ${{ vars.MOVIQO_E2E_BASE_URL }}
@@ -129,10 +126,13 @@ jobs:
           cache: npm
           cache-dependency-path: Moviqo.Front/package-lock.json
       - if: steps.deployed_journey_gate.outputs.ready == 'true'
+        working-directory: Moviqo.Front
         run: npm ci --legacy-peer-deps
       - if: steps.deployed_journey_gate.outputs.ready == 'true'
+        working-directory: Moviqo.Front
         run: npx playwright install --with-deps chromium
       - if: steps.deployed_journey_gate.outputs.ready == 'true'
+        working-directory: Moviqo.Front
         run: npm run test:e2e:deployed-journey
 
   infrastructure:

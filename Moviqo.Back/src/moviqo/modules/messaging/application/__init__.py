@@ -56,6 +56,19 @@ def enqueue_outbox_message(
     )
 
 
+def read_latest_outbox_message_payload_for_recipient(
+    *,
+    message_type: str,
+    recipient_email: str,
+) -> dict | None:
+    messages = OutboxMessage.objects.filter(message_type=message_type).order_by("-created_at")
+    for message in messages:
+        recipients = message.payload.get("to", [])
+        if recipients == [recipient_email]:
+            return dict(message.payload)
+    return None
+
+
 def claim_outbox_messages(
     *,
     limit: int,

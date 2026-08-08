@@ -22,11 +22,14 @@ type SyntheticLinkOptions = {
 
 type JourneyEvidence = {
   buildId: string;
+  durationMs: number;
   host: string;
   organizationRef: string;
   processRef: string;
   taskRef: string;
 };
+
+const deployedAssertionTimeoutMs = 15_000;
 
 export const readRequiredEnvironment = (name: string) => {
   const value = process.env[name];
@@ -58,7 +61,7 @@ export const requestSyntheticVerificationLink = async (
     data: { email: options.email },
     headers: { "X-Moviqo-Synthetic-Key": options.syntheticKey }
   });
-  expect(response.ok()).toBe(true);
+  expect(response.ok(), await response.text()).toBe(true);
   const payload = (await response.json()) as { verificationUrl: string };
   return payload.verificationUrl;
 };
@@ -83,10 +86,30 @@ export const expectApiOk = async (response: Response) => {
   expect(response.ok(), await response.text()).toBe(true);
 };
 
+export const performApiAction = async (
+  page: Page,
+  method: string,
+  expectedPath: RegExp | string,
+  action: () => Promise<unknown>
+) => {
+  const [response] = await Promise.all([
+    waitForApiResponse(page, method, expectedPath),
+    action()
+  ]);
+  await expectApiOk(response);
+  return response;
+};
+
 export const waitForWorkflowPublicationReady = async (page: Page) => {
-  await expect(page.getByText(/define quien puede iniciar este flujo/i)).toHaveCount(0);
-  await expect(page.getByText(/define quien recibe la primera tarea/i)).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Publicar version" })).toBeEnabled();
+  await expect(page.getByText(/define quien puede iniciar este flujo/i)).toHaveCount(0, {
+    timeout: deployedAssertionTimeoutMs
+  });
+  await expect(page.getByText(/define quien recibe la primera tarea/i)).toHaveCount(0, {
+    timeout: deployedAssertionTimeoutMs
+  });
+  await expect(page.getByRole("button", { name: "Publicar version" })).toBeEnabled({
+    timeout: deployedAssertionTimeoutMs
+  });
 };
 
 export const assertNoAccessibilityViolations = async (

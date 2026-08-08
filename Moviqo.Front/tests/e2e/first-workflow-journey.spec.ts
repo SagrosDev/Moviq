@@ -36,7 +36,7 @@ test("deployed first workflow journey covers registration through completed time
   await page.getByLabel("Nombre de la persona responsable").fill(identity.ownerName);
   await page.getByLabel("Nombre de la organizacion").fill(identity.organizationName);
   await page.getByLabel("Correo de acceso").fill(identity.email);
-  await page.getByLabel("Contrasena").fill(identity.password);
+  await page.locator("#registration-password").fill(identity.password);
   await page.getByLabel("Region").fill("CO");
   await page.getByLabel("Zona horaria").fill("America/Bogota");
   await page.getByLabel("Moneda").fill("COP");
@@ -64,7 +64,7 @@ test("deployed first workflow journey covers registration through completed time
 
   await page.goto("/sign-in");
   await page.getByLabel("Correo electronico").fill(identity.email);
-  await page.getByLabel("Contrasena").fill(identity.password);
+  await page.locator("#sign-in-password").fill(identity.password);
   await page.getByRole("button", { name: "Ingresar" }).click();
   await expect(page).toHaveURL(/\/my-work$/);
   await expect(page.getByRole("heading", { name: "Mi trabajo" })).toBeVisible();

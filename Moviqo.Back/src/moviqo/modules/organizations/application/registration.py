@@ -27,8 +27,10 @@ from moviqo.modules.governance.application import (
     complete_command_result,
     create_pending_command_result,
 )
-from moviqo.modules.messaging.application import enqueue_outbox_message
-from moviqo.modules.messaging.models import OutboxMessage
+from moviqo.modules.messaging.application import (
+    enqueue_outbox_message,
+    read_latest_outbox_message_payload_for_recipient,
+)
 from moviqo.modules.organizations.application.identity_boundary import normalize_identity_email
 from moviqo.modules.organizations.application.password_policy import (
     CredentialValidationError,
@@ -400,22 +402,18 @@ def read_latest_verification_link_for_email(*, email: str) -> dict[str, str]:
     if not normalized_email:
         raise VerificationLinkLookupError()
 
-    messages = OutboxMessage.objects.filter(
-        message_type="email.registration_verification"
-    ).order_by("-created_at")
-    for message in messages:
-        recipients = message.payload.get("to", [])
-        if recipients != [normalized_email]:
-            continue
-
-        text = str(message.payload.get("text", ""))
+    payload = read_latest_outbox_message_payload_for_recipient(
+        message_type="email.registration_verification",
+        recipient_email=normalized_email,
+    )
+    if payload is not None:
+        text = str(payload.get("text", ""))
         match = VERIFICATION_LINK_PATTERN.search(text)
         if match:
             return {
                 "email": normalized_email,
                 "verificationUrl": match.group(0),
             }
-        break
 
     raise VerificationLinkLookupError()
 

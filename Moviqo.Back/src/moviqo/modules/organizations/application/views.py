@@ -28,8 +28,8 @@ from moviqo.modules.organizations.application.password_recovery import (
 )
 from moviqo.modules.organizations.application.registration import (
     RegistrationValidationError,
-    VerificationLinkLookupError,
     VerificationActivationError,
+    VerificationLinkLookupError,
     read_latest_verification_link_for_email,
     register_initial_owner,
     verify_initial_registration,

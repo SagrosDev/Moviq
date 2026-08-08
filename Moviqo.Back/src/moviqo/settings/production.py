@@ -12,7 +12,9 @@ ALLOWED_HOSTS = required_env_csv("MOVIQO_ALLOWED_HOSTS")
 _production_security_contract = load_production_security_contract(allowed_hosts=ALLOWED_HOSTS)
 CSRF_TRUSTED_ORIGINS = _production_security_contract["csrf_trusted_origins"]
 CSRF_COOKIE_SECURE = True
+CSRF_USE_SESSIONS = True
 SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_NAME = "__session"
 SECURE_SSL_REDIRECT = True
 SECURE_PROXY_SSL_HEADER = PRODUCTION_PROXY_SSL_HEADER
 SECURE_HSTS_SECONDS = 31536000

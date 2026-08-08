@@ -5,6 +5,7 @@ import {
   attachJourneyEvidence,
   createSyntheticJourneyRun,
   createSyntheticIdentity,
+  deployedJourneyTimeoutMs,
   performApiAction,
   readRequiredEnvironment,
   recordJourneyEvent,
@@ -27,7 +28,7 @@ test("deployed first workflow journey covers registration through completed time
   },
   testInfo
 ) => {
-  test.setTimeout(180_000);
+  test.setTimeout(deployedJourneyTimeoutMs);
 
   const startedAt = Date.now();
   const syntheticKey = readRequiredEnvironment("MOVIQO_E2E_SYNTHETIC_KEY");

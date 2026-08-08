@@ -46,6 +46,8 @@ type HttpResponse = APIResponse | Response;
 const deployedAssertionTimeoutMs = 15_000;
 const syntheticLinkAttempts = 90;
 const syntheticLinkPollIntervalMs = 2_000;
+export const deployedJourneyTimeoutMs =
+  syntheticLinkAttempts * syntheticLinkPollIntervalMs + 240_000;
 const safeDiagnostic = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
 export const readRequiredEnvironment = (name: string) => {

@@ -1,4 +1,5 @@
 import { readApiProblem } from "../../../shared/api";
+import { csrfHeaders, loadCsrfToken } from "../../authentication/model/session";
 import type { RegistrationDraft } from "./registrationForm";
 
 type RegistrationResult = {
@@ -8,13 +9,17 @@ type RegistrationResult = {
 };
 
 export const submitRegistration = async (
-  draft: RegistrationDraft
+  draft: RegistrationDraft,
+  fetchImplementation: typeof fetch = fetch
 ): Promise<RegistrationResult> => {
-  const response = await fetch("/api/v1/organizations/registrations/", {
+  await loadCsrfToken(fetchImplementation);
+  const response = await fetchImplementation("/api/v1/organizations/registrations/", {
     method: "POST",
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
-      "Idempotency-Key": `registration-${crypto.randomUUID()}`
+      "Idempotency-Key": `registration-${crypto.randomUUID()}`,
+      ...csrfHeaders()
     },
     body: JSON.stringify(draft)
   });

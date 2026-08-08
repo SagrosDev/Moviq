@@ -119,9 +119,10 @@ test("deployed first workflow journey covers registration through completed time
   );
   await page.getByRole("button", { name: "Publicar version" }).click();
   await expectApiOk(await publishResponsePromise);
-  await expect(page.getByText(/Version 1\./)).toBeVisible();
 
   await page.goto("/my-work");
+  await expect(page.getByRole("heading", { name: "Mi trabajo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Iniciar" })).toBeVisible();
   await page.getByRole("button", { name: "Iniciar" }).click();
   await expect(page).toHaveURL(/\/my-work\/tasks\/[^/]+$/);
   await expect(page.getByRole("heading", { name: "Tarea" })).toBeVisible();

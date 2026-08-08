@@ -47,6 +47,12 @@ Cloud Run injects server-side secrets into the runtime environment:
 - `MOVIQO_RESEND_API_KEY` from `MOVIQO_RESEND_API_KEY_SECRET`
 - `MOVIQO_SYNTHETIC_VERIFICATION_API_KEY` from the managed UAT secret `moviqo-uat-synthetic-verification-api-key`
 
+The `moviqo-uat-outbox-drain` job additionally injects
+`MOVIQO_RESEND_TEST_RECIPIENT` from the managed secret
+`moviqo-uat-resend-test-recipient`. This address is the Resend account email used
+only to deliver synthetic UAT messages while no verified sender domain exists. It
+must not be committed, logged, or configured on production runtimes.
+
 The deployed Playwright journey uses a matching client-side secret value through GitHub Actions:
 
 - GitHub Actions secret `MOVIQO_E2E_SYNTHETIC_KEY`

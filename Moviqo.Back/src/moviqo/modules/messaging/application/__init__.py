@@ -8,6 +8,8 @@ from urllib import request as urllib_request
 from uuid import uuid4
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -19,7 +21,6 @@ from moviqo.modules.messaging.models import OutboxMessage
 logger = logging.getLogger(__name__)
 
 SYNTHETIC_EMAIL_SUFFIX = "@synthetic.moviqo.test"
-RESEND_DELIVERED_TEST_DOMAIN = "resend.dev"
 RESEND_TEST_SENDER = "Moviqo <onboarding@resend.dev>"
 
 
@@ -350,13 +351,22 @@ def _resend_delivery_payload(message: OutboxMessage) -> dict:
     ):
         return payload
 
-    # Resend rejects fake recipient domains. Exercise its real UAT API path through
-    # the provider's delivered-address simulator without changing stored tenant data.
+    # Resend rejects fake recipient domains and its unverified sender can deliver only
+    # to the account email. Keep that address secret-backed and outside tenant data.
     payload["from"] = RESEND_TEST_SENDER
-    payload["to"] = [
-        f"delivered+{message.id.hex}@{RESEND_DELIVERED_TEST_DOMAIN}"
-    ]
+    payload["to"] = [_resend_test_recipient()]
     return payload
+
+
+def _resend_test_recipient() -> str:
+    recipient = getattr(settings, "MOVIQO_RESEND_TEST_RECIPIENT", "").strip()
+    if not recipient:
+        raise RuntimeError("resend-test-recipient-missing")
+    try:
+        validate_email(recipient)
+    except ValidationError as exc:
+        raise RuntimeError("resend-test-recipient-invalid") from exc
+    return recipient
 
 
 def _json_payload(payload: dict) -> bytes:
@@ -370,6 +380,8 @@ def _delivery_failure_reason(exc: Exception) -> str:
         "resend-credentials-missing",
         "resend-delivery-rejected",
         "resend-delivery-failed",
+        "resend-test-recipient-missing",
+        "resend-test-recipient-invalid",
     }:
         return str(exc)
     return "delivery-failed"

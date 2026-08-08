@@ -4,6 +4,8 @@ import json
 import uuid
 from types import SimpleNamespace
 
+import pytest
+
 from moviqo.modules.messaging.application import _deliver_resend_outbox_message
 
 
@@ -17,7 +19,7 @@ class _AcceptedResponse:
         return False
 
 
-def test_synthetic_uat_delivery_uses_resend_delivered_test_address(
+def test_synthetic_uat_delivery_uses_secret_backed_resend_account_address(
     monkeypatch,
     settings,
 ) -> None:
@@ -42,6 +44,7 @@ def test_synthetic_uat_delivery_uses_resend_delivered_test_address(
 
     settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
     settings.MOVIQO_RESEND_API_KEY = "re_test_only"
+    settings.MOVIQO_RESEND_TEST_RECIPIENT = "uat-owner@example.com"
     monkeypatch.setattr(
         "moviqo.modules.messaging.application.urllib_request.urlopen",
         accept,
@@ -52,7 +55,7 @@ def test_synthetic_uat_delivery_uses_resend_delivered_test_address(
     assert captured == {
         "payload": {
             "from": "Moviqo <onboarding@resend.dev>",
-            "to": [f"delivered+{message_id.hex}@resend.dev"],
+            "to": ["uat-owner@example.com"],
             "subject": "Verify your email",
             "text": "Safe verification body",
         },
@@ -85,6 +88,7 @@ def test_non_synthetic_delivery_keeps_the_original_resend_envelope(
 
     settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
     settings.MOVIQO_RESEND_API_KEY = "re_test_only"
+    settings.MOVIQO_RESEND_TEST_RECIPIENT = "uat-owner@example.com"
     monkeypatch.setattr(
         "moviqo.modules.messaging.application.urllib_request.urlopen",
         accept,
@@ -119,6 +123,7 @@ def test_non_uat_delivery_does_not_route_synthetic_address_to_resend_test_addres
 
     settings.MOVIQO_ENVIRONMENT_CLASS = "production"
     settings.MOVIQO_RESEND_API_KEY = "re_test_only"
+    settings.MOVIQO_RESEND_TEST_RECIPIENT = "uat-owner@example.com"
     monkeypatch.setattr(
         "moviqo.modules.messaging.application.urllib_request.urlopen",
         accept,
@@ -127,3 +132,34 @@ def test_non_uat_delivery_does_not_route_synthetic_address_to_resend_test_addres
     _deliver_resend_outbox_message(message)
 
     assert captured == {"payload": original_payload, "timeout": 10}
+
+
+@pytest.mark.parametrize(
+    ("recipient", "reason"),
+    (
+        ("", "resend-test-recipient-missing"),
+        ("not-an-email", "resend-test-recipient-invalid"),
+    ),
+)
+def test_synthetic_uat_delivery_fails_closed_without_valid_test_recipient(
+    settings,
+    recipient,
+    reason,
+) -> None:
+    message = SimpleNamespace(
+        id=uuid.UUID("018f4f9a-8d7b-7c6a-9a8b-13572468abcd"),
+        message_type="email.registration_verification",
+        payload={
+            "from": "Moviqo <noreply@moviqo.local>",
+            "to": ["owner.run-id@synthetic.moviqo.test"],
+            "subject": "Verify your email",
+            "text": "Safe verification body",
+        },
+    )
+
+    settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
+    settings.MOVIQO_RESEND_API_KEY = "re_test_only"
+    settings.MOVIQO_RESEND_TEST_RECIPIENT = recipient
+
+    with pytest.raises(RuntimeError, match=f"^{reason}$"):
+        _deliver_resend_outbox_message(message)

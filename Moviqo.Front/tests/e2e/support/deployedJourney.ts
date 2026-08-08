@@ -61,7 +61,9 @@ export const requestSyntheticVerificationLink = async (
     data: { email: options.email },
     headers: { "X-Moviqo-Synthetic-Key": options.syntheticKey }
   });
-  expect(response.ok(), await response.text()).toBe(true);
+  if (!response.ok()) {
+    expect(response.ok(), await response.text()).toBe(true);
+  }
   const payload = (await response.json()) as { verificationUrl: string };
   return payload.verificationUrl;
 };
@@ -83,7 +85,18 @@ export const waitForApiResponse = (
   });
 
 export const expectApiOk = async (response: Response) => {
-  expect(response.ok(), await response.text()).toBe(true);
+  if (response.ok()) {
+    return;
+  }
+
+  const fallbackMessage = `${response.status()} ${response.statusText()}`.trim();
+  let failureMessage = fallbackMessage;
+  try {
+    failureMessage = (await response.text()).trim() || fallbackMessage;
+  } catch {
+    failureMessage = `${fallbackMessage}. Response body is unavailable after navigation.`;
+  }
+  expect(response.ok(), failureMessage).toBe(true);
 };
 
 export const performApiAction = async (

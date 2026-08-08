@@ -261,6 +261,7 @@ def test_outbox_claims_recover_expired_leases_and_dead_letter_exhausted_work(
 @pytest.mark.django_db
 def test_drain_outbox_sanitizes_delivery_failures_and_dead_letters_exhausted_work(
     django_user_model,
+    caplog,
     monkeypatch,
 ) -> None:
     tenant_context = _tenant_context(django_user_model)
@@ -288,6 +289,8 @@ def test_drain_outbox_sanitizes_delivery_failures_and_dead_letters_exhausted_wor
     assert message.attempt_count == 1
     assert message.last_error == "delivery-failed"
     assert message.next_attempt_at == now + timedelta(minutes=2)
+    assert "reason=delivery-failed" in caplog.text
+    assert "token=secret" not in caplog.text
 
     OutboxMessage.objects.filter(id=message.id).update(lease_expires_at=now - timedelta(minutes=1))
 

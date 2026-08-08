@@ -18,6 +18,10 @@ from moviqo.modules.messaging.models import OutboxMessage
 
 logger = logging.getLogger(__name__)
 
+SYNTHETIC_EMAIL_SUFFIX = "@synthetic.moviqo.test"
+RESEND_DELIVERED_TEST_DOMAIN = "resend.dev"
+RESEND_TEST_SENDER = "Moviqo <onboarding@resend.dev>"
+
 
 class LeaseOwnershipLost(RuntimeError):
     """Raised when a worker no longer owns a claimed outbox row."""
@@ -214,6 +218,13 @@ def drain_outbox_messages(
                 logger.warning("Outbox lease lost before finalization for message %s.", message.id)
                 continue
             except Exception as exc:
+                failure_reason = _delivery_failure_reason(exc)
+                logger.warning(
+                    "Outbox delivery failed for message %s (%s); reason=%s.",
+                    message.id,
+                    message.message_type,
+                    failure_reason,
+                )
                 try:
                     with tenant_background_atomic_context(organization_id=message.organization_id):
                         if message.attempt_count + 1 >= max_attempts:
@@ -229,7 +240,7 @@ def drain_outbox_messages(
                                 lease_owner=owner,
                                 now=finished_at,
                                 retry_delay=_retry_delay_for_attempt(message.attempt_count + 1),
-                                reason=_delivery_failure_reason(exc),
+                                reason=failure_reason,
                             )
                 except LeaseOwnershipLost:
                     logger.warning(
@@ -280,7 +291,7 @@ def _deliver_resend_outbox_message(message: OutboxMessage) -> None:
     if not api_key:
         raise RuntimeError("resend-credentials-missing")
 
-    payload = _resend_payload(message)
+    payload = _resend_delivery_payload(message)
     request = urllib_request.Request(
         "https://api.resend.com/emails",
         data=_json_payload(payload),
@@ -325,6 +336,27 @@ def _resend_payload(message: OutboxMessage) -> dict:
         "to": [envelope["to"]],
         **localized,
     }
+
+
+def _resend_delivery_payload(message: OutboxMessage) -> dict:
+    payload = dict(_resend_payload(message))
+    recipients = payload.get("to")
+    if (
+        settings.MOVIQO_ENVIRONMENT_CLASS != "synthetic-only"
+        or not isinstance(recipients, list)
+        or len(recipients) != 1
+        or not isinstance(recipients[0], str)
+        or not recipients[0].lower().endswith(SYNTHETIC_EMAIL_SUFFIX)
+    ):
+        return payload
+
+    # Resend rejects fake recipient domains. Exercise its real UAT API path through
+    # the provider's delivered-address simulator without changing stored tenant data.
+    payload["from"] = RESEND_TEST_SENDER
+    payload["to"] = [
+        f"delivered+{message.id.hex}@{RESEND_DELIVERED_TEST_DOMAIN}"
+    ]
+    return payload
 
 
 def _json_payload(payload: dict) -> bytes:

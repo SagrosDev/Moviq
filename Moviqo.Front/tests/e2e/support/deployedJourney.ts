@@ -44,7 +44,7 @@ export type JourneyTraceEvent = {
 type HttpResponse = APIResponse | Response;
 
 const deployedAssertionTimeoutMs = 15_000;
-const syntheticLinkAttempts = 30;
+const syntheticLinkAttempts = 90;
 const syntheticLinkPollIntervalMs = 2_000;
 const safeDiagnostic = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 

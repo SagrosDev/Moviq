@@ -4,9 +4,12 @@ import {
   assertNoAccessibilityViolations,
   attachJourneyEvidence,
   createSyntheticIdentity,
+  expectApiOk,
   readRequiredEnvironment,
   requestSyntheticVerificationLink,
-  safeReference
+  safeReference,
+  waitForApiResponse,
+  waitForWorkflowPublicationReady
 } from "./support/deployedJourney";
 
 const require = createRequire(import.meta.url);
@@ -43,16 +46,13 @@ test("deployed first workflow journey covers registration through completed time
   await page.getByLabel(/acepto los terminos beta vigentes/i).check();
   await page.getByLabel(/acepto el aviso de privacidad vigente/i).check();
   await page.getByLabel(/no ingresare datos personales reales/i).check();
-  const registrationResponsePromise = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-    return (
-      response.request().method() === "POST" &&
-      url.pathname === "/api/v1/organizations/registrations/"
-    );
-  });
+  const registrationResponsePromise = waitForApiResponse(
+    page,
+    "POST",
+    "/api/v1/organizations/registrations/"
+  );
   await page.getByRole("button", { name: "Enviar registro" }).click();
-  const registrationResponse = await registrationResponsePromise;
-  expect(registrationResponse.ok(), await registrationResponse.text()).toBe(true);
+  await expectApiOk(await registrationResponsePromise);
   await expect(page.locator(".success-message")).toContainText(identity.email);
 
   await assertNoAccessibilityViolations(page, axePath);
@@ -89,7 +89,13 @@ test("deployed first workflow journey covers registration through completed time
   await page.getByRole("button", { name: "Agregar End" }).click();
   await page.getByRole("button", { name: "Conectar Start con Task" }).click();
   await page.getByRole("button", { name: "Conectar Task con End" }).click();
+  const firstValidationResponsePromise = waitForApiResponse(
+    page,
+    "POST",
+    /\/api\/v1\/workflow-design\/workflows\/[^/]+\/publication-validation\/$/
+  );
   await page.getByRole("button", { name: "Validar publicacion" }).click();
+  await expectApiOk(await firstValidationResponsePromise);
   await expect(page.getByText(/define quien puede iniciar este flujo/i)).toBeVisible();
   await expect(page.getByText(/define quien recibe la primera tarea/i)).toBeVisible();
 
@@ -98,11 +104,21 @@ test("deployed first workflow journey covers registration through completed time
   await page.getByLabel("Label").fill("Nombre del caso");
   await page.getByRole("button", { name: "Crear Short text" }).click();
   await page.getByRole("button", { name: "Add to first task" }).click();
+  const secondValidationResponsePromise = waitForApiResponse(
+    page,
+    "POST",
+    /\/api\/v1\/workflow-design\/workflows\/[^/]+\/publication-validation\/$/
+  );
   await page.getByRole("button", { name: "Validar publicacion" }).click();
-  await expect(
-    page.getByText("Ejecuta la validacion para ver los bloqueos de publicacion de este borrador.")
-  ).toHaveCount(0);
+  await expectApiOk(await secondValidationResponsePromise);
+  await waitForWorkflowPublicationReady(page);
+  const publishResponsePromise = waitForApiResponse(
+    page,
+    "POST",
+    /\/api\/v1\/workflow-design\/workflows\/[^/]+\/publish\/$/
+  );
   await page.getByRole("button", { name: "Publicar version" }).click();
+  await expectApiOk(await publishResponsePromise);
   await expect(page.getByText(/Version 1\./)).toBeVisible();
 
   await page.goto("/my-work");
@@ -110,9 +126,21 @@ test("deployed first workflow journey covers registration through completed time
   await expect(page).toHaveURL(/\/my-work\/tasks\/[^/]+$/);
   await expect(page.getByRole("heading", { name: "Tarea" })).toBeVisible();
   await page.getByRole("textbox", { name: "Nombre del caso" }).fill("Caso sintetico autorizado");
+  const saveTaskResponsePromise = waitForApiResponse(
+    page,
+    "PUT",
+    /\/api\/v1\/my-work\/tasks\/[^/]+\/form\/$/
+  );
   await page.getByRole("button", { name: "Guardar borrador" }).click();
+  await expectApiOk(await saveTaskResponsePromise);
   await expect(page.getByText("El servidor guardo el avance autorizado.")).toBeVisible();
+  const completeTaskResponsePromise = waitForApiResponse(
+    page,
+    "POST",
+    /\/api\/v1\/my-work\/tasks\/[^/]+\/complete\/$/
+  );
   await page.getByRole("button", { name: "Completar tarea" }).click();
+  await expectApiOk(await completeTaskResponsePromise);
   await expect(page.getByText("La tarea quedo completa y el proceso llego a su fin.")).toBeVisible();
 
   const taskUrl = new URL(page.url());

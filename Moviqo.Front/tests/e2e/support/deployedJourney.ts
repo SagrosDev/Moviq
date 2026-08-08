@@ -1,4 +1,10 @@
-import { expect, type APIRequestContext, type Page, type TestInfo } from "@playwright/test";
+import {
+  expect,
+  type APIRequestContext,
+  type Page,
+  type Response,
+  type TestInfo
+} from "@playwright/test";
 
 type SyntheticIdentity = {
   runId: string;
@@ -55,6 +61,32 @@ export const requestSyntheticVerificationLink = async (
   expect(response.ok()).toBe(true);
   const payload = (await response.json()) as { verificationUrl: string };
   return payload.verificationUrl;
+};
+
+const matchesPathname = (pathname: string, expectedPath: RegExp | string) =>
+  expectedPath instanceof RegExp ? expectedPath.test(pathname) : pathname === expectedPath;
+
+export const waitForApiResponse = (
+  page: Page,
+  method: string,
+  expectedPath: RegExp | string
+) =>
+  page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === method &&
+      matchesPathname(url.pathname, expectedPath)
+    );
+  });
+
+export const expectApiOk = async (response: Response) => {
+  expect(response.ok(), await response.text()).toBe(true);
+};
+
+export const waitForWorkflowPublicationReady = async (page: Page) => {
+  await expect(page.getByText(/define quien puede iniciar este flujo/i)).toHaveCount(0);
+  await expect(page.getByText(/define quien recibe la primera tarea/i)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Publicar version" })).toBeEnabled();
 };
 
 export const assertNoAccessibilityViolations = async (

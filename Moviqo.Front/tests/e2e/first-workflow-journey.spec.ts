@@ -25,8 +25,8 @@ test("deployed first workflow journey covers registration through completed time
 
   await page.goto("/");
   await page.getByRole("combobox", { name: /language|idioma/i }).selectOption("es");
-  await expect(page.getByRole("link", { name: "Registrar organizacion" })).toBeVisible();
-  await page.getByRole("link", { name: "Registrar organizacion" }).click();
+  await expect(page.getByRole("link", { name: "Iniciar beta gratuita" }).first()).toBeVisible();
+  await page.getByRole("link", { name: "Iniciar beta gratuita" }).first().click();
 
   await expect(
     page.getByRole("heading", {

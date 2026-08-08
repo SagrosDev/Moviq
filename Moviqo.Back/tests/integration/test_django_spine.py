@@ -8,6 +8,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.handlers.asgi import ASGIHandler
+from django.core.handlers.wsgi import WSGIHandler
 from django.db import connection
 from django.test import Client
 
@@ -25,6 +26,12 @@ def test_asgi_settings_and_custom_user_model() -> None:
     from moviqo.asgi import application
 
     assert isinstance(application, ASGIHandler)
+
+
+def test_wsgi_application_supports_the_gunicorn_entrypoint() -> None:
+    from moviqo.wsgi import application
+
+    assert isinstance(application, WSGIHandler)
 
 
 @pytest.mark.parametrize("path", ["/health/start/", "/api/v1/health/start/"])

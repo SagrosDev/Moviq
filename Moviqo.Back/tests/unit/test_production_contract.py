@@ -36,7 +36,9 @@ def test_production_settings_load_with_explicit_secure_contract(
     assert settings_module.SECURE_PROXY_SSL_HEADER == ("HTTP_X_FORWARDED_PROTO", "https")
     assert getattr(settings_module, "USE_X_FORWARDED_HOST", False) is False
     assert settings_module.SESSION_COOKIE_SECURE is True
+    assert settings_module.SESSION_COOKIE_NAME == "__session"
     assert settings_module.CSRF_COOKIE_SECURE is True
+    assert settings_module.CSRF_USE_SESSIONS is True
     assert settings_module.SECURE_SSL_REDIRECT is True
     assert settings_module.MOVIQO_GCS_PRIVATE_BUCKET == "moviqo-private-files"
     assert settings_module.MOVIQO_RESEND_API_KEY == "re_contract_only"

@@ -57,6 +57,48 @@ test("API client does not double-prefix versioned generated paths", async () => 
   assert.equal(requestedUrls[0], "https://moviqo.test/api/v1/system/ping/");
 });
 
+test("API client bootstraps CSRF from the token endpoint before unsafe requests", async () => {
+  const requests: Request[] = [];
+  const originalDocument = globalThis.document;
+  Object.defineProperty(globalThis, "document", {
+    value: { cookie: "" },
+    configurable: true
+  });
+
+  try {
+    const client = createApiClient({
+      baseUrl: "https://moviqo.test/api/v1",
+      fetch: async (request) => {
+        requests.push(request);
+        const path = new URL(request.url).pathname;
+        if (path === "/api/v1/auth/csrf/") {
+          return new Response(JSON.stringify({ csrfToken: "session-token-123" }), {
+            headers: { "Content-Type": "application/json" },
+            status: 200
+          });
+        }
+
+        return new Response(JSON.stringify({ status: "ok" }), {
+          headers: { "Content-Type": "application/json" },
+          status: 200
+        });
+      }
+    });
+
+    await (client as {
+      POST(path: string, init?: object): Promise<{ response: Response }>;
+    }).POST("/api/v1/auth/sign-out/");
+
+    assert.equal(requests[0]?.url, "https://moviqo.test/api/v1/auth/csrf/");
+    assert.equal(requests[1]?.headers.get("X-CSRFToken"), "session-token-123");
+  } finally {
+    Object.defineProperty(globalThis, "document", {
+      value: originalDocument,
+      configurable: true
+    });
+  }
+});
+
 test("API problem normalization keeps safe fields and supplies generic fallbacks", () => {
   const problem = normalizeApiProblem({
     code: "validation_failed",

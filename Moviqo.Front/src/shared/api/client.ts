@@ -1,5 +1,10 @@
 import createClient from "openapi-fetch";
 import type { components, paths } from "./generated/schema";
+import {
+  csrfHeaders,
+  ensureCsrfToken,
+  requiresCsrfProtection
+} from "./csrf";
 
 const API_PATH_PREFIX = "/api/v1";
 const SAFE_CODE = /^[a-z][a-z0-9_]{0,63}$/;
@@ -89,15 +94,35 @@ export type ApiClientOptions = {
 };
 
 export const createApiClient = (options: ApiClientOptions) => {
+  const normalizedBaseUrl = normalizeApiBaseUrl(options.baseUrl);
+  const csrfBootstrapEndpoint =
+    normalizedBaseUrl.startsWith("http://") || normalizedBaseUrl.startsWith("https://")
+      ? `${normalizedBaseUrl}${API_PATH_PREFIX}/auth/csrf/`
+      : `${API_PATH_PREFIX}/auth/csrf/`;
+
+  const fetchImplementation: typeof fetch = (input, init) => {
+    if (options.fetch) {
+      return options.fetch(
+        input instanceof Request && !init ? input : new Request(input, init)
+      );
+    }
+    return fetch(input, init);
+  };
+
   return createClient<paths>({
-    baseUrl: normalizeApiBaseUrl(options.baseUrl),
+    baseUrl: normalizedBaseUrl,
     fetch: async (input) => {
-      const headers = new Headers(input.headers);
-      const csrfToken = readCookie("csrftoken");
-      if (csrfToken && !["GET", "HEAD", "OPTIONS"].includes(input.method.toUpperCase())) {
-        headers.set("X-CSRFToken", decodeURIComponent(csrfToken));
+      if (requiresCsrfProtection(input.method)) {
+        await ensureCsrfToken(fetchImplementation, csrfBootstrapEndpoint);
       }
-      const response = await (options.fetch ?? fetch)(new Request(input, { credentials: "same-origin", headers }));
+
+      const headers = new Headers(input.headers);
+      for (const [name, value] of Object.entries(csrfHeaders())) {
+        headers.set(name, value);
+      }
+      const response = await fetchImplementation(
+        new Request(input, { credentials: "same-origin", headers })
+      );
       if ((response.status === 401 || response.status === 403) && typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("moviqo:session-expired"));
       }
@@ -105,14 +130,6 @@ export const createApiClient = (options: ApiClientOptions) => {
     }
   });
 };
-
-const readCookie = (name: string): string =>
-  typeof document === "undefined"
-    ? ""
-    : document.cookie
-        .split(";")
-        .map((part) => part.trim().split("="))
-        .find(([key]) => key === name)?.[1] ?? "";
 
 const normalizeApiBaseUrl = (baseUrl: string): string => {
   const trimmed = baseUrl.replace(/\/+$/, "");

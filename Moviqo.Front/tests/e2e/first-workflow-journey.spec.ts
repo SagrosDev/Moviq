@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import {
   assertNoAccessibilityViolations,
   attachJourneyEvidence,
+  clearSyntheticVerificationLink,
   createSyntheticJourneyRun,
   createSyntheticIdentity,
   deployedJourneyTimeoutMs,
@@ -103,17 +104,22 @@ test("deployed first workflow journey covers registration through completed time
         runToken,
         syntheticKey
       });
-      await performApiAction(
-        page,
-        "POST",
-        "/api/v1/organizations/registrations/verify-email/",
-        () => openSyntheticVerificationLink(page, verificationToken)
-      );
-      await journeyExpect(
-        page.getByRole("heading", { name: /correo verificado|email verified/i })
-      ).toBeVisible();
-      await journeyExpect(page.getByText(new RegExp(identity.email, "i"))).toBeVisible();
-      await assertNoAccessibilityViolations(page, axePath);
+      try {
+        await performApiAction(
+          page,
+          "POST",
+          "/api/v1/organizations/registrations/verify-email/",
+          () => openSyntheticVerificationLink(page, verificationToken)
+        );
+        await journeyExpect(
+          page.getByRole("heading", { name: /correo verificado|email verified/i })
+        ).toBeVisible();
+        await journeyExpect(page.getByText(new RegExp(identity.email, "i"))).toBeVisible();
+        await clearSyntheticVerificationLink(page);
+        await assertNoAccessibilityViolations(page, axePath);
+      } finally {
+        await clearSyntheticVerificationLink(page);
+      }
     });
     recordJourneyEvent(journeyTrace, startedAt, "verify delivered email");
 

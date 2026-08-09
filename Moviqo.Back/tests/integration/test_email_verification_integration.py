@@ -7,10 +7,15 @@ import pytest
 from django.conf import settings
 from django.core import signing
 from django.db import close_old_connections
+from django.utils import timezone
 
+from moviqo.building_blocks.tenancy import tenant_background_atomic_context
+from moviqo.modules.messaging.models import OutboxMessage
 from moviqo.modules.organizations.application.registration import (
     VERIFICATION_SALT,
     VerificationActivationError,
+    create_synthetic_journey_scope,
+    read_latest_verification_link_for_run,
     register_initial_owner,
     verify_initial_registration,
 )
@@ -107,3 +112,34 @@ def test_concurrent_verification_attempts_activate_at_most_once() -> None:
     assert organization.registration_state == RegistrationWorkflowState.ACTIVE
     assert membership.is_active is True
     assert membership.registration_state == RegistrationWorkflowState.ACTIVE
+
+
+@pytest.mark.django_db
+def test_postgresql_reads_delivered_synthetic_verification_link(settings) -> None:
+    _integration_only()
+    settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
+    email = "owner.postgresql-run@synthetic.moviqo.test"
+    run = create_synthetic_journey_scope(email=email)
+    register_initial_owner(
+        **_payload(email=email),
+        idempotency_key="postgresql-synthetic-registration",
+    )
+    membership = Membership.objects.get(user__normalized_email=email)
+    with tenant_background_atomic_context(organization_id=membership.organization_id):
+        OutboxMessage.objects.filter(
+            message_type="email.registration_verification"
+        ).update(delivered_at=timezone.now())
+        OutboxMessage.objects.create(
+            organization_id=membership.organization_id,
+            message_type="email.registration_verification",
+            payload={
+                "to": ["different-recipient@synthetic.moviqo.test"],
+                "text": "This newer message must not satisfy the scoped lookup.",
+            },
+            delivered_at=timezone.now(),
+        )
+
+    result = read_latest_verification_link_for_run(run_token=run["runToken"])
+
+    assert result["email"] == email
+    assert "/verify-email?token=" in result["verificationUrl"]

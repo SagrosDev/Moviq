@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 SYNTHETIC_EMAIL_SUFFIX = "@synthetic.moviqo.test"
 RESEND_USER_AGENT = "moviqo-back/1.0"
+OUTBOX_RECIPIENT_LOOKUP_LIMIT = 100
 
 
 class LeaseOwnershipLost(RuntimeError):
@@ -69,20 +70,21 @@ def read_latest_outbox_message_payload_for_recipient(
     recipient_email: str,
     created_at_or_after,
 ) -> dict | None:
-    payload = (
+    candidate_payloads = (
         OutboxMessage.objects.filter(
             organization_id=organization_id,
             message_type=message_type,
-            payload__to=[recipient_email],
             created_at__gte=created_at_or_after,
             delivered_at__isnull=False,
             dead_lettered_at__isnull=True,
         )
         .order_by("-created_at")
-        .values_list("payload", flat=True)
-        .first()
+        .values_list("payload", flat=True)[:OUTBOX_RECIPIENT_LOOKUP_LIMIT]
     )
-    return dict(payload) if isinstance(payload, dict) else None
+    for payload in candidate_payloads:
+        if isinstance(payload, dict) and payload.get("to") == [recipient_email]:
+            return dict(payload)
+    return None
 
 
 def claim_outbox_messages(

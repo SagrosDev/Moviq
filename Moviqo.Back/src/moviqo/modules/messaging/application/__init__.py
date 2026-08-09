@@ -22,6 +22,7 @@ from moviqo.modules.messaging.models import OutboxMessage
 logger = logging.getLogger(__name__)
 
 SYNTHETIC_EMAIL_SUFFIX = "@synthetic.moviqo.test"
+RESEND_USER_AGENT = "moviqo-back/1.0"
 
 
 class LeaseOwnershipLost(RuntimeError):
@@ -299,6 +300,7 @@ def _deliver_resend_outbox_message(message: OutboxMessage) -> None:
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "User-Agent": RESEND_USER_AGENT,
         },
         method="POST",
     )

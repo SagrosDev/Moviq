@@ -44,6 +44,7 @@ def test_synthetic_uat_delivery_uses_verified_sender_and_secret_backed_recipient
     def accept(request, timeout):
         captured["payload"] = json.loads(request.data)
         captured["timeout"] = timeout
+        captured["user_agent"] = request.get_header("User-agent")
         return _AcceptedResponse()
 
     settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
@@ -67,6 +68,7 @@ def test_synthetic_uat_delivery_uses_verified_sender_and_secret_backed_recipient
             "text": "Safe verification body",
         },
         "timeout": 10,
+        "user_agent": "moviqo-back/1.0",
     }
     assert message.payload == original_payload
 
@@ -91,6 +93,7 @@ def test_non_synthetic_delivery_keeps_the_original_resend_envelope(
     def accept(request, timeout):
         captured["payload"] = json.loads(request.data)
         captured["timeout"] = timeout
+        captured["user_agent"] = request.get_header("User-agent")
         return _AcceptedResponse()
 
     settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
@@ -112,6 +115,7 @@ def test_non_synthetic_delivery_keeps_the_original_resend_envelope(
             "from": "Moviqo <notifications@updates.mymoviqo.com>",
         },
         "timeout": 10,
+        "user_agent": "moviqo-back/1.0",
     }
 
 

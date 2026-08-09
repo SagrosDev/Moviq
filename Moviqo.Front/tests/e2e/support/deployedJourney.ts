@@ -159,12 +159,17 @@ export const openSyntheticVerificationLink = async (
         `Verification page navigation failed with status ${response.status()}.`
       );
     }
-  } finally {
-    if (!page.isClosed()) {
-      await page
-        .evaluate(() => window.history.replaceState(null, "", "/verify-email"))
-        .catch(() => undefined);
-    }
+  } catch (error) {
+    await clearSyntheticVerificationLink(page);
+    throw error;
+  }
+};
+
+export const clearSyntheticVerificationLink = async (page: Page) => {
+  if (!page.isClosed()) {
+    await page
+      .evaluate(() => window.history.replaceState(null, "", "/verify-email"))
+      .catch(() => undefined);
   }
 };
 

@@ -6,10 +6,13 @@ from dataclasses import dataclass
 import pytest
 from django.conf import settings
 from django.core import signing
-from django.db import close_old_connections
+from django.db import close_old_connections, connection
 from django.utils import timezone
 
-from moviqo.building_blocks.tenancy import tenant_background_atomic_context
+from moviqo.building_blocks.tenancy import (
+    tenant_background_atomic_context,
+    tenant_bootstrap_context,
+)
 from moviqo.modules.messaging.models import OutboxMessage
 from moviqo.modules.organizations.application.registration import (
     VERIFICATION_SALT,
@@ -114,7 +117,7 @@ def test_concurrent_verification_attempts_activate_at_most_once() -> None:
     assert membership.registration_state == RegistrationWorkflowState.ACTIVE
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_postgresql_reads_delivered_synthetic_verification_link(settings) -> None:
     _integration_only()
     settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
@@ -124,13 +127,22 @@ def test_postgresql_reads_delivered_synthetic_verification_link(settings) -> Non
         **_payload(email=email),
         idempotency_key="postgresql-synthetic-registration",
     )
-    membership = Membership.objects.get(user__normalized_email=email)
-    with tenant_background_atomic_context(organization_id=membership.organization_id):
-        OutboxMessage.objects.filter(
+    connection.close()
+    user = MoviqoUser.objects.get(normalized_email=email)
+    with tenant_bootstrap_context(user_id=user.id):
+        organization_id = Membership.objects.values_list(
+            "organization_id", flat=True
+        ).get(user_id=user.id)
+    connection.close()
+
+    with tenant_background_atomic_context(organization_id=organization_id):
+        updated = OutboxMessage.objects.filter(
+            organization_id=organization_id,
             message_type="email.registration_verification"
         ).update(delivered_at=timezone.now())
+        assert updated == 1
         OutboxMessage.objects.create(
-            organization_id=membership.organization_id,
+            organization_id=organization_id,
             message_type="email.registration_verification",
             payload={
                 "to": ["different-recipient@synthetic.moviqo.test"],
@@ -138,8 +150,14 @@ def test_postgresql_reads_delivered_synthetic_verification_link(settings) -> Non
             },
             delivered_at=timezone.now(),
         )
+    connection.close()
 
-    result = read_latest_verification_link_for_run(run_token=run["runToken"])
+    try:
+        result = read_latest_verification_link_for_run(run_token=run["runToken"])
+    finally:
+        connection.close()
 
     assert result["email"] == email
-    assert "/verify-email?token=" in result["verificationUrl"]
+    assert result["verificationUrl"].startswith(
+        f"{settings.MOVIQO_PUBLIC_APP_BASE_URL.rstrip('/')}/verify-email?token="
+    )

@@ -571,10 +571,27 @@ def _synthetic_scope_membership(scope: SyntheticJourneyScope) -> Membership:
             diagnostic_reason=SyntheticVerificationDiagnosticReason.USER_MISSING
         )
     with tenant_bootstrap_context(user_id=user.id):
+        membership_reference = (
+            Membership.objects.filter(user_id=user.id)
+            .values_list("id", "organization_id")
+            .first()
+        )
+    if membership_reference is None:
+        raise SyntheticJourneyScopeError(
+            diagnostic_reason=SyntheticVerificationDiagnosticReason.MEMBERSHIP_MISSING
+        )
+
+    membership_id, organization_id = membership_reference
+    with tenant_background_atomic_context(organization_id=organization_id):
         membership = (
             Membership.objects.select_related("organization", "user")
             .filter(
+                id=membership_id,
                 user_id=user.id,
+                registration_state__in=(
+                    RegistrationWorkflowState.PENDING,
+                    RegistrationWorkflowState.ACTIVE,
+                ),
                 organization__created_at__gte=scope.issued_at,
                 organization__registration_state__in=(
                     RegistrationWorkflowState.PENDING,

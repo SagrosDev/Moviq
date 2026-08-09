@@ -3,10 +3,14 @@ from __future__ import annotations
 import json
 import uuid
 from types import SimpleNamespace
+from urllib import error as urllib_error
 
 import pytest
 
-from moviqo.modules.messaging.application import _deliver_resend_outbox_message
+from moviqo.modules.messaging.application import (
+    _deliver_resend_outbox_message,
+    _delivery_failure_reason,
+)
 
 
 class _AcceptedResponse:
@@ -270,3 +274,58 @@ def test_resend_delivery_fails_closed_without_valid_sender(
         _deliver_resend_outbox_message(message)
 
     assert called is False
+
+
+@pytest.mark.parametrize(
+    ("provider_error", "reason"),
+    (
+        (
+            urllib_error.HTTPError(
+                "https://api.resend.com/emails",
+                403,
+                "Forbidden",
+                hdrs=None,
+                fp=None,
+            ),
+            "resend-delivery-http-403",
+        ),
+        (
+            urllib_error.URLError("temporary name resolution failure"),
+            "resend-delivery-network-failed",
+        ),
+    ),
+)
+def test_resend_delivery_preserves_safe_provider_failure_category(
+    monkeypatch,
+    settings,
+    provider_error,
+    reason,
+) -> None:
+    message = SimpleNamespace(
+        id=uuid.UUID("018f4f9a-8d7b-7c6a-9a8b-86429753abcd"),
+        message_type="email.notification.created",
+        payload={
+            "from": "Moviqo <noreply@moviqo.local>",
+            "to": ["customer@example.net"],
+            "subject": "Notification",
+            "text": "Safe notification body",
+        },
+    )
+
+    def reject(request, timeout):
+        raise provider_error
+
+    settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
+    settings.MOVIQO_RESEND_API_KEY = "re_test_only"
+    settings.MOVIQO_RESEND_FROM_EMAIL = (
+        "Moviqo <notifications@updates.mymoviqo.com>"
+    )
+    monkeypatch.setattr(
+        "moviqo.modules.messaging.application.urllib_request.urlopen",
+        reject,
+    )
+
+    with pytest.raises(RuntimeError, match=f"^{reason}$") as captured:
+        _deliver_resend_outbox_message(message)
+
+    assert _delivery_failure_reason(captured.value) == reason

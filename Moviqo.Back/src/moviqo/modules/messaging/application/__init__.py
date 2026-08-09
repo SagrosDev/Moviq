@@ -306,8 +306,10 @@ def _deliver_resend_outbox_message(message: OutboxMessage) -> None:
         with urllib_request.urlopen(request, timeout=10) as response:
             if getattr(response, "status", 200) not in {200, 201, 202}:
                 raise RuntimeError("resend-delivery-rejected")
+    except urllib_error.HTTPError as exc:
+        raise RuntimeError(f"resend-delivery-http-{exc.code}") from exc
     except urllib_error.URLError as exc:
-        raise RuntimeError("resend-delivery-failed") from exc
+        raise RuntimeError("resend-delivery-network-failed") from exc
 
 
 def _resend_payload(message: OutboxMessage) -> dict:
@@ -397,17 +399,22 @@ def _json_payload(payload: dict) -> bytes:
 
 
 def _delivery_failure_reason(exc: Exception) -> str:
-    if str(exc) in {
+    reason = str(exc)
+    if reason in {
         "resend-credentials-missing",
         "resend-delivery-rejected",
         "resend-delivery-failed",
+        "resend-delivery-network-failed",
         "resend-sender-missing",
         "resend-sender-invalid",
         "resend-recipient-mix-invalid",
         "resend-test-recipient-missing",
         "resend-test-recipient-invalid",
     }:
-        return str(exc)
+        return reason
+    http_status = reason.removeprefix("resend-delivery-http-")
+    if http_status.isdigit() and 400 <= int(http_status) <= 599:
+        return reason
     return "delivery-failed"
 
 

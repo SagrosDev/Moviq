@@ -75,6 +75,7 @@ jobs:
           MOVIQO_GCS_QUARANTINE_BUCKET: moviqo-quarantine-files
           MOVIQO_GCS_CLEAN_BUCKET: moviqo-clean-files
           MOVIQO_RESEND_API_KEY: ci-only-resend-key
+          MOVIQO_RESEND_FROM_EMAIL: Moviqo <notifications@updates.mymoviqo.com>
       - run: uv run python src/manage.py health_start
 
   frontend:

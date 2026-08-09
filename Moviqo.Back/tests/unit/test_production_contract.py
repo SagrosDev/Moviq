@@ -19,6 +19,7 @@ PRODUCTION_ENV = {
     "MOVIQO_GCS_QUARANTINE_BUCKET": "moviqo-quarantine-files",
     "MOVIQO_GCS_CLEAN_BUCKET": "moviqo-clean-files",
     "MOVIQO_RESEND_API_KEY": "re_contract_only",
+    "MOVIQO_RESEND_FROM_EMAIL": "Moviqo <notifications@updates.mymoviqo.com>",
 }
 
 
@@ -42,6 +43,9 @@ def test_production_settings_load_with_explicit_secure_contract(
     assert settings_module.SECURE_SSL_REDIRECT is True
     assert settings_module.MOVIQO_GCS_PRIVATE_BUCKET == "moviqo-private-files"
     assert settings_module.MOVIQO_RESEND_API_KEY == "re_contract_only"
+    assert settings_module.MOVIQO_RESEND_FROM_EMAIL == (
+        "Moviqo <notifications@updates.mymoviqo.com>"
+    )
 
 
 @pytest.mark.parametrize(
@@ -76,6 +80,7 @@ def test_production_settings_load_with_explicit_secure_contract(
             "must reference private-only storage",
         ),
         ("MOVIQO_RESEND_API_KEY", None, "Missing required environment variable"),
+        ("MOVIQO_RESEND_FROM_EMAIL", None, "Missing required environment variable"),
     ],
 )
 def test_production_settings_fail_closed_on_unsafe_security_contract(

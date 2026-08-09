@@ -7,6 +7,7 @@ from moviqo.settings.env import required_env, required_env_choice
 
 PRODUCTION_KEYWORDS = ("prod", "production")
 DISABLED_BY_GATE = "disabled-by-gate"
+UAT_RESEND_FROM_EMAIL = "Moviqo <notifications@updates.mymoviqo.com>"
 
 
 def load_uat_contract() -> dict[str, object]:
@@ -31,6 +32,7 @@ def load_uat_contract() -> dict[str, object]:
         "django_secret_key_secret": required_env("MOVIQO_DJANGO_SECRET_KEY_SECRET"),
         "database_password_secret": required_env("MOVIQO_DB_PASSWORD_SECRET"),
         "resend_api_key_secret": required_env("MOVIQO_RESEND_API_KEY_SECRET"),
+        "resend_from_email": required_env("MOVIQO_RESEND_FROM_EMAIL"),
         "gcs_private_bucket": required_env("MOVIQO_GCS_PRIVATE_BUCKET"),
         "gcs_quarantine_bucket": required_env("MOVIQO_GCS_QUARANTINE_BUCKET"),
         "gcs_clean_bucket": required_env("MOVIQO_GCS_CLEAN_BUCKET"),
@@ -53,6 +55,10 @@ def validate_uat_contract(contract: dict[str, object]) -> None:
 
     if contract["message_delivery_adapter"] != "resend-outbox":
         raise RuntimeError("UAT must deliver email through the Resend outbox adapter.")
+    if contract["resend_from_email"] != UAT_RESEND_FROM_EMAIL:
+        raise RuntimeError(
+            "UAT must send Resend email from the verified Moviqo sender domain."
+        )
     if contract["job_runners"] != {"outboxEmailDrain": "outbox-email-drain"}:
         raise RuntimeError("UAT must expose only the outbox email drain runner path.")
 

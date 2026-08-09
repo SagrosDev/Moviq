@@ -35,6 +35,7 @@
     "MOVIQO_GCS_CLEAN_BUCKET": "moviqo-uat-clean",
     "MOVIQO_FILE_INSPECTION_ADAPTER": "synthetic",
     "MOVIQO_MESSAGE_DELIVERY_ADAPTER": "resend-outbox",
+    "MOVIQO_RESEND_FROM_EMAIL": "Moviqo <notifications@updates.mymoviqo.com>",
     "MOVIQO_CACHE_POLICY": "firebase-hosting-no-store",
     "MOVIQO_LIVE_MALWARE_SCANNING": "disabled-by-gate",
     "MOVIQO_INDEPENDENT_BACKUPS": "disabled-by-gate",

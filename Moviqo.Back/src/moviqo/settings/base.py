@@ -109,6 +109,7 @@ MOVIQO_SYNTHETIC_VERIFICATION_API_KEY = os.getenv(
     "",
 )
 MOVIQO_RESEND_TEST_RECIPIENT = os.getenv("MOVIQO_RESEND_TEST_RECIPIENT", "").strip()
+MOVIQO_RESEND_FROM_EMAIL = os.getenv("MOVIQO_RESEND_FROM_EMAIL", "").strip()
 MOVIQO_DISABLED_SERVICES = {
     "liveMalwareScanning": os.getenv("MOVIQO_LIVE_MALWARE_SCANNING", "disabled-by-gate"),
     "independentBackups": os.getenv("MOVIQO_INDEPENDENT_BACKUPS", "disabled-by-gate"),

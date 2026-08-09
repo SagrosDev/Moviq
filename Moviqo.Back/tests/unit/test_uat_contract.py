@@ -27,6 +27,7 @@ UAT_ENV = {
     "MOVIQO_DJANGO_SECRET_KEY_SECRET": "moviqo-uat-django-secret",
     "MOVIQO_DB_PASSWORD_SECRET": "moviqo-uat-db-password",
     "MOVIQO_RESEND_API_KEY_SECRET": "moviqo-uat-resend-api-key",
+    "MOVIQO_RESEND_FROM_EMAIL": "Moviqo <notifications@updates.mymoviqo.com>",
     "MOVIQO_GCS_PRIVATE_BUCKET": "moviqo-uat-private",
     "MOVIQO_GCS_QUARANTINE_BUCKET": "moviqo-uat-quarantine",
     "MOVIQO_GCS_CLEAN_BUCKET": "moviqo-uat-clean",
@@ -50,6 +51,9 @@ def test_uat_contract_loads_when_environment_is_explicitly_synthetic(
     assert contract["public_app_base_url"] == "https://uat.moviqo.internal"
     assert contract["file_inspection_adapter"] == "synthetic"
     assert contract["job_runners"] == {"outboxEmailDrain": "outbox-email-drain"}
+    assert contract["resend_from_email"] == (
+        "Moviqo <notifications@updates.mymoviqo.com>"
+    )
     assert contract["disabled_services"] == {
         "liveMalwareScanning": "disabled-by-gate",
         "independentBackups": "disabled-by-gate",
@@ -85,6 +89,11 @@ def test_uat_contract_loads_when_environment_is_explicitly_synthetic(
             "MOVIQO_FILE_INSPECTION_ADAPTER",
             "clamav",
             "synthetic file inspection adapter",
+        ),
+        (
+            "MOVIQO_RESEND_FROM_EMAIL",
+            "Moviqo <notifications@unverified.example>",
+            "verified Moviqo sender domain",
         ),
     ],
 )

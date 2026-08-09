@@ -16,6 +16,7 @@ def load_production_security_contract(*, allowed_hosts: list[str]) -> dict[str, 
         "gcs_quarantine_bucket": required_env("MOVIQO_GCS_QUARANTINE_BUCKET"),
         "gcs_clean_bucket": required_env("MOVIQO_GCS_CLEAN_BUCKET"),
         "resend_api_key": required_env("MOVIQO_RESEND_API_KEY"),
+        "resend_from_email": required_env("MOVIQO_RESEND_FROM_EMAIL"),
     }
 
     validate_production_security_settings(

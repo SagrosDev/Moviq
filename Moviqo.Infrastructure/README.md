@@ -30,6 +30,7 @@ Operators must provide the following runtime values before deploying `moviqo-bac
 - `MOVIQO_DJANGO_SECRET_KEY_SECRET`
 - `MOVIQO_DB_PASSWORD_SECRET`
 - `MOVIQO_RESEND_API_KEY_SECRET`
+- `MOVIQO_RESEND_FROM_EMAIL=Moviqo <notifications@updates.mymoviqo.com>`
 - `MOVIQO_GCS_PRIVATE_BUCKET`
 - `MOVIQO_GCS_QUARANTINE_BUCKET`
 - `MOVIQO_GCS_CLEAN_BUCKET`
@@ -47,11 +48,22 @@ Cloud Run injects server-side secrets into the runtime environment:
 - `MOVIQO_RESEND_API_KEY` from `MOVIQO_RESEND_API_KEY_SECRET`
 - `MOVIQO_SYNTHETIC_VERIFICATION_API_KEY` from the managed UAT secret `moviqo-uat-synthetic-verification-api-key`
 
-The `moviqo-uat-outbox-drain` job additionally injects
-`MOVIQO_RESEND_TEST_RECIPIENT` from the managed secret
-`moviqo-uat-resend-test-recipient`. This address is the Resend account email used
-only to deliver synthetic UAT messages while no verified sender domain exists. It
-must not be committed, logged, or configured on production runtimes.
+Moviqo owns `mymoviqo.com`; Cloudflare manages its DNS. Resend has verified
+`updates.mymoviqo.com`, and both the backend service and `moviqo-uat-outbox-drain`
+declare the non-secret sender `MOVIQO_RESEND_FROM_EMAIL=Moviqo
+<notifications@updates.mymoviqo.com>`.
+
+The outbox job additionally injects `MOVIQO_RESEND_TEST_RECIPIENT` from managed
+secret `moviqo-uat-resend-test-recipient`. Only the deployed journey's reserved
+`@synthetic.moviqo.test` identity is redirected to that deliverable mailbox. A
+normal UAT registration or invitation is sent to the address entered by the user.
+The API key and test mailbox must not be committed or logged.
+
+Cloud Scheduler job `moviqo-uat-outbox-drain-every-minute` invokes the existing
+Cloud Run job every minute. The Scheduler uses OAuth with
+`moviqo-uat-runner@moviqo-uat-synthetic.iam.gserviceaccount.com`; a Scheduler HTTP
+200 confirms acceptance, while the resulting Cloud Run execution must also finish
+with exit code 0 to prove delivery processing ran.
 
 The deployed Playwright journey uses a matching client-side secret value through GitHub Actions:
 

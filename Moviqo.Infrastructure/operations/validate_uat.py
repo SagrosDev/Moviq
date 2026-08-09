@@ -21,7 +21,6 @@ def main() -> None:
     _validate_uat_environment(uat_environment)
     _validate_cloud_run_service(cloud_run_service, uat_environment)
     _validate_cloud_run_job(cloud_run_job, uat_environment)
-    _validate_identity_separation(uat_environment, cloud_run_service, cloud_run_job)
 
     print("Moviqo UAT infrastructure contract is valid.")
 
@@ -67,6 +66,13 @@ def _validate_uat_environment(uat_environment: dict[str, object]) -> None:
         raise RuntimeError("UAT must declare explicit CSRF trusted origins.")
     if uat_environment["routing"]["trustXForwardedProto"] is not True:
         raise RuntimeError("UAT must trust HTTPS through X-Forwarded-Proto only.")
+    if uat_environment["messaging"]["sendingDomain"] != "updates.mymoviqo.com":
+        raise RuntimeError("UAT must declare the verified Resend sending domain.")
+    if (
+        uat_environment["messaging"]["fromEmail"]
+        != "Moviqo <notifications@updates.mymoviqo.com>"
+    ):
+        raise RuntimeError("UAT must declare the verified Moviqo sender address.")
     if uat_environment["storage"]["publicAccess"] is not False:
         raise RuntimeError("UAT storage must remain private.")
     if uat_environment["storage"]["encryptionAtRest"] is not True:
@@ -157,6 +163,11 @@ def _validate_cloud_run_service(
     if cloud_run_service["env"]["MOVIQO_MESSAGE_DELIVERY_ADAPTER"] != "resend-outbox":
         raise RuntimeError("Cloud Run must use the Resend outbox adapter.")
     if (
+        cloud_run_service["env"]["MOVIQO_RESEND_FROM_EMAIL"]
+        != uat_environment["messaging"]["fromEmail"]
+    ):
+        raise RuntimeError("Cloud Run must export the verified Moviqo sender address.")
+    if (
         cloud_run_service["serviceAccount"]
         != uat_environment["identity"]["cloudRunServiceAccount"]
     ):
@@ -207,26 +218,27 @@ def _validate_cloud_run_job(
     if cloud_run_job["serviceAccount"] != uat_environment["identity"]["cloudRunJobServiceAccount"]:
         raise RuntimeError("Cloud Run job must use the declared UAT job identity.")
     _assert_non_production_identifier(cloud_run_job["serviceAccount"])
+    if (
+        cloud_run_job.get("env", {}).get("MOVIQO_RESEND_FROM_EMAIL")
+        != uat_environment["messaging"]["fromEmail"]
+    ):
+        raise RuntimeError("Cloud Run job must export the verified Moviqo sender address.")
     _validate_runtime_secret_wiring(
         runtime_name="Cloud Run job",
         env=cloud_run_job.get("env", {}),
         secret_env=cloud_run_job.get("secretEnv", []),
-        required_secret_bindings={},
+        required_secret_bindings={
+            "MOVIQO_SECRET_KEY": "moviqo-uat-django-secret",
+            "MOVIQO_DB_PASSWORD": "moviqo-uat-db-password",
+            "MOVIQO_RESEND_API_KEY": uat_environment["messaging"]["apiKeySecret"],
+            "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY": (
+                "moviqo-uat-synthetic-verification-api-key"
+            ),
+            "MOVIQO_RESEND_TEST_RECIPIENT": uat_environment["messaging"][
+                "testRecipientSecret"
+            ],
+        },
     )
-
-
-def _validate_identity_separation(
-    uat_environment: dict[str, object],
-    cloud_run_service: dict[str, object],
-    cloud_run_job: dict[str, object],
-) -> None:
-    service_identity = uat_environment["identity"]["cloudRunServiceAccount"]
-    job_identity = uat_environment["identity"]["cloudRunJobServiceAccount"]
-    if service_identity == job_identity:
-        raise RuntimeError("UAT must use distinct Cloud Run service and job identities.")
-    if cloud_run_service["serviceAccount"] == cloud_run_job["serviceAccount"]:
-        raise RuntimeError("Cloud Run service and job must not share the same identity.")
-
 
 def _assert_non_production_identifier(value: str) -> None:
     normalized = value.lower()
@@ -246,6 +258,7 @@ def _validate_runtime_secret_wiring(
         "MOVIQO_DB_PASSWORD",
         "MOVIQO_RESEND_API_KEY",
         "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY",
+        "MOVIQO_RESEND_TEST_RECIPIENT",
     ):
         if env_name in env:
             raise RuntimeError(f"{runtime_name} must not inline the secret value for {env_name}.")

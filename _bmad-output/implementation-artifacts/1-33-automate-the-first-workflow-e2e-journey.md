@@ -298,6 +298,7 @@ Codex
 - Confirmed by the user that `main` contains the latest changes and the GitHub Actions `deployed-journey` UAT gate passed on August 8, 2026.
 - Applied all 15 code-review patches with a short-lived tenant-scoped synthetic run, confirmed outbox delivery polling, capacity-releasing rotation, exact deployed-build validation, sanitized failure evidence, expanded accessibility coverage, CSRF rotation recovery, deterministic Firebase staging, and a production-capable Cloud Run server.
 - Verified the hardened change set with backend lint and tests (`226 passed`, `51 skipped`), migration drift checks, frontend unit/type/architecture checks, production Vite build and artifact scan, UAT infrastructure validation, Firebase staging (including replacement), the CI Playwright matrix (`30 passed`), and deployed-project test discovery. The live UAT gate still needs to run after deployment of this coordinated contract.
+- Diagnosed the remaining live gate failure as Resend rejecting the unverified `onboarding@resend.dev`/local sender path. Registered `mymoviqo.com`, verified `updates.mymoviqo.com` through Cloudflare DNS and Resend, and prepared the explicit sender contract `Moviqo <notifications@updates.mymoviqo.com>`. Real UAT recipients remain unchanged; only the reserved deployed-journey `.test` identity uses the controlled mailbox redirect.
 
 ### File List
 
@@ -366,3 +367,4 @@ Codex
 
 - 2026-08-08: Implemented Story 1.33, stabilized the deployed first-workflow UAT journey, completed all local regression gates, and confirmed the `main` deployed-journey job passes.
 - 2026-08-08: Applied all adversarial review patches and returned the story to in-progress pending deployment and a live run of the hardened gate.
+- 2026-08-08: Replaced the temporary Resend test sender contract with the verified `updates.mymoviqo.com` sender; live exact-build verification remains required before closing the story.

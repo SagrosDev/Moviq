@@ -2,7 +2,32 @@
   "jobName": "moviqo-uat-outbox-drain",
   "region": "us-east1",
   "serviceClass": "uat-internal",
-  "serviceAccount": "moviqo-uat-jobs@moviqo-uat-synthetic.iam.gserviceaccount.com",
+  "serviceAccount": "moviqo-uat-runner@moviqo-uat-synthetic.iam.gserviceaccount.com",
   "maxRetries": 0,
-  "maxConcurrentExecutions": 1
+  "maxConcurrentExecutions": 1,
+  "env": {
+    "MOVIQO_RESEND_FROM_EMAIL": "Moviqo <notifications@updates.mymoviqo.com>"
+  },
+  "secretEnv": [
+    {
+      "secret": "moviqo-uat-django-secret",
+      "env": "MOVIQO_SECRET_KEY"
+    },
+    {
+      "secret": "moviqo-uat-db-password",
+      "env": "MOVIQO_DB_PASSWORD"
+    },
+    {
+      "secret": "moviqo-uat-resend-api-key",
+      "env": "MOVIQO_RESEND_API_KEY"
+    },
+    {
+      "secret": "moviqo-uat-synthetic-verification-api-key",
+      "env": "MOVIQO_SYNTHETIC_VERIFICATION_API_KEY"
+    },
+    {
+      "secret": "moviqo-uat-resend-test-recipient",
+      "env": "MOVIQO_RESEND_TEST_RECIPIENT"
+    }
+  ]
 }

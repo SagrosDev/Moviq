@@ -19,7 +19,7 @@ class _AcceptedResponse:
         return False
 
 
-def test_synthetic_uat_delivery_uses_secret_backed_resend_account_address(
+def test_synthetic_uat_delivery_uses_verified_sender_and_secret_backed_recipient(
     monkeypatch,
     settings,
 ) -> None:
@@ -44,6 +44,9 @@ def test_synthetic_uat_delivery_uses_secret_backed_resend_account_address(
 
     settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
     settings.MOVIQO_RESEND_API_KEY = "re_test_only"
+    settings.MOVIQO_RESEND_FROM_EMAIL = (
+        "Moviqo <notifications@updates.mymoviqo.com>"
+    )
     settings.MOVIQO_RESEND_TEST_RECIPIENT = "uat-owner@example.com"
     monkeypatch.setattr(
         "moviqo.modules.messaging.application.urllib_request.urlopen",
@@ -54,7 +57,7 @@ def test_synthetic_uat_delivery_uses_secret_backed_resend_account_address(
 
     assert captured == {
         "payload": {
-            "from": "Moviqo <onboarding@resend.dev>",
+            "from": "Moviqo <notifications@updates.mymoviqo.com>",
             "to": ["uat-owner@example.com"],
             "subject": "Verify your email",
             "text": "Safe verification body",
@@ -88,6 +91,9 @@ def test_non_synthetic_delivery_keeps_the_original_resend_envelope(
 
     settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
     settings.MOVIQO_RESEND_API_KEY = "re_test_only"
+    settings.MOVIQO_RESEND_FROM_EMAIL = (
+        "Moviqo <notifications@updates.mymoviqo.com>"
+    )
     settings.MOVIQO_RESEND_TEST_RECIPIENT = "uat-owner@example.com"
     monkeypatch.setattr(
         "moviqo.modules.messaging.application.urllib_request.urlopen",
@@ -96,7 +102,13 @@ def test_non_synthetic_delivery_keeps_the_original_resend_envelope(
 
     _deliver_resend_outbox_message(message)
 
-    assert captured == {"payload": original_payload, "timeout": 10}
+    assert captured == {
+        "payload": {
+            **original_payload,
+            "from": "Moviqo <notifications@updates.mymoviqo.com>",
+        },
+        "timeout": 10,
+    }
 
 
 def test_non_uat_delivery_does_not_route_synthetic_address_to_resend_test_address(
@@ -123,6 +135,9 @@ def test_non_uat_delivery_does_not_route_synthetic_address_to_resend_test_addres
 
     settings.MOVIQO_ENVIRONMENT_CLASS = "production"
     settings.MOVIQO_RESEND_API_KEY = "re_test_only"
+    settings.MOVIQO_RESEND_FROM_EMAIL = (
+        "Moviqo <notifications@updates.mymoviqo.com>"
+    )
     settings.MOVIQO_RESEND_TEST_RECIPIENT = "uat-owner@example.com"
     monkeypatch.setattr(
         "moviqo.modules.messaging.application.urllib_request.urlopen",
@@ -131,7 +146,51 @@ def test_non_uat_delivery_does_not_route_synthetic_address_to_resend_test_addres
 
     _deliver_resend_outbox_message(message)
 
-    assert captured == {"payload": original_payload, "timeout": 10}
+    assert captured == {
+        "payload": {
+            **original_payload,
+            "from": "Moviqo <notifications@updates.mymoviqo.com>",
+        },
+        "timeout": 10,
+    }
+
+
+def test_synthetic_uat_delivery_rejects_mixed_recipient_batches(
+    monkeypatch,
+    settings,
+) -> None:
+    message = SimpleNamespace(
+        id=uuid.UUID("018f4f9a-8d7b-7c6a-9a8b-97531864abcd"),
+        message_type="email.notification.created",
+        payload={
+            "from": "Moviqo <noreply@moviqo.local>",
+            "to": ["owner.run-id@synthetic.moviqo.test", "customer@example.net"],
+            "subject": "Notification",
+            "text": "Safe notification body",
+        },
+    )
+    called = False
+
+    def reject_unexpected_request(request, timeout):
+        nonlocal called
+        called = True
+        return _AcceptedResponse()
+
+    settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
+    settings.MOVIQO_RESEND_API_KEY = "re_test_only"
+    settings.MOVIQO_RESEND_FROM_EMAIL = (
+        "Moviqo <notifications@updates.mymoviqo.com>"
+    )
+    settings.MOVIQO_RESEND_TEST_RECIPIENT = "uat-owner@example.com"
+    monkeypatch.setattr(
+        "moviqo.modules.messaging.application.urllib_request.urlopen",
+        reject_unexpected_request,
+    )
+
+    with pytest.raises(RuntimeError, match="^resend-recipient-mix-invalid$"):
+        _deliver_resend_outbox_message(message)
+
+    assert called is False
 
 
 @pytest.mark.parametrize(
@@ -159,7 +218,55 @@ def test_synthetic_uat_delivery_fails_closed_without_valid_test_recipient(
 
     settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
     settings.MOVIQO_RESEND_API_KEY = "re_test_only"
+    settings.MOVIQO_RESEND_FROM_EMAIL = (
+        "Moviqo <notifications@updates.mymoviqo.com>"
+    )
     settings.MOVIQO_RESEND_TEST_RECIPIENT = recipient
 
     with pytest.raises(RuntimeError, match=f"^{reason}$"):
         _deliver_resend_outbox_message(message)
+
+
+@pytest.mark.parametrize(
+    ("sender", "reason"),
+    (
+        ("", "resend-sender-missing"),
+        ("not-an-email", "resend-sender-invalid"),
+        ("notifications@updates.mymoviqo.com", "resend-sender-invalid"),
+    ),
+)
+def test_resend_delivery_fails_closed_without_valid_sender(
+    monkeypatch,
+    settings,
+    sender,
+    reason,
+) -> None:
+    message = SimpleNamespace(
+        id=uuid.UUID("018f4f9a-8d7b-7c6a-9a8b-24681357abcd"),
+        message_type="email.notification.created",
+        payload={
+            "from": "Moviqo <noreply@moviqo.local>",
+            "to": ["customer@example.net"],
+            "subject": "Notification",
+            "text": "Safe notification body",
+        },
+    )
+    called = False
+
+    def reject_unexpected_request(request, timeout):
+        nonlocal called
+        called = True
+        return _AcceptedResponse()
+
+    settings.MOVIQO_ENVIRONMENT_CLASS = "synthetic-only"
+    settings.MOVIQO_RESEND_API_KEY = "re_test_only"
+    settings.MOVIQO_RESEND_FROM_EMAIL = sender
+    monkeypatch.setattr(
+        "moviqo.modules.messaging.application.urllib_request.urlopen",
+        reject_unexpected_request,
+    )
+
+    with pytest.raises(RuntimeError, match=f"^{reason}$"):
+        _deliver_resend_outbox_message(message)
+
+    assert called is False

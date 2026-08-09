@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 from datetime import timedelta
+from email.utils import parseaddr
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 from uuid import uuid4
@@ -21,7 +22,6 @@ from moviqo.modules.messaging.models import OutboxMessage
 logger = logging.getLogger(__name__)
 
 SYNTHETIC_EMAIL_SUFFIX = "@synthetic.moviqo.test"
-RESEND_TEST_SENDER = "Moviqo <onboarding@resend.dev>"
 
 
 class LeaseOwnershipLost(RuntimeError):
@@ -341,21 +341,42 @@ def _resend_payload(message: OutboxMessage) -> dict:
 
 def _resend_delivery_payload(message: OutboxMessage) -> dict:
     payload = dict(_resend_payload(message))
+    payload["from"] = _resend_sender()
     recipients = payload.get("to")
-    if (
-        settings.MOVIQO_ENVIRONMENT_CLASS != "synthetic-only"
-        or not isinstance(recipients, list)
-        or len(recipients) != 1
-        or not isinstance(recipients[0], str)
-        or not recipients[0].lower().endswith(SYNTHETIC_EMAIL_SUFFIX)
+    if settings.MOVIQO_ENVIRONMENT_CLASS != "synthetic-only" or not isinstance(
+        recipients, list
     ):
         return payload
 
-    # Resend rejects fake recipient domains and its unverified sender can deliver only
-    # to the account email. Keep that address secret-backed and outside tenant data.
-    payload["from"] = RESEND_TEST_SENDER
+    synthetic_recipients = [
+        recipient
+        for recipient in recipients
+        if isinstance(recipient, str)
+        and recipient.lower().endswith(SYNTHETIC_EMAIL_SUFFIX)
+    ]
+    if not synthetic_recipients:
+        return payload
+    if len(recipients) != 1 or len(synthetic_recipients) != 1:
+        raise RuntimeError("resend-recipient-mix-invalid")
+
+    # The deployed journey owns a non-deliverable .test identity. Route only that
+    # reserved address to the secret-backed UAT mailbox after genuine Resend delivery.
     payload["to"] = [_resend_test_recipient()]
     return payload
+
+
+def _resend_sender() -> str:
+    sender = getattr(settings, "MOVIQO_RESEND_FROM_EMAIL", "").strip()
+    if not sender:
+        raise RuntimeError("resend-sender-missing")
+    display_name, address = parseaddr(sender)
+    try:
+        validate_email(address)
+    except ValidationError as exc:
+        raise RuntimeError("resend-sender-invalid") from exc
+    if not display_name or not sender.endswith(f"<{address}>"):
+        raise RuntimeError("resend-sender-invalid")
+    return sender
 
 
 def _resend_test_recipient() -> str:
@@ -380,6 +401,9 @@ def _delivery_failure_reason(exc: Exception) -> str:
         "resend-credentials-missing",
         "resend-delivery-rejected",
         "resend-delivery-failed",
+        "resend-sender-missing",
+        "resend-sender-invalid",
+        "resend-recipient-mix-invalid",
         "resend-test-recipient-missing",
         "resend-test-recipient-invalid",
     }:

@@ -15,6 +15,7 @@ MOVIQO_SYNTHETIC_VERIFICATION_API_KEY = _uat_contract["synthetic_verification_ap
 MOVIQO_DJANGO_SECRET_KEY_SECRET = _uat_contract["django_secret_key_secret"]
 MOVIQO_DB_PASSWORD_SECRET = _uat_contract["database_password_secret"]
 MOVIQO_RESEND_API_KEY_SECRET = _uat_contract["resend_api_key_secret"]
+MOVIQO_RESEND_FROM_EMAIL = _uat_contract["resend_from_email"]
 MOVIQO_GCS_PRIVATE_BUCKET = _uat_contract["gcs_private_bucket"]
 MOVIQO_GCS_QUARANTINE_BUCKET = _uat_contract["gcs_quarantine_bucket"]
 MOVIQO_GCS_CLEAN_BUCKET = _uat_contract["gcs_clean_bucket"]

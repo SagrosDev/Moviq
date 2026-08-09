@@ -15,7 +15,7 @@
   "identity": {
     "cloudProjectId": "moviqo-uat-synthetic",
     "cloudRunServiceAccount": "moviqo-uat-runner@moviqo-uat-synthetic.iam.gserviceaccount.com",
-    "cloudRunJobServiceAccount": "moviqo-uat-jobs@moviqo-uat-synthetic.iam.gserviceaccount.com"
+    "cloudRunJobServiceAccount": "moviqo-uat-runner@moviqo-uat-synthetic.iam.gserviceaccount.com"
   },
   "storage": {
     "privateBucket": "moviqo-uat-private",
@@ -33,7 +33,10 @@
   },
   "messaging": {
     "provider": "resend-outbox",
-    "apiKeySecret": "moviqo-uat-resend-api-key"
+    "apiKeySecret": "moviqo-uat-resend-api-key",
+    "testRecipientSecret": "moviqo-uat-resend-test-recipient",
+    "sendingDomain": "updates.mymoviqo.com",
+    "fromEmail": "Moviqo <notifications@updates.mymoviqo.com>"
   },
   "fileInspection": {
     "adapter": "synthetic",

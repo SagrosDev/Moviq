@@ -7,6 +7,7 @@ import {
   createSyntheticJourneyRun,
   createSyntheticIdentity,
   deployedJourneyTimeoutMs,
+  expectApiOk,
   openSyntheticVerificationLink,
   performApiAction,
   readRequiredEnvironment,
@@ -125,24 +126,26 @@ test("deployed first workflow journey covers registration through completed time
 
     recordJourneyEvent(journeyTrace, startedAt, "sign in", "started");
     await test.step("sign in with the verified owner", async () => {
-    await page.goto("/sign-in");
-    await page.getByLabel("Correo electronico").fill(identity.email);
-    await page.locator("#sign-in-password").fill(identity.password);
-      const signInResponse = await performApiAction(
-      page,
-      "POST",
-      "/api/v1/auth/sign-in/",
-      () => page.getByRole("button", { name: "Ingresar" }).click()
+      await page.goto("/sign-in");
+      await page.getByLabel("Correo electronico").fill(identity.email);
+      await page.locator("#sign-in-password").fill(identity.password);
+      await performApiAction(
+        page,
+        "POST",
+        "/api/v1/auth/sign-in/",
+        () => page.getByRole("button", { name: "Ingresar" }).click()
       );
-      const session = (await signInResponse.json()) as Partial<{
+      await journeyExpect(page).toHaveURL(/\/my-work$/);
+      await journeyExpect(page.getByRole("heading", { name: "Mi trabajo" })).toBeVisible();
+      const sessionResponse = await page.request.get("/api/v1/auth/session/");
+      await expectApiOk(sessionResponse);
+      const session = (await sessionResponse.json()) as Partial<{
         membership: { organizationId: string };
       }>;
       const organizationId = session.membership?.organizationId ?? "";
       expect(organizationId).toMatch(/^[0-9a-f-]{36}$/i);
       evidence.organizationRef = safeReference(organizationId);
-    await journeyExpect(page).toHaveURL(/\/my-work$/);
-    await journeyExpect(page.getByRole("heading", { name: "Mi trabajo" })).toBeVisible();
-    await assertNoAccessibilityViolations(page, axePath);
+      await assertNoAccessibilityViolations(page, axePath);
     });
     recordJourneyEvent(journeyTrace, startedAt, "sign in");
 

@@ -6,6 +6,7 @@ import {
   createSyntheticJourneyRun,
   createSyntheticIdentity,
   deployedJourneyTimeoutMs,
+  openSyntheticVerificationLink,
   performApiAction,
   readRequiredEnvironment,
   recordJourneyEvent,
@@ -102,25 +103,17 @@ test("deployed first workflow journey covers registration through completed time
         runToken,
         syntheticKey
       });
-      await page.goto("/verify-email");
-      await page.evaluate((token) => {
-        window.history.replaceState(
-          null,
-          "",
-          `/verify-email?token=${encodeURIComponent(token)}`
-        );
-      }, verificationToken);
       await performApiAction(
         page,
         "POST",
         "/api/v1/organizations/registrations/verify-email/",
-        () => page.getByRole("combobox", { name: /language|idioma/i }).selectOption("en")
+        () => openSyntheticVerificationLink(page, verificationToken)
       );
-    await journeyExpect(
-      page.getByRole("heading", { name: "Activa la organizacion al confirmar el correo." })
-    ).toBeVisible();
-    await journeyExpect(page.getByText(new RegExp(identity.email, "i"))).toBeVisible();
-    await assertNoAccessibilityViolations(page, axePath);
+      await journeyExpect(
+        page.getByRole("heading", { name: /correo verificado|email verified/i })
+      ).toBeVisible();
+      await journeyExpect(page.getByText(new RegExp(identity.email, "i"))).toBeVisible();
+      await assertNoAccessibilityViolations(page, axePath);
     });
     recordJourneyEvent(journeyTrace, startedAt, "verify delivered email");
 

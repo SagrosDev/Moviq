@@ -157,5 +157,10 @@ LOGGING = {
             "level": "ERROR",
             "propagate": False,
         },
+        "moviqo.synthetic_verification": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }

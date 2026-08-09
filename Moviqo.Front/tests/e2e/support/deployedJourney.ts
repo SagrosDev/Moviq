@@ -138,6 +138,36 @@ export const requestSyntheticVerificationToken = async (
   throw new Error("Verification email was not delivered within the synthetic journey window.");
 };
 
+export const openSyntheticVerificationLink = async (
+  page: Page,
+  verificationToken: string
+) => {
+  try {
+    let response: Response | null;
+    try {
+      response = await page.goto(
+        `/verify-email?token=${encodeURIComponent(verificationToken)}`
+      );
+    } catch {
+      throw new Error("Verification page navigation failed.");
+    }
+    if (!response) {
+      throw new Error("Verification page navigation returned no response.");
+    }
+    if (!response.ok()) {
+      throw new Error(
+        `Verification page navigation failed with status ${response.status()}.`
+      );
+    }
+  } finally {
+    if (!page.isClosed()) {
+      await page
+        .evaluate(() => window.history.replaceState(null, "", "/verify-email"))
+        .catch(() => undefined);
+    }
+  }
+};
+
 export const rotateSyntheticJourneyRun = async (
   request: APIRequestContext,
   options: { runToken: string; syntheticKey: string }

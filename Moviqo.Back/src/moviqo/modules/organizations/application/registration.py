@@ -8,6 +8,7 @@ import secrets
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from zoneinfo import available_timezones
 
 from django.conf import settings
@@ -31,6 +32,7 @@ from moviqo.modules.governance.application import (
     create_pending_command_result,
 )
 from moviqo.modules.messaging.application import (
+    OutboxRecipientLookupStatus,
     enqueue_outbox_message,
     read_latest_outbox_message_payload_for_recipient,
 )
@@ -61,6 +63,54 @@ SYNTHETIC_EMAIL_SUFFIX = "@synthetic.moviqo.test"
 VERIFICATION_LINK_PATTERN = re.compile(r"https://[^\s]+/verify-email\?token=[^\s]+")
 
 
+class SyntheticVerificationDiagnosticReason(StrEnum):
+    SCOPE_INVALID = "scope-invalid"
+    USER_MISSING = "user-missing"
+    MEMBERSHIP_MISSING = "membership-missing"
+    MESSAGE_NOT_ENQUEUED = "message-not-enqueued"
+    MESSAGE_PENDING_DELIVERY = "message-pending-delivery"
+    MESSAGE_PROCESSING = "message-processing"
+    MESSAGE_LEASE_EXPIRED = "message-lease-expired"
+    MESSAGE_RETRYING = "message-retrying"
+    MESSAGE_DEAD_LETTERED = "message-dead-lettered"
+    PAYLOAD_INVALID = "payload-invalid"
+    RECIPIENT_MISMATCH = "recipient-mismatch"
+    LOOKUP_TRUNCATED = "lookup-truncated"
+    VERIFICATION_LINK_MISSING = "verification-link-missing"
+    UNKNOWN = "unknown"
+
+
+OUTBOX_LOOKUP_DIAGNOSTIC_REASONS = {
+    OutboxRecipientLookupStatus.MESSAGE_NOT_ENQUEUED: (
+        SyntheticVerificationDiagnosticReason.MESSAGE_NOT_ENQUEUED
+    ),
+    OutboxRecipientLookupStatus.MESSAGE_PENDING_DELIVERY: (
+        SyntheticVerificationDiagnosticReason.MESSAGE_PENDING_DELIVERY
+    ),
+    OutboxRecipientLookupStatus.MESSAGE_PROCESSING: (
+        SyntheticVerificationDiagnosticReason.MESSAGE_PROCESSING
+    ),
+    OutboxRecipientLookupStatus.MESSAGE_LEASE_EXPIRED: (
+        SyntheticVerificationDiagnosticReason.MESSAGE_LEASE_EXPIRED
+    ),
+    OutboxRecipientLookupStatus.MESSAGE_RETRYING: (
+        SyntheticVerificationDiagnosticReason.MESSAGE_RETRYING
+    ),
+    OutboxRecipientLookupStatus.MESSAGE_DEAD_LETTERED: (
+        SyntheticVerificationDiagnosticReason.MESSAGE_DEAD_LETTERED
+    ),
+    OutboxRecipientLookupStatus.PAYLOAD_INVALID: (
+        SyntheticVerificationDiagnosticReason.PAYLOAD_INVALID
+    ),
+    OutboxRecipientLookupStatus.RECIPIENT_MISMATCH: (
+        SyntheticVerificationDiagnosticReason.RECIPIENT_MISMATCH
+    ),
+    OutboxRecipientLookupStatus.LOOKUP_TRUNCATED: (
+        SyntheticVerificationDiagnosticReason.LOOKUP_TRUNCATED
+    ),
+}
+
+
 @dataclass(frozen=True)
 class RegistrationValidationError(Exception):
     invalid_params: list[dict[str, str]]
@@ -84,6 +134,9 @@ class VerificationActivationError(Exception):
 class VerificationLinkLookupError(Exception):
     problem_code: str = "verification_link_unavailable"
     title: str = "Verification link unavailable"
+    diagnostic_reason: SyntheticVerificationDiagnosticReason = (
+        SyntheticVerificationDiagnosticReason.UNKNOWN
+    )
 
     def __post_init__(self) -> None:
         Exception.__init__(self, self.problem_code)
@@ -98,6 +151,9 @@ class SyntheticJourneyScope:
 @dataclass(frozen=True)
 class SyntheticJourneyScopeError(Exception):
     problem_code: str = "synthetic_journey_unavailable"
+    diagnostic_reason: SyntheticVerificationDiagnosticReason = (
+        SyntheticVerificationDiagnosticReason.SCOPE_INVALID
+    )
 
     def __post_init__(self) -> None:
         Exception.__init__(self, self.problem_code)
@@ -442,12 +498,13 @@ def read_latest_verification_link_for_run(*, run_token: str) -> dict[str, str]:
     scope = _read_synthetic_journey_scope(run_token)
     membership = _synthetic_scope_membership(scope)
     with tenant_background_atomic_context(organization_id=membership.organization_id):
-        payload = read_latest_outbox_message_payload_for_recipient(
+        lookup = read_latest_outbox_message_payload_for_recipient(
             organization_id=membership.organization_id,
             message_type="email.registration_verification",
             recipient_email=scope.email,
             created_at_or_after=scope.issued_at,
         )
+    payload = lookup.payload
     if payload is not None:
         text = str(payload.get("text", ""))
         match = VERIFICATION_LINK_PATTERN.search(text)
@@ -457,7 +514,15 @@ def read_latest_verification_link_for_run(*, run_token: str) -> dict[str, str]:
                 "verificationUrl": match.group(0),
             }
 
-    raise VerificationLinkLookupError()
+        raise VerificationLinkLookupError(
+            diagnostic_reason=SyntheticVerificationDiagnosticReason.VERIFICATION_LINK_MISSING
+        )
+
+    diagnostic_reason = OUTBOX_LOOKUP_DIAGNOSTIC_REASONS.get(
+        lookup.status,
+        SyntheticVerificationDiagnosticReason.UNKNOWN,
+    )
+    raise VerificationLinkLookupError(diagnostic_reason=diagnostic_reason)
 
 
 def rotate_synthetic_journey(*, run_token: str) -> dict[str, str]:
@@ -502,7 +567,9 @@ def _synthetic_scope_membership(scope: SyntheticJourneyScope) -> Membership:
         date_joined__gte=scope.issued_at,
     ).first()
     if user is None:
-        raise SyntheticJourneyScopeError()
+        raise SyntheticJourneyScopeError(
+            diagnostic_reason=SyntheticVerificationDiagnosticReason.USER_MISSING
+        )
     with tenant_bootstrap_context(user_id=user.id):
         membership = (
             Membership.objects.select_related("organization", "user")
@@ -517,7 +584,9 @@ def _synthetic_scope_membership(scope: SyntheticJourneyScope) -> Membership:
             .first()
         )
     if membership is None:
-        raise SyntheticJourneyScopeError()
+        raise SyntheticJourneyScopeError(
+            diagnostic_reason=SyntheticVerificationDiagnosticReason.MEMBERSHIP_MISSING
+        )
     return membership
 
 

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import timedelta
 from email.utils import parseaddr
+from enum import StrEnum
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 from uuid import uuid4
@@ -28,6 +30,25 @@ OUTBOX_RECIPIENT_LOOKUP_LIMIT = 100
 
 class LeaseOwnershipLost(RuntimeError):
     """Raised when a worker no longer owns a claimed outbox row."""
+
+
+class OutboxRecipientLookupStatus(StrEnum):
+    DELIVERED = "delivered"
+    MESSAGE_NOT_ENQUEUED = "message-not-enqueued"
+    MESSAGE_PENDING_DELIVERY = "message-pending-delivery"
+    MESSAGE_PROCESSING = "message-processing"
+    MESSAGE_LEASE_EXPIRED = "message-lease-expired"
+    MESSAGE_RETRYING = "message-retrying"
+    MESSAGE_DEAD_LETTERED = "message-dead-lettered"
+    PAYLOAD_INVALID = "payload-invalid"
+    RECIPIENT_MISMATCH = "recipient-mismatch"
+    LOOKUP_TRUNCATED = "lookup-truncated"
+
+
+@dataclass(frozen=True)
+class OutboxRecipientLookupResult:
+    payload: dict | None
+    status: OutboxRecipientLookupStatus
 
 
 def module_health() -> dict[str, object]:
@@ -69,22 +90,98 @@ def read_latest_outbox_message_payload_for_recipient(
     message_type: str,
     recipient_email: str,
     created_at_or_after,
-) -> dict | None:
-    candidate_payloads = (
+) -> OutboxRecipientLookupResult:
+    candidate_rows = list(
         OutboxMessage.objects.filter(
             organization_id=organization_id,
             message_type=message_type,
             created_at__gte=created_at_or_after,
-            delivered_at__isnull=False,
-            dead_lettered_at__isnull=True,
         )
-        .order_by("-created_at")
-        .values_list("payload", flat=True)[:OUTBOX_RECIPIENT_LOOKUP_LIMIT]
+        .order_by("-created_at", "-id")
+        .values(
+            "payload",
+            "delivered_at",
+            "dead_lettered_at",
+            "attempt_count",
+            "lease_owner",
+            "lease_expires_at",
+        )[: OUTBOX_RECIPIENT_LOOKUP_LIMIT + 1]
     )
-    for payload in candidate_payloads:
-        if isinstance(payload, dict) and payload.get("to") == [recipient_email]:
-            return dict(payload)
-    return None
+    if not candidate_rows:
+        return OutboxRecipientLookupResult(
+            payload=None,
+            status=OutboxRecipientLookupStatus.MESSAGE_NOT_ENQUEUED,
+        )
+
+    truncated = len(candidate_rows) > OUTBOX_RECIPIENT_LOOKUP_LIMIT
+    candidate_rows = candidate_rows[:OUTBOX_RECIPIENT_LOOKUP_LIMIT]
+    saw_valid_recipient = False
+    saw_invalid_payload = False
+    matching_rows = []
+    for candidate in candidate_rows:
+        payload = candidate["payload"]
+        if not isinstance(payload, dict):
+            saw_invalid_payload = True
+            continue
+        recipients = payload.get("to")
+        if (
+            not isinstance(recipients, list)
+            or len(recipients) != 1
+            or not isinstance(recipients[0], str)
+        ):
+            saw_invalid_payload = True
+            continue
+        saw_valid_recipient = True
+        if recipients != [recipient_email]:
+            continue
+        matching_rows.append(candidate)
+
+    for candidate in matching_rows:
+        if (
+            candidate["delivered_at"] is not None
+            and candidate["dead_lettered_at"] is None
+        ):
+            return OutboxRecipientLookupResult(
+                payload=dict(candidate["payload"]),
+                status=OutboxRecipientLookupStatus.DELIVERED,
+            )
+
+    if matching_rows:
+        candidate = matching_rows[0]
+        if candidate["dead_lettered_at"] is not None:
+            return OutboxRecipientLookupResult(
+                payload=None,
+                status=OutboxRecipientLookupStatus.MESSAGE_DEAD_LETTERED,
+            )
+        status = (
+            OutboxRecipientLookupStatus.MESSAGE_RETRYING
+            if candidate["attempt_count"] > 0
+            else _pending_outbox_lookup_status(candidate)
+        )
+        return OutboxRecipientLookupResult(payload=None, status=status)
+
+    if truncated:
+        status = OutboxRecipientLookupStatus.LOOKUP_TRUNCATED
+    elif saw_valid_recipient:
+        status = OutboxRecipientLookupStatus.RECIPIENT_MISMATCH
+    elif saw_invalid_payload:
+        status = OutboxRecipientLookupStatus.PAYLOAD_INVALID
+    else:
+        status = OutboxRecipientLookupStatus.MESSAGE_NOT_ENQUEUED
+    return OutboxRecipientLookupResult(
+        payload=None,
+        status=status,
+    )
+
+
+def _pending_outbox_lookup_status(candidate: dict) -> OutboxRecipientLookupStatus:
+    lease_owner = candidate["lease_owner"]
+    lease_expires_at = candidate["lease_expires_at"]
+    if not lease_owner or lease_expires_at is None:
+        return OutboxRecipientLookupStatus.MESSAGE_PENDING_DELIVERY
+    if lease_expires_at <= timezone.now():
+        return OutboxRecipientLookupStatus.MESSAGE_LEASE_EXPIRED
+    return OutboxRecipientLookupStatus.MESSAGE_PROCESSING
 
 
 def claim_outbox_messages(

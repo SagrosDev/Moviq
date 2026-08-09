@@ -30,6 +30,7 @@ from moviqo.modules.organizations.application.password_recovery import (
 from moviqo.modules.organizations.application.registration import (
     RegistrationValidationError,
     SyntheticJourneyScopeError,
+    SyntheticVerificationDiagnosticReason,
     VerificationActivationError,
     VerificationLinkLookupError,
     create_synthetic_journey_scope,
@@ -47,6 +48,7 @@ from moviqo.modules.organizations.application.tenant_access import resolve_tenan
 from moviqo.modules.organizations.models import Membership, RegistrationWorkflowState
 
 request_logger = logging.getLogger("django.request")
+synthetic_verification_logger = logging.getLogger("moviqo.synthetic_verification")
 
 
 class AuthenticatedRequestPermission(BasePermission):
@@ -515,6 +517,18 @@ class SyntheticVerificationLinkView(APIView):
                 run_token=serializer.validated_data["runToken"]
             )
         except (SyntheticJourneyScopeError, VerificationLinkLookupError) as exc:
+            diagnostic_reason = (
+                exc.diagnostic_reason
+                if isinstance(
+                    exc.diagnostic_reason,
+                    SyntheticVerificationDiagnosticReason,
+                )
+                else SyntheticVerificationDiagnosticReason.UNKNOWN
+            )
+            synthetic_verification_logger.info(
+                "Synthetic verification link lookup unavailable; reason=%s.",
+                diagnostic_reason.value,
+            )
             raise NotFound("synthetic-verification-link") from exc
 
         return Response(result, status=200)

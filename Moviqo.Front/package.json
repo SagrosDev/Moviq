@@ -15,13 +15,14 @@
     "validate:landing": "tsc -p tsconfig.test.json && node ./tests/build/prepare-test-build.mjs && node .test-build/tests/unit/landing-content.test.cjs",
     "typecheck": "npm run check:node && tsc --noEmit",
     "dev": "vite",
-    "test:unit": "tsc -p tsconfig.test.json && node ./tests/build/prepare-test-build.mjs && node .test-build/tests/unit/draft-state.test.cjs && node .test-build/tests/unit/non-authoritative-ui.test.cjs && node .test-build/tests/unit/api-client-contract.test.cjs && node .test-build/tests/unit/localization.test.cjs && node .test-build/tests/unit/landing-content.test.cjs && node .test-build/tests/unit/password-field.test.cjs && node .test-build/tests/unit/design-system.test.cjs && node .test-build/tests/unit/registration-model.test.cjs && node .test-build/tests/unit/verification-flow.test.cjs && node .test-build/tests/unit/my-work-shell.test.cjs && node .test-build/tests/unit/workflow-design-create.test.cjs && node .test-build/tests/unit/task-form.test.cjs",
+    "test:unit": "tsc -p tsconfig.test.json && node ./tests/build/prepare-test-build.mjs && node .test-build/tests/unit/draft-state.test.cjs && node .test-build/tests/unit/non-authoritative-ui.test.cjs && node .test-build/tests/unit/api-client-contract.test.cjs && node .test-build/tests/unit/localization.test.cjs && node .test-build/tests/unit/landing-content.test.cjs && node .test-build/tests/unit/password-field.test.cjs && node .test-build/tests/unit/design-system.test.cjs && node .test-build/tests/unit/registration-model.test.cjs && node .test-build/tests/unit/verification-flow.test.cjs && node .test-build/tests/unit/my-work-shell.test.cjs && node .test-build/tests/unit/workflow-design-create.test.cjs && node .test-build/tests/unit/task-form.test.cjs && node .test-build/tests/unit/stakeholder-preview.test.cjs",
     "test:architecture": "node tests/architecture/frontend-boundaries.test.mjs",
     "test": "npm run check:node && npm run test:architecture && npm run check:api-client && npm run test:unit",
     "build": "npm run check:node && npm run check:api-client && npm run validate:landing && tsc --noEmit && vite build && node ./tests/build/scan-static-artifact.mjs",
     "stage:firebase": "npm run build && uv run --project ../Moviqo.Back python ../Moviqo.Infrastructure/operations/stage_frontend.py",
     "test:e2e": "npm run check:node && playwright test",
-    "test:e2e:deployed-journey": "npm run check:node && playwright test --project=deployed-journey tests/e2e/first-workflow-journey.spec.ts"
+    "test:e2e:preview-qualification": "npm run check:node && playwright test --config=playwright.preview.config.ts",
+    "test:e2e:deployed-journey": "npm run check:node && playwright test --project=deployed-journey-* tests/e2e/first-workflow-journey.spec.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.5",

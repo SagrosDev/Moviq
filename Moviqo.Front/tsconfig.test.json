@@ -9,5 +9,10 @@
     "ignoreDeprecations": "6.0",
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "tests/unit/**/*.test.ts", "tests/unit/**/*.test.cts"]
+  "include": [
+    "src/**/*.ts",
+    "tests/e2e/support/stakeholderPreview.ts",
+    "tests/unit/**/*.test.ts",
+    "tests/unit/**/*.test.cts"
+  ]
 }

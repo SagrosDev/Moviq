@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   createApiClient,
+  isSessionExpiryProblem,
   normalizeApiProblem,
   type ApiProblemDetails
 } from "../../src/shared/api";
@@ -31,6 +32,12 @@ test("API client seam is created from generated OpenAPI paths", () => {
   const client = createApiClient({ baseUrl: "/api/v1" });
 
   assert.equal(typeof client.GET, "function");
+});
+
+test("API client keeps authorization denial distinct from session expiry", () => {
+  assert.equal(isSessionExpiryProblem(401, "api_error"), true);
+  assert.equal(isSessionExpiryProblem(403, "authentication_failed"), true);
+  assert.equal(isSessionExpiryProblem(403, "permission_denied"), false);
 });
 
 test("workflow creation contract requires a name body field and idempotency header", () => {

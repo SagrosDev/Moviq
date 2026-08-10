@@ -38,6 +38,14 @@ test("Moviqo-owned labels, navigation, statuses, validation, help, and catalog c
   assert.equal(translate("es", "catalog.task.title"), "Tarjeta de tarea");
   assert.equal(translate("en", "catalog.task.title"), "Task card");
   assert.equal(
+    translate("es", "myWork.permissionDenied"),
+    "No tienes permiso para ver este trabajo. Tu sesion sigue activa."
+  );
+  assert.equal(
+    translate("en", "myWork.permissionDenied"),
+    "You do not have permission to view this work. Your session remains active."
+  );
+  assert.equal(
     translate("es", "password.policy.helper"),
     "Usa entre 15 y 128 caracteres. Evita contrasenas comunes o expuestas."
   );

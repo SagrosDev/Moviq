@@ -53,7 +53,7 @@ export const WorkflowCreateForm = ({
     <h2 id="workflow-create-title">{t("workflowDesign.create.title")}</h2>
     <p>{t("workflowDesign.create.body")}</p>
     <form className="form-card" onSubmit={submit} noValidate>
-      {errorMessage ? <p role="alert">{errorMessage}</p> : null}
+      {errorMessage ? <p role="alert" data-error-code={formState.errorCode}>{errorMessage}</p> : null}
       <label htmlFor="workflow-create-name">{t("workflowDesign.create.name")}</label>
       <input
         id="workflow-create-name"

@@ -413,6 +413,30 @@ p {
   margin-top: var(--space-xl);
 }
 
+.workflow-authoring-notice {
+  display: none;
+}
+
+@media (max-width: 1279px), (max-height: 719px) {
+  .workflow-authoring-notice {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-guidance);
+    display: grid;
+    gap: var(--space-sm);
+    padding: var(--space-lg);
+  }
+
+  .workflow-authoring-notice h2,
+  .workflow-authoring-notice p {
+    margin: 0;
+  }
+
+  .workflow-authoring-surface {
+    display: none;
+  }
+}
+
 .workflow-guidance,
 .workflow-canvas {
   background: var(--surface-raised);

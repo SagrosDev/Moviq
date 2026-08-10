@@ -92,6 +92,7 @@ export type MessageKey =
   | "myWork.regionNav"
   | "myWork.loading"
   | "myWork.error"
+  | "myWork.permissionDenied"
   | "myWork.retry"
   | "myWork.sessionLoading"
   | "myWork.myTasks.title"
@@ -139,6 +140,10 @@ export type MessageKey =
   | "processDetail.contribution"
   | "processDetail.timelineTitle"
   | "processDetail.timelineEmpty"
+  | "processDetail.event.processStarted"
+  | "processDetail.event.taskProgressSaved"
+  | "processDetail.event.taskCompleted"
+  | "processDetail.event.processCompleted"
   | "workflowDesign.create.eyebrow"
   | "workflowDesign.create.title"
   | "workflowDesign.create.lede"
@@ -151,6 +156,8 @@ export type MessageKey =
   | "workflowDesign.create.error"
   | "workflowDesign.create.conflict"
   | "workflowDesign.create.cta"
+  | "workflowDesign.authoring.narrowTitle"
+  | "workflowDesign.authoring.narrowBody"
   | "workflowDesign.draft.title"
   | "workflowDesign.draft.revision"
   | "workflowDesign.draft.schemaVersion"
@@ -456,6 +463,7 @@ export const spanishMessages: MessageDictionary = {
   "myWork.regionNav": "Navegacion de regiones de Mi trabajo",
   "myWork.loading": "Cargando tu trabajo autorizado.",
   "myWork.error": "No pudimos cargar tu trabajo autorizado. Intenta de nuevo.",
+  "myWork.permissionDenied": "No tienes permiso para ver este trabajo. Tu sesion sigue activa.",
   "myWork.retry": "Reintentar",
   "myWork.sessionLoading": "Estamos validando tu sesion segura.",
   "myWork.myTasks.title": "Mis tareas",
@@ -503,6 +511,10 @@ export const spanishMessages: MessageDictionary = {
   "processDetail.contribution": "Tu aporte:",
   "processDetail.timelineTitle": "Linea de tiempo",
   "processDetail.timelineEmpty": "Aun no hay eventos autorizados para mostrar.",
+  "processDetail.event.processStarted": "Proceso iniciado",
+  "processDetail.event.taskProgressSaved": "Avance de tarea guardado",
+  "processDetail.event.taskCompleted": "Tarea completada",
+  "processDetail.event.processCompleted": "Proceso completado",
   "workflowDesign.create.eyebrow": "Diseno de flujos",
   "workflowDesign.create.title": "Crear flujo",
   "workflowDesign.create.lede":
@@ -520,6 +532,9 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.create.conflict":
     "Ese nombre ya esta en uso. Elige otro antes de continuar.",
   "workflowDesign.create.cta": "Crear flujo",
+  "workflowDesign.authoring.narrowTitle": "Autoria disponible en escritorio",
+  "workflowDesign.authoring.narrowBody":
+    "La vista movil permite orientacion ligera. La autoria completa de flujos y formularios requiere 1280 por 720 px o mas.",
   "workflowDesign.draft.title": "Borrador",
   "workflowDesign.draft.revision": "Revision",
   "workflowDesign.draft.schemaVersion": "Version de esquema",
@@ -529,17 +544,17 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.body":
     "Agrega cada paso con controles visibles, conecta el camino y guarda solo cuando el servidor acepte la revision.",
   "workflowDesign.editor.guidanceTitle": "Siguiente accion",
-  "workflowDesign.editor.guidanceStart": "Agrega Start para abrir el flujo.",
-  "workflowDesign.editor.guidanceTask": "Agrega Task para definir el trabajo minimo.",
-  "workflowDesign.editor.guidanceEnd": "Agrega End para cerrar el camino.",
-  "workflowDesign.editor.guidanceConnectStartTask": "Conecta Start con Task para iniciar el camino.",
-  "workflowDesign.editor.guidanceConnectTaskEnd": "Conecta Task con End para completar el camino.",
-  "workflowDesign.editor.guidanceSave": "Guarda el borrador para confirmar el camino Start -> Task -> End.",
-  "workflowDesign.editor.addStart": "Agregar Start",
-  "workflowDesign.editor.addTask": "Agregar Task",
-  "workflowDesign.editor.addEnd": "Agregar End",
-  "workflowDesign.editor.connectStartTask": "Conectar Start con Task",
-  "workflowDesign.editor.connectTaskEnd": "Conectar Task con End",
+  "workflowDesign.editor.guidanceStart": "Agrega Inicio para abrir el flujo.",
+  "workflowDesign.editor.guidanceTask": "Agrega Tarea para definir el trabajo minimo.",
+  "workflowDesign.editor.guidanceEnd": "Agrega Fin para cerrar el camino.",
+  "workflowDesign.editor.guidanceConnectStartTask": "Conecta Inicio con Tarea para iniciar el camino.",
+  "workflowDesign.editor.guidanceConnectTaskEnd": "Conecta Tarea con Fin para completar el camino.",
+  "workflowDesign.editor.guidanceSave": "Guarda el borrador para confirmar el camino Inicio -> Tarea -> Fin.",
+  "workflowDesign.editor.addStart": "Agregar Inicio",
+  "workflowDesign.editor.addTask": "Agregar Tarea",
+  "workflowDesign.editor.addEnd": "Agregar Fin",
+  "workflowDesign.editor.connectStartTask": "Conectar Inicio con Tarea",
+  "workflowDesign.editor.connectTaskEnd": "Conectar Tarea con Fin",
   "workflowDesign.editor.saving": "Guardando borrador",
   "workflowDesign.editor.unsaved": "Cambios sin guardar",
   "workflowDesign.editor.retrying": "Reintentando guardado",
@@ -590,17 +605,17 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.issue.assignmentMissing":
     "Necesitamos un detalle mas antes de publicar: define quien recibe la primera tarea.",
   "workflowDesign.editor.issue.startStepInvalid":
-    "Agrega exactamente un paso Start antes de publicar este flujo.",
+    "Agrega exactamente un paso Inicio antes de publicar este flujo.",
   "workflowDesign.editor.issue.firstTaskMissing":
     "Agrega la primera tarea antes de publicar este flujo.",
   "workflowDesign.editor.issue.endStepInvalid":
-    "Agrega exactamente un paso End antes de publicar este flujo.",
+    "Agrega exactamente un paso Fin antes de publicar este flujo.",
   "workflowDesign.editor.issue.startPathIncomplete":
-    "Conecta Start con la primera tarea antes de publicar este flujo.",
+    "Conecta Inicio con la primera tarea antes de publicar este flujo.",
   "workflowDesign.editor.issue.pathDisconnected":
-    "Conecta este paso dentro del camino de Start a End antes de publicar.",
+    "Conecta este paso dentro del camino de Inicio a Fin antes de publicar.",
   "workflowDesign.editor.issue.pathToEndMissing":
-    "Conecta este paso para que el flujo llegue a End antes de publicar.",
+    "Conecta este paso para que el flujo llegue a Fin antes de publicar.",
   "workflowDesign.editor.issue.firstTaskFormMissing":
     "Agrega un campo visible al formulario de la primera tarea antes de publicar.",
   "workflowDesign.editor.issue.firstTaskBindingMissingField":
@@ -626,17 +641,17 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.savedEmpty": "Aun no hay un camino guardado.",
   "workflowDesign.editor.fieldTitle": "Primer campo reutilizable",
   "workflowDesign.editor.fieldBody":
-    "Define un campo Short text y agregalo a la primera Task sin duplicar su identidad.",
-  "workflowDesign.editor.fieldLabel": "Label",
-  "workflowDesign.editor.fieldHelpText": "Help text",
-  "workflowDesign.editor.fieldPlaceholder": "Placeholder",
-  "workflowDesign.editor.fieldDefaultValue": "Default value",
-  "workflowDesign.editor.fieldMinimumLength": "Minimum length",
-  "workflowDesign.editor.fieldMaximumLength": "Maximum length",
-  "workflowDesign.editor.addShortText": "Crear Short text",
-  "workflowDesign.editor.updateShortText": "Actualizar Short text",
-  "workflowDesign.editor.addToFirstTask": "Add to first task",
-  "workflowDesign.editor.removeFromFirstTask": "Quitar de la primera Task",
+    "Define un campo de texto corto y agregalo a la primera Tarea sin duplicar su identidad.",
+  "workflowDesign.editor.fieldLabel": "Etiqueta",
+  "workflowDesign.editor.fieldHelpText": "Texto de ayuda",
+  "workflowDesign.editor.fieldPlaceholder": "Texto de ejemplo",
+  "workflowDesign.editor.fieldDefaultValue": "Valor predeterminado",
+  "workflowDesign.editor.fieldMinimumLength": "Longitud minima",
+  "workflowDesign.editor.fieldMaximumLength": "Longitud maxima",
+  "workflowDesign.editor.addShortText": "Crear texto corto",
+  "workflowDesign.editor.updateShortText": "Actualizar texto corto",
+  "workflowDesign.editor.addToFirstTask": "Agregar a la primera tarea",
+  "workflowDesign.editor.removeFromFirstTask": "Quitar de la primera tarea",
   "workflowDesign.editor.fieldSummaryPrefix": "Campo listo:",
   "workflowDesign.editor.fieldEmpty": "Todavia no has creado un campo reutilizable.",
   "taskForm.eyebrow": "Tarea activa",
@@ -845,6 +860,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.regionNav": "My work region navigation",
   "myWork.loading": "Loading your authorized work.",
   "myWork.error": "We could not load your authorized work. Try again.",
+  "myWork.permissionDenied": "You do not have permission to view this work. Your session remains active.",
   "myWork.retry": "Retry",
   "myWork.sessionLoading": "We are validating your secure session.",
   "myWork.myTasks.title": "My tasks",
@@ -892,6 +908,10 @@ export const englishMessages: Partial<MessageDictionary> = {
   "processDetail.contribution": "Your contribution:",
   "processDetail.timelineTitle": "Timeline",
   "processDetail.timelineEmpty": "There are no authorized events to show yet.",
+  "processDetail.event.processStarted": "Process started",
+  "processDetail.event.taskProgressSaved": "Task progress saved",
+  "processDetail.event.taskCompleted": "Task completed",
+  "processDetail.event.processCompleted": "Process completed",
   "workflowDesign.create.eyebrow": "Workflow design",
   "workflowDesign.create.title": "Create workflow",
   "workflowDesign.create.lede":
@@ -909,6 +929,9 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.create.conflict":
     "That name is already in use. Choose a different one before continuing.",
   "workflowDesign.create.cta": "Create workflow",
+  "workflowDesign.authoring.narrowTitle": "Authoring is available on desktop",
+  "workflowDesign.authoring.narrowBody":
+    "The mobile view provides light orientation. Full Workflow and Form authoring requires 1280 by 720 px or larger.",
   "workflowDesign.draft.title": "Draft",
   "workflowDesign.draft.revision": "Revision",
   "workflowDesign.draft.schemaVersion": "Schema version",

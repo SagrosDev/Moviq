@@ -2,23 +2,27 @@
 baseline_commit: 4d1f25d6d8c541c8ac4e2db90615ea1b2ea0df97
 ---
 
-# Story 1.27: Autosave and Resolve Shared-Draft Conflicts
+# Story 1.27: Save Explicitly and Resolve Shared-Draft Conflicts
 
 Status: done
+
+> **Superseded persistence behavior (2026-08-10):** The approved editor correction removes autosave and automatic retry. The optimistic revision, idempotency, conflict preservation, and concurrency safeguards delivered here remain valid. Story 1.36 replaces the frontend scheduler with explicit **Save draft**/`Ctrl/Cmd+S`, separates incomplete-draft persistence from publication readiness, and adds dirty-navigation protection.
 
 ## Story
 
 As a Designer,
-I want my valid edits autosaved against the latest shared revision,
-so that navigation and concurrent editing do not silently overwrite work.
+I want to decide when my Workflow/Form draft is saved against the latest shared revision,
+so that incomplete work is preserved on demand without background errors or silent concurrent overwrites.
 
 ## Acceptance Criteria
 
-1. **Autosave valid draft edits once per accepted revision:** Given an unsaved valid local edit and the current server revision, when autosave succeeds, then the server commits the semantic draft change, increments the revision once, and returns the authoritative revision and saving state. And navigation after confirmation does not lose the edit. Traceability: FR222, FR223, UX-DR17.
+1. **Save an incomplete coherent draft once per explicit command:** Given unsaved local authoring changes and the current server revision, when the Designer chooses **Save draft** or `Ctrl/Cmd+S`, then one immutable snapshot is submitted; the server accepts incomplete but structurally coherent work, increments the revision once, and returns the authoritative saved revision. No timer, change event, drag, blur, or navigation sends a background save. Traceability: FR222, FR223, FR227, FR235, UX-DR17.
 2. **Reject stale writes without partial overwrite:** Given the server revision advanced because another user saved first, when the stale client submits its edit with `If-Match` or the current equivalent generated revision contract, then the whole save is rejected with a stable conflict code, no portion overwrites the shared draft, and the UI offers reload/reapply guidance. And a real-PostgreSQL concurrency test proves lost updates cannot occur. Traceability: FR226, FR227, FR235, AD-5.
-3. **Retry safely across slow or recoverable offline paths:** Given a recoverable offline or slow connection, when autosave times out and later retries, then the UI keeps the local valid work, exposes unsaved/retrying state, reuses the logical idempotency key, and reports saved only after server confirmation. And the retry creates at most one committed revision. Traceability: FR240, NFR25, UX-DR15, UX-DR17.
+3. **Retry only on explicit demand:** Given a recoverable offline or slow connection, when an explicit save has an unknown or failed outcome, then the UI keeps the local work, exposes unsaved/save-failed state, and offers an explicit retry using the same immutable payload and logical idempotency key. Changed content uses a new key, no automatic retry runs, and the UI reports saved only after server confirmation. Traceability: FR240, NFR25, UX-DR15, UX-DR17.
 
-## Tasks / Subtasks
+## Historical Tasks / Subtasks (Superseded Autosave Implementation Record)
+
+> The checklists and review findings below document what Story 1.27 originally implemented. They are retained for auditability, not as current implementation instructions. Use the acceptance criteria above and Story 1.36 for the approved explicit-save behavior.
 
 - [ ] Add backend support for autosave-safe draft writes without changing shared-draft invariants (AC: 1-3)
   - [ ] Keep `workflow_design` save behavior on the existing single mutable draft row and `select_for_update()` path in `Moviqo.Back/src/moviqo/modules/workflow_design/application/services.py`; autosave must build on the current optimistic revision contract rather than bypass it.
@@ -66,7 +70,9 @@ so that navigation and concurrent editing do not silently overwrite work.
 - [x] [Review][Patch] Story 1.27 still lacks the required real-PostgreSQL lost-update proof: the new integration test is sequential idempotency replay coverage, not concurrent stale-write coverage. [Moviqo.Back/tests/integration/test_workflow_design_integration.py:235]
 - [x] [Review][Patch] Frontend coverage still stops at reducer transitions and does not exercise the autosave effect timing, retry loop, or the post-reload save path through the mounted editor, so the highest-risk behavior remains unverified. [Moviqo.Front/tests/unit/workflow-design-create.test.cts:302]
 
-## Dev Notes
+## Historical Dev Notes (Superseded Autosave Implementation Record)
+
+> References to autosave, debouncing, scheduled retries, and background synchronization below describe the prior delivered implementation. They must not be carried into the corrected editor.
 
 ### Story intent and scope
 

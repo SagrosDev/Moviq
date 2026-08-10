@@ -386,7 +386,7 @@ Moviqo uses one localized visual rule engine for conditional Form behavior, Calc
 
 ### 5.3 Graph validation and publication
 
-- **FR-222 — Validation timing:** Moviqo validates a Workflow graph when the draft is saved and again when publication is requested.
+- **FR-222 — Validation timing:** **Save draft** checks authorization, revision, schema integrity, stable identities, and references but does not require publication completeness. Moviqo evaluates publication readiness when the Designer explicitly chooses **Validate** and rechecks the same saved revision when publication is requested.
 - **FR-223 — Reachability and termination:** Every active element must be reachable from Start and must have a possible graph path to End. Disconnected elements and dead ends are publication errors.
 - **FR-224 — Reference validation:** Publication validates active element connections, conditions, default paths, Forms, Process Fields, calculations, Form Validation Rules, Task assignments, Authorized Starters, and other dependencies.
 - **FR-225 — Automatic-cycle validation:** Publication detects and blocks condition-only cycles and any automatic route that cannot terminate at a Task or End.
@@ -402,7 +402,7 @@ Moviqo uses one localized visual rule engine for conditional Form behavior, Calc
 - **FR-232 — Draft status visibility:** Workflow listings show the latest published version and whether a shared draft exists, including validation-error status and last-editor information.
 - **FR-233 — Exclusive edit lease:** Only one authorized Designer can actively edit a Workflow draft at a time. The active editor holds an edit lease scoped to that draft.
 - **FR-234 — Concurrent read-only access:** Other authorized Designers can inspect the draft in read-only mode and can see who currently holds the edit lease.
-- **FR-235 — Draft autosave:** Moviqo automatically saves valid configuration edits to the shared draft and displays save state so an editor knows whether changes are persisted.
+- **FR-235 — Explicit draft save:** Moviqo saves Workflow and Form Designer changes only when the authorized Designer chooses **Save draft** or completes the validated publication action. The interface persistently distinguishes unsaved, saving, saved, failed, and conflicted states; it never reports saved before the server accepts the matching revision.
 - **FR-236 — Stale lease recovery:** An edit lease automatically expires after ten minutes without editor activity or renewal, allowing another authorized Designer to continue.
 - **FR-237 — Administrative takeover:** An Owner or Administrator can force takeover of an active edit lease after confirmation. A Designer can take over an expired lease.
 - **FR-238 — Stale-write protection:** Moviqo must reject an outdated save that would overwrite a newer draft revision and require the editor to reload the current draft.

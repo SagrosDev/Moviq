@@ -4,7 +4,7 @@ baseline_commit: b31a153
 
 # Story 1.33: Automate the First-Workflow E2E Journey
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -70,7 +70,7 @@ so that every build proves the thin slice remains executable end to end.
 - [x] [Review][Patch] [Medium] Derive the CSRF bootstrap endpoint from relative deployment base paths as well as absolute origins [Moviqo.Front/src/shared/api/client.ts:98]
 - [x] [Review][Patch] [Medium] Refresh cached CSRF state after session token rotation instead of indefinitely preferring a stale module token [Moviqo.Front/src/shared/api/csrf.ts:14]
 - [x] [Review][Patch] [Medium] Stop applying production-name substring validation to the secret value of the synthetic verification API key [Moviqo.Back/src/moviqo/settings/uat_contract.py:67]
-- [ ] [Review][Verify] Deploy the coordinated migration, backend, frontend, and UAT configuration changes, then confirm the hardened `deployed-journey` job passes against that exact build.
+- [x] [Review][Verify] Confirm the hardened `deployed-journey` passes against UAT, with backend health reporting the expected build.
 
 ## Dev Notes
 
@@ -299,6 +299,7 @@ Codex
 - Applied all 15 code-review patches with a short-lived tenant-scoped synthetic run, confirmed outbox delivery polling, capacity-releasing rotation, exact deployed-build validation, sanitized failure evidence, expanded accessibility coverage, CSRF rotation recovery, deterministic Firebase staging, and a production-capable Cloud Run server.
 - Verified the hardened change set with backend lint and tests (`226 passed`, `51 skipped`), migration drift checks, frontend unit/type/architecture checks, production Vite build and artifact scan, UAT infrastructure validation, Firebase staging (including replacement), the CI Playwright matrix (`30 passed`), and deployed-project test discovery. The live UAT gate still needs to run after deployment of this coordinated contract.
 - Diagnosed the remaining live gate failure as Resend rejecting the unverified `onboarding@resend.dev`/local sender path. Registered `mymoviqo.com`, verified `updates.mymoviqo.com` through Cloudflare DNS and Resend, and prepared the explicit sender contract `Moviqo <notifications@updates.mymoviqo.com>`. Real UAT recipients remain unchanged; only the reserved deployed-journey `.test` identity uses the controlled mailbox redirect.
+- User-confirmed the hardened GitHub Actions `deployed-journey` passed on August 9, 2026 with UAT backend health reporting build `f60600641e23d0ed22b61457735e52a0272bc9f2`. The run covered registration, UAT outbox processing and Resend API acceptance, synthetic-contract verification, sign-in, workflow publication, process start, task completion, and the completed timeline.
 
 ### File List
 
@@ -368,3 +369,4 @@ Codex
 - 2026-08-08: Implemented Story 1.33, stabilized the deployed first-workflow UAT journey, completed all local regression gates, and confirmed the `main` deployed-journey job passes.
 - 2026-08-08: Applied all adversarial review patches and returned the story to in-progress pending deployment and a live run of the hardened gate.
 - 2026-08-08: Replaced the temporary Resend test sender contract with the verified `updates.mymoviqo.com` sender; live exact-build verification remains required before closing the story.
+- 2026-08-09: Closed Story 1.33 after the hardened deployed journey passed with UAT backend health reporting build `f60600641e23d0ed22b61457735e52a0272bc9f2`.

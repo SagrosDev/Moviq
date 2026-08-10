@@ -106,8 +106,8 @@ Moving between gates changes configuration and operational adapters, not domain 
 ### AD-9 — Feature-sliced SPA with backend-authoritative state `[ADOPTED]`
 
 - **Binds:** Moviqo.Front
-- **Prevents:** page-to-page coupling, duplicated server state, business rules hidden in components, or silent stale workflow edits
-- **Rule:** Dependencies flow `app → pages → features → entities → shared`; lower layers never import higher layers, and features expose public entry points. Remote state is keyed and invalidated through one query layer. Workflow canvas and form drafts use explicit local reducers with server revision tokens. Components may provide immediate UX validation but cannot redefine authorization, routing, calculation, or completion semantics.
+- **Prevents:** page-to-page coupling, manual pathname branching, duplicated server state, business rules hidden in components, silent stale workflow edits, global editor Context, inconsistent page-level controls, or token-breaking visual drift
+- **Rule:** Dependencies flow `app → pages → features → entities → shared`; lower layers never import higher layers, sibling features do not deep-import one another, and features expose public entry points. React Router owns canonical public/authenticated layouts, nested routes, route parameters, navigation, and deep-link restoration. TanStack Query is the single server-state layer for keyed catalogs and read models; unsaved Workflow/Form documents, canvas selection, revision conflicts, and explicit Save Draft orchestration remain in focused feature reducers with server revision tokens. Context is reserved for stable cross-application services such as session, language, query client, and theme. Tailwind CSS theme variables expose approved design tokens, while source-owned domain-free primitives under `shared/ui` contain native accessible controls and consistent composition. The Workflow Editor in `features/workflow-design` uses pinned `@xyflow/react` as a canvas adapter only: React Flow may own nodes/edges presentation, selection, positions, pan, zoom, and connection gestures, but the Moviqo Workflow document/reducer remains the single source of truth for semantics, unsaved state, explicit save, revisions, conflicts, assignment, validation, and publication. The existing draft endpoint communicates draft-save intent and accepts incomplete but structurally coherent authoring documents; do not add a duplicate save endpoint or a client-controlled flag that weakens validation. Publication-validation and publish commands load the authoritative saved revision, with publication completeness enforced by explicit server-side validation. Generic Form Grid and field controls remain in `shared/ui`; the typed field registry and runtime `TaskFormRenderer` live in `features/task-form`; the route-level Form Designer lives in `features/form-design`. Both authoring features consume public entity/document contracts without importing each other. A pinned stable dnd-kit package set may own Form Designer pointer/keyboard gesture state only; it never owns the Form document. Designer preview and runtime rendering use the same field renderers. No general form-state or form-builder library may duplicate backend or reducer authority without a later architecture decision. Components may provide immediate UX validation but cannot redefine authorization, routing, calculation, or completion semantics.
 
 ### AD-10 — PostgreSQL-backed asynchronous work `[ADOPTED]`
 
@@ -184,6 +184,8 @@ Moving between gates changes configuration and operational adapters, not domain 
 | TypeScript | 6.0.x |
 | React | 19.2.7 |
 | Vite | 8.2.x |
+| Tailwind CSS | 4.3.3 |
+| `@tailwindcss/vite` | 4.3.3 |
 | React Flow (`@xyflow/react`) | 12.11.2 |
 | ClamAV | 1.5.3 |
 | pytest | 9.1.1 |
@@ -288,7 +290,7 @@ erDiagram
 
 - **Real-data safeguards:** live malware inspection, Backblaze B2 or equivalent independent backups, restore testing, and Organization/data lifecycle schedules are deferred from internal synthetic E2E but block any environment from accepting real customer data.
 - **Free-tier capacity:** Firebase Hosting's 10 GB monthly transfer, Google Cloud Storage's eligible 5 GB allowance, Supabase's 500 MB database, Cloud Run compute quotas, and Resend's 3,000 emails/month are operating ceilings, not approved product limits. Monitor at 60/80/90%, cap instance scaling, preserve paid migration paths, and upgrade before an active Organization is impaired.
-- **Exact frontend form, query, router, localization, and test libraries:** select and lock during scaffolding after compatibility spikes; they do not alter the dependency or authority rules above.
+- **Frontend routing, query, and Designer interaction libraries:** React Router declarative SPA routing, TanStack Query server-state ownership, React Flow as the Workflow canvas adapter, and dnd-kit as the Form Designer gesture adapter are adopted. Select and pin React-19/TypeScript-6-compatible package versions in their implementing stories after focused compatibility checks. The source-owned typed field registry/Form Renderer remains authoritative; a second general form-state or form-builder library is intentionally not selected.
 - **Provider-specific infrastructure modules:** decompose the adopted Firebase Hosting + Google Cloud Run/GCS + Supabase + Resend topology into reusable IaC modules during scaffolding; topology and environment isolation are already binding.
 - **Redis, message broker, microservices, read replicas, and search engine:** revisit only when measured beta load or reliability needs exceed PostgreSQL-backed operation.
 - **Multi-region availability and formal SLA:** revisit after beta demand and budget justify it.

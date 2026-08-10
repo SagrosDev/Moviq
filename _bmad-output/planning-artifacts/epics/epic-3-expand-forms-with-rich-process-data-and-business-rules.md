@@ -2,7 +2,7 @@
 
 Designers can expand the minimal Epic 1 Form builder with complete Process Field types, reusable data, tables, calculations, conditional behavior, validation, advanced layouts, and informational presentation.
 
-**Primary FR coverage:** FR49, FR50, FR51, FR52, FR53, FR54, FR55, FR56, FR57, FR58, FR59, FR60, FR61, FR62, FR63, FR64, FR65, FR66, FR67, FR68, FR69, FR70, FR71, FR72, FR73, FR74, FR75, FR76, FR77, FR78, FR79, FR80, FR81, FR82, FR83, FR84, FR85, FR86, FR87, FR88, FR89, FR90, FR91, FR92, FR93, FR94, FR95, FR96, FR97, FR98, FR99, FR100, FR101, FR102, FR103, FR104, FR105, FR106, FR107, FR109, FR110, FR111, FR113, FR126, FR127, FR128, FR129, FR130, FR131, FR132, FR133, FR134, FR135, FR136, FR137, FR138, FR139, FR140, FR141, FR142, FR143, FR144, FR145, FR146, FR147, FR148, FR149, FR150, FR151, FR152, FR153, FR154, FR155, FR156, FR157, FR158, FR159, FR160, FR161, FR162, FR163, FR164, FR165, FR166, FR167, FR169, FR170, FR171, FR172, FR174, FR175, FR177, FR178, FR179, FR186, FR187, FR188, FR189, FR190, FR191, FR192, FR193, FR194, FR195, FR196, FR197, FR198, FR199, FR200, FR201, FR202, FR203, FR619, FR620, FR621, FR622, FR623, FR628, FR629, FR631.
+**Primary FR coverage:** FR49, FR50, FR51, FR52, FR53, FR54, FR55, FR56, FR57, FR58, FR59, FR60, FR61, FR62, FR63, FR64, FR65, FR66, FR67, FR68, FR69, FR70, FR71, FR72, FR73, FR74, FR75, FR76, FR77, FR78, FR79, FR80, FR81, FR82, FR83, FR84, FR85, FR86, FR87, FR88, FR89, FR90, FR91, FR92, FR93, FR94, FR95, FR96, FR97, FR98, FR99, FR100, FR101, FR102, FR103, FR104, FR105, FR106, FR107, FR109, FR110, FR111, FR113, FR126, FR127, FR128, FR129, FR130, FR131, FR132, FR133, FR134, FR135, FR136, FR137, FR138, FR139, FR140, FR141, FR142, FR143, FR144, FR145, FR146, FR147, FR148, FR149, FR150, FR151, FR152, FR153, FR154, FR155, FR156, FR157, FR158, FR159, FR160, FR161, FR162, FR163, FR164, FR165, FR166, FR167, FR169, FR170, FR171, FR172, FR174, FR175, FR177, FR178, FR179, FR186, FR187, FR188, FR189, FR190, FR191, FR192, FR193, FR195, FR196, FR197, FR198, FR199, FR200, FR201, FR202, FR203, FR619, FR620, FR621, FR622, FR623, FR628, FR629, FR631.
 
 ## Story 3.1: Configure Text Fields and Friendly Validation
 
@@ -256,18 +256,18 @@ So that related values can be checked before save or completion.
 **Then** the backend interpreter returns field/form-level authorized feedback and rejects the entire invalid write, while a passing attempt commits normally
 **And** hidden/restricted values are neither repeated nor exposed in the message. Traceability: FR191, FR192, FR193, AD-6, AD-7.
 
-## Story 3.15: Compose Forms with Layout Components
+## Story 3.15: Expand Layout Components with Grouping and Conditional Behavior
 
 As a Designer,
-I want headings, instructions, separators, and grouped layout,
-So that complex Forms remain understandable without collecting fake data.
+I want to extend the Epic 1 layout components with grouping and conditional behavior,
+So that complex Forms remain understandable and responsive without collecting fake data.
 
 **Acceptance Criteria:**
 
-**Given** supported non-input layout components
-**When** the Designer adds, orders, labels, groups, or conditionally displays them
+**Given** the Section, Heading, Instruction Text, and Divider components delivered in Epic 1
+**When** the Designer groups, labels, styles within the controlled system, or conditionally displays them
 **Then** they store stable layout IDs, collect no Process Data, preserve semantic heading/reading order, and reflow with neighboring controls
-**And** decorative content cannot inject HTML/script. Traceability: FR194, FR195, FR196, FR197, FR198, FR199, FR200.
+**And** decorative content cannot inject HTML/script. Traceability: FR195, FR196, FR197, FR198, FR199, FR200.
 
 **Given** conditional layout components become hidden or visible
 **When** the Form recomputes layout

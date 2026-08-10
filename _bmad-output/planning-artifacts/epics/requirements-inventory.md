@@ -24,7 +24,7 @@
 5. **Task completion and Workflow routing — FR204–FR273**
    - Save Draft, Complete Task, validation, and routing — FR204–FR211
    - Graph elements, transitions, routes, and cycles — FR212–FR221; validation and publication — FR222–FR228
-   - Shared drafts, autosave, leases, and stale-write protection — FR229–FR240
+   - Shared drafts, explicit save, leases, and stale-write protection — FR229–FR240
    - Inactive Tasks — FR241–FR248; versions, active Processes, loops, and restoration — FR249–FR255
    - Instance States — FR256–FR261; occurrence audit — FR262–FR265; draft synchronization — FR266–FR273
 6. **Process runtime, operations, and navigation — FR274–FR318**
@@ -293,7 +293,7 @@ FR218: Conditional Routing evaluation — Non-default paths use typed logical co
 FR219: Routing does not mutate data — Conditional Routing selects one outgoing path and does not create, edit, or delete Process Data.
 FR220: Chained Routing elements — Conditional Routing elements can chain to split complex logic into understandable visual decisions. Every evaluated condition and selected path must be audited.
 FR221: Cycle rules — Cycles containing at least one Task are permitted when a possible exit path to End exists. A cycle composed only of automatically evaluated Conditional Routing elements is prohibited, and every automatic chain must terminate at a Task or End.
-FR222: Validation timing — Moviqo validates a Workflow graph when the draft is saved and again when publication is requested.
+FR222: Validation timing — Save draft checks authorization, revision, schema integrity, stable identities, and references but does not require publication completeness. Moviqo evaluates publication readiness when the Designer explicitly chooses Validate and rechecks the same saved revision when publication is requested.
 FR223: Reachability and termination — Every active element must be reachable from Start and must have a possible graph path to End. Disconnected elements and dead ends are publication errors.
 FR224: Reference validation — Publication validates active element connections, conditions, default paths, Forms, Process Fields, calculations, Form Validation Rules, Task assignments, Authorized Starters, and other dependencies.
 FR225: Automatic-cycle validation — Publication detects and blocks condition-only cycles and any automatic route that cannot terminate at a Task or End.
@@ -306,7 +306,7 @@ FR231: Explicit version access — The Designer experience distinguishes Edit Dr
 FR232: Draft status visibility — Workflow listings show the latest published version and whether a shared draft exists, including validation-error status and last-editor information.
 FR233: Exclusive edit lease — Only one authorized Designer can actively edit a Workflow draft at a time. The active editor holds an edit lease scoped to that draft.
 FR234: Concurrent read-only access — Other authorized Designers can inspect the draft in read-only mode and can see who currently holds the edit lease.
-FR235: Draft autosave — Moviqo automatically saves valid configuration edits to the shared draft and displays save state so an editor knows whether changes are persisted.
+FR235: Explicit draft save — Moviqo saves Workflow and Form Designer changes only when the authorized Designer chooses Save draft or completes the validated publication action. The interface persistently distinguishes unsaved, saving, saved, failed, and conflicted states and never reports saved before the server accepts the matching revision.
 FR236: Stale lease recovery — An edit lease automatically expires after ten minutes without editor activity or renewal, allowing another authorized Designer to continue.
 FR237: Administrative takeover — An Owner or Administrator can force takeover of an active edit lease after confirmation. A Designer can take over an expired lease.
 FR238: Stale-write protection — Moviqo must reject an outdated save that would overwrite a newer draft revision and require the editor to reload the current draft.
@@ -806,7 +806,7 @@ UX-DR13: Use patient-colleague voice and tone: plain verbs, short explanations, 
 UX-DR14: Implement the defined information architecture and access boundaries across Public Landing, Registration/Activation, Guided First Workflow, Dashboard, My Tasks, My Processes, Workflow Catalog, Workflow Designer, Process Start, Task Form, Process Detail/Timeline, Needs Attention, and Organization Administration.
 UX-DR15: Make first visit, Draft, Validation Issue, Published, Assigned Task, Team Task Available, Needs Reassignment, Empty My Tasks, Permission Denied, Offline/Slow Connection, and Completed Process states explicit with the specified messaging, actions, persistence, and authorization boundaries.
 UX-DR16: Ensure every primary operational flow works with keyboard, pointer, and touch; use one modal layer at a time, prefer inline guided panels, confirm destructive/irreversible actions, and avoid confirmation for routine save or Task completion.
-UX-DR17: Preserve valid draft and entered Form work across navigation and recoverable connection failures; expose saving state and retry, and never report completion until confirmed by the server.
+UX-DR17: Preserve successfully saved draft and entered Form work across navigation and recoverable connection failures; expose unsaved/saving state, warn before abandoning unsaved work, provide explicit retry after failure, and never report save or completion until confirmed by the server.
 UX-DR18: Announce material state changes to assistive technologies; provide semantic headings/labels, meaningful non-text alternatives, visible focus, accessible validation, screen-reader support, usable touch targets of at least 44×44 CSS pixels where practical, and 200% text enlargement without loss of required operation.
 UX-DR19: Treat motion as supplementary and remove non-essential transitions when reduced-motion is requested; motion must never be required to understand progress or complete a task.
 UX-DR20: Implement responsive operational surfaces for mobile, tablet, laptop, and desktop: tables become compact cards on narrow screens; Task Forms stack/reflow full-width; administration prioritizes search, status, and one action; operational details remain expandable and authorization-safe.
@@ -1011,7 +1011,7 @@ FR190: Epic 3 - Validation references
 FR191: Epic 3 - Completion validation sequence
 FR192: Epic 3 - Validation parity and testing
 FR193: Epic 3 - Validation dependencies
-FR194: Epic 3 - Layout components
+FR194: Epic 1 - Layout components
 FR195: Epic 3 - Section grouping
 FR196: Epic 3 - No nested Sections
 FR197: Epic 3 - Conditional Section state
@@ -1052,7 +1052,7 @@ FR231: Epic 4 - Explicit version access
 FR232: Epic 4 - Draft status visibility
 FR233: Epic 4 - Exclusive edit lease
 FR234: Epic 4 - Concurrent read-only access
-FR235: Epic 1 - Draft autosave
+FR235: Epic 1 - Explicit draft save
 FR236: Epic 4 - Stale lease recovery
 FR237: Epic 4 - Administrative takeover
 FR238: Epic 4 - Stale-write protection

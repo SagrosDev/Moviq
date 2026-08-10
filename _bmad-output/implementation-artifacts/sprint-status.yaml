@@ -53,8 +53,12 @@ development_status:
   1-31-complete-the-task-and-reach-end: done
   1-32-track-the-completed-process-and-timeline: done
   1-33-automate-the-first-workflow-e2e-journey: done
-  1-34-qualify-the-stakeholder-preview-experience: in-progress
-  1-35-approve-the-stakeholder-e2e-preview: backlog
+  1-34-establish-the-stakeholder-ready-frontend-system: ready-for-dev
+  1-35-separate-the-application-modules-and-establish-authoring-navigation: ready-for-dev
+  1-36-refactor-the-workflow-editor-and-adopt-react-flow: ready-for-dev
+  1-37-establish-the-dedicated-schema-driven-form-designer: ready-for-dev
+  1-38-polish-the-authenticated-stakeholder-journey: ready-for-dev
+  1-39-present-the-core-journey-and-capture-stakeholder-feedback: ready-for-dev
   epic-1-retrospective: optional
   epic-2: backlog
   2-1-apply-the-hierarchical-role-model: backlog

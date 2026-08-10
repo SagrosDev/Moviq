@@ -2,7 +2,7 @@
 
 Company stakeholders can use the deployed internal environment to register an Owner, create a simple Task Form and executable Workflow, publish it, start a Process, complete its Task, and inspect the result using persistent synthetic data.
 
-**Primary FR coverage:** FR17, FR18, FR20, FR21, FR26, FR39, FR41, FR48, FR108, FR112, FR168, FR173, FR176, FR180, FR181, FR182, FR183, FR184, FR185, FR204, FR205, FR206, FR207, FR208, FR209, FR210, FR212, FR213, FR214, FR215, FR222, FR223, FR226, FR227, FR228, FR229, FR230, FR235, FR240, FR274, FR275, FR279, FR280, FR282, FR288, FR289, FR293, FR294, FR295, FR296, FR298, FR302, FR303, FR306, FR308, FR312, FR315, FR316, FR346, FR347, FR374, FR375, FR376, FR377, FR378, FR379, FR380, FR381, FR382, FR383, FR384, FR385, FR386, FR387, FR388, FR389, FR390, FR391, FR392, FR393, FR394, FR395, FR396, FR397, FR398, FR399, FR400, FR401, FR402, FR403, FR404, FR405, FR406, FR424, FR425, FR426, FR427, FR428, FR429, FR430, FR431, FR432, FR433, FR461, FR462, FR463, FR464, FR465, FR466, FR467, FR468, FR469, FR470, FR471, FR472, FR473, FR474, FR475, FR476, FR477, FR478, FR479, FR480, FR481, FR482, FR483, FR484, FR485, FR486, FR487, FR488, FR489, FR490, FR491, FR492, FR493, FR494, FR495, FR546, FR547, FR548, FR552, FR568, FR569, FR570, FR571, FR572, FR573, FR574, FR624, FR625, FR626, FR627, FR630, FR632.
+**Primary FR coverage:** FR17, FR18, FR20, FR21, FR26, FR39, FR41, FR48, FR108, FR112, FR168, FR173, FR176, FR180, FR181, FR182, FR183, FR184, FR185, FR194, FR204, FR205, FR206, FR207, FR208, FR209, FR210, FR212, FR213, FR214, FR215, FR222, FR223, FR226, FR227, FR228, FR229, FR230, FR235, FR240, FR274, FR275, FR279, FR280, FR282, FR288, FR289, FR293, FR294, FR295, FR296, FR298, FR302, FR303, FR306, FR308, FR312, FR315, FR316, FR346, FR347, FR374, FR375, FR376, FR377, FR378, FR379, FR380, FR381, FR382, FR383, FR384, FR385, FR386, FR387, FR388, FR389, FR390, FR391, FR392, FR393, FR394, FR395, FR396, FR397, FR398, FR399, FR400, FR401, FR402, FR403, FR404, FR405, FR406, FR424, FR425, FR426, FR427, FR428, FR429, FR430, FR431, FR432, FR433, FR461, FR462, FR463, FR464, FR465, FR466, FR467, FR468, FR469, FR470, FR471, FR472, FR473, FR474, FR475, FR476, FR477, FR478, FR479, FR480, FR481, FR482, FR483, FR484, FR485, FR486, FR487, FR488, FR489, FR490, FR491, FR492, FR493, FR494, FR495, FR546, FR547, FR548, FR552, FR568, FR569, FR570, FR571, FR572, FR573, FR574, FR624, FR625, FR626, FR627, FR630, FR632.
 
 ## Story 1.1: Establish the Backend Modular Spine
 
@@ -627,18 +627,18 @@ So that the published Workflow can be started and completed by intended Organiza
 **Then** operational authority permits the start and marks it as such for audit, while Members and Designers require direct, Team, or all-active-member authorization
 **And** Task assignment does not itself grant start authority. Traceability: FR20, AD-7.
 
-## Story 1.27: Autosave and Resolve Shared-Draft Conflicts
+## Story 1.27: Save Explicitly and Resolve Shared-Draft Conflicts
 
 As a Designer,
-I want my valid edits autosaved against the latest shared revision,
-So that navigation and concurrent editing do not silently overwrite work.
+I want to decide when my Workflow/Form draft is saved against the latest shared revision,
+So that incomplete work is preserved on demand without background errors or silent concurrent overwrites.
 
 **Acceptance Criteria:**
 
-**Given** an unsaved valid local edit and the current server revision
-**When** autosave succeeds
-**Then** the server commits the semantic draft change, increments the revision once, and returns the authoritative revision and saving state
-**And** navigation after confirmation does not lose the edit. Traceability: FR222, FR223, UX-DR17.
+**Given** unsaved local authoring changes and the current server revision
+**When** the Designer chooses Save draft or `Ctrl/Cmd+S`
+**Then** the client submits one immutable snapshot and the server accepts incomplete but structurally coherent work, increments the revision once, and returns the authoritative saved revision
+**And** no timer, change event, drag, blur, or navigation sends a background save. Traceability: FR222, FR223, FR227, FR235, UX-DR17.
 
 **Given** the server revision advanced because another user saved first
 **When** the stale client submits its edit with `If-Match` or equivalent generated contract
@@ -646,9 +646,9 @@ So that navigation and concurrent editing do not silently overwrite work.
 **And** a real-PostgreSQL concurrency test proves lost updates cannot occur. Traceability: FR226, FR227, FR235, AD-5.
 
 **Given** a recoverable offline or slow connection
-**When** autosave times out and later retries
-**Then** the UI keeps the local valid work, exposes unsaved/retrying state, reuses the logical idempotency key, and reports saved only after server confirmation
-**And** the retry creates at most one committed revision. Traceability: FR240, NFR25, UX-DR15, UX-DR17.
+**When** an explicit save has an unknown or failed outcome
+**Then** the UI keeps the local work, exposes unsaved/save-failed state, and offers an explicit retry using the same immutable payload and logical idempotency key
+**And** changed content uses a new command key, no automatic retry runs, and the UI reports saved only after server confirmation. Traceability: FR240, NFR25, UX-DR15, UX-DR17.
 
 ## Story 1.28: Publish an Immutable Workflow Version
 
@@ -783,7 +783,9 @@ So that every build proves the thin slice remains executable end to end.
 **Then** promotion fails at the first actionable step with its correlation/evidence reference
 **And** no test fallback bypasses authentication, authorization, publication, Task completion, or persistence. Traceability: NFR25, NFR26, NFR27, NFR28, NFR29, NFR30, AD-12.
 
-## Story 1.34: Qualify the Stakeholder Preview Experience
+## Superseded Planning Note: Former Story 1.34 — Qualify the Stakeholder Preview Experience
+
+> Superseded by the approved 2026-08-09 course correction. This is no longer an active Epic 1 story. Comprehensive compatibility and accessibility qualification remains owned by Story 10.7, with failure and operability qualification in Story 10.8. The former criteria are retained below as planning history.
 
 As a company stakeholder,
 I want the thin journey usable in both languages and representative layouts,
@@ -806,7 +808,9 @@ So that early feedback reflects the intended experience rather than developer-on
 **Then** valid work is preserved where permitted, destructive/irreversible actions are confirmed, routine save/complete is not needlessly confirmed, and success is never shown before server confirmation
 **And** errors use the patient-colleague voice and stable safe codes. Traceability: UX-DR13, UX-DR15, UX-DR17, NFR30.
 
-## Story 1.35: Approve the Stakeholder E2E Preview
+## Superseded Planning Note: Former Story 1.35 — Approve the Stakeholder E2E Preview
+
+> Removed by the first approved course correction because formal preview certification remains owned by Epic 10. The former criteria are retained as planning history and are not active Epic 1 scope.
 
 As a release reviewer,
 I want one evidence index and stakeholder decision for the thin internal preview,
@@ -830,3 +834,215 @@ So that the team can gather early end-to-end feedback without implying MVP or re
 **And** the Epic 10 Gate 1 and Epic 11 Gate 2 decisions remain separate.
 
 Traceability: Gate 1 early-feedback milestone, AD-11, AD-12, AD-16, UX-DR23, UX-DR24, UX-DR25.
+
+## Superseded Planning Note: Interim Story 1.35 — Present the Core Journey and Capture Stakeholder Feedback
+
+> First renumbered to Story 1.36 by the stakeholder-presentation amendment, then to Story 1.38 when dedicated editor stories were approved, and finally to active Story 1.39 when module separation was added. The interim criteria are retained below as planning history.
+
+As a product team,
+I want to present the deployed core journey to company stakeholders,
+So that we can validate its direction and capture actionable feedback.
+
+**Acceptance Criteria:**
+
+**Given** a synthetic-only UAT build with a passing Story 1.33 deployed journey
+**When** the stakeholder session occurs
+**Then** the public UI demonstrates registration, verification, sign-in, Workflow creation and publication, Process start, Task completion, and the completed timeline without database, private API, authentication, or authorization bypasses
+**And** the walkthrough uses safe synthetic data only.
+
+**Given** the stakeholder session is complete
+**When** its result is recorded
+**Then** the record identifies the tested build, date, participants, observations, and prioritized follow-up items without credentials, tokens, Process Data, private links, or other secrets
+**And** it states whether the thin slice is suitable for continued stakeholder feedback and identifies any blocking defect or follow-up owner.
+
+**Given** the Epic 1 decision is recorded
+**When** later delivery work begins
+**Then** the record states that Epic 1 does not certify feature-complete Gate 1, public-beta or production readiness, real-data use, or WCAG conformance
+**And** no new E2E suite, browser matrix, evidence schema, validator, CI gate, or product implementation is required unless the walkthrough reveals a blocking defect.
+
+Traceability: Gate 1 early-feedback milestone, AD-11, AD-12, AD-16, UX-DR23, UX-DR24, UX-DR25.
+
+## Story 1.34: Establish the Stakeholder-Ready Frontend System
+
+As a product team,
+I want one enforceable visual system applied to the public and onboarding experience,
+So that Moviqo looks coherent, modern, and trustworthy before stakeholders enter the core journey.
+
+**Acceptance Criteria:**
+
+**Given** the candidate Moviqo palette and representative real UI states
+**When** the Design System page is reviewed at desktop and mobile sizes
+**Then** landing navigation, authentication and registration forms, buttons, cards, alerts, badges, timeline rows, and the compact UAT indicator demonstrate normal, hover, focus, disabled, success, warning, and error states
+**And** the palette is adjusted and locked only after human visual approval while required contrast pairs remain automated.
+
+**Given** the approved visual direction
+**When** the frontend foundation is implemented
+**Then** pinned Tailwind CSS theme variables expose the approved tokens and source-owned domain-free shared primitives provide page shell, header, container, card, button, form field, input, select, password/checkbox field, form section, action bar, alert, error summary, badge, and Form Grid behavior
+**And** pages do not invent raw control styling, dynamic Tailwind fragments, a second general form-state system, domain-aware renderers in `shared/ui`, or frontend business authority. Traceability: AD-9, AD-16, UX-DR1 through UX-DR6, UX-DR12, UX-DR16, UX-DR18, UX-DR19.
+
+**Given** the public landing, registration, verification, sign-in, and password-recovery surfaces
+**When** they are redesigned with the approved components
+**Then** the landing has a modern header, clear value-focused hero, credible product visual, disciplined sections, truthful fictional examples, CTA hierarchy, and complete beta/legal/support footer while public onboarding exposes only public navigation
+**And** Forms use aligned content widths and readable sections, the UAT indicator remains clear but compact, and all Spanish/English copy is reviewed with correct Spanish spelling and accents. Traceability: FR461 through FR495, FR546 through FR552, UX-DR13, UX-DR14, UX-DR20, UX-DR22, UX-DR23.
+
+**Given** registration is rejected with field or form-level Problem Details
+**When** the response is presented
+**Then** a localized error summary receives focus, names and links to actionable fields, and reveals/focuses the first invalid control while associated inline errors remain visible
+**And** non-field errors receive an actionable explanation, correctable values are preserved, corrected field errors clear, duplicate submission remains disabled, and the correlation ID is secondary support detail.
+
+## Story 1.35: Separate the Application Modules and Establish Authoring Navigation
+
+As an authenticated Moviqo user,
+I want each major authoring and runtime responsibility in a clear, reload-safe module,
+So that I can find my work and move between Workflow, Form, and Process activities without searching through one long page.
+
+**Acceptance Criteria:**
+
+**Given** the current manual pathname router and combined authenticated surfaces
+**When** the application shell is refactored
+**Then** React Router provides nested public/authenticated layouts, route parameters, role-appropriate navigation, active state, not-found handling, and reload-safe canonical routes
+**And** Dashboard, My Tasks, My Processes, Start Process, Workflow catalog/creation/Designer, Form launcher/Designer, Task Form, and Process detail are independent modules rather than stacked page regions.
+
+**Given** a Designer creates or opens a Workflow
+**When** the server accepts creation or the catalog item is selected
+**Then** navigation opens `/workflows/:workflowId/design` and the route loads the tenant-authorized draft through the existing catalog/detail contracts
+**And** creation never appends the entire editor below its Form or depends on the creation page's in-memory response to survive reload.
+
+**Given** a Designer wants to configure a Task Form
+**When** Design Form is selected from a Task or a Workflow/Task is selected at `/forms`
+**Then** both paths open `/workflows/:workflowId/tasks/:taskElementId/form` with visible Workflow/Task context and safe back navigation
+**And** missing, stale, forbidden, or non-Task route identities produce localized recoverable states without exposing another tenant's resources.
+
+**Given** server catalogs/read models and mutable editor documents
+**When** frontend state is implemented
+**Then** TanStack Query owns keyed server state and deliberate invalidation while focused route-level reducers own unsaved Workflow/Form edits, selection, explicit Save Draft, revisions, and conflicts
+**And** global Context is limited to stable services such as session, language, query client, and theme. Traceability: AD-7, AD-9, UX-DR14, UX-DR20, UX-DR21.
+
+**Given** the new module structure
+**When** verification runs
+**Then** route/component tests cover deep links, reloads, redirects, role navigation, loading/empty/error states, Workflow-to-Form transitions, and Start/Task/Process separation
+**And** Story 1.33 remains the deployed journey regression without creating another deployed E2E program.
+
+## Story 1.36: Refactor the Workflow Editor and Adopt React Flow
+
+As a Workflow Designer,
+I want a dedicated visual Workflow Editor backed by the existing reliable draft model,
+So that every action appears immediately on a comprehensible canvas without the canvas becoming the source of workflow truth.
+
+**Acceptance Criteria:**
+
+**Given** the current monolithic Workflow Editor
+**When** it is opened at its canonical route
+**Then** a focused controller hook owns the existing reducer/API orchestration and the workspace separates element palette, React Flow canvas, accessible outline, selected-element properties, assignment/starter configuration, publication checklist, persistent save status, and Validate/Publish action bar
+**And** Form editing is reached through the selected Task's Design Form action rather than embedded as another long section.
+
+**Given** the revisioned Moviqo Workflow document
+**When** the visual canvas renders and receives pointer or keyboard interaction
+**Then** pinned `@xyflow/react` owns canvas-only node/edge presentation, selection, position, pan, zoom, and connection gestures through typed adapters
+**And** the Moviqo Workflow document/reducer remains the single persisted and semantic source of truth for editing, assignment, validation, explicit save, conflicts, idempotency, and publication. Traceability: FR176 through FR185, AD-5, AD-7, AD-9.
+
+**Given** the Epic 1 palette
+**When** Start, Task, or End is added by drag-to-canvas, click/double-click, or keyboard action, or a sequence Transition is connected
+**Then** the new element/connection appears locally without scrolling, the element is revealed and selected, its properties are available, and assistive technology receives meaningful feedback
+**And** Start/End cardinality and connection constraints are enforced through the Moviqo reducer rather than hidden React Flow state.
+
+**Given** Epic 1 implements only Start, Task, End, and sequence Transitions
+**When** the extensible node registry is delivered
+**Then** it can accept future node/edge adapters without redesigning the workspace
+**And** Conditional Routing, branches, and loops are not shown as functional until Epic 4 supplies their domain/runtime contracts.
+
+**Given** a user cannot or does not drag on the canvas
+**When** the minimum Workflow is authored
+**Then** explicit add/connect controls and an accessible outline complete the same Start-Task-End path with visible focus and non-color-only state
+**And** focused component tests cover canvas adaptation, all Add methods, keyboard alternatives, selection/focus, explicit save, conflicts, validation targeting, Task-to-Form navigation, and publication without adding another deployed E2E program.
+
+**Given** the Designer has incomplete but structurally coherent Workflow work
+**When** they choose **Save draft** or `Ctrl/Cmd+S`
+**Then** one immutable revision-aware snapshot is submitted and no timer, change event, drag, blur, or navigation sends a background save or retry
+**And** malformed, dangling, unknown, unauthorized, or stale content is rejected without losing local work.
+
+**Given** a saved Workflow draft
+**When** the Designer validates or publishes it
+**Then** validation reports publication readiness for that saved revision, publication is enabled only for the same unchanged validated revision, and later local edits require another explicit save and validation
+**And** leaving with unsaved changes offers **Save**, **Discard**, or **Stay** rather than saving implicitly.
+
+## Story 1.37: Establish the Dedicated Schema-Driven Form Designer
+
+As a Workflow Designer and Task participant,
+I want a dedicated visual Form Designer and runtime rendering to use the same typed definitions,
+So that the Form is easy to compose and remains identical in meaning when someone completes the Task.
+
+**Acceptance Criteria:**
+
+**Given** a selected Task at its canonical Form route
+**When** the Form Designer loads
+**Then** it displays Workflow/Task context, Fields and Layout palettes, a constrained twelve-column Form canvas, selected-item properties, runtime-accurate preview, validation summary, and persistent save status
+**And** `/forms` can select an authorized Workflow and Task before navigating to the same route without creating a detached global Form document.
+
+**Given** Epic 1 Form items
+**When** the typed registries are implemented
+**Then** Short Text defines Process Field configuration/defaults and design/runtime rendering, while Section, Heading, Instruction Text, and Divider define non-data structural rendering
+**And** future Epic 3 fields, calculations, rules, and conditional layout behavior extend these discriminated contracts without replacing stable IDs, bindings, revisions, or backend authority. Traceability: FR48, FR108 through FR113, FR168 through FR185, FR194, AD-4, AD-5, AD-7, AD-9.
+
+**Given** a Designer adds, reorders, or resizes a Form item
+**When** pointer, click/double-click, or keyboard interaction occurs
+**Then** a pinned stable dnd-kit package set may own gesture feedback while the Form reducer owns item order, approved full/half/third/quarter spans, selection, revisions, and save behavior
+**And** explicit Add and Move controls provide equivalent operations without drag.
+
+**Given** the Form contains incomplete but structurally coherent design work
+**When** the Designer chooses **Save draft** or `Ctrl/Cmd+S`
+**Then** one revision-aware snapshot is submitted on demand and the interface shows unsaved, saving, saved, failed, or conflicted state only from that explicit command
+**And** item changes, drag events, blur, timers, route changes, and failed requests never trigger background save or automatic retry; dirty navigation offers **Save**, **Discard**, or **Stay**.
+
+**Given** a Task participant opens the operational Form
+**When** controls render or validation fails
+**Then** `TaskFormRenderer` in `features/task-form` composes domain-free shared controls through the same renderers used by Designer preview, with matching labels, help, width, required/disabled state, structural content, and validation
+**And** error summary/focus recovery, task revisions, Save draft, Complete task, idempotency, authorization, and backend validation remain authoritative without React Hook Form, Formik, Form.io, SurveyJS Creator, JSON Forms, or RJSF.
+
+**Given** the dedicated Designer and runtime renderer
+**When** verification runs
+**Then** component/contract tests cover route loading, registry resolution, Short Text and structural items, spans/reflow, dnd-kit and explicit alternatives, preview/runtime parity, focus/error recovery, save conflicts, and unknown-item fail-safe behavior
+**And** Story 1.33 remains the deployed journey regression without another E2E program.
+
+## Story 1.38: Polish the Authenticated Stakeholder Journey
+
+As a company stakeholder,
+I want the authenticated thin journey to use the approved visual system and separated modules,
+So that I can evaluate Moviqo's product value without unfinished interface quality or confusing navigation distracting from the workflow.
+
+**Acceptance Criteria:**
+
+**Given** Dashboard, My Tasks, My Processes, Start Process, Workflow catalog/creation/Designer, Form launcher/Designer, Task Form, and Process detail/timeline
+**When** the Epic 1 journey is integrated and polished
+**Then** every module composes the Story 1.34 primitives and Stories 1.35-1.37 navigation/editors with consistent containers, spacing, typography, cards, statuses, breadcrumbs, empty states, and action bars
+**And** each region has one dominant action, aligned secondary actions, role-appropriate navigation, and no browser-default or missing page-level control style. Traceability: UX-DR3 through UX-DR24, AD-9.
+
+**Given** the exact redesigned build
+**When** desktop/mobile operational screenshots, supported desktop authoring screenshots, and the existing Story 1.33 regression journey are reviewed
+**Then** the approved palette, alignment, hierarchy, responsive behavior, reviewed bilingual copy, immediate editor feedback, module transitions, and authoring-to-runtime continuity pass without creating another deployed E2E suite, browser matrix, or release-evidence framework
+**And** presentation or navigation defects block Story 1.39 until corrected.
+
+## Story 1.39: Present the Core Journey and Capture Stakeholder Feedback
+
+As a product team,
+I want to present the polished deployed core journey to company stakeholders,
+So that we can validate its direction and capture actionable feedback.
+
+**Acceptance Criteria:**
+
+**Given** Stories 1.34 through 1.38 are complete and a synthetic-only UAT build has a passing Story 1.33 deployed journey
+**When** the stakeholder session occurs
+**Then** the public UI demonstrates landing, registration, verification, sign-in, Workflow catalog/creation, React Flow Workflow design, Task-linked Form design, publication, separate Start Process catalog, Task completion, and completed Process timeline without database, private API, authentication, or authorization bypasses
+**And** the walkthrough uses safe synthetic data and the visually approved component system.
+
+**Given** the stakeholder session is complete
+**When** its result is recorded
+**Then** the record identifies the tested build, date, participants, observations, and prioritized follow-up items without credentials, tokens, Process Data, private links, or other secrets
+**And** it states whether the thin slice is suitable for continued stakeholder feedback and identifies any blocking defect or follow-up owner.
+
+**Given** the Epic 1 decision is recorded
+**When** later delivery work begins
+**Then** the record states that Epic 1 does not certify feature-complete Gate 1, public-beta or production readiness, real-data use, or WCAG conformance
+**And** comprehensive compatibility, accessibility, operability, and Gate 1 certification remain owned by Stories 10.7 through 10.9.
+
+Traceability: Gate 1 early-feedback milestone, AD-9, AD-11, AD-12, AD-16, UX-DR12, UX-DR13, UX-DR23, UX-DR24, UX-DR25.

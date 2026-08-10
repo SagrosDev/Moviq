@@ -3,9 +3,9 @@
 ## Epic 1: Validate the Core Moviqo Journey End to End
 Company stakeholders can use the deployed internal environment to register an Owner, create a simple Task Form and executable Workflow, publish it, start a Process, complete its Task, and inspect the result using persistent synthetic data.
 
-**FRs covered:** FR17–FR18, FR20–FR21, FR26, FR39, FR41, FR48, FR108, FR112, FR168, FR173, FR176, FR180–FR185, FR204–FR210, FR212–FR215, FR222–FR223, FR226–FR230, FR235, FR240, FR274–FR275, FR279–FR280, FR282, FR288–FR289, FR293–FR296, FR298, FR302–FR303, FR306, FR308, FR312, FR315–FR316, FR346–FR347, FR374–FR406, FR424–FR433, FR461–FR495, FR546–FR548, FR552, FR568–FR574, FR624–FR627, FR630, FR632
+**FRs covered:** FR17–FR18, FR20–FR21, FR26, FR39, FR41, FR48, FR108, FR112, FR168, FR173, FR176, FR180–FR185, FR194, FR204–FR210, FR212–FR215, FR222–FR223, FR226–FR230, FR235, FR240, FR274–FR275, FR279–FR280, FR282, FR288–FR289, FR293–FR296, FR298, FR302–FR303, FR306, FR308, FR312, FR315–FR316, FR346–FR347, FR374–FR406, FR424–FR433, FR461–FR495, FR546–FR548, FR552, FR568–FR574, FR624–FR627, FR630, FR632
 
-**Implementation notes:** This is the first stakeholder-testable vertical slice. It includes the structural seed, internal UAT deployment, tenant isolation, secure authentication, a minimal Short Text Task Form builder and runtime, Start → Task → End publication, Process execution, My Tasks/My Processes, and an automated E2E regression journey.
+  **Implementation notes:** This is the first stakeholder-testable vertical slice. It includes the structural seed, internal UAT deployment, tenant isolation, secure authentication, a stakeholder-ready landing/onboarding and shared frontend visual system, canonical Dashboard/My Tasks/My Processes/Start Process/Workflow/Form modules, React Flow as the visual adapter over the revisioned Start → Task → End Workflow model, a dedicated typed schema-driven Short Text and structural-layout Form Designer/runtime with dnd-kit interaction, recoverable Form validation, Process execution, and an automated E2E regression journey before the stakeholder walkthrough.
 
 ## Epic 2: Administer the Organization, People, Teams, and Settings
 Owners and Administrators can create and activate users, manage access levels and Teams, protect ownership continuity, configure regional behavior, and administer beta capacity and quotas.
@@ -17,7 +17,7 @@ Owners and Administrators can create and activate users, manage access levels an
 ## Epic 3: Expand Forms with Rich Process Data and Business Rules
 Designers can expand the minimal Epic 1 Form builder with complete Process Field types, reusable data, tables, calculations, conditional behavior, validation, advanced layouts, and informational presentation.
 
-**FRs covered:** FR49–FR107, FR109–FR111, FR113, FR126–FR167, FR169–FR172, FR174–FR175, FR177–FR179, FR186–FR203, FR619–FR623, FR628–FR629, FR631
+**FRs covered:** FR49–FR107, FR109–FR111, FR113, FR126–FR167, FR169–FR172, FR174–FR175, FR177–FR179, FR186–FR193, FR195–FR203, FR619–FR623, FR628–FR629, FR631
 
 **Implementation notes:** Form creation begins in Epic 1. This epic adds the rich modeling and visual-rule capabilities without blocking the early stakeholder journey.
 

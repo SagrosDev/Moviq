@@ -11,6 +11,7 @@ inputDocuments:
   - ../ux-designs/ux-Moviqo-2026-08-01/EXPERIENCE.md
   - ../implementation-readiness-report-2026-08-02.md
   - ../sprint-change-proposal-2026-08-02.md
+  - ../sprint-change-proposal-2026-08-10.md
 status: validated
 canonical: true
 ---
@@ -27,7 +28,7 @@ This index is the canonical entry point for the corrected, implementation-orient
 
 ## Corrected epics and stories
 
-1. [Validate the Core Moviqo Journey End to End](./epic-1-validate-the-core-moviqo-journey-end-to-end.md) — 35 stories; early stakeholder E2E preview.
+1. [Validate the Core Moviqo Journey End to End](./epic-1-validate-the-core-moviqo-journey-end-to-end.md) — 39 active stories; separated authoring/runtime modules, stakeholder-ready public UI, React Flow Workflow authoring, a dedicated drag-enabled schema-driven Form Designer, and a landing-to-completed-Process preview backed by the deployed E2E journey.
 2. [Administer the Organization, People, Teams, and Settings](./epic-2-administer-the-organization-people-teams-and-settings.md) — 11 stories.
 3. [Expand Forms with Rich Process Data and Business Rules](./epic-3-expand-forms-with-rich-process-data-and-business-rules.md) — 17 stories.
 4. [Design and Govern Complete Workflow Definitions](./epic-4-design-and-govern-complete-workflow-definitions.md) — 13 stories.

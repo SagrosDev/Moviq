@@ -6,6 +6,8 @@ baseline_commit: 397d75e
 
 Status: done
 
+> **Persistence-policy amendment (2026-08-10):** Autosave references below are retained as historical implementation context. Current authoring uses explicit **Save draft**/`Ctrl/Cmd+S`; publication accepts only the same saved revision that passed explicit publication-readiness validation, with no intervening local changes and no background save or retry. Story 1.36 implements this corrected frontend/backend gate while preserving this story's immutable publication, revision, idempotency, and atomicity safeguards.
+
 ## Story
 
 As a Designer,

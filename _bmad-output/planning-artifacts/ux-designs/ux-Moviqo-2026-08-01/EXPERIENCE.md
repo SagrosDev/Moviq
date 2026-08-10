@@ -16,6 +16,8 @@ Responsive web. Operational flows work on mobile, tablet, laptop, and desktop. W
 
 Moviqo is Spanish-first with English selectable by the user. Designer-authored workflow content remains in the language entered by the Designer.
 
+The stakeholder preview adds a presentation-readiness boundary before the walkthrough: the public landing, onboarding/authentication, My Work, Workflow creation/Designer, Task Form, and Process detail/timeline must use the approved shared component system, aligned layouts, reviewed bilingual copy, and the visually approved token set. Functional automation alone does not establish presentation readiness.
+
 ## Information Architecture
 
 | Surface | Reached from | Purpose |
@@ -26,9 +28,12 @@ Moviqo is Spanish-first with English selectable by the user. Designer-authored w
 | Dashboard | Sign-in | Separate Start a Process, My Tasks, My Processes, and administrative attention |
 | My Tasks | Dashboard | Show only authorized tasks requiring the Member's attention |
 | My Processes | Dashboard | Show authorized process progress and the Member's own contributions |
-| Workflow catalog | Designer area | Find draft, published, and archived Workflow definitions |
-| Workflow Designer | Workflow catalog | Configure elements, Forms, assignments, rules, calculations, and starters |
-| Process start | Dashboard / authorized Workflow | Start a Process from a published Workflow |
+| Start Process catalog | Dashboard | Show authorized published Workflows as clear startable products rather than mixing them with Tasks or Processes |
+| Workflow catalog | Authoring navigation | Find draft, published, and archived Workflow definitions and create a new Workflow |
+| Workflow creation | Workflow catalog | Capture the Workflow name and navigate to its dedicated Designer after server acceptance |
+| Workflow Designer | Workflow catalog / creation | Configure the graph, assignment, starter, validation, and publication in a dedicated workspace |
+| Form Designer launcher | Authoring navigation | Select an existing Workflow and Task, then open the canonical Form Designer |
+| Form Designer | Selected Task / launcher | Configure the selected Task Form in a dedicated palette/canvas/properties workspace |
 | Task Form | My Tasks / process position | Complete an assigned or claimed Task and submit authorized data |
 | Process detail and timeline | My Processes / assigned Task | Show limited progress, authorized history, and own contributions |
 | Needs Attention | Administrator / Owner area | Resolve invalid assignments, open operational issues, and reassignment |
@@ -55,18 +60,34 @@ Moviqo speaks like a patient colleague. Use plain verbs, short explanations, and
 | Guided step | First workflow and complex Designer areas | One decision per step; explain why; provide Continue, Back, Save draft, and Skip when safe |
 | Guidance card | Inline teaching | Dismissible, revisitable, contextual, and never the only way to understand a required action |
 | Workflow element | Designer canvas/list | Add through visible controls as well as drag where practical; each element exposes a plain-language purpose |
+| Workflow palette | Workflow Designer | Supports drag, click/double-click, and keyboard Add; successful addition selects and reveals the element immediately |
+| Form palette | Form Designer | Separates Fields from Layout, supports dnd-kit drag plus click/double-click Add, and never makes drag the only operation |
 | Task card | My Tasks and narrow layouts | Shows task, workflow, status, assignee, and primary action; expands for authorized context |
 | Form field | Task Forms and Designer | Label above control, concise help, accessible validation, and responsive reflow |
 | Assignment control | Designer and admin reassignment | States who receives work, why, and what happens if the assignee becomes invalid |
 | Publish checklist | Workflow Designer | Lists unresolved issues, links to each location, and prevents publication until all required checks pass |
 | Timeline | Process detail | Shows authorized events, actor, time, state, and task position without exposing restricted data |
 
+## Presentation-Readiness Rules
+
+- Public landing and onboarding use public-only navigation; authenticated work and the Design System are not exposed as public navigation choices.
+- The landing hero communicates one value proposition, one dominant registration action, one secondary sign-in action, and a credible product visual without fabricated customer evidence.
+- Authentication uses a compact form composition with consistently full-width controls and aligned actions. Registration groups identity, Organization, regional defaults, and consent into readable sections.
+- My Work, Workflow authoring, Task Form, and timeline use shared cards, fields, statuses, and action bars with one dominant next action per region.
+- Dashboard, My Tasks, My Processes, Start Process, Workflow catalog/creation/Designer, Form launcher/Designer, Task Form, and Process detail use canonical, reload-safe routes with role-appropriate navigation. Major modules are not stacked on one page.
+- Workflow authoring uses React Flow for efficient canvas interaction while retaining an accessible outline and explicit add/connect/reorder operations. Canvas state never substitutes for the revisioned Moviqo workflow document. A selected Task exposes Design Form navigation; conditional nodes remain absent until supported by Epic 4.
+- Form authoring and runtime rendering share one typed field registry so the preview matches the operational Task Form. The dedicated Designer uses constrained approved spans, not free-form positioning, and dnd-kit gesture state never substitutes for the revisioned Form document.
+- Failed form submission presents an actionable localized error summary, focuses and reveals the first invalid field, preserves correctable input, and explains non-field failures without making a correlation ID the recovery instruction.
+- Desktop Forms use the twelve-column layout and approved widths. Mobile operational Forms stack to one column; authoring below its supported size does not pretend to be fully usable.
+- A palette or component refresh is accepted only after the Design System checkpoint and human desktop/mobile screenshot review. Automated accessibility and contrast checks remain complementary evidence.
+- No additional deployed E2E program is required for the visual refresh. The existing Story 1.33 journey is rerun as regression evidence after the redesigned surfaces are deployed.
+
 ## State Patterns
 
 | State | Treatment |
 |---|---|
 | First visit | Welcome explains the product in one sentence and offers “Create your first workflow” as the dominant action |
-| Draft | Persistent “Draft” label; autosave or explicit save status; leaving never loses valid saved work |
+| Draft | Persistent “Draft” label; explicit **Save draft** action and unsaved/saving/saved/failed/conflict status; warn before leaving with unsaved work and never lose successfully saved work |
 | Validation issue | Inline message at the source plus a plain-language checklist summary; never rely on color alone |
 | Published | Clear version and publication time; show what will happen next |
 | Assigned Task | Available in My Tasks and openable by the assigned Member or eligible Team |
@@ -110,12 +131,13 @@ Interactive targets should be at least 44 by 44 CSS pixels where practical. Moti
 1. Camila lands on Moviqo and sees a plain explanation: automate everyday processes without building an application.
 2. She registers, activates her account, and becomes the Organization Owner.
 3. The dashboard welcomes her and offers “Create your first workflow,” with hiring as a clearly labeled example.
-4. Guided steps ask what the process is called, what starts it, who participates, and what “done” means.
-5. She adds the hiring stages in business language: job profile and requirements, offer publication, candidate information, interviews, interview notes, and selection.
-6. Moviqo explains each Task and lets her choose the person or Team responsible.
-7. A publish checklist identifies missing starters, assignments, routes, or required fields and links directly to fixes.
-8. She publishes the Workflow and starts the first Process.
-9. **Climax:** Camila sees a clear confirmation that the hiring process is ready, starts the first candidate process, and understands exactly what happens next without needing a developer.
+4. Workflow creation captures the name and navigates to a dedicated, reload-safe Designer.
+5. She adds Start, Task, and End from the palette; each action immediately appears and becomes selected on the React Flow canvas.
+6. She selects the Task and opens Design Form, where a dedicated Form workspace provides Short Text and structural layout controls through drag, click/double-click, or keyboard actions.
+7. She returns to the Workflow Designer, chooses the responsible person or Team, and reviews starter configuration.
+8. A publish checklist identifies missing starters, assignments, routes, or required fields and links directly to the appropriate Workflow or Form module.
+9. She publishes the Workflow, opens the separate Start Process catalog, and starts the first Process.
+10. **Climax:** Camila sees a clear confirmation that the hiring process is ready, starts the first candidate process, and understands exactly what happens next without needing a developer.
 
 Failure path: a required starter, assignment, route, or field is missing. The publish checklist names the issue in plain language, links to its source, preserves Camila's draft, and lets her return to the same guided step.
 

@@ -28,6 +28,8 @@ inputDocuments:
 
 # Implementation Readiness Assessment Report
 
+> **Historical assessment notice (2026-08-10):** This report reflects the requirements as assessed on 2026-08-02. The approved sprint correction in `sprint-change-proposal-2026-08-10.md` supersedes its autosave references: FR222/FR235 now require explicit Save Draft, separate draft-integrity checks from publication-readiness validation, prohibit background retries, and bind publication to the matching saved validated revision.
+
 **Date:** 2026-08-02
 **Project:** Moviqo
 

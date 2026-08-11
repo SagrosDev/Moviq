@@ -189,7 +189,7 @@ so that every build proves the thin slice remains executable end to end.
 - Do not read database tables directly from Playwright or expose raw outbox rows publicly.
 - Do not log or persist passwords, verification tokens, session cookies, raw email bodies, or submitted Short Text field values in CI artifacts.
 - Do not weaken the synthetic-only UAT contract by adding operator helpers that could run against production or public beta later.
-- Do not turn this into a broad cross-browser feature matrix for every later epic. Story 1.34 will extend language/layout/accessibility qualification.
+- Historical planning note: the former preview-qualification plan extended language, layout, and accessibility evidence after Story 1.33, but that Story 1.34 identity was later superseded. Its implementation record is preserved in `superseded-1-34-qualify-the-stakeholder-preview-experience.md`. The active Story 1.34 establishes the stakeholder-ready frontend system; remaining comprehensive qualification belongs to Stories 10.7–10.9.
 
 ### Project Structure Notes
 

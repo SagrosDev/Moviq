@@ -8,7 +8,9 @@
   summary: Make nested tenant context managers restore prior PostgreSQL session-local role and tenant settings.
   evidence: Existing `SET LOCAL` values outlive savepoint-scoped context managers inside a caller-owned transaction, so nested bootstrap/background contexts can affect later queries until the outer transaction ends; production request paths currently call this lookup without an ambient transaction.
 
-## Deferred from: code review of 1-34-qualify-the-stakeholder-preview-experience.md (2026-08-10)
+## Deferred from: code review of the superseded planning record `superseded-1-34-qualify-the-stakeholder-preview-experience.md` (2026-08-10)
+
+These items are not outstanding work for the active Story 1.34. Compatibility, responsive, localization, and accessibility evidence routes to Story 10.7; failure and operability evidence routes to Story 10.8; final exact-build Gate 1 evidence routes to Story 10.9.
 
 - Complete and record the bilingual manual keyboard accessibility baseline across registration, sign-in, workflow authoring, Task Form, and Process timeline. Deferred because no team currently owns manual accessibility verification and delivery capacity is being prioritized toward a functional stakeholder preview; AC2 remains partially unmet.
 - Run the Spanish and English deployed Playwright journey against the exact Story 1.34 commit and retain safe evidence. Deferred until the UI stabilizes because further E2E maintenance is paused; manual functional testing is the interim approach and the automated release evidence remains incomplete.

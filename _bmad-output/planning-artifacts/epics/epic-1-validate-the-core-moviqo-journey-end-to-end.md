@@ -785,7 +785,7 @@ So that every build proves the thin slice remains executable end to end.
 
 ## Superseded Planning Note: Former Story 1.34 — Qualify the Stakeholder Preview Experience
 
-> Superseded by the approved 2026-08-09 course correction. This is no longer an active Epic 1 story. Comprehensive compatibility and accessibility qualification remains owned by Story 10.7, with failure and operability qualification in Story 10.8. The former criteria are retained below as planning history.
+> Superseded by the approved 2026-08-10 course correction. This is no longer an active Epic 1 story. Its implementation and review evidence is preserved in `superseded-1-34-qualify-the-stakeholder-preview-experience.md`. The active Story 1.34 is **Establish the Stakeholder-Ready Frontend System** and is complete. Remaining compatibility and accessibility qualification is owned by Story 10.7, failure and operability qualification by Story 10.8, and final Gate 1 certification by Story 10.9. The former criteria are retained below as planning history.
 
 As a company stakeholder,
 I want the thin journey usable in both languages and representative layouts,

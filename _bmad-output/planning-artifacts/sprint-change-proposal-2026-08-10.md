@@ -57,7 +57,7 @@ Future Epic 3 extends the field registry with rich Process Field types, calculat
 
 Use a **Direct Adjustment with moderate backlog reorganization**. A dedicated navigation/module story must precede the editor refactors because the Form Designer needs reload-safe Workflow/Task identity and the Workflow Editor must no longer depend on post-creation in-memory state.
 
-No rollback is required. Stories 1.1-1.33 remain valid. This change does not add another deployed E2E suite; focused component/integration tests cover the new routing and editor interactions while Story 1.33 remains the deployed journey regression.
+No rollback is required. Stories 1.1-1.33 remain valid as completed history. Stories 1.34-1.39 use focused unit/component/contract/integration checks for technical behavior and explicit manual acceptance for UX, cross-module continuity, and stakeholder review; they do not depend on an automated journey.
 
 ## 4. Detailed Change Proposals
 
@@ -95,7 +95,7 @@ The Form Designer uses the same explicit persistence contract: **Save draft**/`C
 
 ### Stories 1.38-1.39 — integration and review
 
-The former authenticated polish story becomes Story 1.38 and consumes Stories 1.34-1.37. The walkthrough becomes Story 1.39 and requires visual approvals plus the existing exact-build Story 1.33 deployed regression.
+The former authenticated polish story becomes Story 1.38 and consumes Stories 1.34-1.37. The walkthrough becomes Story 1.39 and requires visual approvals plus a documented manual acceptance pass on the selected exact revision.
 
 ## 5. Target Information Architecture
 
@@ -143,10 +143,10 @@ Canonical routes:
 
 | Role | Responsibility |
 |---|---|
-| Product/UX | Approve Story 1.34 palette/components and Story 1.38 end-to-end screenshots. |
+| Product/UX | Approve Story 1.34 palette/components and Story 1.38 cross-module screenshots and manual walkthrough. |
 | Frontend | Implement route/query ownership, editor adapters, shared primitives, feature boundaries, and accessible interactions. |
 | Backend | Split draft-save structural integrity from publication-readiness validation while preserving authorization, optimistic revisions, idempotency, atomicity, and stable errors; evolve the schema only where minimum structural Form items require it. |
-| QA | Add focused component/integration evidence and rerun Story 1.33; do not create a new deployed E2E program. |
+| QA/Product | Retain focused unit/component/contract/integration evidence and execute the documented manual acceptance checklist for Stories 1.34-1.39. |
 | Stakeholders | Review the exact Story 1.39 build and provide actionable feedback. |
 
 Sequence:
@@ -156,7 +156,7 @@ Sequence:
 3. Implement Story 1.36 React Flow Workflow Designer without changing Epic 1 Workflow semantics.
 4. Implement Story 1.37 Form registry/Designer/runtime parity with Short Text and minimum structural items.
 5. Integrate and visually approve the authenticated path in Story 1.38.
-6. Deploy the exact build, rerun Story 1.33, and conduct Story 1.39.
+6. Select and record the exact built revision, complete manual acceptance, and conduct Story 1.39.
 
 ## 7. Success Criteria
 
@@ -175,7 +175,7 @@ Sequence:
 - An unchanged failed save can be retried explicitly with the same immutable payload and idempotency key; changed content creates a new command.
 - Failed Forms reveal the rejected control or provide an actionable Form-level explanation.
 - No conditionals or rich data fields are presented as functional before their owning epics.
-- No new deployed E2E program is introduced.
+- New frontend story acceptance is completed manually for cross-module and stakeholder flows; focused automated checks remain limited to unit/component/contract/integration concerns.
 
 ## Appendix A — Correct Course Checklist
 
@@ -188,7 +188,7 @@ Sequence:
 - [x] Architecture impact: React Router, TanStack Query, React Flow, dnd-kit, reducer, Context, and feature boundaries are explicit in AD-9.
 - [x] UX impact: canonical modules and authoring-to-runtime navigation are specified.
 - [x] Story impact: Stories 1.35-1.39 are independently implementable and testable.
-- [x] Testing impact: focused component/integration evidence plus existing Story 1.33 regression; no new E2E program.
+- [x] Testing impact: focused unit/component/contract/integration evidence plus documented manual acceptance for Stories 1.34-1.39.
 - [x] Product owner approved the correction on 2026-08-10.
 - [x] Product owner approved the explicit-save persistence amendment on 2026-08-10.
 - [x] Handoff: implement Story 1.34 first, followed by Stories 1.35-1.39.
@@ -221,4 +221,4 @@ Decision: Remove Workflow/Form Designer autosave and automatic retry.
 - Story 1.36 removes the Workflow autosave scheduler, adds explicit Save Draft, splits backend draft-save integrity from publication readiness, and binds Validate/Publish to the matching saved revision.
 - Story 1.37 applies the same explicit-save contract to the Form Designer.
 - Story 1.34 is unaffected.
-- No new epic or deployed E2E program is required; focused backend and frontend tests prove the changed persistence behavior.
+- No new epic is required; focused backend/frontend checks prove persistence mechanics and manual acceptance verifies the user-facing authoring behavior.

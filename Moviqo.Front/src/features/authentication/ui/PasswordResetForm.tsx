@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { resetPassword } from "../model/passwordRecovery";
 import { useLanguage } from "../../../shared/localization";
-import { PasswordField } from "../../../shared/ui/PasswordField";
+import { ActionBar, Alert, Button, ButtonLink, PasswordField } from "../../../shared/ui";
 
 export const PasswordResetForm = ({ token }: { token: string }) => {
   const { t } = useLanguage();
@@ -20,7 +20,6 @@ export const PasswordResetForm = ({ token }: { token: string }) => {
       setPassword("");
       setSubmitted(true);
     } catch {
-      setPassword("");
       setError(t("passwordRecovery.resetFailure"));
     } finally {
       setSubmitting(false);
@@ -29,16 +28,16 @@ export const PasswordResetForm = ({ token }: { token: string }) => {
 
   if (submitted) {
     return (
-      <section aria-live="polite">
-        <p>{t("passwordRecovery.resetComplete")}</p>
-        <a className="button" href="/sign-in">{t("passwordRecovery.signIn")}</a>
-      </section>
+      <div className="grid gap-moviqo-4">
+        <Alert announcement="polite" tone="success">{t("passwordRecovery.resetComplete")}</Alert>
+        <ButtonLink href="/sign-in">{t("passwordRecovery.signIn")}</ButtonLink>
+      </div>
     );
   }
 
   return (
-    <form className="form-card" onSubmit={submit} noValidate>
-      {error ? <p role="alert">{error}</p> : null}
+    <form className="grid gap-moviqo-4" onSubmit={submit} noValidate>
+      {error ? <Alert announcement="assertive" tone="error">{error}</Alert> : null}
       <PasswordField
         id="reset-password"
         label={t("passwordRecovery.password")}
@@ -49,11 +48,18 @@ export const PasswordResetForm = ({ token }: { token: string }) => {
         hideLabel={t("password.policy.hide")}
         isRevealed={isRevealed}
         onRevealToggle={() => setIsRevealed((value) => !value)}
+        required
       />
-      <button className="button" type="submit" disabled={submitting || !token}>
-        {submitting ? t("passwordRecovery.resetting") : t("passwordRecovery.resetSubmit")}
-      </button>
-      {(error || !token) ? <a href="/password-recovery">{t("passwordRecovery.requestAgain")}</a> : null}
+      <ActionBar>
+        <Button type="submit" disabled={submitting || !token} width="full">
+          {submitting ? t("passwordRecovery.resetting") : t("passwordRecovery.resetSubmit")}
+        </Button>
+      </ActionBar>
+      {(error || !token) ? (
+        <ButtonLink href="/password-recovery" variant="quiet">
+          {t("passwordRecovery.requestAgain")}
+        </ButtonLink>
+      ) : null}
     </form>
   );
 };

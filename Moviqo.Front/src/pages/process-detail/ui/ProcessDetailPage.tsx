@@ -11,6 +11,13 @@ type ProcessDetailPageProps = {
   processId: string;
 };
 
+const timelineMessageKeyByKind = {
+  "workflow-runtime.process-completed": "processDetail.event.processCompleted",
+  "workflow-runtime.process-started": "processDetail.event.processStarted",
+  "workflow-runtime.task-completed": "processDetail.event.taskCompleted",
+  "workflow-runtime.task-draft-saved": "processDetail.event.taskProgressSaved"
+} as const;
+
 export const resolveProcessDetailPageView = (
   loadStatus: "loading" | "error" | "ready",
   document: ProcessDetailDocument | null
@@ -131,7 +138,9 @@ export const ProcessDetailPage = ({ processId }: ProcessDetailPageProps) => {
               <ol>
                 {detailDocument.timeline.map((event) => (
                   <li key={`${event.eventKind}-${event.occurredAt}`}>
-                    <strong>{event.label}</strong>
+                    <strong>{event.eventKind in timelineMessageKeyByKind
+                      ? t(timelineMessageKeyByKind[event.eventKind as keyof typeof timelineMessageKeyByKind])
+                      : event.label}</strong>
                     <span>{event.actorDisplay}</span>
                     <span>{event.taskPosition}</span>
                     <span>{formatDateTimeInTimeZone(event.occurredAt, organizationTimeZone)}</span>

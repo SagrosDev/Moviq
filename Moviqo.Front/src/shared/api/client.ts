@@ -94,6 +94,21 @@ export type ApiClientOptions = {
   fetch?: (input: Request) => Promise<Response>;
 };
 
+export const isSessionExpiryProblem = (status: number, code: string) =>
+  status === 401 || (status === 403 && code === "authentication_failed");
+
+const responseProblemCode = async (response: Response) => {
+  if (response.status !== 403) {
+    return "";
+  }
+
+  try {
+    return (await readApiProblem(response.clone())).code;
+  } catch {
+    return "";
+  }
+};
+
 export const createApiClient = (options: ApiClientOptions) => {
   const normalizedBaseUrl = normalizeApiBaseUrl(options.baseUrl);
   const csrfBootstrapEndpoint = `${normalizedBaseUrl}${API_PATH_PREFIX}/auth/csrf/`;
@@ -135,7 +150,11 @@ export const createApiClient = (options: ApiClientOptions) => {
           new Request(retrySource, { credentials: "same-origin", headers: retryHeaders })
         );
       }
-      if ((response.status === 401 || response.status === 403) && typeof window !== "undefined") {
+      const problemCode = await responseProblemCode(response);
+      if (
+        typeof window !== "undefined"
+        && isSessionExpiryProblem(response.status, problemCode)
+      ) {
         window.dispatchEvent(new CustomEvent("moviqo:session-expired"));
       }
       return response;

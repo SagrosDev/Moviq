@@ -66,7 +66,8 @@ test("password field exposes an accessible pressed state and paste-friendly defa
       helperText: "Use 15 to 128 characters. Avoid common or compromised passwords.",
       revealLabel: "Show password",
       hideLabel: "Hide password",
-      isRevealed: true
+      isRevealed: true,
+      onRevealToggle
     })
   );
 
@@ -74,6 +75,8 @@ test("password field exposes an accessible pressed state and paste-friendly defa
   assert.match(hiddenMarkup, /autoComplete="new-password"/);
   assert.match(hiddenMarkup, /aria-pressed="false"/);
   assert.match(hiddenMarkup, /aria-label="Show password"/);
+  assert.match(hiddenMarkup, /<svg/);
+  assert.doesNotMatch(hiddenMarkup, />Show password<\/button>/);
   assert.doesNotMatch(hiddenMarkup, /pattern=/);
   assert.doesNotMatch(hiddenMarkup, /minlength=/);
   assert.doesNotMatch(hiddenMarkup, /maxlength=/);
@@ -83,7 +86,7 @@ test("password field exposes an accessible pressed state and paste-friendly defa
 
   const buttonElement = findElementByType(
     hiddenElement,
-    (element) => typeof element.type === "function" && element.type.name === "Button"
+    (element) => element.type === "button"
   );
   assert.ok(buttonElement);
   assert.equal(buttonElement.props.onClick, onRevealToggle);

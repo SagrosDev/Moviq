@@ -59,24 +59,32 @@ export const WorkflowCreatePage = () => {
         <h1 id="workflow-create-page-title">{t("workflowDesign.create.title")}</h1>
         <p className="lede">{t("workflowDesign.create.lede")}</p>
       </section>
-      {canAuthor ? <WorkflowCreateForm
-        onBackHref={protectedEntryPath}
-        onCreated={(accepted) => {
-          setDraftState(createWorkflowDraftState(accepted));
-          setConfigurationDirectory(accepted.configurationDirectory);
-        }}
-      /> : <section className="status-panel" aria-labelledby="workflow-design-forbidden-title">
+      {canAuthor ? <>
+        <aside className="workflow-authoring-notice" role="note" aria-labelledby="workflow-authoring-notice-title">
+          <h2 id="workflow-authoring-notice-title">{t("workflowDesign.authoring.narrowTitle")}</h2>
+          <p>{t("workflowDesign.authoring.narrowBody")}</p>
+        </aside>
+        <div className="workflow-authoring-surface">
+          <WorkflowCreateForm
+            onBackHref={protectedEntryPath}
+            onCreated={(accepted) => {
+              setDraftState(createWorkflowDraftState(accepted));
+              setConfigurationDirectory(accepted.configurationDirectory);
+            }}
+          />
+          {draftState && configurationDirectory ? <WorkflowDraftEditor
+            configurationDirectory={configurationDirectory}
+            draftState={draftState}
+            onAccepted={(acceptedDraftState, accepted) => {
+              setDraftState(acceptedDraftState);
+              setConfigurationDirectory(accepted.configurationDirectory);
+            }}
+          /> : null}
+        </div>
+      </> : <section className="status-panel" aria-labelledby="workflow-design-forbidden-title">
         <h2 id="workflow-design-forbidden-title">{t("authority.title")}</h2>
         <p>{t("authority.accessDenied")}</p>
       </section>}
-      {draftState && configurationDirectory ? <WorkflowDraftEditor
-        configurationDirectory={configurationDirectory}
-        draftState={draftState}
-        onAccepted={(acceptedDraftState, accepted) => {
-          setDraftState(acceptedDraftState);
-          setConfigurationDirectory(accepted.configurationDirectory);
-        }}
-      /> : null}
     </main>
   </div>;
 };

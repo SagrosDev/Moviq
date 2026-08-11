@@ -125,17 +125,40 @@ test("landing conversion preserves the selected language and keeps public routes
 test("design-system catalog exposes named components, states, and safe metadata", async ({ page }) => {
   await page.goto("/design-system");
 
-  await expect(page.getByRole("heading", { name: "Sistema de diseno" })).toBeVisible();
-  await expect(page.getByLabel("Idioma")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Sistema de dise/ })).toBeVisible();
+  await expect(page.getByLabel("Idioma", { exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Principal" })).toHaveCount(1);
+  await expect(page.getByRole("link", { name: "Registrar organizacion" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ingresar" })).toBeVisible();
+  await expect(page.getByText(/UAT/).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Entorno interno con datos sinteticos" })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Guardando" })).toBeDisabled();
-  await expect(page.getByLabel("Revision inicial")).toContainText("Listo");
-  await expect(page.getByRole("button", { name: "Cambiar asignacion" })).toBeVisible();
-  await expect(page.getByText("Necesita atencion")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ingresa a Moviqo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mostrar contrasena" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Mostrar contrasena" })).toHaveText("");
+  await page.getByRole("button", { name: "Mostrar contrasena" }).click();
+  await expect(page.getByRole("button", { name: "Ocultar contrasena" })).toBeVisible();
+  await expect(page.locator("#catalog-sign-in-password")).toHaveAttribute("type", "text");
+  await expect(page.getByRole("heading", { name: /Registra la organizacion/ })).toBeVisible();
+  await expect(page.getByLabel("Nombre de la organizacion")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByText("Necesita atencion", { exact: true })).toBeVisible();
   await expect(page.getByText(/Evidencia del catalogo/)).toBeVisible();
 
   await page.getByRole("button", { name: "Guardar borrador" }).focus();
   await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Guardar borrador" })).toHaveCSS(
+    "outline-color",
+    "rgb(37, 99, 235)"
+  );
+
+  await page.getByRole("button", { name: "Volver" }).hover();
+  await expect(page.getByRole("button", { name: "Volver" })).toHaveCSS(
+    "border-color",
+    "rgb(15, 118, 110)"
+  );
 });
 
 test("design-system page passes scoped axe checks", async ({ page }) => {
@@ -209,7 +232,7 @@ test("operational and catalog surfaces remain usable at narrow width and 200 per
   await page.goto("/design-system");
   await page.addStyleTag({ content: "html { font-size: 200%; }" });
 
-  await expect(page.getByRole("heading", { name: "Sistema de diseno" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Sistema de dise/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeVisible();
   await expect(page.getByText(/autoria completa requiere 1280/)).toBeVisible();
 });

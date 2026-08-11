@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   readVerificationToken,
+  verificationLocationWithoutToken,
   VerificationStatusPanel,
   verifyEmailToken
 } from "../../src/features/verification";
@@ -12,6 +13,13 @@ import { LanguageProvider, memoryLanguagePreferenceAdapter } from "../../src/sha
 test("verification token is read from the public query string without extra whitespace", () => {
   assert.equal(readVerificationToken("?token= signed-token%20"), "signed-token");
   assert.equal(readVerificationToken("?other=value"), "");
+});
+
+test("verification removes only the sensitive token from the visible location", () => {
+  assert.equal(
+    verificationLocationWithoutToken("/verify-email", "?token=signed-token&lang=en", "#status"),
+    "/verify-email?lang=en#status"
+  );
 });
 
 test("verification client posts the token to the public activation endpoint", async () => {

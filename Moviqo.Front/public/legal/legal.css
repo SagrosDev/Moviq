@@ -1,0 +1,224 @@
+:root {
+  --moviqo-surface-base: #f8fafc;
+  --moviqo-surface-raised: #ffffff;
+  --moviqo-surface-soft: #f1f5f9;
+  --moviqo-ink-primary: #0f172a;
+  --moviqo-ink-secondary: #475569;
+  --moviqo-primary: #0f766e;
+  --moviqo-primary-hover: #115e59;
+  --moviqo-primary-foreground: #ffffff;
+  --moviqo-border: #cbd5e1;
+  --moviqo-focus: #2563eb;
+  --moviqo-warning: #b45309;
+  color: var(--moviqo-ink-primary);
+  background: var(--moviqo-surface-base);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--moviqo-surface-base);
+}
+
+a {
+  color: var(--moviqo-primary);
+  text-underline-offset: 0.25rem;
+}
+
+a:hover {
+  color: var(--moviqo-primary-hover);
+}
+
+a:focus-visible {
+  border-radius: 0.375rem;
+  outline: 3px solid var(--moviqo-focus);
+  outline-offset: 3px;
+}
+
+.environment-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--moviqo-warning);
+  background: var(--moviqo-surface-soft);
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.notice-badge {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  border: 1px solid var(--moviqo-warning);
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  color: var(--moviqo-warning);
+  background: var(--moviqo-surface-raised);
+  font-weight: 700;
+}
+
+.site-header {
+  border-bottom: 1px solid var(--moviqo-border);
+  background: var(--moviqo-surface-raised);
+}
+
+.header-inner,
+.footer-inner {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.brand {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--moviqo-ink-primary);
+  text-decoration: none;
+}
+
+.brand-wordmark {
+  font-family: Georgia, Cambria, "Times New Roman", serif;
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: -0.045em;
+}
+
+.brand-wordmark-accent {
+  color: var(--moviqo-primary);
+}
+
+.brand-mark {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
+}
+
+.footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--moviqo-ink-primary);
+}
+
+.footer-mark {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
+}
+
+.home-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  border: 1px solid var(--moviqo-border);
+  border-radius: 0.625rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.legal-shell {
+  width: min(100%, 56rem);
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+.legal-card {
+  display: grid;
+  gap: 1.5rem;
+  border: 1px solid var(--moviqo-border);
+  border-radius: 1rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  background: var(--moviqo-surface-raised);
+}
+
+.document-heading,
+.document-section,
+.related-documents {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.document-context {
+  margin: 0;
+  color: var(--moviqo-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2rem, 5vw, 2.5rem);
+  line-height: 1.15;
+}
+
+h2 {
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+p,
+li {
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.document-summary {
+  color: var(--moviqo-ink-secondary);
+  font-size: 1.125rem;
+}
+
+.related-documents {
+  border-top: 1px solid var(--moviqo-border);
+  padding-top: 1.5rem;
+}
+
+.related-documents ul {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.site-footer {
+  border-top: 1px solid var(--moviqo-border);
+  color: var(--moviqo-ink-secondary);
+  background: var(--moviqo-surface-raised);
+}
+
+@media (min-width: 47.5rem) {
+  .header-inner,
+  .footer-inner {
+    padding-right: 2rem;
+    padding-left: 2rem;
+  }
+
+  .legal-shell {
+    padding-right: 2rem;
+    padding-left: 2rem;
+  }
+}

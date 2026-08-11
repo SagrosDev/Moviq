@@ -187,12 +187,12 @@ The frontend reducer holds the single authoritative unsaved draft. It must not c
 
 ### Testing and Tooling
 
-The implementation can achieve strong confidence without multiplying end-to-end stories:
+The implementation can achieve strong confidence through layered technical checks and manual product acceptance:
 
 - **Pure Node/unit tests:** reducers, validators, stable-ID behavior, DTO adapters, Workflow-document-to-canvas mapping, query-key factories, and layout adapter outputs.
 - **Playwright component gallery in a real browser:** React Flow dimensions/zoom, node creation and connection, drag-end commits, Task-to-Form navigation, form sorting/grid spans, keyboard alternatives, focus movement, validation summary behavior, and designer/runtime renderer parity. Playwright's stable component-testing pattern uses the application's own Vite pipeline and a real browser, making it more suitable than jsdom for spatial editors. [Playwright component testing](https://playwright.dev/docs/test-components)
 - **Page integration with mocked API:** canonical route parameters, loading/empty/error states, explicit-save revisions, dirty navigation, conflict handling, and mutation/query invalidation.
-- **Existing deployed journey:** retain a small stakeholder-critical smoke path instead of duplicating every canvas or form-control case as E2E.
+- **Manual product acceptance:** verify the complete public, authoring, and runtime path manually on the selected built revision, including pointer/keyboard alternatives, recovery, responsive presentation, and module continuity.
 - **Accessibility:** semantic locator assertions, targeted axe scans, keyboard-only manual passes, reduced-motion/high-contrast checks, and manual spatial comprehension review. Automated accessibility tests remain partial. [Playwright accessibility testing](https://playwright.dev/docs/accessibility-testing)
 
 **Confidence:** High.
@@ -230,7 +230,7 @@ Moviqo belongs in the first category because its revisioning, publication, Proce
 - Navigation: **React Router with distinct modules/deep links**.
 - UI implementation: **Moviqo Tailwind tokens/primitives, shared field registry, accessible click/keyboard alternatives**.
 - Layout: **deterministic initially; Dagre later behind an interface; ELK only if complexity proves it necessary**.
-- Testing: **unit/adapter tests plus real-browser component and page integration coverage; minimal deployed E2E**.
+- Testing: **unit/adapter, component, contract, and page-integration coverage for technical behavior plus documented manual acceptance for cross-module and stakeholder experience**.
 
 **Overall confidence:** High, with one intentionally unresolved implementation check: the exact pre-1.0 dnd-kit React package versions must be confirmed by the Story 1.37 compatibility spike before the dependency choice is locked.
 

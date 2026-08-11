@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { queryRegistry, type QuerySnapshot } from "../../../shared/api";
+import {
+  queryRegistry,
+  type NormalizedApiProblem,
+  type QuerySnapshot
+} from "../../../shared/api";
 import {
   createMyWorkQueryKey,
   loadMyWorkDashboard,
@@ -12,7 +16,9 @@ export const useMyWorkDashboard = (
   enabled = true
 ) => {
   const queryKey = createMyWorkQueryKey(query);
-  const [snapshot, setSnapshot] = useState<QuerySnapshot<MyWorkDashboard>>(() =>
+  const [snapshot, setSnapshot] = useState<
+    QuerySnapshot<MyWorkDashboard, NormalizedApiProblem>
+  >(() =>
     queryRegistry.getSnapshot(queryKey)
   );
 

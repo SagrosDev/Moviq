@@ -1,5 +1,11 @@
 export { contrastRatio, relativeLuminance } from "./contrast";
-export { catalogComponents, type CatalogComponentDefinition, type CatalogComponentKind } from "./catalogData";
+export {
+  catalogComponents,
+  catalogPreviewCompositions,
+  catalogPreviewStates,
+  type CatalogComponentDefinition,
+  type CatalogComponentKind
+} from "./catalogData";
 export {
   colorTokens,
   focusTokens,

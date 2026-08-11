@@ -22,7 +22,7 @@ so that I can find my work and move between Workflow, Form, and Process activiti
 
 6. **Preserve authorization and accessible navigation:** Navigation visibility reflects membership capability for clarity but never substitutes for backend authorization. Page titles, landmarks, breadcrumbs, current-location state, focus after navigation, skip links, and supported narrow layouts remain keyboard/screen-reader usable and bilingual.
 
-7. **Verify the module boundary without E2E expansion:** Component/integration tests cover public/protected redirects, route matching, deep links/reloads, role navigation, loading/empty/error states, Workflow creation redirect, Workflow-to-Form navigation, Form launcher selection, and separate runtime modules. Existing Story 1.33 remains the deployed regression; no new deployed E2E suite or browser matrix is introduced.
+7. **Verify the module boundary:** Unit, component, and integration tests cover public/protected redirects, route matching, deep-link/reload state restoration, role navigation, loading/empty/error states, Workflow creation redirect, Workflow-to-Form navigation, Form launcher selection, and separate runtime modules. Manual acceptance verifies that a user can discover and move between each module, reload canonical URLs, and return without losing authorized context.
 
 Traceability: AD-7, AD-9, AD-16, UX-DR14, UX-DR20, UX-DR21, NFR16, NFR30.
 
@@ -56,7 +56,8 @@ Traceability: AD-7, AD-9, AD-16, UX-DR14, UX-DR20, UX-DR21, NFR16, NFR30.
 - [ ] Verify behavior and architecture (AC: 7)
   - [ ] Add route/component tests for deep-link, reload, role, redirect, focus, empty/error, and navigation behavior.
   - [ ] Extend architecture tests to reject manual pathname growth, page deep imports, sibling-feature deep imports, and global editor Context.
-  - [ ] Run affected unit, architecture, type, generated-client, build/static, and existing local journey checks.
+  - [ ] Run affected unit, component, architecture, type, generated-client, and build/static checks.
+  - [ ] Manually walk Dashboard, Tasks, Processes, Start Process, Workflow creation/design, Form launcher/design, copied deep links, reloads, and back/breadcrumb behavior with representative roles.
 
 ## Dev Notes
 

@@ -1,5 +1,6 @@
 export {
   readVerificationToken,
+  verificationLocationWithoutToken,
   verifyEmailToken,
   type VerificationResult
 } from "./model/verifyEmail";

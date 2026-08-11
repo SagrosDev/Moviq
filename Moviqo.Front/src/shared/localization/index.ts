@@ -2,7 +2,8 @@ export {
   LanguageProvider,
   useLanguage
 } from "./LanguageProvider";
-export { LanguageSelector } from "./LanguageSelector";
+export { LanguageSelector, resolveLanguagePopupKey } from "./LanguageSelector";
+export type { LanguagePopupCommand } from "./LanguageSelector";
 export {
   defaultLanguage,
   englishMessages,

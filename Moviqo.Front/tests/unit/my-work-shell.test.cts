@@ -17,13 +17,14 @@ import {
   clearProtectedQueryState,
   createQueryRegistry,
   queryRegistry,
+  type NormalizedApiProblem,
   type QuerySnapshot
 } from "../../src/shared/api";
 import { LanguageProvider, memoryLanguagePreferenceAdapter } from "../../src/shared/localization";
 import type { MyWorkDashboard } from "../../src/features/my-work";
 
 const renderShell = (
-  snapshot: QuerySnapshot<MyWorkDashboard>,
+  snapshot: QuerySnapshot<MyWorkDashboard, NormalizedApiProblem>,
   overrides: Record<string, unknown> = {}
 ) =>
   renderToStaticMarkup(
@@ -116,6 +117,25 @@ test("my-work shell renders semantic regions and localized empty states", () => 
   assert.match(markup, /Crear flujo/);
   assert.match(markup, /No tienes tareas autorizadas para atender ahora/);
   assert.match(markup, /Buscar procesos completados/);
+});
+
+test("my-work shell keeps permission denial localized and exposes only the safe code", () => {
+  const markup = renderShell({
+    status: "error",
+    error: {
+      type: "https://api.moviqo.local/problems/permission-denied",
+      title: "Restricted process exists",
+      status: 403,
+      code: "permission_denied",
+      correlationId: "safe-correlation-123",
+      invalidParams: []
+    },
+    updatedAt: Date.now()
+  });
+
+  assert.match(markup, /No tienes permiso para ver este trabajo/);
+  assert.match(markup, /data-error-code="permission_denied"/);
+  assert.doesNotMatch(markup, /Restricted process exists/);
 });
 
 test("my-work shell renders startable workflow cards with the start action and feedback", () => {

@@ -20,7 +20,7 @@ so that I can evaluate Moviqo's product value without unfinished interface quali
 
 5. **Complete bilingual and accessibility polish:** Spanish spelling/accents and English copy are reviewed across navigation, empty/error states, Workflow/Form palettes, properties, validation, publication, runtime handoffs, and support guidance. Visible focus, reduced motion, non-color-only states, headings/landmarks, and practical target sizes are preserved.
 
-6. **Approve the exact presentation:** Human-reviewed desktop/mobile operational screenshots and supported desktop authoring screenshots demonstrate the approved palette, alignment, hierarchy, modules, interactions, and responsive behavior. Focused component/integration checks and the existing Story 1.33 regression pass; no new deployed E2E suite or browser matrix is introduced.
+6. **Approve the exact presentation manually:** Human-reviewed desktop/mobile operational screenshots and supported desktop authoring screenshots demonstrate the approved palette, alignment, hierarchy, modules, interactions, and responsive behavior. Focused unit/component/integration checks remain green, and a manual walkthrough verifies the complete stakeholder path, recovery behavior, bilingual presentation, and authoring-to-runtime continuity on the exact built revision.
 
 Traceability: UX-DR3-UX-DR24, AD-9, AD-12, AD-16, NFR16, NFR30.
 
@@ -43,10 +43,11 @@ Traceability: UX-DR3-UX-DR24, AD-9, AD-12, AD-16, NFR16, NFR30.
   - [ ] Review all new module/editor copy and interaction announcements in Spanish and English.
   - [ ] Verify landmarks, focus order, reduced motion, targets, and non-color-only state.
 
-- [ ] Run the visual checkpoint and regression (AC: 6)
+- [ ] Run the visual checkpoint and manual acceptance (AC: 6)
   - [ ] Capture representative operational desktop/mobile and desktop authoring screenshots.
   - [ ] Resolve visual/navigation defects before Story 1.39.
-  - [ ] Run affected unit, component, architecture, type, build/static, and existing Story 1.33 regression checks.
+  - [ ] Run affected unit, component, integration, architecture, type, and build/static checks.
+  - [ ] Manually walk the polished public, authoring, and runtime path on the exact built revision and record blocking defects and approval.
 
 ## Dev Notes
 

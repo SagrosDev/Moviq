@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import type { QuerySnapshot } from "../../../shared/api";
+import type { NormalizedApiProblem, QuerySnapshot } from "../../../shared/api";
 import { useLanguage } from "../../../shared/localization";
 import type {
   MyProcessesQuery,
@@ -13,7 +13,7 @@ import type {
 import { formatDateTimeInTimeZone } from "../model/myWork";
 
 type MyWorkShellProps = {
-  snapshot: QuerySnapshot<MyWorkDashboard>;
+  snapshot: QuerySnapshot<MyWorkDashboard, NormalizedApiProblem>;
   onRetry(): void;
   onStartWorkflow(workflowId: string): void;
   startFeedbackByWorkflowId: Record<string, string | undefined>;
@@ -29,6 +29,7 @@ type MyWorkShellProps = {
 };
 
 type Translate = ReturnType<typeof useLanguage>["t"];
+type MyWorkSnapshot = QuerySnapshot<MyWorkDashboard, NormalizedApiProblem>;
 
 const regionOrder: MyWorkRegion[] = ["myTasks", "startWorkflows", "myProcesses"];
 const toProcessReference = (processId: string) => processId.slice(0, 8);
@@ -44,6 +45,11 @@ const statusLabelFor = (status: string, t: Translate) => {
   }
   return status;
 };
+
+const errorMessageFor = (snapshot: MyWorkSnapshot, t: Translate) =>
+  snapshot.status === "error" && snapshot.error.code === "permission_denied"
+    ? t("myWork.permissionDenied")
+    : t("myWork.error");
 
 export const MyWorkShell = ({
   snapshot,
@@ -163,14 +169,14 @@ const labelForRegion = (region: MyWorkRegion, t: Translate) => {
 };
 
 const renderMyTasks = (
-  snapshot: QuerySnapshot<MyWorkDashboard>,
+  snapshot: MyWorkSnapshot,
   onRetry: () => void,
   t: Translate
 ) => {
   return renderRegionState<MyWorkTask>(
     snapshot,
     t("myWork.myTasks.empty"),
-    t("myWork.error"),
+    errorMessageFor(snapshot, t),
     t("myWork.loading"),
     t("myWork.retry"),
     onRetry,
@@ -190,7 +196,7 @@ const renderMyTasks = (
 };
 
 const renderStartWorkflows = (
-  snapshot: QuerySnapshot<MyWorkDashboard>,
+  snapshot: MyWorkSnapshot,
   onRetry: () => void,
   onStartWorkflow: (workflowId: string) => void,
   startFeedbackByWorkflowId: Record<string, string | undefined>,
@@ -200,7 +206,7 @@ const renderStartWorkflows = (
   return renderRegionState<MyWorkStartWorkflow>(
     snapshot,
     t("myWork.startWorkflows.empty"),
-    t("myWork.error"),
+    errorMessageFor(snapshot, t),
     t("myWork.loading"),
     t("myWork.retry"),
     onRetry,
@@ -230,7 +236,7 @@ const renderStartWorkflows = (
 };
 
 const renderMyProcesses = (
-  snapshot: QuerySnapshot<MyWorkDashboard>,
+  snapshot: MyWorkSnapshot,
   onRetry: () => void,
   t: Translate,
   query: MyProcessesQuery,
@@ -274,8 +280,8 @@ const renderMyProcesses = (
   if (snapshot.status === "error") {
     return <div>
       {controls}
-      <div className="status-panel" role="alert">
-        <p>{t("myWork.error")}</p>
+      <div className="status-panel" role="alert" data-error-code={snapshot.error.code}>
+        <p>{errorMessageFor(snapshot, t)}</p>
         <button className="button" type="button" onClick={onRetry}>{t("myWork.retry")}</button>
       </div>
     </div>;
@@ -331,7 +337,7 @@ const renderMyProcesses = (
 };
 
 const renderRegionState = <TItem,>(
-  snapshot: QuerySnapshot<MyWorkDashboard>,
+  snapshot: MyWorkSnapshot,
   emptyMessage: string,
   errorMessage: string,
   loadingMessage: string,
@@ -345,7 +351,7 @@ const renderRegionState = <TItem,>(
   }
 
   if (snapshot.status === "error") {
-    return <div className="status-panel" role="alert">
+    return <div className="status-panel" role="alert" data-error-code={snapshot.error.code}>
       <p>{errorMessage}</p>
       <button className="button" type="button" onClick={onRetry}>{retryLabel}</button>
     </div>;

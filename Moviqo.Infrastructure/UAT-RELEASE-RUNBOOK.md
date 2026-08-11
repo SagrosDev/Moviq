@@ -177,6 +177,24 @@ Run or rerun `deployed-journey` only after every required target is ready:
 
 The GitHub workflow currently starts `deployed-journey` immediately on pushes to `main`, so it can race the Cloud Run or Firebase deployment. A raced run is not valid release evidence. Rerun it after UAT reports the exact commit.
 
+### 9. Record the stakeholder preview accessibility baseline
+
+After the exact-build deployed journey passes, run `npm run test:e2e:preview-qualification` from `Moviqo.Front/` and record its sanitized evidence. This is an **accessibility baseline verification**, not a formal WCAG conformance claim.
+
+Complete the following keyboard walkthrough once in Spanish and once in English on the supported desktop-authoring profile. Repeat the participant steps on the representative mobile profile with touch/pointer operation.
+
+| Surface | Keyboard walkthrough | Evidence to record |
+|---|---|---|
+| Registration | Tab through language, fields, consent controls, validation, and submit; correct one validation error. | Logical order, visible focus, associated error, localized announcement. |
+| Sign-in | Reach email, password, recovery link, and submit without a pointer. | Labels, visible focus, failure announcement, no lost value after correction. |
+| Workflow authoring | Create the Workflow, add/connect Start-Task-End, configure publication, create/bind the field, and publish. | 1280 x 720 or larger viewport, visible focus, no keyboard trap, Designer text preserved across language switch. |
+| Task Form | Enter, save, retry one recoverable failure, and complete without a confirmation dialog. | Preserved value, status announcement only after server response, focus remains actionable. |
+| Process timeline | Open My Processes and the completed Process detail. | Heading order, readable event sequence, localized owned labels, no restricted Process Data. |
+
+Record the date, reviewer, build SHA, UAT origin, browser name and actual version, Playwright project/device, CSS viewport, language, text scale, reduced-motion mode, pass/fail, safe evidence links, and known limitations. Do not record passwords, verification tokens, cookies, raw email bodies, or Process Field values. A missing language, surface, or evidence field blocks Story 1.35 approval rather than being waived in notes.
+
+Known Epic 1 limitation: the thin preview has no user-facing destructive or irreversible command. Record that confirmation behavior is not exercised rather than inventing a destructive control. Routine Workflow/Form save, Task save, and Task completion must remain confirmation-free and must not show success before the server response.
+
 ## Console Links
 
 ### Google Cloud

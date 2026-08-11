@@ -157,37 +157,45 @@ export const formatDateTimeInTimeZone = (
 export const readMyWorkDashboard = async (
   query: MyProcessesQuery = defaultMyProcessesQuery
 ): Promise<MyWorkDashboardResult> => {
-  const response = await (
-    myWorkClient as {
-      GET(path: string, init?: object): Promise<{ data?: unknown; response: Response }>;
+  try {
+    const response = await (
+      myWorkClient as {
+        GET(path: string, init?: object): Promise<{ data?: unknown; response: Response }>;
+      }
+    ).GET(buildMyWorkDashboardPath(query), {});
+    if (!response.response.ok) {
+      return { ok: false, error: await readApiProblem(response.response) };
     }
-  ).GET(buildMyWorkDashboardPath(query), {});
-  if (!response.response.ok) {
-    return { ok: false, error: await readApiProblem(response.response) };
-  }
 
-  return {
-    ok: true,
-    data: response.data as unknown as MyWorkDashboard
-  };
+    return {
+      ok: true,
+      data: response.data as unknown as MyWorkDashboard
+    };
+  } catch {
+    return { ok: false, error: normalizeApiProblem(undefined, 0) };
+  }
 };
 
 export const readProcessDetailDocument = async (
   processId: string
 ): Promise<ProcessDetailResult> => {
-  const response = await (
-    myWorkClient as {
-      GET(path: string, init?: object): Promise<{ data?: unknown; response: Response }>;
+  try {
+    const response = await (
+      myWorkClient as {
+        GET(path: string, init?: object): Promise<{ data?: unknown; response: Response }>;
+      }
+    ).GET(`/api/v1/my-work/processes/${processId}/`, {});
+    if (!response.response.ok) {
+      return { ok: false, error: await readApiProblem(response.response) };
     }
-  ).GET(`/api/v1/my-work/processes/${processId}/`, {});
-  if (!response.response.ok) {
-    return { ok: false, error: await readApiProblem(response.response) };
-  }
 
-  return {
-    ok: true,
-    data: response.data as unknown as ProcessDetailDocument
-  };
+    return {
+      ok: true,
+      data: response.data as unknown as ProcessDetailDocument
+    };
+  } catch {
+    return { ok: false, error: normalizeApiProblem(undefined, 0) };
+  }
 };
 
 export const loadMyWorkDashboard = async (

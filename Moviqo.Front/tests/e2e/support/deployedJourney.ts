@@ -7,6 +7,7 @@ import {
   type Response,
   type TestInfo
 } from "@playwright/test";
+import type { PreviewQualificationEvidence } from "./stakeholderPreview";
 
 type SyntheticIdentity = {
   runId: string;
@@ -32,6 +33,7 @@ export type JourneyEvidence = {
   host: string;
   organizationRef: string;
   processRef: string;
+  qualification?: PreviewQualificationEvidence;
   taskRef: string;
 };
 
@@ -250,21 +252,29 @@ export const performApiAction = async (
   return response;
 };
 
-export const waitForWorkflowPublicationReady = async (page: Page) => {
-  await expect(page.getByText(/define quien puede iniciar este flujo/i)).toHaveCount(0, {
+export const waitForWorkflowPublicationReady = async (
+  page: Page,
+  copy: {
+    assignmentIssue: string;
+    publishButton: string;
+    starterIssue: string;
+  }
+) => {
+  await expect(page.getByText(copy.starterIssue)).toHaveCount(0, {
     timeout: deployedAssertionTimeoutMs
   });
-  await expect(page.getByText(/define quien recibe la primera tarea/i)).toHaveCount(0, {
+  await expect(page.getByText(copy.assignmentIssue)).toHaveCount(0, {
     timeout: deployedAssertionTimeoutMs
   });
-  await expect(page.getByRole("button", { name: "Publicar version" })).toBeEnabled({
+  await expect(page.getByRole("button", { name: copy.publishButton })).toBeEnabled({
     timeout: deployedAssertionTimeoutMs
   });
 };
 
 export const assertNoAccessibilityViolations = async (
   page: Page,
-  axePath?: string
+  axePath?: string,
+  testInfo?: TestInfo
 ) => {
   const axePresent = await page.evaluate(() =>
     Boolean((window as unknown as { axe?: unknown }).axe)
@@ -286,7 +296,21 @@ export const assertNoAccessibilityViolations = async (
       }
     });
   });
-  expect(result.violations, JSON.stringify(result.violations, null, 2)).toEqual([]);
+  const violationFingerprints = result.violations.map((violation) => ({
+    id: violation.id,
+    impact: violation.impact,
+    targets: violation.nodes.map((node) => node.target)
+  }));
+  if (testInfo) {
+    await testInfo.attach("accessibility-baseline-results", {
+      body: Buffer.from(JSON.stringify({
+        claim: "baseline-verification-only",
+        violations: violationFingerprints
+      }, null, 2), "utf-8"),
+      contentType: "application/json"
+    });
+  }
+  expect(violationFingerprints, JSON.stringify(violationFingerprints, null, 2)).toEqual([]);
 };
 
 export const recordJourneyEvent = (

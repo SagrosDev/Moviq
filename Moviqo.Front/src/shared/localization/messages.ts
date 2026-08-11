@@ -47,6 +47,15 @@ export type MessageKey =
   | "registration.lede"
   | "registration.form.title"
   | "registration.form.body"
+  | "registration.errors.title"
+  | "registration.errors.documents"
+  | "registration.errors.form"
+  | "registration.identity.title"
+  | "registration.identity.body"
+  | "registration.organization.title"
+  | "registration.organization.body"
+  | "registration.regional.title"
+  | "registration.regional.body"
   | "registration.ownerName.label"
   | "registration.organizationName.label"
   | "registration.email.label"
@@ -92,6 +101,7 @@ export type MessageKey =
   | "myWork.regionNav"
   | "myWork.loading"
   | "myWork.error"
+  | "myWork.permissionDenied"
   | "myWork.retry"
   | "myWork.sessionLoading"
   | "myWork.myTasks.title"
@@ -139,6 +149,10 @@ export type MessageKey =
   | "processDetail.contribution"
   | "processDetail.timelineTitle"
   | "processDetail.timelineEmpty"
+  | "processDetail.event.processStarted"
+  | "processDetail.event.taskProgressSaved"
+  | "processDetail.event.taskCompleted"
+  | "processDetail.event.processCompleted"
   | "workflowDesign.create.eyebrow"
   | "workflowDesign.create.title"
   | "workflowDesign.create.lede"
@@ -151,6 +165,8 @@ export type MessageKey =
   | "workflowDesign.create.error"
   | "workflowDesign.create.conflict"
   | "workflowDesign.create.cta"
+  | "workflowDesign.authoring.narrowTitle"
+  | "workflowDesign.authoring.narrowBody"
   | "workflowDesign.draft.title"
   | "workflowDesign.draft.revision"
   | "workflowDesign.draft.schemaVersion"
@@ -355,100 +371,113 @@ export const spanishMessages: MessageDictionary = {
   "app.nav.primary": "Principal",
   "app.nav.work": "Mi trabajo",
   "app.nav.processes": "Procesos",
-  "app.nav.admin": "Administracion",
-  "app.nav.designSystem": "Sistema de diseno",
+  "app.nav.admin": "Administración",
+  "app.nav.designSystem": "Sistema de diseño",
   "app.language.label": "Idioma",
-  "app.language.spanish": "Espanol",
-  "app.language.english": "Ingles",
+  "app.language.spanish": "Español",
+  "app.language.english": "Inglés",
   "home.eyebrow": "Base de beta interna",
   "home.title": "Avanza el trabajo con responsables claros.",
   "home.lede":
-    "Moviqo mantiene las decisiones del flujo en el servidor mientras esta interfaz prueba la estructura accesible y bilingue.",
-  "home.cta.register": "Registrar organizacion",
+    "Moviqo mantiene las decisiones del flujo en el servidor mientras esta interfaz prueba la estructura accesible y bilingüe.",
+  "home.cta.register": "Registrar organización",
   "auth.signIn": "Ingresar",
   "auth.signOut": "Salir",
-  "environment.banner.title": "Entorno interno con datos sinteticos",
+  "environment.banner.title": "Entorno interno con datos sintéticos",
   "environment.banner.body":
     "Usa este entorno solo para pruebas internas persistentes. No actives clientes ni registres datos reales.",
   "environment.banner.rule1":
-    "Prohibido usar onboarding de clientes o afirmaciones de produccion.",
+    "Prohibido usar onboarding de clientes o afirmaciones de producción.",
   "environment.banner.rule2":
-    "Prohibido ingresar datos reales de negocio, datos personales reales o archivos de produccion.",
+    "Prohibido ingresar datos reales de negocio, datos personales reales o archivos de producción.",
   "environment.banner.rule3":
     "Las funciones de malware en vivo, copias independientes y ciclos de vida siguen deshabilitados por compuerta.",
   "authority.title": "Respuesta del servidor requerida",
   "authority.accessDenied": "No tienes acceso a este elemento de trabajo.",
   "authority.completionRejected":
-    "La tarea no se completo. Intentalo de nuevo despues de actualizar el elemento de trabajo.",
+    "La tarea no se completó. Inténtalo de nuevo después de actualizar el elemento de trabajo.",
   "authority.reviewAssignedWork": "Revisar trabajo asignado",
   "status.ready": "Listo",
   "status.blocked": "Bloqueado",
-  "status.needsAttention": "Necesita atencion",
+  "status.needsAttention": "Necesita atención",
   "status.assigned": "Asignada",
   "status.inProgress": "En curso",
   "status.completed": "Completada",
   "validation.required": "Completa este campo para continuar.",
   "validation.generic": "Revisa este campo e intenta de nuevo.",
-  "validation.email": "Escribe un correo electronico valido.",
-  "help.requiredField": "Usa una descripcion corta y clara.",
+  "validation.email": "Escribe un correo electrónico válido.",
+  "help.requiredField": "Usa una descripción corta y clara.",
   "password.policy.helper":
-    "Usa entre 15 y 128 caracteres. Evita contrasenas comunes o expuestas.",
-  "password.policy.reveal": "Mostrar contrasena",
-  "password.policy.hide": "Ocultar contrasena",
+    "Usa entre 15 y 128 caracteres. Evita contraseñas comunes o expuestas.",
+  "password.policy.reveal": "Mostrar contraseña",
+  "password.policy.hide": "Ocultar contraseña",
   "registration.eyebrow": "Onboarding inicial",
-  "registration.title": "Registra la organizacion y a su primera persona responsable.",
+  "registration.title": "Registra la organización y a su primera persona responsable.",
   "registration.lede":
-    "Esta solicitud crea una organizacion pendiente, una cuenta pendiente y una verificacion por correo antes de exponer datos protegidos.",
+    "Esta solicitud crea una organización pendiente, una cuenta pendiente y una verificación por correo antes de exponer datos protegidos.",
   "registration.form.title": "Formulario de registro",
   "registration.form.body":
-    "Revisa idioma, region, zona horaria y moneda antes de enviar. La contrasena se limpia si el servidor devuelve errores.",
+    "Revisa el idioma, la región, la zona horaria y la moneda antes de enviar.",
+  "registration.errors.title": "Corrige los siguientes datos",
+  "registration.errors.documents":
+    "Revisa y vuelve a aceptar los documentos vigentes.",
+  "registration.errors.form":
+    "Revisa los datos del registro e inténtalo de nuevo. Si el problema continúa, contacta a soporte.",
+  "registration.identity.title": "Tu identidad",
+  "registration.identity.body":
+    "Indica quién será la primera persona responsable y cómo accederá.",
+  "registration.organization.title": "Organización",
+  "registration.organization.body": "Usa el nombre que tu equipo reconocerá.",
+  "registration.regional.title": "Preferencias regionales",
+  "registration.regional.body":
+    "Confirma el idioma, la región, la zona horaria y la moneda sugeridos.",
   "registration.ownerName.label": "Nombre de la persona responsable",
-  "registration.organizationName.label": "Nombre de la organizacion",
+  "registration.organizationName.label": "Nombre de la organización",
   "registration.email.label": "Correo de acceso",
-  "registration.password.label": "Contrasena",
+  "registration.password.label": "Contraseña",
   "registration.language.label": "Idioma preferido",
-  "registration.region.label": "Region",
+  "registration.region.label": "Región",
   "registration.timezone.label": "Zona horaria",
   "registration.currency.label": "Moneda",
   "registration.consent.title": "Aceptaciones requeridas",
   "registration.consent.body":
-    "Debes aceptar los terminos beta, la privacidad y la prohibicion de datos reales antes de continuar.",
+    "Debes aceptar los términos beta, la privacidad y la prohibición de datos reales antes de continuar.",
   "registration.documents.current":
     "Documentos vigentes: beta-2026-08-04 y privacy-2026-08-04.",
   "registration.terms.label":
-    "Confirmo que acepto los terminos beta vigentes para continuar con el registro.",
+    "Confirmo que acepto los términos beta vigentes para continuar con el registro.",
   "registration.privacy.label":
     "Confirmo que acepto el aviso de privacidad vigente para continuar con el registro.",
   "registration.prohibited.label":
-    "Confirmo que no ingresare datos personales reales, datos de clientes ni archivos de produccion.",
+    "Confirmo que no ingresaré datos personales reales, datos de clientes ni archivos de producción.",
   "registration.submit": "Enviar registro",
   "registration.submitting": "Enviando registro",
-  "registration.success": "Se envio un enlace de verificacion a",
+  "registration.success": "Se envió un enlace de verificación a",
   "registration.failure": "Corrige los datos marcados y vuelve a enviar.",
-  "verification.eyebrow": "Verificacion de correo",
-  "verification.title": "Activa la organizacion al confirmar el correo.",
+  "verification.eyebrow": "Verificación de correo",
+  "verification.title": "Activa la organización al confirmar el correo.",
   "verification.lede":
-    "Este paso confirma el control de la cuenta antes de habilitar el acceso protegido de la organizacion.",
+    "Este paso confirma el control de la cuenta antes de habilitar el acceso protegido de la organización.",
   "verification.loading.title": "Verificando enlace",
   "verification.loading.body":
     "Estamos validando el enlace seguro de un solo uso. No cierres esta pagina.",
   "verification.success.title": "Correo verificado",
-  "verification.success.body": "La organizacion ya puede continuar con acceso protegido para",
+  "verification.success.body": "La organización ya puede continuar con acceso protegido para",
   "verification.success.next":
-    "Conserva este correo. El siguiente paso es iniciar sesion cuando esa ruta quede disponible.",
+    "Inicia sesión con este correo verificado para continuar.",
   "verification.invalid.title": "No se pudo verificar el enlace",
   "verification.invalid.body":
-    "El enlace puede haber expirado, haber sido usado o no ser valido. Vuelve al registro para solicitar un acceso nuevo seguro.",
+    "El enlace puede haber expirado, haber sido usado o no ser válido. Vuelve al registro para solicitar un acceso nuevo seguro.",
   "verification.cta.home": "Volver al inicio",
   "verification.cta.register": "Registrar de nuevo",
   "signIn.eyebrow": "Acceso seguro",
   "signIn.title": "Ingresa a Moviqo",
   "signIn.lede": "Usa tu correo verificado para continuar al espacio de trabajo.",
-  "signIn.email": "Correo electronico",
-  "signIn.password": "Contrasena",
+  "signIn.email": "Correo electrónico",
+  "signIn.password": "Contraseña",
   "signIn.submit": "Ingresar",
   "signIn.submitting": "Ingresando",
-  "signIn.failure": "No pudimos autenticarte. Revisa tus datos e intentalo de nuevo.",
+  "signIn.failure": "No pudimos autenticarte. Revisa tus datos e inténtalo de nuevo.",
   "myWork.eyebrow": "Trabajo autenticado",
   "myWork.title": "Mi trabajo",
   "myWork.lede": "Consulta lo que puedes iniciar, atender y seguir dentro de tu membresia activa.",
@@ -456,6 +485,7 @@ export const spanishMessages: MessageDictionary = {
   "myWork.regionNav": "Navegacion de regiones de Mi trabajo",
   "myWork.loading": "Cargando tu trabajo autorizado.",
   "myWork.error": "No pudimos cargar tu trabajo autorizado. Intenta de nuevo.",
+  "myWork.permissionDenied": "No tienes permiso para ver este trabajo. Tu sesion sigue activa.",
   "myWork.retry": "Reintentar",
   "myWork.sessionLoading": "Estamos validando tu sesion segura.",
   "myWork.myTasks.title": "Mis tareas",
@@ -503,6 +533,10 @@ export const spanishMessages: MessageDictionary = {
   "processDetail.contribution": "Tu aporte:",
   "processDetail.timelineTitle": "Linea de tiempo",
   "processDetail.timelineEmpty": "Aun no hay eventos autorizados para mostrar.",
+  "processDetail.event.processStarted": "Proceso iniciado",
+  "processDetail.event.taskProgressSaved": "Avance de tarea guardado",
+  "processDetail.event.taskCompleted": "Tarea completada",
+  "processDetail.event.processCompleted": "Proceso completado",
   "workflowDesign.create.eyebrow": "Diseno de flujos",
   "workflowDesign.create.title": "Crear flujo",
   "workflowDesign.create.lede":
@@ -520,6 +554,9 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.create.conflict":
     "Ese nombre ya esta en uso. Elige otro antes de continuar.",
   "workflowDesign.create.cta": "Crear flujo",
+  "workflowDesign.authoring.narrowTitle": "Autoria disponible en escritorio",
+  "workflowDesign.authoring.narrowBody":
+    "La vista movil permite orientacion ligera. La autoria completa de flujos y formularios requiere 1280 por 720 px o mas.",
   "workflowDesign.draft.title": "Borrador",
   "workflowDesign.draft.revision": "Revision",
   "workflowDesign.draft.schemaVersion": "Version de esquema",
@@ -529,17 +566,17 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.body":
     "Agrega cada paso con controles visibles, conecta el camino y guarda solo cuando el servidor acepte la revision.",
   "workflowDesign.editor.guidanceTitle": "Siguiente accion",
-  "workflowDesign.editor.guidanceStart": "Agrega Start para abrir el flujo.",
-  "workflowDesign.editor.guidanceTask": "Agrega Task para definir el trabajo minimo.",
-  "workflowDesign.editor.guidanceEnd": "Agrega End para cerrar el camino.",
-  "workflowDesign.editor.guidanceConnectStartTask": "Conecta Start con Task para iniciar el camino.",
-  "workflowDesign.editor.guidanceConnectTaskEnd": "Conecta Task con End para completar el camino.",
-  "workflowDesign.editor.guidanceSave": "Guarda el borrador para confirmar el camino Start -> Task -> End.",
-  "workflowDesign.editor.addStart": "Agregar Start",
-  "workflowDesign.editor.addTask": "Agregar Task",
-  "workflowDesign.editor.addEnd": "Agregar End",
-  "workflowDesign.editor.connectStartTask": "Conectar Start con Task",
-  "workflowDesign.editor.connectTaskEnd": "Conectar Task con End",
+  "workflowDesign.editor.guidanceStart": "Agrega Inicio para abrir el flujo.",
+  "workflowDesign.editor.guidanceTask": "Agrega Tarea para definir el trabajo minimo.",
+  "workflowDesign.editor.guidanceEnd": "Agrega Fin para cerrar el camino.",
+  "workflowDesign.editor.guidanceConnectStartTask": "Conecta Inicio con Tarea para iniciar el camino.",
+  "workflowDesign.editor.guidanceConnectTaskEnd": "Conecta Tarea con Fin para completar el camino.",
+  "workflowDesign.editor.guidanceSave": "Guarda el borrador para confirmar el camino Inicio -> Tarea -> Fin.",
+  "workflowDesign.editor.addStart": "Agregar Inicio",
+  "workflowDesign.editor.addTask": "Agregar Tarea",
+  "workflowDesign.editor.addEnd": "Agregar Fin",
+  "workflowDesign.editor.connectStartTask": "Conectar Inicio con Tarea",
+  "workflowDesign.editor.connectTaskEnd": "Conectar Tarea con Fin",
   "workflowDesign.editor.saving": "Guardando borrador",
   "workflowDesign.editor.unsaved": "Cambios sin guardar",
   "workflowDesign.editor.retrying": "Reintentando guardado",
@@ -590,17 +627,17 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.issue.assignmentMissing":
     "Necesitamos un detalle mas antes de publicar: define quien recibe la primera tarea.",
   "workflowDesign.editor.issue.startStepInvalid":
-    "Agrega exactamente un paso Start antes de publicar este flujo.",
+    "Agrega exactamente un paso Inicio antes de publicar este flujo.",
   "workflowDesign.editor.issue.firstTaskMissing":
     "Agrega la primera tarea antes de publicar este flujo.",
   "workflowDesign.editor.issue.endStepInvalid":
-    "Agrega exactamente un paso End antes de publicar este flujo.",
+    "Agrega exactamente un paso Fin antes de publicar este flujo.",
   "workflowDesign.editor.issue.startPathIncomplete":
-    "Conecta Start con la primera tarea antes de publicar este flujo.",
+    "Conecta Inicio con la primera tarea antes de publicar este flujo.",
   "workflowDesign.editor.issue.pathDisconnected":
-    "Conecta este paso dentro del camino de Start a End antes de publicar.",
+    "Conecta este paso dentro del camino de Inicio a Fin antes de publicar.",
   "workflowDesign.editor.issue.pathToEndMissing":
-    "Conecta este paso para que el flujo llegue a End antes de publicar.",
+    "Conecta este paso para que el flujo llegue a Fin antes de publicar.",
   "workflowDesign.editor.issue.firstTaskFormMissing":
     "Agrega un campo visible al formulario de la primera tarea antes de publicar.",
   "workflowDesign.editor.issue.firstTaskBindingMissingField":
@@ -626,17 +663,17 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.savedEmpty": "Aun no hay un camino guardado.",
   "workflowDesign.editor.fieldTitle": "Primer campo reutilizable",
   "workflowDesign.editor.fieldBody":
-    "Define un campo Short text y agregalo a la primera Task sin duplicar su identidad.",
-  "workflowDesign.editor.fieldLabel": "Label",
-  "workflowDesign.editor.fieldHelpText": "Help text",
-  "workflowDesign.editor.fieldPlaceholder": "Placeholder",
-  "workflowDesign.editor.fieldDefaultValue": "Default value",
-  "workflowDesign.editor.fieldMinimumLength": "Minimum length",
-  "workflowDesign.editor.fieldMaximumLength": "Maximum length",
-  "workflowDesign.editor.addShortText": "Crear Short text",
-  "workflowDesign.editor.updateShortText": "Actualizar Short text",
-  "workflowDesign.editor.addToFirstTask": "Add to first task",
-  "workflowDesign.editor.removeFromFirstTask": "Quitar de la primera Task",
+    "Define un campo de texto corto y agregalo a la primera Tarea sin duplicar su identidad.",
+  "workflowDesign.editor.fieldLabel": "Etiqueta",
+  "workflowDesign.editor.fieldHelpText": "Texto de ayuda",
+  "workflowDesign.editor.fieldPlaceholder": "Texto de ejemplo",
+  "workflowDesign.editor.fieldDefaultValue": "Valor predeterminado",
+  "workflowDesign.editor.fieldMinimumLength": "Longitud minima",
+  "workflowDesign.editor.fieldMaximumLength": "Longitud maxima",
+  "workflowDesign.editor.addShortText": "Crear texto corto",
+  "workflowDesign.editor.updateShortText": "Actualizar texto corto",
+  "workflowDesign.editor.addToFirstTask": "Agregar a la primera tarea",
+  "workflowDesign.editor.removeFromFirstTask": "Quitar de la primera tarea",
   "workflowDesign.editor.fieldSummaryPrefix": "Campo listo:",
   "workflowDesign.editor.fieldEmpty": "Todavia no has creado un campo reutilizable.",
   "taskForm.eyebrow": "Tarea activa",
@@ -659,22 +696,22 @@ export const spanishMessages: MessageDictionary = {
   "taskForm.back": "Volver a Mi trabajo",
   "taskForm.loading": "Cargando la tarea autorizada.",
   "taskForm.loadError": "No pudimos cargar esta tarea autorizada. Intenta de nuevo.",
-  "passwordRecovery.eyebrow": "Recuperacion segura",
-  "passwordRecovery.title": "Recupera tu contrasena",
+  "passwordRecovery.eyebrow": "Recuperación segura",
+  "passwordRecovery.title": "Recupera tu contraseña",
   "passwordRecovery.lede": "Te enviaremos instrucciones si la cuenta puede recibirlas.",
-  "passwordRecovery.email": "Correo electronico",
+  "passwordRecovery.email": "Correo electrónico",
   "passwordRecovery.submit": "Enviar instrucciones",
   "passwordRecovery.submitting": "Enviando",
-  "passwordRecovery.confirmation": "Si existe una cuenta elegible, recibiras instrucciones para recuperar el acceso.",
-  "passwordRecovery.failure": "No pudimos procesar la solicitud. Intentalo de nuevo.",
-  "passwordRecovery.forgotLink": "Olvide mi contrasena",
-  "passwordRecovery.resetTitle": "Define una contrasena nueva",
-  "passwordRecovery.resetLede": "Usa una contrasena que cumpla la politica de seguridad.",
-  "passwordRecovery.password": "Contrasena nueva",
-  "passwordRecovery.resetSubmit": "Cambiar contrasena",
-  "passwordRecovery.resetting": "Cambiando contrasena",
-  "passwordRecovery.resetFailure": "El enlace no es valido o la contrasena no cumple la politica.",
-  "passwordRecovery.resetComplete": "Tu contrasena fue actualizada. Ahora puedes ingresar.",
+  "passwordRecovery.confirmation": "Si existe una cuenta elegible, recibirás instrucciones para recuperar el acceso.",
+  "passwordRecovery.failure": "No pudimos procesar la solicitud. Inténtalo de nuevo.",
+  "passwordRecovery.forgotLink": "Olvidé mi contraseña",
+  "passwordRecovery.resetTitle": "Define una contraseña nueva",
+  "passwordRecovery.resetLede": "Usa una contraseña que cumpla la política de seguridad.",
+  "passwordRecovery.password": "Contraseña nueva",
+  "passwordRecovery.resetSubmit": "Cambiar contraseña",
+  "passwordRecovery.resetting": "Cambiando contraseña",
+  "passwordRecovery.resetFailure": "El enlace no es válido o la contraseña no cumple la política.",
+  "passwordRecovery.resetComplete": "Tu contraseña fue actualizada. Ahora puedes ingresar.",
   "passwordRecovery.signIn": "Ir a ingresar",
   "passwordRecovery.requestAgain": "Solicitar un enlace nuevo",
   "catalog.title": "Sistema de diseno",
@@ -789,7 +826,20 @@ export const englishMessages: Partial<MessageDictionary> = {
     "This request creates a pending organization, pending account, and email verification before any protected data is exposed.",
   "registration.form.title": "Registration form",
   "registration.form.body":
-    "Review language, region, timezone, and currency before sending. The password is cleared if the server returns errors.",
+    "Review the language, region, timezone, and currency before sending.",
+  "registration.errors.title": "Correct the following details",
+  "registration.errors.documents":
+    "Review and accept the current documents again.",
+  "registration.errors.form":
+    "Review the registration details and try again. If the problem continues, contact support.",
+  "registration.identity.title": "Your identity",
+  "registration.identity.body":
+    "Tell us who the first responsible person will be and how they will sign in.",
+  "registration.organization.title": "Organization",
+  "registration.organization.body": "Use the name your team will recognize.",
+  "registration.regional.title": "Regional preferences",
+  "registration.regional.body":
+    "Confirm the suggested language, region, timezone, and currency.",
   "registration.ownerName.label": "Owner name",
   "registration.organizationName.label": "Organization name",
   "registration.email.label": "Access email",
@@ -824,7 +874,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "verification.success.body":
     "The organization can now continue toward protected access for",
   "verification.success.next":
-    "Keep this email ready. The next step is sign-in when that route becomes available.",
+    "Sign in with this verified email to continue.",
   "verification.invalid.title": "The link could not be verified",
   "verification.invalid.body":
     "The link may be expired, already used, or invalid. Return to registration to request a new safe path.",
@@ -845,6 +895,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.regionNav": "My work region navigation",
   "myWork.loading": "Loading your authorized work.",
   "myWork.error": "We could not load your authorized work. Try again.",
+  "myWork.permissionDenied": "You do not have permission to view this work. Your session remains active.",
   "myWork.retry": "Retry",
   "myWork.sessionLoading": "We are validating your secure session.",
   "myWork.myTasks.title": "My tasks",
@@ -892,6 +943,10 @@ export const englishMessages: Partial<MessageDictionary> = {
   "processDetail.contribution": "Your contribution:",
   "processDetail.timelineTitle": "Timeline",
   "processDetail.timelineEmpty": "There are no authorized events to show yet.",
+  "processDetail.event.processStarted": "Process started",
+  "processDetail.event.taskProgressSaved": "Task progress saved",
+  "processDetail.event.taskCompleted": "Task completed",
+  "processDetail.event.processCompleted": "Process completed",
   "workflowDesign.create.eyebrow": "Workflow design",
   "workflowDesign.create.title": "Create workflow",
   "workflowDesign.create.lede":
@@ -909,6 +964,9 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.create.conflict":
     "That name is already in use. Choose a different one before continuing.",
   "workflowDesign.create.cta": "Create workflow",
+  "workflowDesign.authoring.narrowTitle": "Authoring is available on desktop",
+  "workflowDesign.authoring.narrowBody":
+    "The mobile view provides light orientation. Full Workflow and Form authoring requires 1280 by 720 px or larger.",
   "workflowDesign.draft.title": "Draft",
   "workflowDesign.draft.revision": "Revision",
   "workflowDesign.draft.schemaVersion": "Schema version",

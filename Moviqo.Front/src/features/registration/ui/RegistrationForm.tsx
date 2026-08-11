@@ -1,15 +1,63 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { normalizeApiProblem } from "../../../shared/api";
-import { useLanguage } from "../../../shared/localization";
-import { Button } from "../../../shared/ui/Button";
-import { PasswordField } from "../../../shared/ui/PasswordField";
+import { useLanguage, type MessageKey, type MoviqoTranslator } from "../../../shared/localization";
+import {
+  ActionBar,
+  Alert,
+  Button,
+  ButtonLink,
+  CheckboxField,
+  ErrorSummary,
+  FormGrid,
+  FormGridItem,
+  FormSection,
+  PasswordField,
+  SelectField,
+  TextInput,
+  type ErrorSummaryItem
+} from "../../../shared/ui";
 import {
   applyRegistrationFailure,
   buildInitialRegistrationDraft,
+  clearRegistrationFieldError,
   fieldErrorMapFromProblem,
+  registrationRequiredFieldErrors,
   type RegistrationDraft
 } from "../model/registrationForm";
 import { submitRegistration } from "../model/submitRegistration";
+
+type VisibleRegistrationField = Exclude<
+  keyof RegistrationDraft,
+  "termsVersion" | "privacyVersion"
+>;
+
+type RegistrationFieldMetadata = {
+  field: VisibleRegistrationField;
+  id: string;
+  labelKey: MessageKey;
+};
+
+const registrationFieldMetadata: readonly RegistrationFieldMetadata[] = [
+  { field: "ownerName", id: "registration-owner-name", labelKey: "registration.ownerName.label" },
+  {
+    field: "organizationName",
+    id: "registration-organization-name",
+    labelKey: "registration.organizationName.label"
+  },
+  { field: "email", id: "registration-email", labelKey: "registration.email.label" },
+  { field: "password", id: "registration-password", labelKey: "registration.password.label" },
+  { field: "language", id: "registration-language", labelKey: "registration.language.label" },
+  { field: "region", id: "registration-region", labelKey: "registration.region.label" },
+  { field: "timezone", id: "registration-timezone", labelKey: "registration.timezone.label" },
+  { field: "currency", id: "registration-currency", labelKey: "registration.currency.label" },
+  { field: "termsAccepted", id: "registration-terms", labelKey: "registration.terms.label" },
+  { field: "privacyAccepted", id: "registration-privacy", labelKey: "registration.privacy.label" },
+  {
+    field: "prohibitedDataAcknowledged",
+    id: "registration-prohibited-data",
+    labelKey: "registration.prohibited.label"
+  }
+];
 
 const browserLanguages = () => {
   if (typeof navigator === "undefined") {
@@ -27,27 +75,38 @@ const browserTimeZone = () => {
   }
 };
 
-const updateDraft = (
-  draft: RegistrationDraft,
-  field: keyof RegistrationDraft,
-  value: RegistrationDraft[keyof RegistrationDraft]
-) => {
-  return {
-    ...draft,
-    [field]: value
-  };
-};
-
 const fieldError = (fieldErrors: Record<string, string[]>, fieldName: string) => {
   return fieldErrors[fieldName]?.[0];
 };
 
+export const buildRegistrationErrorSummaryItems = (
+  fieldErrors: Record<string, string[]>,
+  translate: MoviqoTranslator
+): ErrorSummaryItem[] => {
+  const items: ErrorSummaryItem[] = registrationFieldMetadata.flatMap(({ field, id, labelKey }) =>
+    (fieldErrors[field] ?? []).map((message, index) => ({
+      id: `${field}-${index}`,
+      fieldId: id,
+      fieldLabel: translate(labelKey),
+      message
+    }))
+  );
+
+  return items.concat(
+    (fieldErrors.nonFieldErrors ?? []).map((message, index) => ({
+      id: `registration-form-${index}`,
+      message
+    }))
+  );
+};
+
 export const RegistrationForm = () => {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const [draft, setDraft] = useState<RegistrationDraft>(() =>
     buildInitialRegistrationDraft({
       browserLanguages: browserLanguages(),
-      browserTimeZone: browserTimeZone()
+      browserTimeZone: browserTimeZone(),
+      preferredLanguage: language
     })
   );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -56,9 +115,43 @@ export const RegistrationForm = () => {
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [problemCorrelationId, setProblemCorrelationId] = useState<string | null>(null);
+  const [errorFocusRequest, setErrorFocusRequest] = useState(0);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
+  const submissionInFlightRef = useRef(false);
+
+  const errorItems = buildRegistrationErrorSummaryItems(fieldErrors, t);
+
+  useEffect(() => {
+    if (errorFocusRequest > 0) {
+      errorSummaryRef.current?.focus();
+    }
+  }, [errorFocusRequest]);
+
+  const updateField = <Field extends keyof RegistrationDraft,>(
+    field: Field,
+    value: RegistrationDraft[Field]
+  ) => {
+    setDraft((currentDraft) => ({ ...currentDraft, [field]: value }));
+    setFieldErrors((currentErrors) => clearRegistrationFieldError(currentErrors, field));
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submissionInFlightRef.current) {
+      return;
+    }
+
+    const requiredFieldErrors = registrationRequiredFieldErrors(draft, t);
+    if (Object.keys(requiredFieldErrors).length > 0) {
+      setFieldErrors(requiredFieldErrors);
+      setSubmitError(t("registration.failure"));
+      setErrorFocusRequest((currentRequest) => currentRequest + 1);
+      setProblemCorrelationId(null);
+      setSuccessEmail(null);
+      return;
+    }
+
+    submissionInFlightRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
     setProblemCorrelationId(null);
@@ -67,242 +160,198 @@ export const RegistrationForm = () => {
     try {
       const result = await submitRegistration(draft);
       setFieldErrors({});
-      setDraft((currentDraft) => ({
-        ...currentDraft,
-        password: ""
-      }));
+      setDraft((currentDraft) => ({ ...currentDraft, password: "" }));
       setSuccessEmail(result.email);
     } catch (error) {
       const problem = normalizeApiProblem(error);
-      setFieldErrors(fieldErrorMapFromProblem(problem, t));
-      setDraft((currentDraft) =>
-        applyRegistrationFailure(currentDraft, problem.invalidParams)
-      );
+      const nextFieldErrors = fieldErrorMapFromProblem(problem, t);
+      setFieldErrors(nextFieldErrors);
+      setDraft((currentDraft) => applyRegistrationFailure(currentDraft, problem.invalidParams));
       setSubmitError(t("registration.failure"));
+      setErrorFocusRequest((currentRequest) => currentRequest + 1);
       setProblemCorrelationId(problem.correlationId || null);
       setIsPasswordRevealed(false);
     } finally {
+      submissionInFlightRef.current = false;
       setIsSubmitting(false);
     }
   };
 
   return (
-    <form className="registration-form" onSubmit={handleSubmit}>
-      <div className="registration-grid">
-        <label className="form-field">
-          <span>{t("registration.ownerName.label")}</span>
-          <input
-            value={draft.ownerName}
-            onChange={(event) => setDraft(updateDraft(draft, "ownerName", event.target.value))}
-            aria-invalid={fieldError(fieldErrors, "ownerName") ? true : undefined}
-            aria-describedby={
-              fieldError(fieldErrors, "ownerName") ? "registration-owner-error" : undefined
-            }
-            autoComplete="name"
-          />
-          {fieldError(fieldErrors, "ownerName") ? (
-            <small id="registration-owner-error" className="validation-message">
-              {fieldError(fieldErrors, "ownerName")}
-            </small>
-          ) : null}
-        </label>
-
-        <label className="form-field">
-          <span>{t("registration.organizationName.label")}</span>
-          <input
-            value={draft.organizationName}
-            onChange={(event) =>
-              setDraft(updateDraft(draft, "organizationName", event.target.value))
-            }
-            aria-invalid={fieldError(fieldErrors, "organizationName") ? true : undefined}
-            aria-describedby={
-              fieldError(fieldErrors, "organizationName")
-                ? "registration-organization-error"
-                : undefined
-            }
-            autoComplete="organization"
-          />
-          {fieldError(fieldErrors, "organizationName") ? (
-            <small id="registration-organization-error" className="validation-message">
-              {fieldError(fieldErrors, "organizationName")}
-            </small>
-          ) : null}
-        </label>
-
-        <label className="form-field">
-          <span>{t("registration.email.label")}</span>
-          <input
-            type="email"
-            value={draft.email}
-            onChange={(event) => setDraft(updateDraft(draft, "email", event.target.value))}
-            aria-invalid={fieldError(fieldErrors, "email") ? true : undefined}
-            aria-describedby={
-              fieldError(fieldErrors, "email") ? "registration-email-error" : undefined
-            }
-            autoComplete="email"
-          />
-          {fieldError(fieldErrors, "email") ? (
-            <small id="registration-email-error" className="validation-message">
-              {fieldError(fieldErrors, "email")}
-            </small>
-          ) : null}
-        </label>
-
-        <PasswordField
-          id="registration-password"
-          label={t("registration.password.label")}
-          helperText={t("password.policy.helper")}
-          revealLabel={t("password.policy.reveal")}
-          hideLabel={t("password.policy.hide")}
-          value={draft.password}
-          onChange={(event) => setDraft(updateDraft(draft, "password", event.target.value))}
-          isRevealed={isPasswordRevealed}
-          onRevealToggle={() => setIsPasswordRevealed(!isPasswordRevealed)}
-          errorMessage={fieldError(fieldErrors, "password")}
-        />
-
-        <label className="form-field">
-          <span>{t("registration.language.label")}</span>
-          <select
-            value={draft.language}
-            onChange={(event) =>
-              setDraft(updateDraft(draft, "language", event.target.value as "es" | "en"))
-            }
-          >
-            <option value="es">{t("app.language.spanish")}</option>
-            <option value="en">{t("app.language.english")}</option>
-          </select>
-        </label>
-
-        <label className="form-field">
-          <span>{t("registration.region.label")}</span>
-          <input
-            value={draft.region}
-            onChange={(event) => setDraft(updateDraft(draft, "region", event.target.value))}
-            aria-invalid={fieldError(fieldErrors, "region") ? true : undefined}
-            aria-describedby={
-              fieldError(fieldErrors, "region") ? "registration-region-error" : undefined
-            }
-          />
-          {fieldError(fieldErrors, "region") ? (
-            <small id="registration-region-error" className="validation-message">
-              {fieldError(fieldErrors, "region")}
-            </small>
-          ) : null}
-        </label>
-
-        <label className="form-field">
-          <span>{t("registration.timezone.label")}</span>
-          <input
-            value={draft.timezone}
-            onChange={(event) => setDraft(updateDraft(draft, "timezone", event.target.value))}
-            aria-invalid={fieldError(fieldErrors, "timezone") ? true : undefined}
-            aria-describedby={
-              fieldError(fieldErrors, "timezone") ? "registration-timezone-error" : undefined
-            }
-          />
-          {fieldError(fieldErrors, "timezone") ? (
-            <small id="registration-timezone-error" className="validation-message">
-              {fieldError(fieldErrors, "timezone")}
-            </small>
-          ) : null}
-        </label>
-
-        <label className="form-field">
-          <span>{t("registration.currency.label")}</span>
-          <input
-            value={draft.currency}
-            onChange={(event) => setDraft(updateDraft(draft, "currency", event.target.value))}
-            aria-invalid={fieldError(fieldErrors, "currency") ? true : undefined}
-            aria-describedby={
-              fieldError(fieldErrors, "currency") ? "registration-currency-error" : undefined
-            }
-          />
-          {fieldError(fieldErrors, "currency") ? (
-            <small id="registration-currency-error" className="validation-message">
-              {fieldError(fieldErrors, "currency")}
-            </small>
-          ) : null}
-        </label>
-      </div>
-
-      <section className="registration-consent" aria-labelledby="registration-consent-title">
-        <h2 id="registration-consent-title">{t("registration.consent.title")}</h2>
-        <p>{t("registration.consent.body")}</p>
-        <p>{t("registration.documents.current")}</p>
-        <label className="registration-checkbox">
-          <input
-            id="registration-terms"
-            type="checkbox"
-            checked={draft.termsAccepted}
-            aria-invalid={fieldError(fieldErrors, "termsAccepted") ? true : undefined}
-            aria-describedby={fieldError(fieldErrors, "termsAccepted") ? "registration-terms-error" : undefined}
-            onChange={(event) =>
-              setDraft(updateDraft(draft, "termsAccepted", event.target.checked))
-            }
-          />
-          <span>{t("registration.terms.label")}</span>
-        </label>
-        {fieldError(fieldErrors, "termsAccepted") ? (
-          <p id="registration-terms-error" className="validation-message" role="alert">
-            {fieldError(fieldErrors, "termsAccepted")}
-          </p>
-        ) : null}
-        <label className="registration-checkbox">
-          <input
-            id="registration-privacy"
-            type="checkbox"
-            checked={draft.privacyAccepted}
-            aria-invalid={fieldError(fieldErrors, "privacyAccepted") ? true : undefined}
-            aria-describedby={fieldError(fieldErrors, "privacyAccepted") ? "registration-privacy-error" : undefined}
-            onChange={(event) =>
-              setDraft(updateDraft(draft, "privacyAccepted", event.target.checked))
-            }
-          />
-          <span>{t("registration.privacy.label")}</span>
-        </label>
-        {fieldError(fieldErrors, "privacyAccepted") ? (
-          <p id="registration-privacy-error" className="validation-message" role="alert">
-            {fieldError(fieldErrors, "privacyAccepted")}
-          </p>
-        ) : null}
-        <label className="registration-checkbox">
-          <input
-            id="registration-prohibited-data"
-            type="checkbox"
-            checked={draft.prohibitedDataAcknowledged}
-            aria-invalid={fieldError(fieldErrors, "prohibitedDataAcknowledged") ? true : undefined}
-            aria-describedby={fieldError(fieldErrors, "prohibitedDataAcknowledged") ? "registration-prohibited-data-error" : undefined}
-            onChange={(event) =>
-              setDraft(
-                updateDraft(draft, "prohibitedDataAcknowledged", event.target.checked)
-              )
-            }
-          />
-          <span>{t("registration.prohibited.label")}</span>
-        </label>
-        {fieldError(fieldErrors, "prohibitedDataAcknowledged") ? (
-          <p id="registration-prohibited-data-error" className="validation-message" role="alert">
-            {fieldError(fieldErrors, "prohibitedDataAcknowledged")}
-          </p>
-        ) : null}
-      </section>
-
+    <form className="grid gap-moviqo-6" onSubmit={handleSubmit} noValidate>
       {submitError ? (
-        <p className="validation-message" role="alert" aria-live="polite">
-          {submitError}
-          {problemCorrelationId ? ` (${problemCorrelationId})` : null}
-        </p>
-      ) : null}
-      {successEmail ? (
-        <p className="success-message">
-          {t("registration.success")} {successEmail}
-        </p>
+        <ErrorSummary
+          errors={errorItems}
+          formMessage={submitError}
+          ref={errorSummaryRef}
+          supportDetail={problemCorrelationId ? `ID: ${problemCorrelationId}` : undefined}
+          title={t("registration.errors.title")}
+        />
       ) : null}
 
-      <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? t("registration.submitting") : t("registration.submit")}
-      </Button>
+      {successEmail ? (
+        <Alert announcement="polite" tone="success" title={t("status.ready")}>
+          {t("registration.success")} {successEmail}
+        </Alert>
+      ) : null}
+
+      <FormSection
+        description={t("registration.identity.body")}
+        title={t("registration.identity.title")}
+        titleId="registration-identity-title"
+      >
+        <FormGrid>
+          <FormGridItem span="half">
+            <TextInput
+              id="registration-owner-name"
+              label={t("registration.ownerName.label")}
+              value={draft.ownerName}
+              onChange={(event) => updateField("ownerName", event.target.value)}
+              errorMessage={fieldError(fieldErrors, "ownerName")}
+              autoComplete="name"
+              required
+            />
+          </FormGridItem>
+          <FormGridItem span="half">
+            <TextInput
+              id="registration-email"
+              label={t("registration.email.label")}
+              type="email"
+              value={draft.email}
+              onChange={(event) => updateField("email", event.target.value)}
+              errorMessage={fieldError(fieldErrors, "email")}
+              autoComplete="email"
+              required
+            />
+          </FormGridItem>
+          <FormGridItem span="full">
+            <PasswordField
+              id="registration-password"
+              label={t("registration.password.label")}
+              helperText={t("password.policy.helper")}
+              revealLabel={t("password.policy.reveal")}
+              hideLabel={t("password.policy.hide")}
+              value={draft.password}
+              onChange={(event) => updateField("password", event.target.value)}
+              isRevealed={isPasswordRevealed}
+              onRevealToggle={() => setIsPasswordRevealed((value) => !value)}
+              errorMessage={fieldError(fieldErrors, "password")}
+              autoComplete="new-password"
+              required
+            />
+          </FormGridItem>
+        </FormGrid>
+      </FormSection>
+
+      <FormSection
+        description={t("registration.organization.body")}
+        title={t("registration.organization.title")}
+        titleId="registration-organization-title"
+      >
+        <TextInput
+          id="registration-organization-name"
+          label={t("registration.organizationName.label")}
+          value={draft.organizationName}
+          onChange={(event) => updateField("organizationName", event.target.value)}
+          errorMessage={fieldError(fieldErrors, "organizationName")}
+          autoComplete="organization"
+          required
+        />
+      </FormSection>
+
+      <FormSection
+        description={t("registration.regional.body")}
+        title={t("registration.regional.title")}
+        titleId="registration-regional-title"
+      >
+        <FormGrid>
+          <FormGridItem span="half">
+            <SelectField
+              id="registration-language"
+              label={t("registration.language.label")}
+              value={draft.language}
+              onChange={(event) => updateField("language", event.target.value as "es" | "en")}
+              errorMessage={fieldError(fieldErrors, "language")}
+              options={[
+                { value: "es", label: t("app.language.spanish") },
+                { value: "en", label: t("app.language.english") }
+              ]}
+              required
+            />
+          </FormGridItem>
+          <FormGridItem span="half">
+            <TextInput
+              id="registration-region"
+              label={t("registration.region.label")}
+              value={draft.region}
+              onChange={(event) => updateField("region", event.target.value)}
+              errorMessage={fieldError(fieldErrors, "region")}
+              required
+            />
+          </FormGridItem>
+          <FormGridItem span="half">
+            <TextInput
+              id="registration-timezone"
+              label={t("registration.timezone.label")}
+              value={draft.timezone}
+              onChange={(event) => updateField("timezone", event.target.value)}
+              errorMessage={fieldError(fieldErrors, "timezone")}
+              required
+            />
+          </FormGridItem>
+          <FormGridItem span="half">
+            <TextInput
+              id="registration-currency"
+              label={t("registration.currency.label")}
+              value={draft.currency}
+              onChange={(event) => updateField("currency", event.target.value)}
+              errorMessage={fieldError(fieldErrors, "currency")}
+              required
+            />
+          </FormGridItem>
+        </FormGrid>
+      </FormSection>
+
+      <FormSection
+        description={t("registration.consent.body")}
+        title={t("registration.consent.title")}
+        titleId="registration-consent-title"
+      >
+        <p className="m-0 text-sm text-moviqo-ink-secondary">{t("registration.documents.current")}</p>
+        <div className="grid gap-moviqo-4">
+          <CheckboxField
+            id="registration-terms"
+            label={t("registration.terms.label")}
+            checked={draft.termsAccepted}
+            onChange={(event) => updateField("termsAccepted", event.target.checked)}
+            errorMessage={fieldError(fieldErrors, "termsAccepted")}
+            required
+          />
+          <CheckboxField
+            id="registration-privacy"
+            label={t("registration.privacy.label")}
+            checked={draft.privacyAccepted}
+            onChange={(event) => updateField("privacyAccepted", event.target.checked)}
+            errorMessage={fieldError(fieldErrors, "privacyAccepted")}
+            required
+          />
+          <CheckboxField
+            id="registration-prohibited-data"
+            label={t("registration.prohibited.label")}
+            checked={draft.prohibitedDataAcknowledged}
+            onChange={(event) => updateField("prohibitedDataAcknowledged", event.target.checked)}
+            errorMessage={fieldError(fieldErrors, "prohibitedDataAcknowledged")}
+            required
+          />
+        </div>
+      </FormSection>
+
+      <ActionBar align="between">
+        <ButtonLink href="/sign-in" variant="quiet">{t("auth.signIn")}</ButtonLink>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? t("registration.submitting") : t("registration.submit")}
+        </Button>
+      </ActionBar>
     </form>
   );
 };

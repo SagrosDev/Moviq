@@ -1,5 +1,27 @@
 import type { MessageKey } from "../localization";
 
+export const catalogPreviewCompositions = [
+  "landing-navigation",
+  "authentication-form",
+  "registration-form",
+  "buttons",
+  "cards",
+  "alerts",
+  "badges",
+  "timeline-row",
+  "uat-indicator"
+] as const;
+
+export const catalogPreviewStates = [
+  "normal",
+  "hover",
+  "focus",
+  "disabled",
+  "success",
+  "warning",
+  "error"
+] as const;
+
 export type CatalogComponentKind =
   | "primary-button"
   | "guidance-card"

@@ -24,7 +24,7 @@ so that the Form is easy to compose and remains identical in meaning when someon
 
 7. **Make validation recoverable:** Runtime and Designer Forms provide localized error summaries, associated inline errors, first-invalid-item focus/reveal, non-field failure treatment, non-color-only state, and correction behavior consistent with Story 1.34. Correctable values remain available and correlation IDs remain secondary support information.
 
-8. **Verify design/runtime parity and manual persistence:** Component/contract tests prove route/launcher behavior, registry resolution, Short Text and structural items, approved spans/reflow, dnd-kit plus explicit alternatives, preview/runtime parity, focus/error recovery, explicit Save Draft, no background save requests, dirty navigation, conflict behavior, incomplete coherent Form saving, and unknown-item fail-safe handling. Story 1.33 remains the deployed regression.
+8. **Verify design/runtime parity and manual persistence:** Unit, component, contract, and integration tests cover route/launcher behavior, registry resolution, Short Text and structural items, approved spans/reflow, reducer commands, preview/runtime parity, error recovery, explicit Save Draft, no background save requests, conflicts, incomplete coherent Form saving, and unknown-item fail-safe handling. Manual acceptance verifies pointer and keyboard item placement/reordering, widths/reflow, preview parity, focus/error recovery, dirty navigation, save/reload, and operational rendering on the built application.
 
 Traceability: FR48, FR108-FR113, FR168-FR185, FR194, FR222, FR227, FR235, FR240, AD-4, AD-5, AD-7, AD-9, UX-DR3-UX-DR6, UX-DR14, UX-DR17, UX-DR20, UX-DR21, NFR16, NFR25.
 
@@ -63,7 +63,8 @@ Traceability: FR48, FR108-FR113, FR168-FR185, FR194, FR222, FR227, FR235, FR240,
 - [ ] Verify the architecture and experience (AC: 8)
   - [ ] Add component/contract tests for routes, registries, layout, interactions, parity, focus, errors, and revisioned save/complete behavior.
   - [ ] Extend architecture checks for feature boundaries and absence of a second Form document/store.
-  - [ ] Run affected backend/frontend unit, contract, architecture, type, generated-client, build/static, and existing local journey checks.
+  - [ ] Run affected backend/frontend unit, component, contract/integration, architecture, type, generated-client, and build/static checks.
+  - [ ] Manually compose, reorder, resize, save, reload, preview, and use a representative Task Form with pointer and keyboard alternatives.
 
 ## Dev Notes
 

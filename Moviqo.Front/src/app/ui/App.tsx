@@ -32,14 +32,13 @@ const AppRouter = () => {
   const normalizedPath = normalizeAppPath(path);
   const taskId = matchTaskFormPath(normalizedPath);
   const processId = matchProcessDetailPath(normalizedPath);
-  const isPublicLanding =
-    normalizedPath === "/" || normalizedPath === "/es" || normalizedPath === "/en";
+  const usesEmbeddedEnvironmentNotice = normalizedPath === "/design-system";
   const shouldRouteAuthenticatedRoot =
     normalizedPath === "/" && state.status === "authenticated";
 
   return (
     <>
-      {!isPublicLanding && <EnvironmentBanner />}
+      {!usesEmbeddedEnvironmentNotice ? <EnvironmentBanner /> : null}
       {normalizedPath === "/design-system" ? (
         <DesignSystemPage />
       ) : normalizedPath === "/register" ? (

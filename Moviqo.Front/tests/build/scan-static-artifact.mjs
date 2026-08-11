@@ -32,15 +32,24 @@ const files = async (root) => {
 
 const artifactFiles = await files(distRoot);
 assert.ok(artifactFiles.length > 0, "Expected Vite to produce a static dist artifact.");
+for (const publicAsset of ["favicon.ico", "moviqo-mark.svg", "legal/legal.css"]) {
+  assert.ok(
+    artifactFiles.includes(join(distRoot, publicAsset)),
+    `Static artifact is missing the public brand asset: ${publicAsset}`
+  );
+}
 
 const indexContent = await readFile(join(distRoot, "index.html"), "utf8");
+assert.match(indexContent, /data-moviqo-critical-shell/);
+assert.match(indexContent, /html, body, #root[^}]+background: #f8fafc/);
 for (const marker of [
   'name="description"',
   'property="og:title"',
   'property="og:description"',
   'property="og:url"',
   'rel="canonical"',
-  'rel="alternate"'
+  'rel="alternate"',
+  'rel="icon" href="/favicon.ico"'
 ]) {
   assert.ok(indexContent.includes(marker), `index.html is missing required landing metadata: ${marker}`);
 }
@@ -52,6 +61,8 @@ const localePages = [
 ];
 for (const localePage of localePages) {
   const content = await readFile(join(distRoot, localePage.path), "utf8");
+  assert.match(content, /data-moviqo-critical-shell/);
+  assert.match(content, /html, body, #root[^}]+background: #f8fafc/);
   assert.match(content, new RegExp(`<html[^>]+lang=["']${localePage.language}["']`, "i"));
   assert.match(content, new RegExp(`<title>Moviqo[^<]*${localePage.title}</title>`, "i"));
   assert.match(content, new RegExp(`rel=["']canonical["'][^>]+href=["'][^"']+/${localePage.language}/["']`, "i"));

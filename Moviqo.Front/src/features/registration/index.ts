@@ -1,7 +1,9 @@
 export {
   applyRegistrationFailure,
   buildInitialRegistrationDraft,
+  clearRegistrationFieldError,
   fieldErrorMapFromProblem,
+  registrationRequiredFieldErrors,
   type RegistrationDraft
 } from "./model/registrationForm";
-export { RegistrationForm } from "./ui/RegistrationForm";
+export { buildRegistrationErrorSummaryItems, RegistrationForm } from "./ui/RegistrationForm";

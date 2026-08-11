@@ -1,35 +1,29 @@
 import { RegistrationForm } from "../../../features/registration";
-import { LanguageSelector, useLanguage } from "../../../shared/localization";
+import { useLanguage } from "../../../shared/localization";
+import { Card } from "../../../shared/ui";
+import { PublicPageShell } from "../../../widgets/public-page-shell";
 
 export const RegistrationPage = () => {
   const { t } = useLanguage();
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <a className="brand" href="/" aria-label={t("app.brand.home")}>
-          Moviqo
-        </a>
-        <nav className="app-nav" aria-label={t("app.nav.primary")}>
-          <a href="/">{t("app.nav.work")}</a>
-          <a href="/#processes">{t("app.nav.processes")}</a>
-          <a href="/#admin">{t("app.nav.admin")}</a>
-          <a href="/design-system">{t("app.nav.designSystem")}</a>
-        </nav>
-        <LanguageSelector />
-      </header>
-      <main className="app-main">
-        <section className="page-heading" aria-labelledby="registration-title">
-          <p className="eyebrow">{t("registration.eyebrow")}</p>
-          <h1 id="registration-title">{t("registration.title")}</h1>
-          <p className="lede">{t("registration.lede")}</p>
-        </section>
-        <section className="status-panel" aria-labelledby="registration-form-title">
-          <h2 id="registration-form-title">{t("registration.form.title")}</h2>
-          <p>{t("registration.form.body")}</p>
-          <RegistrationForm />
-        </section>
-      </main>
-    </div>
+    <PublicPageShell
+      description={t("registration.lede")}
+      eyebrow={t("registration.eyebrow")}
+      pageName="registration"
+      size="default"
+      title={t("registration.title")}
+      titleId="registration-title"
+    >
+      <Card labelledBy="registration-form-title">
+        <div className="grid gap-moviqo-2">
+          <h2 className="m-0 text-moviqo-heading font-semibold" id="registration-form-title">
+            {t("registration.form.title")}
+          </h2>
+          <p className="m-0 text-moviqo-ink-secondary">{t("registration.form.body")}</p>
+        </div>
+        <RegistrationForm />
+      </Card>
+    </PublicPageShell>
   );
 };

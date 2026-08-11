@@ -12,6 +12,17 @@ export const readVerificationToken = (search: string) => {
   return params.get("token")?.trim() ?? "";
 };
 
+export const verificationLocationWithoutToken = (
+  pathname: string,
+  search: string,
+  hash: string
+) => {
+  const params = new URLSearchParams(search);
+  params.delete("token");
+  const remainingSearch = params.toString();
+  return `${pathname}${remainingSearch ? `?${remainingSearch}` : ""}${hash}`;
+};
+
 export const verifyEmailToken = async (
   token: string,
   fetchImplementation: typeof fetch = fetch

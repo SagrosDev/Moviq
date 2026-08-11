@@ -1,14 +1,49 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import {
   designerAuthoredText,
   createLocalLanguagePreferenceAdapter,
+  LanguageProvider,
+  LanguageSelector,
   languagePreferenceStorageKey,
   memoryLanguagePreferenceAdapter,
   renderDesignerAuthoredText,
+  resolveLanguagePopupKey,
   resolveInitialLanguage,
   translate
 } from "../../src/shared/localization";
+
+test("language selector renders a compact popup trigger without focus decoration", () => {
+  const markup = renderToStaticMarkup(
+    createElement(LanguageProvider, {
+      adapter: memoryLanguagePreferenceAdapter("es"),
+      browserLanguages: ["es-CO"],
+      children: createElement(LanguageSelector)
+    })
+  );
+
+  assert.match(markup, /aria-label="Idioma: Espa(?:ñ|Ã±)ol"/);
+  assert.match(markup, /rounded-moviqo-pill/);
+  assert.match(markup, /aria-haspopup="listbox"/);
+  assert.match(markup, /aria-expanded="false"/);
+  assert.match(markup, /aria-controls="[^"]+-listbox"/);
+  assert.match(markup, /data-language-trigger="true"/);
+  assert.match(markup, /focus:outline-none/);
+  assert.doesNotMatch(markup, /focus-within:/);
+  assert.doesNotMatch(markup, /<select/);
+  assert.equal((markup.match(/<svg/g) ?? []).length, 2);
+  assert.match(markup, /min-h-11/);
+});
+
+test("language popup keyboard commands cover open, navigation, selection, and close", () => {
+  assert.deepEqual(resolveLanguagePopupKey("Enter", false, 0, 2), { type: "open", index: 0 });
+  assert.deepEqual(resolveLanguagePopupKey(" ", true, 1, 2), { type: "select", index: 1 });
+  assert.deepEqual(resolveLanguagePopupKey("ArrowDown", true, 1, 2), { type: "navigate", index: 0 });
+  assert.deepEqual(resolveLanguagePopupKey("ArrowUp", true, 0, 2), { type: "navigate", index: 1 });
+  assert.deepEqual(resolveLanguagePopupKey("Escape", true, 0, 2), { type: "close" });
+});
 
 test("Spanish is the default language and English browser preference is honored", () => {
   assert.equal(resolveInitialLanguage(null, []), "es");
@@ -25,13 +60,13 @@ test("Moviqo-owned labels, navigation, statuses, validation, help, and catalog c
   assert.equal(translate("en", "app.nav.work"), "My work");
   assert.equal(
     translate("es", "environment.banner.title"),
-    "Entorno interno con datos sinteticos"
+    "Entorno interno con datos sintéticos"
   );
   assert.equal(
     translate("en", "environment.banner.rule2"),
     "Do not enter real business data, real personal data, or production files."
   );
-  assert.equal(translate("es", "status.needsAttention"), "Necesita atencion");
+  assert.equal(translate("es", "status.needsAttention"), "Necesita atención");
   assert.equal(translate("en", "status.needsAttention"), "Needs attention");
   assert.equal(translate("es", "validation.required"), "Completa este campo para continuar.");
   assert.equal(translate("en", "help.requiredField"), "Use a short and clear description.");
@@ -47,11 +82,40 @@ test("Moviqo-owned labels, navigation, statuses, validation, help, and catalog c
   );
   assert.equal(
     translate("es", "password.policy.helper"),
-    "Usa entre 15 y 128 caracteres. Evita contrasenas comunes o expuestas."
+    "Usa entre 15 y 128 caracteres. Evita contraseñas comunes o expuestas."
   );
   assert.equal(
     translate("en", "password.policy.reveal"),
     "Show password"
+  );
+});
+
+test("public and onboarding Spanish copy preserves required spelling and accents", () => {
+  const expectedCopy = [
+    ["app.language.spanish", "Español"],
+    ["environment.banner.title", "Entorno interno con datos sintéticos"],
+    ["password.policy.helper", "Usa entre 15 y 128 caracteres. Evita contraseñas comunes o expuestas."],
+    ["registration.organization.title", "Organización"],
+    ["registration.title", "Registra la organización y a su primera persona responsable."],
+    ["verification.eyebrow", "Verificación de correo"],
+    ["signIn.email", "Correo electrónico"],
+    ["passwordRecovery.title", "Recupera tu contraseña"],
+    ["passwordRecovery.resetFailure", "El enlace no es válido o la contraseña no cumple la política."]
+  ] as const;
+
+  for (const [key, expected] of expectedCopy) {
+    assert.equal(translate("es", key), expected);
+  }
+});
+
+test("reviewed English onboarding copy describes current behavior", () => {
+  assert.equal(
+    translate("en", "registration.form.body"),
+    "Review the language, region, timezone, and currency before sending."
+  );
+  assert.equal(
+    translate("en", "verification.success.next"),
+    "Sign in with this verified email to continue."
   );
 });
 

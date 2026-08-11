@@ -20,6 +20,7 @@ export type RegistrationDraft = {
 type RegistrationDefaults = {
   browserLanguages: readonly string[];
   browserTimeZone?: string;
+  preferredLanguage?: RegistrationDraft["language"];
 };
 
 type RegionalSuggestion = {
@@ -28,6 +29,22 @@ type RegionalSuggestion = {
 };
 
 const registrationDocumentVersion = "2026-08-04";
+
+const renderedRegistrationFields = new Set<keyof RegistrationDraft>([
+  "ownerName",
+  "organizationName",
+  "email",
+  "password",
+  "language",
+  "region",
+  "timezone",
+  "currency",
+  "termsAccepted",
+  "privacyAccepted",
+  "prohibitedDataAcknowledged"
+]);
+
+const documentVersionFields = new Set(["termsVersion", "privacyVersion"]);
 
 const regionalSuggestions: Record<string, RegionalSuggestion> = {
   AR: { region: "AR", currency: "ARS" },
@@ -41,7 +58,8 @@ const regionalSuggestions: Record<string, RegionalSuggestion> = {
 
 export const buildInitialRegistrationDraft = ({
   browserLanguages,
-  browserTimeZone
+  browserTimeZone,
+  preferredLanguage = "es"
 }: RegistrationDefaults): RegistrationDraft => {
   const suggestion = resolveRegionalSuggestion(browserLanguages, browserTimeZone);
 
@@ -50,7 +68,7 @@ export const buildInitialRegistrationDraft = ({
     organizationName: "",
     email: "",
     password: "",
-    language: "es",
+    language: preferredLanguage,
     region: suggestion.region,
     timezone: browserTimeZone || "America/Bogota",
     currency: suggestion.currency,
@@ -66,10 +84,55 @@ export const applyRegistrationFailure = (
   draft: RegistrationDraft,
   _invalidParams: ApiProblemDetails["invalidParams"]
 ): RegistrationDraft => {
-  return {
-    ...draft,
-    password: ""
-  };
+  return { ...draft };
+};
+
+export const clearRegistrationFieldError = (
+  fieldErrors: Record<string, string[]>,
+  fieldName: keyof RegistrationDraft
+) => {
+  if (!fieldErrors[fieldName]) {
+    return fieldErrors;
+  }
+
+  const nextErrors = { ...fieldErrors };
+  delete nextErrors[fieldName];
+  return nextErrors;
+};
+
+export const registrationRequiredFieldErrors = (
+  draft: RegistrationDraft,
+  translate: MoviqoTranslator
+): Record<string, string[]> => {
+  const fieldErrors: Record<string, string[]> = {};
+  const requiredTextFields = [
+    "ownerName",
+    "organizationName",
+    "email",
+    "password",
+    "region",
+    "timezone",
+    "currency"
+  ] as const;
+  const requiredConsentFields = [
+    "termsAccepted",
+    "privacyAccepted",
+    "prohibitedDataAcknowledged"
+  ] as const;
+
+  for (const field of requiredTextFields) {
+    if (!draft[field].trim()) {
+      fieldErrors[field] = [translate("validation.required")];
+    }
+  }
+
+  for (const field of requiredConsentFields) {
+    if (!draft[field]) {
+      fieldErrors[field] = [translate("validation.required")];
+    }
+  }
+
+  return fieldErrors;
 };
 
 export const fieldErrorMapFromProblem = (
@@ -85,12 +148,22 @@ export const fieldErrorMapFromProblem = (
   };
 
   for (const param of problem.invalidParams || []) {
-    const fieldName = String(param.name || "nonFieldErrors");
+    const requestedField = String(param.name || "nonFieldErrors");
+    const isRenderedField = renderedRegistrationFields.has(
+      requestedField as keyof RegistrationDraft
+    );
+    const fieldName = isRenderedField ? requestedField : "nonFieldErrors";
+    const messageKey = documentVersionFields.has(requestedField)
+      ? "registration.errors.documents"
+      : isRenderedField
+        ? messageKeyForCode(param.code)
+        : "registration.errors.form";
+
     if (!fieldErrors[fieldName]) {
       fieldErrors[fieldName] = [];
     }
     fieldErrors[fieldName].push(
-      translate ? translate(messageKeyForCode(param.code)) : String(param.reason || "Invalid value.")
+      translate ? translate(messageKey) : String(param.reason || "Invalid value.")
     );
   }
 

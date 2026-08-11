@@ -808,33 +808,6 @@ So that early feedback reflects the intended experience rather than developer-on
 **Then** valid work is preserved where permitted, destructive/irreversible actions are confirmed, routine save/complete is not needlessly confirmed, and success is never shown before server confirmation
 **And** errors use the patient-colleague voice and stable safe codes. Traceability: UX-DR13, UX-DR15, UX-DR17, NFR30.
 
-## Superseded Planning Note: Former Story 1.35 — Approve the Stakeholder E2E Preview
-
-> Removed by the first approved course correction because formal preview certification remains owned by Epic 10. The former criteria are retained as planning history and are not active Epic 1 scope.
-
-As a release reviewer,
-I want one evidence index and stakeholder decision for the thin internal preview,
-So that the team can gather early end-to-end feedback without implying MVP or real-data readiness.
-
-**Acceptance Criteria:**
-
-**Given** a candidate build in the synthetic-only internal environment
-**When** the preview evidence is assembled
-**Then** it links the passing automated E2E journey, isolation gate, build/contract checks, tested languages/viewports/browsers, accessibility baseline, service health, and known limitations to the exact immutable build
-**And** missing or failing evidence produces a blocking status rather than a waiver hidden in notes.
-
-**Given** company stakeholders execute the same journey without developer intervention
-**When** the review concludes
-**Then** the decision record captures pass/fail, observations, prioritized follow-up, reviewer identities, date, and evidence links
-**And** approval states only that the thin Epic 1 preview is ready for feedback; it does not claim feature-complete Gate 1 or authorize customer/real data.
-
-**Given** the preview is approved
-**When** later epics begin
-**Then** the automated journey remains a blocking regression test and stakeholder feedback may create new user stories without rewriting approved historical evidence
-**And** the Epic 10 Gate 1 and Epic 11 Gate 2 decisions remain separate.
-
-Traceability: Gate 1 early-feedback milestone, AD-11, AD-12, AD-16, UX-DR23, UX-DR24, UX-DR25.
-
 ## Superseded Planning Note: Interim Story 1.35 — Present the Core Journey and Capture Stakeholder Feedback
 
 > First renumbered to Story 1.36 by the stakeholder-presentation amendment, then to Story 1.38 when dedicated editor stories were approved, and finally to active Story 1.39 when module separation was added. The interim criteria are retained below as planning history.
@@ -845,7 +818,7 @@ So that we can validate its direction and capture actionable feedback.
 
 **Acceptance Criteria:**
 
-**Given** a synthetic-only UAT build with a passing Story 1.33 deployed journey
+**Given** a selected synthetic-only UAT revision has completed the manual acceptance checklist
 **When** the stakeholder session occurs
 **Then** the public UI demonstrates registration, verification, sign-in, Workflow creation and publication, Process start, Task completion, and the completed timeline without database, private API, authentication, or authorization bypasses
 **And** the walkthrough uses safe synthetic data only.
@@ -858,7 +831,7 @@ So that we can validate its direction and capture actionable feedback.
 **Given** the Epic 1 decision is recorded
 **When** later delivery work begins
 **Then** the record states that Epic 1 does not certify feature-complete Gate 1, public-beta or production readiness, real-data use, or WCAG conformance
-**And** no new E2E suite, browser matrix, evidence schema, validator, CI gate, or product implementation is required unless the walkthrough reveals a blocking defect.
+**And** the walkthrough itself is the acceptance mechanism; any blocking defect is recorded and routed to its owning story.
 
 Traceability: Gate 1 early-feedback milestone, AD-11, AD-12, AD-16, UX-DR23, UX-DR24, UX-DR25.
 
@@ -921,7 +894,7 @@ So that I can find my work and move between Workflow, Form, and Process activiti
 **Given** the new module structure
 **When** verification runs
 **Then** route/component tests cover deep links, reloads, redirects, role navigation, loading/empty/error states, Workflow-to-Form transitions, and Start/Task/Process separation
-**And** Story 1.33 remains the deployed journey regression without creating another deployed E2E program.
+**And** manual acceptance verifies module discovery, copied deep links, reloads, role navigation, and context-preserving transitions on the built application.
 
 ## Story 1.36: Refactor the Workflow Editor and Adopt React Flow
 
@@ -954,7 +927,7 @@ So that every action appears immediately on a comprehensible canvas without the 
 **Given** a user cannot or does not drag on the canvas
 **When** the minimum Workflow is authored
 **Then** explicit add/connect controls and an accessible outline complete the same Start-Task-End path with visible focus and non-color-only state
-**And** focused component tests cover canvas adaptation, all Add methods, keyboard alternatives, selection/focus, explicit save, conflicts, validation targeting, Task-to-Form navigation, and publication without adding another deployed E2E program.
+**And** focused component/model/contract tests cover command adaptation, explicit save, conflicts, and publication state while manual acceptance covers pointer/keyboard authoring, selection/focus, visible feedback, validation recovery, and Task-to-Form navigation.
 
 **Given** the Designer has incomplete but structurally coherent Workflow work
 **When** they choose **Save draft** or `Ctrl/Cmd+S`
@@ -1002,7 +975,7 @@ So that the Form is easy to compose and remains identical in meaning when someon
 **Given** the dedicated Designer and runtime renderer
 **When** verification runs
 **Then** component/contract tests cover route loading, registry resolution, Short Text and structural items, spans/reflow, dnd-kit and explicit alternatives, preview/runtime parity, focus/error recovery, save conflicts, and unknown-item fail-safe behavior
-**And** Story 1.33 remains the deployed journey regression without another E2E program.
+**And** manual acceptance covers pointer and keyboard composition, reorder/resize behavior, save/reload, preview parity, focus/error recovery, and the operational Task Form.
 
 ## Story 1.38: Polish the Authenticated Stakeholder Journey
 
@@ -1018,8 +991,8 @@ So that I can evaluate Moviqo's product value without unfinished interface quali
 **And** each region has one dominant action, aligned secondary actions, role-appropriate navigation, and no browser-default or missing page-level control style. Traceability: UX-DR3 through UX-DR24, AD-9.
 
 **Given** the exact redesigned build
-**When** desktop/mobile operational screenshots, supported desktop authoring screenshots, and the existing Story 1.33 regression journey are reviewed
-**Then** the approved palette, alignment, hierarchy, responsive behavior, reviewed bilingual copy, immediate editor feedback, module transitions, and authoring-to-runtime continuity pass without creating another deployed E2E suite, browser matrix, or release-evidence framework
+**When** desktop/mobile operational screenshots, supported desktop authoring screenshots, focused automated checks, and the manual acceptance walkthrough are reviewed
+**Then** the approved palette, alignment, hierarchy, responsive behavior, reviewed bilingual copy, immediate editor feedback, module transitions, and authoring-to-runtime continuity pass on the exact built revision
 **And** presentation or navigation defects block Story 1.39 until corrected.
 
 ## Story 1.39: Present the Core Journey and Capture Stakeholder Feedback
@@ -1030,7 +1003,7 @@ So that we can validate its direction and capture actionable feedback.
 
 **Acceptance Criteria:**
 
-**Given** Stories 1.34 through 1.38 are complete and a synthetic-only UAT build has a passing Story 1.33 deployed journey
+**Given** Stories 1.34 through 1.38 are complete and the selected synthetic-only UAT revision has completed manual acceptance
 **When** the stakeholder session occurs
 **Then** the public UI demonstrates landing, registration, verification, sign-in, Workflow catalog/creation, React Flow Workflow design, Task-linked Form design, publication, separate Start Process catalog, Task completion, and completed Process timeline without database, private API, authentication, or authorization bypasses
 **And** the walkthrough uses safe synthetic data and the visually approved component system.

@@ -3,7 +3,7 @@ name: Moviqo
 description: Calm, approachable process automation for small businesses without development teams.
 status: final
 created: 2026-08-01
-updated: 2026-08-01
+updated: 2026-08-10
 sources:
   - "../../prds/prd-Moviqo-2026-07-30/prd.md"
   - "../../briefs/brief-moviqo-2026-07-30/brief.md"
@@ -80,7 +80,7 @@ Moviqo should feel like a calm guide beside the user: clear, friendly, and quiet
 
 The tokens are derived from the user's visual direction and should be verified against implemented components during delivery.
 
-The revised palette is a candidate until the Story 1.34 visual checkpoint renders representative real components at desktop and mobile sizes and receives human approval. Numeric contrast compliance is necessary but is not visual approval.
+The Story 1.34 visual checkpoint received human approval on 2026-08-10 after representative real components were reviewed at desktop and mobile sizes. The approved public/onboarding header contains Moviqo branding and language selection only; authenticated module navigation belongs to the separate application shell defined for Story 1.35. Numeric contrast compliance remains necessary but does not replace future visual review of new authenticated or authoring surfaces.
 
 ## Colors
 
@@ -117,7 +117,7 @@ Authentication uses a compact centered content column. Registration uses clear o
 
 ## Visual Approval Checkpoint
 
-Before the candidate palette or redesigned primitives are applied across the application, the Design System page must render representative landing navigation, authentication and registration forms, Task Form fields, buttons, cards, alerts, badges, timeline rows, and the UAT indicator in normal, hover, focus, disabled, success, warning, and error states. Capture desktop and mobile screenshots, obtain human approval, then lock the tokens and protect required contrast pairs with automated tests.
+The Design System page rendered representative navigation, authentication and registration forms, Task Form fields, buttons, cards, alerts, badges, timeline rows, and the UAT indicator in normal, hover, focus, disabled, success, warning, and error states. Desktop and mobile evidence received human approval on 2026-08-10; the palette and primitive direction are locked for the Story 1.34 public/onboarding rollout and protected by automated contrast tests. The authenticated application shell requires its own visual checkpoint before Story 1.35 implementation is accepted.
 
 ## Landing Page Presentation
 

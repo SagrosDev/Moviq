@@ -60,15 +60,16 @@ type LandingCopy = {
   beta: { eyebrow: string; title: string; body: string; links: string[]; support: string };
   timeToValue: string;
   final: { title: string; body: string; primary: string; secondary: string };
+  footer: { rights: string };
 };
 
 export const landingDestinations = {
   register: "/register",
   signIn: "/sign-in",
-  betaTerms: "",
-  privacy: "",
-  prohibitedData: "",
-  support: ""
+  betaTerms: "/legal/beta-terms.html",
+  privacy: "/legal/privacy-notice.html",
+  prohibitedData: "/legal/prohibited-data.html",
+  support: "mailto:beta-support@mymoviqo.com"
 } as const;
 
 const landingMetadataCopy: Record<LandingLocale, Pick<LandingMetadata, "title" | "description">> = {
@@ -105,7 +106,7 @@ export const resolveLandingMetadata = (language: LandingLocale, origin: string):
   };
 };
 
-const unsafeLandingClaims = /guaranteed|customer savings|ahorros de clientes|testimonial|testimonio|certified|certificado/i;
+const unsafeLandingClaims = /guaranteed|customer savings|ahorros de clientes|testimonial|testimonio|certified|certificado|interfaz bilingüe|interfaz (?:está|esta) disponible en español e inglés|bilingual interface|interface is available in Spanish and English/i;
 
 export const validateLandingContent = (content: Record<LandingLocale, LandingCopy>): string[] => {
   const errors: string[] = [];
@@ -119,6 +120,7 @@ export const validateLandingContent = (content: Record<LandingLocale, LandingCop
       value.hero.eyebrow,
       value.hero.title,
       value.hero.body,
+      value.hero.capabilities,
       value.hero.primary,
       value.hero.secondary,
       value.nav.story,
@@ -135,7 +137,8 @@ export const validateLandingContent = (content: Record<LandingLocale, LandingCop
       value.final.title,
       value.final.body,
       value.final.primary,
-      value.final.secondary
+      value.final.secondary,
+      value.footer.rights
     ];
     if (requiredText.some((item) => !item.trim()) || value.scenarios.length !== 3 || value.howItWorks.steps.length !== 3) {
       errors.push(`required sections incomplete: ${locale}`);
@@ -180,7 +183,7 @@ export const landingContent: Record<LandingLocale, LandingCopy> = {
       eyebrow: "Beta gratuita limitada",
       title: "Convierte procesos repetibles en trabajo claro.",
       body: "Moviqo ayuda a equipos pequeños a diseñar formularios y recorridos de trabajo que los equipos pueden seguir.",
-      capabilities: "Formularios, campos de proceso, cálculos, adjuntos, tareas, asignación a miembros o equipos, condiciones visuales, rutas, seguimiento y auditoría, con interfaz bilingüe.",
+      capabilities: "Formularios, campos de proceso, cálculos, adjuntos, tareas, asignación a miembros o equipos, condiciones visuales, rutas, seguimiento y auditoría.",
       primary: "Iniciar beta gratuita",
       secondary: "Ingresar"
     },
@@ -206,17 +209,18 @@ export const landingContent: Record<LandingLocale, LandingCopy> = {
       { label: "Muestra ficticia · mantenimiento", name: "Solicitud de servicio", description: "La empresa ficticia Mantenimiento Brisa registra una visita en la sede Centro con prioridad media.", details: ["Formulario: solicitud de mantenimiento", "Tarea: equipo técnico · evaluar servicio", "Estado: programable", "Adjunto: referencia-demo.jpg"], alt: "Vista de muestra ficticia de una solicitud de mantenimiento con prioridad y adjunto demo" }
     ],
     visuals: { eyebrow: "Una vista representativa", title: "La información importante permanece a la vista.", form: "Formulario de proceso", task: "Tarea asignada al equipo", timeline: "Seguimiento y auditoría", alt: "Composición visual de formulario, tarea y seguimiento de un proceso ficticio" },
-    trust: { eyebrow: "Confianza y límites", title: "Una beta limitada, con expectativas claras.", body: "Moviqo está en beta gratuita limitada. Usa datos ficticios durante la evaluación y revisa la documentación vigente antes de registrarte.", items: ["La interfaz está disponible en español e inglés.", "Los datos de proceso permanecen dentro del espacio autorizado.", "Las acciones de la aplicación se respaldan en decisiones del servidor."] },
+    trust: { eyebrow: "Confianza y límites", title: "Una beta limitada, con expectativas claras.", body: "Moviqo está en beta gratuita limitada. Usa datos ficticios durante la evaluación y revisa la documentación vigente antes de registrarte.", items: ["Los datos de proceso permanecen dentro del espacio autorizado.", "Las acciones de la aplicación se respaldan en decisiones del servidor."] },
     beta: { eyebrow: "Antes de empezar", title: "Revisa los documentos y pregunta cuando lo necesites.", body: "Esta es una beta gratuita limitada, no una garantía de precio gratuito permanente. Consulta los términos beta vigentes, el aviso de privacidad y la guía de datos prohibidos. Nuestro canal configurable de soporte está disponible para preguntas sobre la beta.", links: ["Términos beta vigentes", "Aviso de privacidad", "Guía de datos prohibidos"], support: "Contactar soporte de beta" },
-    timeToValue: "Meta para un caso simple: publicar un primer recorrido en 30–60 minutos, según su alcance y preparación.",
-    final: { title: "¿Tienes un caso sencillo para explorar?", body: "Empieza con una muestra ficticia y comprueba si Moviqo encaja con tu forma de trabajar.", primary: "Iniciar beta gratuita", secondary: "Ingresar" }
+    timeToValue: "Primer recorrido simple: 30–60 minutos, según la preparación.",
+    final: { title: "¿Tienes un caso sencillo para explorar?", body: "Empieza con una muestra ficticia y comprueba si Moviqo encaja con tu forma de trabajar.", primary: "Iniciar beta gratuita", secondary: "Ingresar" },
+    footer: { rights: "© 2026 Moviqo. Todos los derechos reservados." }
   },
   en: {
     hero: {
       eyebrow: "Limited free beta",
       title: "Turn repeatable processes into clear work.",
       body: "Moviqo helps small teams design forms and work journeys that teams can follow.",
-      capabilities: "Forms, Process Fields, calculations, attachments, Tasks, Member or Team assignment, visual conditions, routing, tracking, and audit, with a bilingual interface.",
+      capabilities: "Forms, Process Fields, calculations, attachments, Tasks, Member or Team assignment, visual conditions, routing, tracking, and audit.",
       primary: "Start Free Beta",
       secondary: "Sign In"
     },
@@ -242,9 +246,10 @@ export const landingContent: Record<LandingLocale, LandingCopy> = {
       { label: "Fictional sample · maintenance", name: "Service request", description: "Fictional maintenance company Breeze Works records a medium-priority visit at its Central site.", details: ["Form: maintenance request", "Task: technical team · assess service", "Status: schedulable", "Attachment: demo-reference.jpg"], alt: "Fictional sample view of a maintenance request with priority and demo attachment" }
     ],
     visuals: { eyebrow: "A representative view", title: "Important information stays in view.", form: "Process form", task: "Task assigned to a team", timeline: "Tracking and audit", alt: "Visual composition of a fictional process form, task, and tracking" },
-    trust: { eyebrow: "Trust and boundaries", title: "A limited beta with clear expectations.", body: "Moviqo is a limited free beta. Use fictional data while evaluating it and review the current documents before registering.", items: ["The interface is available in Spanish and English.", "Process Data stays within the authorized workspace.", "Application actions are backed by server decisions."] },
+    trust: { eyebrow: "Trust and boundaries", title: "A limited beta with clear expectations.", body: "Moviqo is a limited free beta. Use fictional data while evaluating it and review the current documents before registering.", items: ["Process Data stays within the authorized workspace.", "Application actions are backed by server decisions."] },
     beta: { eyebrow: "Before you start", title: "Review the documents and ask when you need help.", body: "This is a limited free beta, not a guarantee of a permanent free price. Read the current beta terms, privacy notice, and prohibited-data guidance. Our configurable beta support channel is available for questions about the beta.", links: ["Current beta terms", "Privacy notice", "Prohibited-data guidance"], support: "Contact beta support" },
-    timeToValue: "Simple-case target: publish a first journey in 30–60 minutes, depending on its scope and preparation.",
-    final: { title: "Have a simple case to explore?", body: "Start with a fictional sample and see whether Moviqo fits the way you work.", primary: "Start Free Beta", secondary: "Sign In" }
+    timeToValue: "First simple journey: 30–60 minutes, depending on preparation.",
+    final: { title: "Have a simple case to explore?", body: "Start with a fictional sample and see whether Moviqo fits the way you work.", primary: "Start Free Beta", secondary: "Sign In" },
+    footer: { rights: "© 2026 Moviqo. All rights reserved." }
   }
 };

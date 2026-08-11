@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { requestPasswordRecovery } from "../model/passwordRecovery";
 import { useLanguage } from "../../../shared/localization";
+import { ActionBar, Alert, Button, TextInput } from "../../../shared/ui";
 
 export const PasswordRecoveryForm = () => {
   const { t } = useLanguage();
@@ -24,17 +25,32 @@ export const PasswordRecoveryForm = () => {
   };
 
   if (submitted) {
-    return <p role="status">{t("passwordRecovery.confirmation")}</p>;
+    return (
+      <Alert announcement="polite" tone="success">
+        {t("passwordRecovery.confirmation")}
+      </Alert>
+    );
   }
 
   return (
-    <form className="form-card" onSubmit={submit} noValidate>
-      {error ? <p role="alert">{t("passwordRecovery.failure")}</p> : null}
-      <label htmlFor="recovery-email">{t("passwordRecovery.email")}</label>
-      <input id="recovery-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" />
-      <button className="button" type="submit" disabled={submitting}>
-        {submitting ? t("passwordRecovery.submitting") : t("passwordRecovery.submit")}
-      </button>
+    <form className="grid gap-moviqo-4" onSubmit={submit} noValidate>
+      {error ? (
+        <Alert announcement="assertive" tone="error">{t("passwordRecovery.failure")}</Alert>
+      ) : null}
+      <TextInput
+        id="recovery-email"
+        type="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        label={t("passwordRecovery.email")}
+        required
+        autoComplete="email"
+      />
+      <ActionBar>
+        <Button type="submit" disabled={submitting} width="full">
+          {submitting ? t("passwordRecovery.submitting") : t("passwordRecovery.submit")}
+        </Button>
+      </ActionBar>
     </form>
   );
 };

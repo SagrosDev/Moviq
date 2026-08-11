@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   VerificationStatusPanel,
   readVerificationToken,
+  verificationLocationWithoutToken,
   verifyEmailToken,
   type VerificationResult,
   type VerificationViewState
 } from "../../../features/verification";
-import { LanguageSelector, useLanguage } from "../../../shared/localization";
+import { useLanguage } from "../../../shared/localization";
+import { PublicPageShell } from "../../../widgets/public-page-shell";
 
 type VerificationPageProps = {
   search?: string;
@@ -27,6 +29,21 @@ export const VerificationPage = ({
   const [state, setState] = useState<VerificationViewState>(() =>
     token ? { kind: "loading" } : { kind: "invalid" }
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("token")) return;
+    window.history.replaceState(
+      {},
+      document.title,
+      verificationLocationWithoutToken(
+        window.location.pathname,
+        window.location.search,
+        window.location.hash
+      )
+    );
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -70,27 +87,14 @@ export const VerificationPage = ({
   }, [setLanguage, submitVerification, token]);
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <a className="brand" href="/" aria-label={t("app.brand.home")}>
-          Moviqo
-        </a>
-        <nav className="app-nav" aria-label={t("app.nav.primary")}>
-          <a href="/">{t("app.nav.work")}</a>
-          <a href="/#processes">{t("app.nav.processes")}</a>
-          <a href="/#admin">{t("app.nav.admin")}</a>
-          <a href="/design-system">{t("app.nav.designSystem")}</a>
-        </nav>
-        <LanguageSelector />
-      </header>
-      <main className="app-main">
-        <section className="page-heading" aria-labelledby="verification-title">
-          <p className="eyebrow">{t("verification.eyebrow")}</p>
-          <h1 id="verification-title">{t("verification.title")}</h1>
-          <p className="lede">{t("verification.lede")}</p>
-        </section>
-        <VerificationStatusPanel state={state} />
-      </main>
-    </div>
+    <PublicPageShell
+      description={t("verification.lede")}
+      eyebrow={t("verification.eyebrow")}
+      pageName="verification"
+      title={t("verification.title")}
+      titleId="verification-title"
+    >
+      <VerificationStatusPanel state={state} />
+    </PublicPageShell>
   );
 };

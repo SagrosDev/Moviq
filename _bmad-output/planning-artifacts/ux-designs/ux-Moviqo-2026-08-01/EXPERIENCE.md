@@ -80,7 +80,7 @@ Moviqo speaks like a patient colleague. Use plain verbs, short explanations, and
 - Failed form submission presents an actionable localized error summary, focuses and reveals the first invalid field, preserves correctable input, and explains non-field failures without making a correlation ID the recovery instruction.
 - Desktop Forms use the twelve-column layout and approved widths. Mobile operational Forms stack to one column; authoring below its supported size does not pretend to be fully usable.
 - A palette or component refresh is accepted only after the Design System checkpoint and human desktop/mobile screenshot review. Automated accessibility and contrast checks remain complementary evidence.
-- No additional deployed E2E program is required for the visual refresh. The existing Story 1.33 journey is rerun as regression evidence after the redesigned surfaces are deployed.
+- The visual refresh is accepted through focused unit/component/contract checks, human screenshot review, and a documented manual walkthrough of public, authoring, and runtime flows on the exact built revision.
 
 ## State Patterns
 

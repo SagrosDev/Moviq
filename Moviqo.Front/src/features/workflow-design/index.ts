@@ -39,3 +39,16 @@ export type {
 } from "./model/types";
 export { WorkflowCreateForm } from "./ui/WorkflowCreateForm";
 export { WorkflowDraftEditor } from "./ui/WorkflowDraftEditor";
+export {
+  formDesignPath,
+  resolveTaskElement,
+  workflowDesignPath,
+  workflowTaskElements
+} from "./model/navigation";
+export {
+  readWorkflowCatalog,
+  readWorkflowDraftSnapshot,
+  useWorkflowCatalogQuery,
+  useWorkflowDraftQuery,
+  type WorkflowCatalogItem
+} from "./model/queries";

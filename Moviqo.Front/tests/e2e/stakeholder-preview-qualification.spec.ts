@@ -149,7 +149,7 @@ test("desktop authoring localizes owned copy and preserves Designer content", as
   const nextCopy = interfaceCopy[nextLanguage];
 
   await mockWorkflowAuthoring(page);
-  await page.goto(`/my-work/workflows/new?lang=${language}`);
+  await page.goto(`/workflows/new?lang=${language}`);
 
   await expect(page.getByRole("heading", { level: 1, name: copy.create })).toBeVisible();
   await page.getByLabel(copy.create === "Crear flujo" ? "Nombre del flujo" : "Workflow name").fill(workflowName);
@@ -157,10 +157,15 @@ test("desktop authoring localizes owned copy and preserves Designer content", as
   await expect(page.getByRole("heading", { name: /inicio, tarea y fin|start, task, and end/i })).toBeVisible();
   await page.getByLabel(copy.fieldLabel).fill(fieldLabel);
 
-  await page.getByRole("combobox", { name: copy.language }).selectOption(nextLanguage);
+  await page.locator('[data-language-trigger="true"]').click();
+  await page.getByRole("option", {
+    name: nextLanguage === "en" ? "Inglés" : "Spanish"
+  }).click();
 
-  await expect(page.getByRole("heading", { level: 1, name: nextCopy.create })).toBeVisible();
-  await expect(page.getByLabel(nextCopy.create === "Crear flujo" ? "Nombre del flujo" : "Workflow name")).toHaveValue(workflowName);
+  await expect(page.getByRole("heading", {
+    level: 1,
+    name: translate(nextLanguage, "workflowDesign.editor.title")
+  })).toBeVisible();
   await expect(page.getByLabel(nextCopy.fieldLabel)).toHaveValue(fieldLabel);
 });
 
@@ -169,7 +174,7 @@ test("mobile participant profile does not claim full workflow authoring support"
   test.skip(profile.fullAuthoring, "Mobile participant qualification only.");
 
   await mockWorkflowAuthoring(page);
-  await page.goto(`/my-work/workflows/new?lang=${language}`);
+  await page.goto(`/workflows/new?lang=${language}`);
 
   const limitation = page.getByRole("note");
   await expect(limitation).toContainText(/1280.*720/);
@@ -238,15 +243,15 @@ test("qualification profile records an automated accessibility baseline", async 
   const copy = interfaceCopy[language];
 
   await mockWorkflowAuthoring(page);
-  await page.goto(`/my-work/workflows/new?lang=${language}`);
+  await page.goto(`/workflows/new?lang=${language}`);
   await page.addStyleTag({ content: "html { font-size: 200%; }" });
 
-  const workLink = page.getByRole("link", { name: language === "es" ? "Mi trabajo" : "My work" });
+  const workLink = page.getByRole("link", { name: language === "es" ? "Resumen" : "Dashboard" });
   await workLink.focus();
   await expect(workLink).toBeFocused();
   expect(await workLink.evaluate((element) => window.getComputedStyle(element).outlineWidth)).not.toBe("0px");
   await expectNoHorizontalOverflow(page);
-  await expectPracticalTarget(page, page.getByRole("combobox", { name: copy.language }));
+  await expectPracticalTarget(page, page.locator('[data-language-trigger="true"]'));
   await expectPracticalTarget(page, page.getByRole("button", { name: language === "es" ? "Salir" : "Sign out" }));
   await expectReducedMotion(page);
   await assertNoAccessibilityViolations(page, axePath, testInfo);
@@ -302,7 +307,7 @@ test("unexpected workflow failure preserves work and suppresses a duplicate acti
       status: 500
     });
   });
-  await page.goto(`/my-work/workflows/new?lang=${language}`);
+  await page.goto(`/workflows/new?lang=${language}`);
 
   const nameInput = page.getByLabel(translate(language, "workflowDesign.create.name"));
   const submit = page.getByRole("button", { name: translate(language, "workflowDesign.create.submit") });

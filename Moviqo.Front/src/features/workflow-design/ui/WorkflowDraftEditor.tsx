@@ -1,14 +1,13 @@
-import { useEffect, useReducer, useState, type Dispatch } from "react";
+import { useEffect, useReducer, useRef, useState, type Dispatch } from "react";
 import { useLanguage } from "../../../shared/localization";
 import { type DraftState } from "../../../shared/drafts";
 import { StatusBadge } from "../../../shared/ui/catalog";
 import {
-  autosaveDelayMs,
+  MAX_AUTOSAVE_RETRIES,
   applyWorkflowDraftSave,
   canPublishWorkflow,
   createWorkflowPublishRequestKey,
   publicationIssuesFromInvalidParams,
-  shouldScheduleAutosave,
   createPublicationValidationRequestKey,
   createWorkflowDraftEditorState,
   focusChecklistTarget,
@@ -38,12 +37,18 @@ type WorkflowDraftEditorProps = {
     draftState: DraftState<WorkflowDraftDocument>,
     accepted: WorkflowCreationAccepted
   ) => void;
+  onDesignTaskForm?: (taskElementId: string) => void;
+  onDirtyChange?: (isDirty: boolean) => void;
+  saveRequestToken?: number;
 };
 
 export const WorkflowDraftEditor = ({
   configurationDirectory,
   draftState,
-  onAccepted
+  onAccepted,
+  onDesignTaskForm,
+  onDirtyChange,
+  saveRequestToken = 0
 }: WorkflowDraftEditorProps) => {
   const { t } = useLanguage();
   const [editorState, dispatch] = useReducer(
@@ -59,6 +64,7 @@ export const WorkflowDraftEditor = ({
     minimumLength: 0,
     maximumLength: 255
   });
+  const handledSaveRequestToken = useRef(0);
 
   useEffect(() => {
     dispatch({ type: "server-synced", draftState });
@@ -172,29 +178,24 @@ export const WorkflowDraftEditor = ({
   };
 
   useEffect(() => {
-    if (!shouldScheduleAutosave(editorState)) {
-      return;
-    }
-    const delay = autosaveDelayMs(editorState);
-    if (delay === null) {
-      return;
-    }
-    const timeoutId = window.setTimeout(() => {
-      void save(editorState.saveStatus === "retrying");
-    }, delay);
+    onDirtyChange?.(editorState.hasLocalChanges);
+  }, [editorState.hasLocalChanges, onDirtyChange]);
 
-    return () => {
-      window.clearTimeout(timeoutId);
+  useEffect(() => {
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!editorState.hasLocalChanges) return;
+      event.preventDefault();
+      event.returnValue = "";
     };
-  }, [
-    draftState,
-    editorState.hasLocalChanges,
-    editorState.lastAcknowledgedRevision,
-    editorState.localDraft,
-    editorState.pendingAutosaveRequestKey,
-    editorState.retryCount,
-    editorState.saveStatus
-  ]);
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [editorState.hasLocalChanges]);
+
+  useEffect(() => {
+    if (saveRequestToken <= handledSaveRequestToken.current) return;
+    handledSaveRequestToken.current = saveRequestToken;
+    void save(false);
+  }, [saveRequestToken]);
 
   const reloadLatestDraft = async () => {
     const result = await readWorkflowDraft(editorState.localDraft.workflowId);
@@ -461,6 +462,19 @@ export const WorkflowDraftEditor = ({
                 onClick={() => dispatch({ type: "reapply-conflict-draft" })}
               >
                 {t("workflowDesign.editor.reapplyChanges")}
+              </button>
+            </div>
+          ) : editorState.saveStatus === "error"
+            && editorState.retryCount > 0
+            && editorState.retryCount <= MAX_AUTOSAVE_RETRIES
+            && editorState.pendingAutosaveRequestKey ? (
+            <div className="button-row">
+              <button
+                className="button"
+                type="button"
+                onClick={() => void save(true)}
+              >
+                {t("workflowDesign.editor.retrySave")}
               </button>
             </div>
           ) : null}
@@ -800,6 +814,16 @@ export const WorkflowDraftEditor = ({
             >
               <strong>{item.label}</strong>
               <span>{stepDescription(t, item.type)}</span>
+              {item.type === "task" && onDesignTaskForm ? (
+                <button
+                  className="button"
+                  data-variant="secondary"
+                  type="button"
+                  onClick={() => onDesignTaskForm(item.id)}
+                >
+                  {t("workflowDesign.editor.designForm")}
+                </button>
+              ) : null}
             </article>
           )
         )}

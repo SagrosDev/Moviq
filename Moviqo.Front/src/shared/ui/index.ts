@@ -13,5 +13,13 @@ export {
 export type { FormGridSpan, SelectOption } from "./forms";
 export { ActionBar, Alert, Badge, ErrorSummary } from "./feedback";
 export type { ErrorSummaryItem, FeedbackTone } from "./feedback";
-export { AppHeader, AppShell, Card, PageContainer, PageHeader } from "./layout";
-export type { HeaderNavigationItem } from "./layout";
+export {
+  AppHeader,
+  AppShell,
+  Breadcrumbs,
+  Card,
+  isUnmodifiedPrimaryClick,
+  PageContainer,
+  PageHeader
+} from "./layout";
+export type { BreadcrumbItem, HeaderNavigationItem } from "./layout";

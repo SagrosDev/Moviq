@@ -1,10 +1,8 @@
 export {
-  createMyWorkQueryKey,
+  buildMyWorkDashboardQuery,
   createWorkflowStartIdempotencyKey,
   defaultMyProcessesQuery,
   formatDateTimeInTimeZone,
-  loadMyWorkDashboard,
-  myWorkQueryKey,
   readProcessDetailDocument,
   readMyWorkDashboard,
   startWorkflow,

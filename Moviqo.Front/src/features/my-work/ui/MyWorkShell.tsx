@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, type MouseEvent, type ReactNode } from "react";
 import type { NormalizedApiProblem, QuerySnapshot } from "../../../shared/api";
 import { useLanguage } from "../../../shared/localization";
 import type {
@@ -26,6 +26,12 @@ type MyWorkShellProps = {
   onMyProcessesSearchChange(value: string): void;
   onMyProcessesSearchSubmit(): void;
   onMyProcessesPageChange(page: number): void;
+  onMyTasksPageChange(page: number): void;
+  onStartWorkflowsPageChange(page: number): void;
+  regions?: readonly MyWorkRegion[];
+  showHeading?: boolean;
+  showRegionNavigation?: boolean;
+  onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void;
 };
 
 type Translate = ReturnType<typeof useLanguage>["t"];
@@ -64,13 +70,27 @@ export const MyWorkShell = ({
   myProcessesTimeZone,
   onMyProcessesSearchChange,
   onMyProcessesSearchSubmit,
-  onMyProcessesPageChange
+  onMyProcessesPageChange,
+  onMyTasksPageChange,
+  onStartWorkflowsPageChange,
+  regions = regionOrder,
+  showHeading = true,
+  showRegionNavigation = true,
+  onNavigate
 }: MyWorkShellProps) => {
   const { t } = useLanguage();
   const [activeRegion, setActiveRegion] = useState<MyWorkRegion>("myTasks");
 
-  return <section className="my-work-shell" aria-labelledby="my-work-title">
-    <div className="page-heading">
+  const dedicatedRegionLabel = regions.length === 1
+    ? labelForRegion(regions[0] ?? "myTasks", t)
+    : t("myWork.title");
+
+  return <section
+    className="my-work-shell"
+    aria-label={showHeading ? undefined : dedicatedRegionLabel}
+    aria-labelledby={showHeading ? "my-work-title" : undefined}
+  >
+    {showHeading ? <div className="page-heading">
       <p className="eyebrow">{t("myWork.eyebrow")}</p>
       <h1 id="my-work-title">{t("myWork.title")}</h1>
       <p className="lede">{t("myWork.lede")}</p>
@@ -79,9 +99,9 @@ export const MyWorkShell = ({
           {t("workflowDesign.create.cta")}
         </a>
       </div> : null}
-    </div>
-    <nav className="my-work-nav" aria-label={t("myWork.regionNav")}>
-      {regionOrder.map((region) => <a
+    </div> : null}
+    {showRegionNavigation ? <nav className="my-work-nav" aria-label={t("myWork.regionNav")}>
+      {regions.map((region) => <a
         key={region}
         className="my-work-nav__link"
         data-active={activeRegion === region}
@@ -91,17 +111,24 @@ export const MyWorkShell = ({
       >
         {labelForRegion(region, t)}
       </a>)}
-    </nav>
+    </nav> : null}
     <div className="my-work-grid">
-      <MyWorkRegionSection
+      {regions.includes("myTasks") ? <MyWorkRegionSection
         id="my-work-myTasks"
         title={t("myWork.myTasks.title")}
         summary={t("myWork.myTasks.summary")}
         isActive={activeRegion === "myTasks"}
       >
-        {renderMyTasks(snapshot, onRetry, t)}
-      </MyWorkRegionSection>
-      <MyWorkRegionSection
+        {renderMyTasks(
+          snapshot,
+          onRetry,
+          t,
+          myProcessesQuery.myTasksPage,
+          onMyTasksPageChange,
+          onNavigate
+        )}
+      </MyWorkRegionSection> : null}
+      {regions.includes("startWorkflows") ? <MyWorkRegionSection
         id="my-work-startWorkflows"
         title={t("myWork.startWorkflows.title")}
         summary={t("myWork.startWorkflows.summary")}
@@ -113,10 +140,12 @@ export const MyWorkShell = ({
           onStartWorkflow,
           startFeedbackByWorkflowId,
           startingWorkflowId,
-          t
+          t,
+          myProcessesQuery.startWorkflowsPage,
+          onStartWorkflowsPageChange
         )}
-      </MyWorkRegionSection>
-      <MyWorkRegionSection
+      </MyWorkRegionSection> : null}
+      {regions.includes("myProcesses") ? <MyWorkRegionSection
         id="my-work-myProcesses"
         title={t("myWork.myProcesses.title")}
         summary={t("myWork.myProcesses.summary")}
@@ -131,9 +160,10 @@ export const MyWorkShell = ({
           myProcessesTimeZone,
           onMyProcessesSearchChange,
           onMyProcessesSearchSubmit,
-          onMyProcessesPageChange
+          onMyProcessesPageChange,
+          onNavigate
         )}
-      </MyWorkRegionSection>
+      </MyWorkRegionSection> : null}
     </div>
   </section>;
 };
@@ -171,7 +201,10 @@ const labelForRegion = (region: MyWorkRegion, t: Translate) => {
 const renderMyTasks = (
   snapshot: MyWorkSnapshot,
   onRetry: () => void,
-  t: Translate
+  t: Translate,
+  page: number,
+  onPageChange: (page: number) => void,
+  onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void
 ) => {
   return renderRegionState<MyWorkTask>(
     snapshot,
@@ -186,12 +219,17 @@ const renderMyTasks = (
       <p>{`${t("myWork.myTasks.status")} ${statusLabelFor(item.status, t)}`}</p>
       <p>{`${t("myWork.myTasks.process")} ${toProcessReference(item.processId)}`}</p>
       <div className="button-row">
-        <a className="button" href={item.openTaskRoute}>
+        <a
+          className="button"
+          href={item.openTaskRoute}
+          onClick={(event) => onNavigate?.(item.openTaskRoute, event)}
+        >
           {t("myWork.myTasks.open")}
         </a>
       </div>
     </article>,
-    (dashboard) => dashboard.myTasks
+    (dashboard) => dashboard.myTasks,
+    (collection) => renderCollectionPagination(page, collection.hasMore, onPageChange, t)
   );
 };
 
@@ -201,7 +239,9 @@ const renderStartWorkflows = (
   onStartWorkflow: (workflowId: string) => void,
   startFeedbackByWorkflowId: Record<string, string | undefined>,
   startingWorkflowId: string | null,
-  t: Translate
+  t: Translate,
+  page: number,
+  onPageChange: (page: number) => void
 ) => {
   return renderRegionState<MyWorkStartWorkflow>(
     snapshot,
@@ -231,7 +271,8 @@ const renderStartWorkflows = (
         <p role="status">{startFeedbackByWorkflowId[item.workflowId]}</p>
       ) : null}
     </article>,
-    (dashboard) => dashboard.startWorkflows
+    (dashboard) => dashboard.startWorkflows,
+    (collection) => renderCollectionPagination(page, collection.hasMore, onPageChange, t)
   );
 };
 
@@ -244,7 +285,8 @@ const renderMyProcesses = (
   timeZone: string,
   onSearchChange: (value: string) => void,
   onSearchSubmit: () => void,
-  onPageChange: (page: number) => void
+  onPageChange: (page: number) => void,
+  onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void
 ) => {
   const controls = <div>
     <form
@@ -306,7 +348,11 @@ const renderMyProcesses = (
           <p>{`${t("myWork.myProcesses.lastActivity")} ${formatDateTimeInTimeZone(item.completedAt ?? item.lastActivityAt, timeZone)}`}</p>
           <p>{item.contributionSummary.label}</p>
           <div className="button-row">
-            <a className="button" href={item.viewRoute}>
+            <a
+              className="button"
+              href={item.viewRoute}
+              onClick={(event) => onNavigate?.(item.viewRoute, event)}
+            >
               {t("myWork.myProcesses.view")}
             </a>
           </div>
@@ -344,7 +390,8 @@ const renderRegionState = <TItem,>(
   retryLabel: string,
   onRetry: () => void,
   renderItem: (item: TItem) => ReactNode,
-  selectCollection: (dashboard: MyWorkDashboard) => MyWorkCollection<TItem>
+  selectCollection: (dashboard: MyWorkDashboard) => MyWorkCollection<TItem>,
+  renderFooter?: (collection: MyWorkCollection<TItem>) => ReactNode
 ) => {
   if (snapshot.status === "idle" || snapshot.status === "loading") {
     return <p className="status-panel" role="status">{loadingMessage}</p>;
@@ -359,8 +406,40 @@ const renderRegionState = <TItem,>(
 
   const collection = selectCollection(snapshot.data);
   if (collection.items.length === 0) {
-    return <p className="status-panel" role="status">{emptyMessage}</p>;
+    return <>
+      <p className="status-panel" role="status">{emptyMessage}</p>
+      {renderFooter?.(collection)}
+    </>;
   }
 
-  return <div className="my-work-cards">{collection.items.map(renderItem)}</div>;
+  return <>
+    <div className="my-work-cards">{collection.items.map(renderItem)}</div>
+    {renderFooter?.(collection)}
+  </>;
 };
+
+const renderCollectionPagination = (
+  page: number,
+  hasMore: boolean,
+  onPageChange: (page: number) => void,
+  t: Translate
+) => <div className="button-row">
+  <button
+    className="button"
+    data-variant="secondary"
+    type="button"
+    disabled={page <= 1}
+    onClick={() => onPageChange(page - 1)}
+  >
+    {t("myWork.myProcesses.previousPage")}
+  </button>
+  <button
+    className="button"
+    data-variant="secondary"
+    type="button"
+    disabled={!hasMore}
+    onClick={() => onPageChange(page + 1)}
+  >
+    {t("myWork.myProcesses.nextPage")}
+  </button>
+</div>;

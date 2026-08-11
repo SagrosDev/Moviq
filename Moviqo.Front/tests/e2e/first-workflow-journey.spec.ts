@@ -183,8 +183,9 @@ test("deployed first workflow journey covers registration through completed time
 
     recordJourneyEvent(journeyTrace, startedAt, "design workflow", "started");
     await test.step("create and design the first workflow", async () => {
-    await page.getByRole("link", { name: copy("workflowDesign.create.cta") }).click();
-    await journeyExpect(page).toHaveURL(/\/my-work\/workflows\/new$/);
+    await page.getByRole("link", { name: copy("app.nav.workflows") }).click();
+    await page.getByRole("button", { name: copy("workflowCatalog.create") }).click();
+    await journeyExpect(page).toHaveURL(/\/workflows\/new$/);
     await page.getByLabel(/workflow name|nombre del flujo/i).fill(workflowName);
     await performApiAction(
       page,
@@ -195,12 +196,19 @@ test("deployed first workflow journey covers registration through completed time
     await journeyExpect(
       page.getByRole("heading", { name: copy("workflowDesign.editor.title") })
     ).toBeVisible();
+    await journeyExpect(page).toHaveURL(/\/workflows\/[^/]+\/design$/);
 
     await page.getByRole("button", { name: copy("workflowDesign.editor.addStart") }).click();
     await page.getByRole("button", { name: copy("workflowDesign.editor.addTask") }).click();
     await page.getByRole("button", { name: copy("workflowDesign.editor.addEnd") }).click();
     await page.getByRole("button", { name: copy("workflowDesign.editor.connectStartTask") }).click();
     await page.getByRole("button", { name: copy("workflowDesign.editor.connectTaskEnd") }).click();
+    await performApiAction(
+      page,
+      "PATCH",
+      /\/api\/v1\/workflow-design\/workflows\/[^/]+\/draft\/$/,
+      () => page.getByRole("button", { name: copy("workflowDesign.editor.saveNow") }).click()
+    );
       await assertNoAccessibilityViolations(page, axePath);
     });
     recordJourneyEvent(journeyTrace, startedAt, "design workflow");
@@ -226,6 +234,12 @@ test("deployed first workflow journey covers registration through completed time
     await page.getByRole("button", { name: copy("workflowDesign.editor.addToFirstTask") }).click();
     await performApiAction(
       page,
+      "PATCH",
+      /\/api\/v1\/workflow-design\/workflows\/[^/]+\/draft\/$/,
+      () => page.getByRole("button", { name: copy("workflowDesign.editor.saveNow") }).click()
+    );
+    await performApiAction(
+      page,
       "POST",
       validationPath,
       () => page.getByRole("button", { name: copy("workflowDesign.editor.validatePublication") }).click()
@@ -247,8 +261,8 @@ test("deployed first workflow journey covers registration through completed time
 
     recordJourneyEvent(journeyTrace, startedAt, "start process", "started");
     await test.step("start the published workflow", async () => {
-    await page.goto("/my-work");
-    await journeyExpect(page.getByRole("heading", { name: copy("myWork.title") })).toBeVisible();
+    await page.goto("/processes/start");
+    await journeyExpect(page.getByRole("heading", { level: 1, name: copy("myWork.startWorkflows.title") })).toBeVisible();
     const startRegion = page.getByRole("region", { name: copy("myWork.startWorkflows.title") });
     const workflowCard = startRegion.getByRole("article").filter({
       has: page.getByRole("heading", { name: workflowName, exact: true })

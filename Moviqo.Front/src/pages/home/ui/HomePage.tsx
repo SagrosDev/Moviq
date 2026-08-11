@@ -211,8 +211,8 @@ export const HomePage = () => {
       <main>
         <PageContainer size="wide">
           <div className="grid gap-moviqo-6">
-            <section className="grid items-center gap-moviqo-6 py-moviqo-6 desktop:grid-cols-2" aria-labelledby="landing-title">
-              <div className="grid max-w-3xl gap-moviqo-5">
+            <section className="grid min-w-0 items-center gap-moviqo-6 py-moviqo-6 desktop:grid-cols-2" aria-labelledby="landing-title">
+              <div className="grid min-w-0 max-w-3xl gap-moviqo-5">
                 <span className="justify-self-start"><Badge tone="info">{content.hero.eyebrow}</Badge></span>
                 <h1 className="m-0 text-moviqo-display font-semibold text-moviqo-ink-primary" id="landing-title">
                   {content.hero.title}
@@ -226,7 +226,7 @@ export const HomePage = () => {
                 <p className="m-0 text-lg font-semibold leading-relaxed text-moviqo-ink-secondary">{content.timeToValue}</p>
               </div>
 
-              <div data-product-visual="fictional-workflow">
+              <div className="min-w-0" data-product-visual="fictional-workflow">
                 <Card labelledBy="landing-product-preview-title" tone="accent">
                   <div className="flex flex-wrap items-center justify-between gap-moviqo-2">
                     <FictionalCaseBadge label={content.scenarios[0].label} />

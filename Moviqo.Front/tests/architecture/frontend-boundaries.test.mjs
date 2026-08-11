@@ -169,3 +169,64 @@ test("cross-feature consumers must use public feature entry points", () => {
     true
   );
 });
+
+test("application routing stays declarative and does not regrow pathname comparisons", async () => {
+  const appEntry = await readFile(join(srcRoot, "app", "ui", "App.tsx"), "utf8");
+  const routeConfig = await readFile(join(srcRoot, "app", "router", "routes.tsx"), "utf8");
+
+  assert.doesNotMatch(appEntry, /window\.location\.pathname|normalizeAppPath|match[A-Z]\w*Path/);
+  assert.match(appEntry, /RouterProvider/);
+  assert.match(routeConfig, /AuthenticatedLayout/);
+  assert.match(routeConfig, /:workflowId\/tasks\/:taskElementId\/form/);
+});
+
+test("pages do not deep-import sibling pages", async () => {
+  const violations = [];
+
+  for (const file of await sourceFiles(join(srcRoot, "pages"))) {
+    const content = await readFile(file, "utf8");
+    const importerPage = relative(srcRoot, file).split(sep)[1];
+    for (const specifier of importedSpecifiers(content)) {
+      const resolved = resolveSrcSegments(file, specifier);
+      if (resolved?.[0] === "pages" && resolved[1] !== importerPage) {
+        violations.push(`${relative(process.cwd(), file)} imports sibling page '${specifier}'.`);
+      }
+    }
+  }
+
+  assert.deepEqual(violations, []);
+});
+
+test("editor features keep mutable documents out of global Context", async () => {
+  const violations = [];
+  const editorFeatures = ["workflow-design", "form-design", "task-form"];
+
+  for (const feature of editorFeatures) {
+    const featureRoot = join(srcRoot, "features", feature);
+    try {
+      for (const file of await sourceFiles(featureRoot)) {
+        const content = await readFile(file, "utf8");
+        if (/createContext\s*\(/.test(content)) {
+          violations.push(relative(process.cwd(), file));
+        }
+      }
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  }
+
+  assert.deepEqual(violations, []);
+});
+
+test("TanStack Query is the only server-state cache", async () => {
+  const violations = [];
+
+  for (const file of await sourceFiles(srcRoot)) {
+    const content = await readFile(file, "utf8");
+    if (/queryRegistry|createQueryRegistry/.test(content)) {
+      violations.push(relative(process.cwd(), file));
+    }
+  }
+
+  assert.deepEqual(violations, []);
+});

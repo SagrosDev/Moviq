@@ -614,6 +614,42 @@ def test_my_work_dashboard_returns_direct_assigned_open_tasks(active_member) -> 
 
 
 @pytest.mark.django_db
+def test_my_work_dashboard_pages_every_direct_assigned_open_task(active_member) -> None:
+    user, _organization, owner_membership = active_member
+    workflow_id = _publish_workflow(
+        membership=owner_membership,
+        name="Paged assigned workflow",
+        starter_mode="allActiveMembers",
+    )
+    client = Client()
+    client.force_login(user)
+    task_ids: list[str] = []
+    for index in range(13):
+        start_response = client.post(
+            f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
+            content_type="application/json",
+            **{"HTTP_IDEMPOTENCY_KEY": f"workflow-start-paged-task-{index}"},
+        )
+        assert start_response.status_code == 200
+        task_ids.append(start_response.json()["taskId"])
+
+    first_page = client.get("/api/v1/my-work/?myTasksPage=0")
+    second_page = client.get("/api/v1/my-work/?myTasksPage=2")
+
+    assert first_page.status_code == 200
+    assert first_page.json()["myTasks"]["limit"] == 12
+    assert first_page.json()["myTasks"]["hasMore"] is True
+    assert [item["taskId"] for item in first_page.json()["myTasks"]["items"]] == list(
+        reversed(task_ids[1:])
+    )
+    assert second_page.status_code == 200
+    assert second_page.json()["myTasks"]["hasMore"] is False
+    assert [item["taskId"] for item in second_page.json()["myTasks"]["items"]] == [
+        task_ids[0]
+    ]
+
+
+@pytest.mark.django_db
 def test_my_work_dashboard_hides_tasks_assigned_to_another_member(active_member) -> None:
     user, organization, owner_membership = active_member
     assignee = user.__class__.objects.create_user(
@@ -962,10 +998,16 @@ def test_my_work_dashboard_supports_completed_process_search_and_pagination(acti
     default_response = client.get("/api/v1/my-work/")
     searched_response = client.get("/api/v1/my-work/?myProcessesSearch=intake%2012")
     paged_response = client.get("/api/v1/my-work/?myProcessesPage=2")
+    second_workflow_page = client.get("/api/v1/my-work/?startWorkflowsPage=2")
+    third_workflow_page = client.get("/api/v1/my-work/?startWorkflowsPage=3")
+    normalized_workflow_page = client.get("/api/v1/my-work/?startWorkflowsPage=unsafe")
 
     assert default_response.status_code == 200
     assert searched_response.status_code == 200
     assert paged_response.status_code == 200
+    assert second_workflow_page.status_code == 200
+    assert third_workflow_page.status_code == 200
+    assert normalized_workflow_page.status_code == 200
     assert default_response.json()["myProcesses"]["limit"] == 12
     assert default_response.json()["myProcesses"]["hasMore"] is True
     assert len(default_response.json()["myProcesses"]["items"]) == 12
@@ -978,6 +1020,13 @@ def test_my_work_dashboard_supports_completed_process_search_and_pagination(acti
     ]
     assert [item["processId"] for item in paged_response.json()["myProcesses"]["items"]] == [
         process_ids[0]
+    ]
+    assert len(second_workflow_page.json()["startWorkflows"]["items"]) == 6
+    assert second_workflow_page.json()["startWorkflows"]["hasMore"] is True
+    assert len(third_workflow_page.json()["startWorkflows"]["items"]) == 1
+    assert third_workflow_page.json()["startWorkflows"]["hasMore"] is False
+    assert normalized_workflow_page.json()["startWorkflows"] == default_response.json()[
+        "startWorkflows"
     ]
 
 

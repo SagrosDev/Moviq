@@ -11,6 +11,58 @@ export type MessageKey =
   | "app.nav.processes"
   | "app.nav.admin"
   | "app.nav.designSystem"
+  | "app.nav.dashboard"
+  | "app.nav.tasks"
+  | "app.nav.startProcess"
+  | "app.nav.workflows"
+  | "app.nav.forms"
+  | "app.skipToContent"
+  | "app.loading"
+  | "route.notFound.title"
+  | "route.notFound.body"
+  | "route.notFound.back"
+  | "route.error.title"
+  | "route.error.body"
+  | "dashboard.title"
+  | "dashboard.lede"
+  | "dashboard.tasks"
+  | "dashboard.processes"
+  | "dashboard.startProcess"
+  | "dashboard.authoring"
+  | "workflowCatalog.eyebrow"
+  | "workflowCatalog.title"
+  | "workflowCatalog.lede"
+  | "workflowCatalog.empty"
+  | "workflowCatalog.loading"
+  | "workflowCatalog.error"
+  | "workflowCatalog.retry"
+  | "workflowCatalog.open"
+  | "workflowCatalog.create"
+  | "workflowDesign.route.loading"
+  | "workflowDesign.route.error"
+  | "workflowDesign.route.back"
+  | "formLauncher.eyebrow"
+  | "formLauncher.title"
+  | "formLauncher.lede"
+  | "formLauncher.workflow"
+  | "formLauncher.task"
+  | "formLauncher.selectWorkflow"
+  | "formLauncher.selectTask"
+  | "formLauncher.open"
+  | "formLauncher.noWorkflows"
+  | "formLauncher.noTasks"
+  | "formLauncher.unavailable"
+  | "formDesign.eyebrow"
+  | "formDesign.title"
+  | "formDesign.reserved"
+  | "formDesign.backToForms"
+  | "formDesign.backToWorkflow"
+  | "workflowDesign.editor.designForm"
+  | "workflowDesign.leave.title"
+  | "workflowDesign.leave.body"
+  | "workflowDesign.leave.save"
+  | "workflowDesign.leave.discard"
+  | "workflowDesign.leave.stay"
   | "app.language.label"
   | "app.language.spanish"
   | "app.language.english"
@@ -189,6 +241,7 @@ export type MessageKey =
   | "workflowDesign.editor.saving"
   | "workflowDesign.editor.unsaved"
   | "workflowDesign.editor.retrying"
+  | "workflowDesign.editor.retrySave"
   | "workflowDesign.editor.saveNow"
   | "workflowDesign.editor.saveSuccess"
   | "workflowDesign.editor.saveError"
@@ -288,6 +341,11 @@ export type MessageKey =
   | "taskForm.back"
   | "taskForm.loading"
   | "taskForm.loadError"
+  | "taskForm.leave.title"
+  | "taskForm.leave.body"
+  | "taskForm.leave.save"
+  | "taskForm.leave.discard"
+  | "taskForm.leave.stay"
   | "passwordRecovery.eyebrow"
   | "passwordRecovery.title"
   | "passwordRecovery.lede"
@@ -373,6 +431,58 @@ export const spanishMessages: MessageDictionary = {
   "app.nav.processes": "Procesos",
   "app.nav.admin": "Administración",
   "app.nav.designSystem": "Sistema de diseño",
+  "app.nav.dashboard": "Resumen",
+  "app.nav.tasks": "Tareas",
+  "app.nav.startProcess": "Iniciar proceso",
+  "app.nav.workflows": "Flujos",
+  "app.nav.forms": "Formularios",
+  "app.skipToContent": "Saltar al contenido principal",
+  "app.loading": "Cargando tu espacio de trabajo...",
+  "route.notFound.title": "No encontramos esta página",
+  "route.notFound.body": "La dirección puede estar desactualizada. Vuelve a un módulo disponible.",
+  "route.notFound.back": "Volver al resumen",
+  "route.error.title": "No pudimos abrir este módulo",
+  "route.error.body": "Vuelve al resumen e inténtalo de nuevo.",
+  "dashboard.title": "Resumen",
+  "dashboard.lede": "Elige el módulo donde quieres continuar tu trabajo.",
+  "dashboard.tasks": "Revisar tareas asignadas",
+  "dashboard.processes": "Consultar mis procesos",
+  "dashboard.startProcess": "Iniciar un proceso autorizado",
+  "dashboard.authoring": "Diseñar flujos y formularios",
+  "workflowCatalog.eyebrow": "Autoría",
+  "workflowCatalog.title": "Flujos",
+  "workflowCatalog.lede": "Abre un borrador autorizado o crea un flujo nuevo.",
+  "workflowCatalog.empty": "Todavía no hay flujos autorizados para mostrar.",
+  "workflowCatalog.loading": "Cargando flujos autorizados...",
+  "workflowCatalog.error": "No pudimos cargar los flujos autorizados.",
+  "workflowCatalog.retry": "Intentar de nuevo",
+  "workflowCatalog.open": "Diseñar flujo",
+  "workflowCatalog.create": "Crear flujo",
+  "workflowDesign.route.loading": "Cargando el borrador del flujo...",
+  "workflowDesign.route.error": "Este borrador no está disponible. Puede haber cambiado o no estar autorizado.",
+  "workflowDesign.route.back": "Volver a flujos",
+  "formLauncher.eyebrow": "Autoría",
+  "formLauncher.title": "Formularios",
+  "formLauncher.lede": "Selecciona primero un flujo autorizado y luego una tarea.",
+  "formLauncher.workflow": "Flujo",
+  "formLauncher.task": "Tarea",
+  "formLauncher.selectWorkflow": "Selecciona un flujo",
+  "formLauncher.selectTask": "Selecciona una tarea",
+  "formLauncher.open": "Diseñar formulario",
+  "formLauncher.noWorkflows": "No hay flujos autorizados disponibles.",
+  "formLauncher.noTasks": "Este flujo no tiene tareas disponibles para diseñar.",
+  "formLauncher.unavailable": "No pudimos abrir esta selección. Elige de nuevo un flujo y una tarea autorizados.",
+  "formDesign.eyebrow": "Formulario de tarea",
+  "formDesign.title": "Diseñador de formulario",
+  "formDesign.reserved": "El diseño del formulario estará disponible aquí. Vuelve al flujo para continuar configurando sus tareas.",
+  "formDesign.backToForms": "Volver a formularios",
+  "formDesign.backToWorkflow": "Volver al flujo",
+  "workflowDesign.editor.designForm": "Diseñar formulario",
+  "workflowDesign.leave.title": "Hay cambios sin guardar",
+  "workflowDesign.leave.body": "Guarda el borrador, descarta los cambios o permanece en el diseñador.",
+  "workflowDesign.leave.save": "Guardar borrador y salir",
+  "workflowDesign.leave.discard": "Descartar y salir",
+  "workflowDesign.leave.stay": "Permanecer",
   "app.language.label": "Idioma",
   "app.language.spanish": "Español",
   "app.language.english": "Inglés",
@@ -580,6 +690,7 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.saving": "Guardando borrador",
   "workflowDesign.editor.unsaved": "Cambios sin guardar",
   "workflowDesign.editor.retrying": "Reintentando guardado",
+  "workflowDesign.editor.retrySave": "Reintentar guardado",
   "workflowDesign.editor.saveNow": "Guardar ahora",
   "workflowDesign.editor.saveSuccess": "El servidor guardo el camino autorizado.",
   "workflowDesign.editor.saveError": "No pudimos guardar este borrador. Corrige el camino e intenta de nuevo.",
@@ -696,6 +807,11 @@ export const spanishMessages: MessageDictionary = {
   "taskForm.back": "Volver a Mi trabajo",
   "taskForm.loading": "Cargando la tarea autorizada.",
   "taskForm.loadError": "No pudimos cargar esta tarea autorizada. Intenta de nuevo.",
+  "taskForm.leave.title": "Hay cambios sin guardar",
+  "taskForm.leave.body": "Guarda el formulario, descarta los cambios o permanece en la tarea.",
+  "taskForm.leave.save": "Guardar y salir",
+  "taskForm.leave.discard": "Descartar y salir",
+  "taskForm.leave.stay": "Permanecer",
   "passwordRecovery.eyebrow": "Recuperación segura",
   "passwordRecovery.title": "Recupera tu contraseña",
   "passwordRecovery.lede": "Te enviaremos instrucciones si la cuenta puede recibirlas.",
@@ -782,6 +898,58 @@ export const englishMessages: Partial<MessageDictionary> = {
   "app.nav.processes": "Processes",
   "app.nav.admin": "Administration",
   "app.nav.designSystem": "Design system",
+  "app.nav.dashboard": "Dashboard",
+  "app.nav.tasks": "Tasks",
+  "app.nav.startProcess": "Start process",
+  "app.nav.workflows": "Workflows",
+  "app.nav.forms": "Forms",
+  "app.skipToContent": "Skip to main content",
+  "app.loading": "Loading your workspace...",
+  "route.notFound.title": "We could not find this page",
+  "route.notFound.body": "The address may be out of date. Return to an available module.",
+  "route.notFound.back": "Back to dashboard",
+  "route.error.title": "We could not open this module",
+  "route.error.body": "Return to the dashboard and try again.",
+  "dashboard.title": "Dashboard",
+  "dashboard.lede": "Choose the module where you want to continue working.",
+  "dashboard.tasks": "Review assigned tasks",
+  "dashboard.processes": "View my processes",
+  "dashboard.startProcess": "Start an authorized process",
+  "dashboard.authoring": "Design workflows and forms",
+  "workflowCatalog.eyebrow": "Authoring",
+  "workflowCatalog.title": "Workflows",
+  "workflowCatalog.lede": "Open an authorized draft or create a new workflow.",
+  "workflowCatalog.empty": "There are no authorized workflows to show yet.",
+  "workflowCatalog.loading": "Loading authorized workflows...",
+  "workflowCatalog.error": "We could not load the authorized workflows.",
+  "workflowCatalog.retry": "Try again",
+  "workflowCatalog.open": "Design workflow",
+  "workflowCatalog.create": "Create workflow",
+  "workflowDesign.route.loading": "Loading the workflow draft...",
+  "workflowDesign.route.error": "This draft is unavailable. It may have changed or you may not be authorized.",
+  "workflowDesign.route.back": "Back to workflows",
+  "formLauncher.eyebrow": "Authoring",
+  "formLauncher.title": "Forms",
+  "formLauncher.lede": "Select an authorized workflow first, then select a task.",
+  "formLauncher.workflow": "Workflow",
+  "formLauncher.task": "Task",
+  "formLauncher.selectWorkflow": "Select a workflow",
+  "formLauncher.selectTask": "Select a task",
+  "formLauncher.open": "Design form",
+  "formLauncher.noWorkflows": "No authorized workflows are available.",
+  "formLauncher.noTasks": "This workflow has no tasks available for design.",
+  "formLauncher.unavailable": "We could not open this selection. Choose an authorized workflow and task again.",
+  "formDesign.eyebrow": "Task form",
+  "formDesign.title": "Form designer",
+  "formDesign.reserved": "Form design will be available here. Return to the workflow to continue configuring its tasks.",
+  "formDesign.backToForms": "Back to forms",
+  "formDesign.backToWorkflow": "Back to workflow",
+  "workflowDesign.editor.designForm": "Design form",
+  "workflowDesign.leave.title": "There are unsaved changes",
+  "workflowDesign.leave.body": "Save the draft, discard the changes, or stay in the designer.",
+  "workflowDesign.leave.save": "Save draft and leave",
+  "workflowDesign.leave.discard": "Discard and leave",
+  "workflowDesign.leave.stay": "Stay",
   "app.language.label": "Language",
   "app.language.spanish": "Spanish",
   "app.language.english": "English",
@@ -990,6 +1158,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.saving": "Saving draft",
   "workflowDesign.editor.unsaved": "Unsaved changes",
   "workflowDesign.editor.retrying": "Retrying save",
+  "workflowDesign.editor.retrySave": "Retry save",
   "workflowDesign.editor.saveNow": "Save now",
   "workflowDesign.editor.saveSuccess": "The server saved the authorized path.",
   "workflowDesign.editor.saveError": "We could not save this draft. Correct the path and try again.",
@@ -1107,6 +1276,11 @@ export const englishMessages: Partial<MessageDictionary> = {
   "taskForm.back": "Back to My work",
   "taskForm.loading": "Loading the authorized task.",
   "taskForm.loadError": "We could not load this authorized task. Try again.",
+  "taskForm.leave.title": "There are unsaved changes",
+  "taskForm.leave.body": "Save the form, discard the changes, or stay on this task.",
+  "taskForm.leave.save": "Save and leave",
+  "taskForm.leave.discard": "Discard and leave",
+  "taskForm.leave.stay": "Stay",
   "passwordRecovery.eyebrow": "Secure recovery",
   "passwordRecovery.title": "Recover your password",
   "passwordRecovery.lede": "We will send instructions if the account can receive them.",

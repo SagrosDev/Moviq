@@ -322,7 +322,7 @@ test("local semantic edits queue one autosave key until the pending attempt chan
   assert.equal(editedAgain.pendingAutosaveRequestKey, edited.pendingAutosaveRequestKey);
 });
 
-test("retryable save failures preserve the same logical autosave attempt", () => {
+test("retryable save failures preserve the logical attempt and expose explicit retry", () => {
   const accepted = createAccepted();
   const edited = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
@@ -345,13 +345,20 @@ test("retryable save failures preserve the same logical autosave attempt", () =>
     conflict: false
   });
 
-  assert.equal(failed.saveStatus, "retrying");
+  const retryRequested = reduceWorkflowDraftEditorState(failed, {
+    type: "save-requested",
+    requestKey: failed.pendingAutosaveRequestKey!,
+    retry: true
+  });
+
+  assert.equal(failed.saveStatus, "error");
   assert.equal(failed.retryCount, 1);
   assert.equal(failed.pendingAutosaveRequestKey, edited.pendingAutosaveRequestKey);
   assert.equal(failed.hasLocalChanges, true);
+  assert.equal(retryRequested.saveStatus, "retrying");
 });
 
-test("autosave scheduling uses debounce for fresh edits and exponential backoff for retries", () => {
+test("retryable failures do not schedule themselves after explicit saving", () => {
   const accepted = createAccepted();
   const edited = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
@@ -371,8 +378,8 @@ test("autosave scheduling uses debounce for fresh edits and exponential backoff 
 
   assert.equal(shouldScheduleAutosave(edited), true);
   assert.equal(autosaveDelayMs(edited), 800);
-  assert.equal(shouldScheduleAutosave(retrying), true);
-  assert.equal(autosaveDelayMs(retrying), 2000);
+  assert.equal(shouldScheduleAutosave(retrying), false);
+  assert.equal(autosaveDelayMs(retrying), null);
 });
 
 test("autosave retries stop after the configured retry budget", () => {

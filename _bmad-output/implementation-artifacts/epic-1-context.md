@@ -4,7 +4,7 @@
 
 ## Goal
 
-Provide a deployed internal, synthetic-only environment in which company stakeholders can confidently evaluate a polished thin Moviqo journey: understand the landing page, register and verify an Owner, authenticate, create and publish a minimal workflow, start and complete its task, and inspect the completed process. The journey supplies exact-build release evidence and a stakeholder-approved visual system while preserving tenant isolation, secure public contracts, accessibility, bilingual behavior, and safe diagnostics.
+Deliver a polished, persistent, synthetic-only internal environment where company stakeholders can evaluate Moviqo's core promise end to end: understand the product, register and verify an Owner and Organization, sign in, create and publish a minimal Workflow and Task Form, start a Process, complete its Task, inspect the result, and record actionable feedback. The journey must exercise real public contracts and backend-authoritative behavior while preserving tenant isolation, security, traceability, bilingual accessibility, and an explicit boundary against real customer data.
 
 ## Stories
 
@@ -29,12 +29,12 @@ Provide a deployed internal, synthetic-only environment in which company stakeho
 - Story 1.19: Deliver an Accessible, Measurable Landing Experience
 - Story 1.20: Provide the Authenticated My Work Shell
 - Story 1.21: Create a Workflow and Shared Draft
-- Story 1.22: Design a Basic Start-Task-End Graph
+- Story 1.22: Design a Basic Start–Task–End Graph
 - Story 1.23: Create and Bind the First Short Text Process Field
 - Story 1.24: Compose and Run the Minimal Task Form
 - Story 1.25: Validate the Minimal Workflow for Publication
 - Story 1.26: Configure Workflow Starters and Task Assignment
-- Story 1.27: Save Explicitly and Resolve Shared-Draft Conflicts (autosave behavior superseded on 2026-08-10)
+- Story 1.27: Save Explicitly and Resolve Shared-Draft Conflicts
 - Story 1.28: Publish an Immutable Workflow Version
 - Story 1.29: Start a Process from the Authorized Catalog
 - Story 1.30: Open an Assigned Task and Save Progress
@@ -50,32 +50,28 @@ Provide a deployed internal, synthetic-only environment in which company stakeho
 
 ## Requirements & Constraints
 
-- The deployed journey must use a clean synthetic identity, persistent PostgreSQL state, the real UAT email outbox path, and public browser/API contracts. It must not bypass registration, verification, authentication, authorization, publication, task completion, or persistence.
-- Email verification must activate the eligible account, Organization, and Owner Membership through the server-authoritative flow before sign-in. The UI must present the localized success or safe recovery state returned by that flow.
-- Release evidence must identify the immutable build, environment, duration, and safe Organization/Process references without exposing passwords, tokens, Process Data, private links, or cross-tenant information.
-- Any actionable journey, accessibility, tenant-isolation, or required-service failure blocks promotion. Assertions must describe user-visible outcomes and remain valid in Spanish and English.
-- The internal environment remains explicitly `synthetic-only`; ambiguous environment classification fails closed and does not authorize real customer data.
-- Tailwind theme variables and source-owned shared UI primitives enforce the approved visual system. Native accessible controls remain inside those primitives; pages do not invent raw control styling or a second form-state authority.
-- The candidate palette is not locked until the Design System page and representative desktop/mobile screenshots receive human visual approval. Correct Spanish spelling/accents and reviewed English are required before the stakeholder walkthrough.
-- React Flow is the Workflow canvas interaction/presentation adapter only. The revisioned Moviqo workflow document/reducer remains the semantic and persisted source of truth, and the Start-Task-End path retains keyboard-accessible non-drag operations.
-- React Router provides canonical, reload-safe modules for the Dashboard, My Tasks, My Processes, Start Process catalog, Workflow catalog/creation/Designer, Form launcher/Designer, Task Form, and Process detail. Workflow creation navigates to the dedicated Designer instead of appending it below the creation Form.
-- TanStack Query owns server catalogs and read models; focused route-level reducers own unsaved Workflow/Form edits, explicit Save Draft, conflicts, and selection. Editor documents never live in global Context.
-- Workflow and Form Designers do not autosave. **Save draft** persists incomplete but structurally coherent work with optimistic revision protection; explicit validation determines publication readiness, and **Publish** operates only on the matching saved, validated revision. Navigation warns before abandoning dirty changes and offers Save/Discard/Stay recovery without browser-local persistence becoming authoritative.
-- Generic Form controls/Grid remain in `shared/ui`; the typed field registry and runtime `TaskFormRenderer` live in `features/task-form`; the route-level Form Designer lives in `features/form-design`. Designer preview reuses runtime renderers, a pinned dnd-kit package set supplements explicit non-drag operations, and no general form-builder library owns Moviqo state.
-- Failed Form submission must present a localized error summary, reveal/focus the first invalid field, preserve correctable values, handle non-field errors visibly, and keep correlation IDs secondary to recovery guidance.
+- Exercise persistent PostgreSQL and the public registration, verification, session, authorization, publication, Process, Task, timeline, and email/outbox paths; no database, private-API, or test-only bypass may stand in for user behavior.
+- One normalized email belongs to one Organization. Verification activates the initial Owner; accepted passwords are 15–128 characters, securely hashed, and excluded from responses and diagnostics.
+- Every protected row and operation is Organization-owned. Application authorization and forced PostgreSQL row-level security fail closed without leaking foreign existence, identifiers, or counts.
+- Commands atomically persist business state, audit, idempotency results, and outbox messages. Retries cannot duplicate outcomes, and external delivery occurs after commit through leased PostgreSQL work.
+- The minimal Workflow has one Start, at least one Task, one End, valid sequence Transitions, starters, assignment, and a Task Form using a stable Short Text Process Field. Invalid drafts may be saved; only the matching saved and validated revision may publish immutably.
+- Task completion validates and persists before routing. The UI reports success only after server confirmation, and the authorized timeline preserves execution evidence.
+- UAT must be explicitly `synthetic-only`; ambiguous classification blocks startup. Its stakeholder result is early direction evidence, not real-data, public-beta, production, Gate 1, or WCAG certification.
+- Moviqo copy is Spanish-first with reviewed English and Spanish fallback. Require responsive operational reflow, keyboard access, visible focus, semantic/non-color status, 200% text, reduced motion, practical 44px targets, and actionable localized validation; narrow screens need not support full authoring.
 
 ## Technical Decisions
 
-- The UAT path is Firebase Hosting to a Cloud Run Django API, Supabase PostgreSQL, Resend, and the minimal Cloud Run outbox/email job. API, authenticated, and session-specific responses must not be CDN-cached.
-- Playwright covers the critical landing-to-completed-process journey with automated accessibility checks. Persistence, RLS, transaction, and concurrency behavior remains covered by real-PostgreSQL integration tests.
-- Frontend state is non-authoritative: success is asserted only after the corresponding server response succeeds. Test navigation must exercise the same public route semantics as a user opening an email link.
-- System-owned UI and email text supports Spanish and English with Spanish fallback. Tests should assert the semantic outcome across supported languages instead of coupling to an unrelated locale-specific introductory string.
-- Tailwind CSS 4.3.3 and `@tailwindcss/vite` 4.3.3 expose the approved tokens. Pinned `@xyflow/react` 12.11.2 supplies the Workflow canvas through a typed adapter. React Router and TanStack Query versions are pinned after the Story 1.35 compatibility check; a stable dnd-kit package set is pinned in Story 1.37. Static forms use shared controls with focused local state; dynamic authoring/runtime Forms use feature-owned registries/reducers and server-authoritative contracts.
+- Use a Django modular monolith whose modules collaborate only through public application contracts. OpenAPI generates the `/api/v1` frontend client; errors are safe RFC 9457 Problem Details with stable codes and correlation IDs.
+- The React dependency flow is `app → pages → features → entities → shared`. React Router owns canonical modules, TanStack Query owns server state, and focused reducers own unsaved editor documents, revisions, selection, and explicit saves.
+- Editors never autosave. React Flow and dnd-kit own gestures only; Moviqo reducers remain authoritative. Form Designer preview and runtime share typed renderers, and every drag operation has a keyboard/non-drag alternative.
+- Tailwind theme variables and source-owned `shared/ui` primitives implement the approved system; domain renderers stay feature-owned and no competing form model is introduced.
+- UAT uses immutable SPA/backend artifacts through Firebase Hosting, Cloud Run, Supabase PostgreSQL, private GCS, Resend, and the minimal outbox job. Do not cache API/authenticated responses or expose secrets and Process Data in artifacts or telemetry.
+- Verify with domain, architecture, generated-contract, real-PostgreSQL isolation/transaction/concurrency, and exact-deployment Playwright accessibility tests.
 
 ## UX & Interaction Patterns
 
-Moviqo is Spanish-first with English selectable. User-visible status, errors, headings, labels, focus behavior, and actions must be accessible and localized. Email verification should transition from loading to an explicit verified state or a safe invalid-link recovery state; automation should wait for and assert that final state.
+Use dedicated, reload-safe modules for each catalog, editor, Task, and Process surface. Keep one primary action per region, preserve recoverable input, and present linked plain-language error summaries with associated field errors. Separate Workflow palette/canvas/outline/properties/actions; use a twelve-column Form grid with one-column operational reflow. Apply the approved tokens, shared components, bilingual copy, and compact synthetic-only indicator throughout.
 
 ## Cross-Story Dependencies
 
-Story 1.33 remains completed historical verification for Stories 1.5 and 1.12-1.32 and is not a prerequisite or testing obligation for the new frontend stories. Story 1.34 establishes the shared visual system and public/onboarding surfaces; Story 1.35 separates application modules and supplies route/query foundations; Story 1.36 refactors the Workflow Editor and adopts React Flow; Story 1.37 establishes the dedicated design/runtime Form architecture with dnd-kit interaction; Story 1.38 integrates and polishes the authenticated thin journey; Story 1.39 consumes those presentation outcomes and a documented manual acceptance walkthrough for stakeholder review. Comprehensive compatibility, responsive, localization, accessibility, failure, and Gate 1 certification evidence remains owned by Stories 10.7-10.9.
+Foundations precede the user journey; registration/activation precede authentication; draft, graph, Form, validation, assignment, and revision-safe save precede publication; publication precedes runtime and E2E proof. Stories 1.34–1.37 establish the visual system, modules, and editors; 1.38 integrates them; 1.39 requires that exact build and its manual acceptance. Stories 10.7–10.9 own comprehensive compatibility, accessibility, operability, and final Gate 1 certification.

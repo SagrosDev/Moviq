@@ -21,3 +21,8 @@ These items are not outstanding work for the active Story 1.34. Compatibility, r
 - Exercise an actual repeated submission before asserting duplicate suppression. Deferred until E2E work resumes after the UI stabilizes.
 - Qualify delayed Task save/completion success and absence of confirmation dialogs. Deferred until E2E work resumes after the UI stabilizes.
 - Fail CI when required preview evidence artifacts are absent. Deferred with the preview E2E evidence gate while manual functional testing is used.
+
+## Deferred from: code review of `1-35-separate-the-application-modules-and-establish-authoring-navigation.md` (2026-08-11)
+
+- Localize the pre-existing server-owned runtime labels and summaries rendered by My Work and Process Detail. The current API supplies English availability, involvement, and contribution strings that appear verbatim in the Spanish interface; this behavior predates Story 1.35 and should be corrected through a deliberate localized response contract rather than folded into the routing change.
+- Paginate authorized My Work querysets before materializing every matching Task and Workflow. The existing dashboard reader loads full authorized collections before applying the newly exposed page slices; this pre-existing scaling cost should be addressed as a dedicated query-performance change.

@@ -1,5 +1,6 @@
 import { useReducer, type FormEvent } from "react";
 import { useLanguage } from "../../../shared/localization";
+import { ActionBar, Alert, Button, ButtonLink, Card, TextInput } from "../../../shared/ui";
 import {
   createWorkflow,
   initialWorkflowCreationFormState,
@@ -9,6 +10,7 @@ import type { WorkflowCreationAccepted } from "../model/types";
 
 type WorkflowCreateFormProps = {
   onBackHref: string;
+  onBack?: () => void;
   onCreated: (accepted: WorkflowCreationAccepted) => void;
 };
 
@@ -17,6 +19,7 @@ const buildIdempotencyKey = () =>
 
 export const WorkflowCreateForm = ({
   onBackHref,
+  onBack,
   onCreated
 }: WorkflowCreateFormProps) => {
   const { t } = useLanguage();
@@ -49,14 +52,19 @@ export const WorkflowCreateForm = ({
         ? t("workflowDesign.create.error")
         : null;
 
-  return <section className="status-panel" aria-labelledby="workflow-create-title">
+  return <Card labelledBy="workflow-create-title">
     <h2 id="workflow-create-title">{t("workflowDesign.create.title")}</h2>
-    <p>{t("workflowDesign.create.body")}</p>
-    <form className="form-card" onSubmit={submit} noValidate>
-      {errorMessage ? <p role="alert" data-error-code={formState.errorCode}>{errorMessage}</p> : null}
-      <label htmlFor="workflow-create-name">{t("workflowDesign.create.name")}</label>
-      <input
+    <p className="m-0 text-moviqo-ink-secondary">{t("workflowDesign.create.body")}</p>
+    <form className="grid gap-moviqo-4" onSubmit={submit} noValidate>
+      {errorMessage ? (
+        <Alert announcement="assertive" tone="error">
+          <span data-error-code={formState.errorCode}>{errorMessage}</span>
+        </Alert>
+      ) : null}
+      <TextInput
         id="workflow-create-name"
+        label={t("workflowDesign.create.name")}
+        helpText={t("workflowDesign.create.help")}
         type="text"
         value={formState.name}
         onChange={(event) =>
@@ -65,17 +73,22 @@ export const WorkflowCreateForm = ({
         maxLength={120}
         required
       />
-      <p>{t("workflowDesign.create.help")}</p>
-      <div className="button-row">
-        <a className="button" data-variant="secondary" href={onBackHref}>
-          {t("workflowDesign.create.back")}
-        </a>
-        <button className="button" type="submit" disabled={formState.status === "submitting"}>
+      <ActionBar align="start">
+        {onBack ? (
+          <Button variant="secondary" onClick={onBack}>
+            {t("workflowDesign.create.back")}
+          </Button>
+        ) : (
+          <ButtonLink href={onBackHref} variant="secondary">
+            {t("workflowDesign.create.back")}
+          </ButtonLink>
+        )}
+        <Button type="submit" disabled={formState.status === "submitting"}>
           {formState.status === "submitting"
             ? t("workflowDesign.create.submitting")
             : t("workflowDesign.create.submit")}
-        </button>
-      </div>
+        </Button>
+      </ActionBar>
     </form>
-  </section>;
+  </Card>;
 };

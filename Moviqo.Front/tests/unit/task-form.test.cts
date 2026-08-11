@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClient } from "@tanstack/react-query";
 import {
   createTaskFormCompletionIdempotencyKey,
   createTaskFormSaveIdempotencyKey,
@@ -13,7 +14,13 @@ import {
   saveTaskFormDocument,
   type TaskFormDocument,
 } from "../../src/features/task-form";
-import { resolveTaskFormPageView } from "../../src/pages/task-form/ui/TaskFormPage";
+import {
+  resolveTaskFormPageView,
+  refreshTaskCompletionReadModels,
+  taskFormDocumentFromSuccessfulRefetch,
+  shouldAcceptTaskFormSnapshot
+} from "../../src/pages/task-form/ui/TaskFormPage";
+import { moviqoQueryKeys } from "../../src/shared/api";
 import { LanguageProvider, memoryLanguagePreferenceAdapter } from "../../src/shared/localization";
 
 const taskFormDocument: TaskFormDocument = {
@@ -56,6 +63,52 @@ test("task form editor keeps the current value in sync for controlled input stat
 
   assert.equal(updated.controls[0]?.value, "Ana Perez");
   assert.equal(updated.hasLocalChanges, true);
+});
+
+test("task form query revisions are accepted only while the editor is clean", () => {
+  const clean = createTaskFormEditorState(taskFormDocument);
+  const dirty = reduceTaskFormEditorState(clean, {
+    type: "value-updated",
+    controlId: "binding-1",
+    value: "Keep this value"
+  });
+  const newer = { ...taskFormDocument, taskRevision: "2" };
+
+  assert.equal(shouldAcceptTaskFormSnapshot(clean, taskFormDocument, false), true);
+  assert.equal(shouldAcceptTaskFormSnapshot(clean, newer, true), true);
+  assert.equal(shouldAcceptTaskFormSnapshot(dirty, newer, true), false);
+});
+
+test("failed refetches with retained data never overwrite the local task form", () => {
+  assert.equal(taskFormDocumentFromSuccessfulRefetch({
+    data: { ...taskFormDocument, taskRevision: "2" },
+    isSuccess: false
+  }), null);
+  assert.equal(taskFormDocumentFromSuccessfulRefetch({
+    data: { ...taskFormDocument, taskRevision: "2" },
+    isSuccess: true
+  })?.taskRevision, "2");
+});
+
+test("task completion removes the form document and invalidates organization read models", async () => {
+  const queryClient = new QueryClient();
+  const organizationId = "organization-1";
+  const taskQueryKey = moviqoQueryKeys.taskForm(organizationId, taskFormDocument.taskId);
+  const otherTaskQueryKey = moviqoQueryKeys.taskForm(organizationId, "task-2");
+  const myWorkQueryKey = moviqoQueryKeys.myWork(organizationId, 1, 1, 1, "");
+  queryClient.setQueryData(taskQueryKey, taskFormDocument);
+  queryClient.setQueryData(otherTaskQueryKey, { ...taskFormDocument, taskId: "task-2" });
+  queryClient.setQueryData(myWorkQueryKey, {
+    myProcesses: { items: [], limit: 12, hasMore: false },
+    myTasks: { items: [], limit: 12, hasMore: false },
+    startWorkflows: { items: [], limit: 6, hasMore: false }
+  });
+
+  await refreshTaskCompletionReadModels(queryClient, organizationId, taskQueryKey);
+
+  assert.equal(queryClient.getQueryData(taskQueryKey), undefined);
+  assert.equal(queryClient.getQueryState(otherTaskQueryKey)?.isInvalidated, true);
+  assert.equal(queryClient.getQueryState(myWorkQueryKey)?.isInvalidated, true);
 });
 
 test("task form save failures retain field-level invalid targets and local work", () => {
@@ -257,6 +310,7 @@ test("task form panel disables completion while a draft save is pending", () => 
 
 test("task form page resolves the initial load failure to the error view", () => {
   assert.equal(resolveTaskFormPageView("error", null), "error");
+  assert.equal(resolveTaskFormPageView("error", taskFormDocument), "ready");
   assert.equal(resolveTaskFormPageView("loading", null), "loading");
   assert.equal(resolveTaskFormPageView("ready", taskFormDocument), "ready");
 });

@@ -203,6 +203,36 @@ class MyWorkDashboardView(APIView):
 
     @extend_schema(
         operation_id="workflow_runtime_my_work_dashboard",
+        parameters=[
+            OpenApiParameter(
+                name="startWorkflowsPage",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="One-based page of authorized startable workflows.",
+            ),
+            OpenApiParameter(
+                name="myTasksPage",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="One-based page of directly assigned open tasks.",
+            ),
+            OpenApiParameter(
+                name="myProcessesPage",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="One-based page of authorized completed processes.",
+            ),
+            OpenApiParameter(
+                name="myProcessesSearch",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Search authorized completed process summaries.",
+            ),
+        ],
         responses={
             200: MyWorkDashboardSerializer,
             (403, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
@@ -211,6 +241,14 @@ class MyWorkDashboardView(APIView):
     )
     def get(self, request) -> Response:
         tenant_context = _require_runtime_membership(request)
+        start_workflows_page = _positive_integer(
+            request.query_params.get("startWorkflowsPage"),
+            default=1,
+        )
+        my_tasks_page = _positive_integer(
+            request.query_params.get("myTasksPage"),
+            default=1,
+        )
         my_processes_page = _positive_integer(
             request.query_params.get("myProcessesPage"),
             default=1,
@@ -219,6 +257,8 @@ class MyWorkDashboardView(APIView):
         return Response(
             read_my_work_dashboard(
                 tenant_context,
+                start_workflows_page=start_workflows_page,
+                my_tasks_page=my_tasks_page,
                 my_processes_page=my_processes_page,
                 my_processes_search=my_processes_search,
             )

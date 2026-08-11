@@ -19,6 +19,7 @@ import {
   FormGrid,
   FormGridItem,
   FormSection,
+  isUnmodifiedPrimaryClick,
   PageContainer,
   PageHeader,
   PasswordField,
@@ -213,6 +214,22 @@ test("ButtonLink provides shared CTA styling without replacing link semantics", 
   assert.match(markup, /^<a /);
   assert.match(markup, /href="\/register"/);
   assert.match(markup, /data-variant="primary"/);
+});
+
+test("application link interception preserves modified and non-primary clicks", () => {
+  const click = (overrides: Record<string, boolean | number> = {}) => ({
+    altKey: false,
+    button: 0,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+    ...overrides
+  });
+
+  assert.equal(isUnmodifiedPrimaryClick(click() as never), true);
+  assert.equal(isUnmodifiedPrimaryClick(click({ ctrlKey: true }) as never), false);
+  assert.equal(isUnmodifiedPrimaryClick(click({ metaKey: true }) as never), false);
+  assert.equal(isUnmodifiedPrimaryClick(click({ button: 1 }) as never), false);
 });
 
 test("static alerts are not live regions and info badges use an informational mark", () => {

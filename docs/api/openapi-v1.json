@@ -231,6 +231,40 @@
         "/api/v1/my-work/": {
             "get": {
                 "operationId": "workflow_runtime_my_work_dashboard",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "myProcessesPage",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "One-based page of authorized completed processes."
+                    },
+                    {
+                        "in": "query",
+                        "name": "myProcessesSearch",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Search authorized completed process summaries."
+                    },
+                    {
+                        "in": "query",
+                        "name": "myTasksPage",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "One-based page of directly assigned open tasks."
+                    },
+                    {
+                        "in": "query",
+                        "name": "startWorkflowsPage",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "One-based page of authorized startable workflows."
+                    }
+                ],
                 "tags": [
                     "my-work"
                 ],

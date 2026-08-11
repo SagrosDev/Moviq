@@ -985,7 +985,16 @@ export interface operations {
     };
     workflow_runtime_my_work_dashboard: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description One-based page of authorized completed processes. */
+                myProcessesPage?: number;
+                /** @description Search authorized completed process summaries. */
+                myProcessesSearch?: string;
+                /** @description One-based page of directly assigned open tasks. */
+                myTasksPage?: number;
+                /** @description One-based page of authorized startable workflows. */
+                startWorkflowsPage?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;

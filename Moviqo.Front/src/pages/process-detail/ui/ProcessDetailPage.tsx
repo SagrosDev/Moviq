@@ -1,11 +1,21 @@
-import { useEffect, useState } from "react";
-import { protectedEntryPath, useSession } from "../../../features/authentication";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router";
+import { useSession } from "../../../features/authentication";
 import {
   formatDateTimeInTimeZone,
   readProcessDetailDocument,
   type ProcessDetailDocument
 } from "../../../features/my-work";
-import { LanguageSelector, useLanguage } from "../../../shared/localization";
+import { moviqoQueryKeys } from "../../../shared/api";
+import { useLanguage } from "../../../shared/localization";
+import {
+  Alert,
+  Breadcrumbs,
+  Button,
+  Card,
+  isUnmodifiedPrimaryClick,
+  PageHeader
+} from "../../../shared/ui";
 
 type ProcessDetailPageProps = {
   processId: string;
@@ -22,135 +32,100 @@ export const resolveProcessDetailPageView = (
   loadStatus: "loading" | "error" | "ready",
   document: ProcessDetailDocument | null
 ) => {
-  if (loadStatus === "error") {
-    return "error";
-  }
-  if (loadStatus === "loading" || !document) {
-    return "loading";
-  }
+  if (loadStatus === "error") return "error";
+  if (loadStatus === "loading" || !document) return "loading";
   return "ready";
 };
 
 export const ProcessDetailPage = ({ processId }: ProcessDetailPageProps) => {
   const { t } = useLanguage();
-  const { signOutCurrentSession, state } = useSession();
-  const [document, setDocument] = useState<ProcessDetailDocument | null>(null);
-  const [loadStatus, setLoadStatus] = useState<"loading" | "error" | "ready">("loading");
-
-  useEffect(() => {
-    if (state.status === "anonymous") {
-      window.location.assign("/sign-in");
-    }
-  }, [state.status]);
-
-  useEffect(() => {
-    if (state.status !== "authenticated") {
-      return;
-    }
-
-    const load = async () => {
-      setLoadStatus("loading");
+  const { state } = useSession();
+  const navigate = useNavigate();
+  const organizationId = state.status === "authenticated"
+    ? state.context.membership.organizationId
+    : "";
+  const query = useQuery({
+    enabled: Boolean(organizationId && processId),
+    queryKey: moviqoQueryKeys.processDetail(organizationId, processId),
+    queryFn: async () => {
       const result = await readProcessDetailDocument(processId);
-      if (!result.ok) {
-        setLoadStatus("error");
-        return;
-      }
-      setDocument(result.data);
-      setLoadStatus("ready");
-    };
+      if (!result.ok) throw result.error;
+      return result.data;
+    }
+  });
 
-    void load();
-  }, [processId, state.status]);
-
-  if (state.status !== "authenticated") {
-    return <div className="app-shell">
-      <header className="app-header">
-        <a className="brand" href="/">Moviqo</a>
-        <LanguageSelector />
-      </header>
-      <main className="app-main">
-        <p className="status-panel" role="status">{t("myWork.sessionLoading")}</p>
-      </main>
-    </div>;
+  if (state.status !== "authenticated" || query.isPending) {
+    return <Alert announcement="polite">{t("processDetail.loading")}</Alert>;
   }
 
-  const retry = async () => {
-    const result = await readProcessDetailDocument(processId);
-    if (!result.ok) {
-      setLoadStatus("error");
-      return;
-    }
-    setDocument(result.data);
-    setLoadStatus("ready");
-  };
+  if (query.isError) {
+    return (
+      <Alert announcement="assertive" title={t("processDetail.loadError")} tone="error">
+        <Button variant="secondary" onClick={() => void query.refetch()}>
+          {t("processDetail.retry")}
+        </Button>
+      </Alert>
+    );
+  }
 
-  const pageView = resolveProcessDetailPageView(loadStatus, document);
-  const detailDocument = pageView === "ready" ? document : null;
-  const organizationTimeZone = state.context.membership.organizationTimezone;
+  const detailDocument = query.data;
+  const timeZone = state.context.membership.organizationTimezone;
 
-  return <div className="app-shell">
-    <header className="app-header">
-      <a className="brand" href={protectedEntryPath}>{t("app.nav.work")}</a>
-      <div className="language-selector">
-        <LanguageSelector />
-        <button className="button" data-variant="secondary" type="button" onClick={() => void signOutCurrentSession()}>
-          {t("auth.signOut")}
-        </button>
-      </div>
-    </header>
-    <main className="app-main">
-      <div className="button-row">
-        <a className="button" data-variant="secondary" href={protectedEntryPath}>{t("processDetail.back")}</a>
-      </div>
-      {pageView === "loading" ? (
-        <p className="status-panel" role="status">{t("processDetail.loading")}</p>
-      ) : pageView === "error" ? (
-        <div className="status-panel" role="alert">
-          <p>{t("processDetail.loadError")}</p>
-          <button className="button" type="button" onClick={() => void retry()}>{t("processDetail.retry")}</button>
-        </div>
-      ) : detailDocument ? (
-        <section className="my-work-shell" aria-labelledby="process-detail-title">
-          <div className="page-heading">
-            <p className="eyebrow">{t("processDetail.eyebrow")}</p>
-            <h1 id="process-detail-title">{detailDocument.header.workflowName}</h1>
-            <p className="lede">{t("processDetail.title")}</p>
-          </div>
-          <article className="my-work-card">
-            <p>{`${t("processDetail.reference")} ${detailDocument.header.processNumber}`}</p>
-            <p>{`${t("processDetail.version")} ${detailDocument.header.workflowVersionNumber}`}</p>
-            <p>{`${t("processDetail.status")} ${detailDocument.header.systemStatus}`}</p>
-            <p>{`${t("processDetail.step")} ${detailDocument.header.currentStep}`}</p>
-            <p>{`${t("processDetail.startedAt")} ${formatDateTimeInTimeZone(detailDocument.header.startedAt, organizationTimeZone)}`}</p>
-            {detailDocument.header.completedAt ? (
-              <p>{`${t("processDetail.completedAt")} ${formatDateTimeInTimeZone(detailDocument.header.completedAt, organizationTimeZone)}`}</p>
-            ) : null}
-            <p>{`${t("processDetail.lastActivity")} ${formatDateTimeInTimeZone(detailDocument.header.lastActivityAt, organizationTimeZone)}`}</p>
-            <p>{`${t("processDetail.contribution")} ${detailDocument.header.contributionSummary.label}`}</p>
-          </article>
-          <section className="timeline" aria-labelledby="process-timeline-title">
-            <div className="my-work-panel__heading">
-              <h2 id="process-timeline-title">{t("processDetail.timelineTitle")}</h2>
-            </div>
-            {detailDocument.timeline.length === 0 ? (
-              <p className="status-panel" role="status">{t("processDetail.timelineEmpty")}</p>
-            ) : (
-              <ol>
-                {detailDocument.timeline.map((event) => (
-                  <li key={`${event.eventKind}-${event.occurredAt}`}>
-                    <strong>{event.eventKind in timelineMessageKeyByKind
-                      ? t(timelineMessageKeyByKind[event.eventKind as keyof typeof timelineMessageKeyByKind])
-                      : event.label}</strong>
-                    <span>{event.actorDisplay}</span>
-                    <span>{event.taskPosition}</span>
-                    <span>{formatDateTimeInTimeZone(event.occurredAt, organizationTimeZone)}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </section>
-        </section>
-      ) : null}
-    </main>
-  </div>;
+  return (
+    <div className="grid gap-moviqo-6">
+      <Breadcrumbs
+        items={[
+          { href: "/my-work/processes", label: t("myWork.myProcesses.title") },
+          { current: true, label: detailDocument.header.workflowName }
+        ]}
+        label={t("app.nav.primary")}
+        onNavigate={(href, event) => {
+          if (!isUnmodifiedPrimaryClick(event)) return;
+          event.preventDefault();
+          navigate(href);
+        }}
+      />
+      <PageHeader
+        actions={(
+          <Button variant="secondary" onClick={() => navigate("/my-work/processes")}>
+            {t("processDetail.back")}
+          </Button>
+        )}
+        description={t("processDetail.title")}
+        eyebrow={t("processDetail.eyebrow")}
+        title={detailDocument.header.workflowName}
+      />
+      <Card>
+        <p>{`${t("processDetail.reference")} ${detailDocument.header.processNumber}`}</p>
+        <p>{`${t("processDetail.version")} ${detailDocument.header.workflowVersionNumber}`}</p>
+        <p>{`${t("processDetail.status")} ${detailDocument.header.systemStatus}`}</p>
+        <p>{`${t("processDetail.step")} ${detailDocument.header.currentStep}`}</p>
+        <p>{`${t("processDetail.startedAt")} ${formatDateTimeInTimeZone(detailDocument.header.startedAt, timeZone)}`}</p>
+        {detailDocument.header.completedAt ? (
+          <p>{`${t("processDetail.completedAt")} ${formatDateTimeInTimeZone(detailDocument.header.completedAt, timeZone)}`}</p>
+        ) : null}
+        <p>{`${t("processDetail.lastActivity")} ${formatDateTimeInTimeZone(detailDocument.header.lastActivityAt, timeZone)}`}</p>
+        <p>{`${t("processDetail.contribution")} ${detailDocument.header.contributionSummary.label}`}</p>
+      </Card>
+      <section className="grid gap-moviqo-4" aria-labelledby="process-timeline-title">
+        <h2 id="process-timeline-title">{t("processDetail.timelineTitle")}</h2>
+        {detailDocument.timeline.length === 0 ? (
+          <Alert announcement="polite">{t("processDetail.timelineEmpty")}</Alert>
+        ) : (
+          <ol className="grid gap-moviqo-3">
+            {detailDocument.timeline.map((event) => (
+              <li key={`${event.eventKind}-${event.occurredAt}`}>
+                <strong>{event.eventKind in timelineMessageKeyByKind
+                  ? t(timelineMessageKeyByKind[event.eventKind as keyof typeof timelineMessageKeyByKind])
+                  : event.label}</strong>
+                <span>{event.actorDisplay}</span>
+                <span>{event.taskPosition}</span>
+                <span>{formatDateTimeInTimeZone(event.occurredAt, timeZone)}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+    </div>
+  );
 };

@@ -22,7 +22,7 @@ const emptyDashboard = {
   startWorkflows: { items: [], limit: 6, hasMore: false }
 };
 
-test("authenticated my-work exposes semantic regions, empty states, and keyboard-safe navigation", async ({
+test("authenticated runtime modules are separate, empty-state safe, and keyboard navigable", async ({
   browserName,
   page
 }) => {
@@ -35,20 +35,36 @@ test("authenticated my-work exposes semantic regions, empty states, and keyboard
 
   await page.goto("/my-work");
 
-  await expect(page.getByRole("heading", { name: "Mi trabajo" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Mis tareas" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Iniciar un proceso" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Mis procesos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Resumen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Revisar tareas asignadas" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Consultar mis procesos" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Iniciar un proceso autorizado" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Tareas", exact: true }).click();
+  await expect(page).toHaveURL(/\/my-work\/tasks$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Mis tareas" })).toBeVisible();
   await expect(page.getByText("No tienes tareas autorizadas para atender ahora.")).toBeVisible();
+
+  await page.getByRole("link", { name: "Iniciar proceso", exact: true }).click();
+  await expect(page).toHaveURL(/\/processes\/start$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Iniciar un proceso" })).toBeVisible();
   await expect(page.getByText("No hay procesos autorizados para iniciar ahora.")).toBeVisible();
+
+  await page.getByRole("link", { name: "Procesos", exact: true }).click();
+  await expect(page).toHaveURL(/\/my-work\/processes$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Mis procesos" })).toBeVisible();
   await expect(page.getByText("No tienes procesos autorizados para seguir ahora.")).toBeVisible();
+  await expect(page.locator("#main-content")).toBeFocused();
+
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1, name: "Mis procesos" })).toBeVisible();
 
   if (browserName === "webkit") {
-    await page.getByRole("link", { name: "Mi trabajo" }).focus();
+    await page.getByRole("link", { name: "Saltar al contenido principal" }).focus();
   } else {
     await page.keyboard.press("Tab");
   }
-  await expect(page.getByRole("link", { name: "Mi trabajo" })).toBeFocused();
+  await expect(page.getByRole("link", { name: "Saltar al contenido principal" })).toBeFocused();
 });
 
 test("my-work shows loading, safe retry, mobile resilience, and revoked-session redirect", async ({
@@ -62,7 +78,7 @@ test("my-work shows loading, safe retry, mobile resilience, and revoked-session 
   await page.route("**/api/v1/my-work/", async (route) => {
     myWorkCallCount += 1;
 
-    if (myWorkCallCount === 1) {
+    if (myWorkCallCount <= 3) {
       await new Promise((resolve) => setTimeout(resolve, 250));
       await route.fulfill({ status: 500, contentType: "application/problem+json", body: JSON.stringify({
         type: "https://api.moviqo.local/problems/api-error",
@@ -75,7 +91,7 @@ test("my-work shows loading, safe retry, mobile resilience, and revoked-session 
       return;
     }
 
-    if (myWorkCallCount === 2) {
+    if (myWorkCallCount === 4) {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(emptyDashboard) });
       return;
     }
@@ -91,12 +107,12 @@ test("my-work shows loading, safe retry, mobile resilience, and revoked-session 
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/my-work");
+  await page.goto("/my-work/tasks");
   await expect(page.getByText("Cargando tu trabajo autorizado.").first()).toBeVisible();
   await expect(page.getByRole("alert").getByText("No pudimos cargar tu trabajo autorizado. Intenta de nuevo.").first()).toBeVisible();
   await page.getByRole("button", { name: "Reintentar" }).first().click();
 
-  await expect(page.getByRole("heading", { name: "Mi trabajo" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Mis tareas" })).toBeVisible();
   await page.addStyleTag({ content: "html { font-size: 200%; }" });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
@@ -115,7 +131,7 @@ test("my-work shows loading, safe retry, mobile resilience, and revoked-session 
   await page.reload();
   await expect(page).toHaveURL(/\/sign-in$/);
   await expect(page.getByRole("heading", { name: "Ingresa a Moviqo" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Mi trabajo" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1, name: "Mis tareas" })).toHaveCount(0);
 });
 
 test("assigned task opens from my-work and saves authorized progress without false success", async ({
@@ -195,7 +211,7 @@ test("assigned task opens from my-work and saves authorized progress without fal
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(savedDocument) });
   });
 
-  await page.goto("/my-work");
+  await page.goto("/my-work/tasks");
   await page.getByRole("link", { name: "Abrir tarea" }).click();
 
   await expect(page).toHaveURL(new RegExp(`/my-work/tasks/${taskDocument.taskId}$`));
@@ -209,4 +225,17 @@ test("assigned task opens from my-work and saves authorized progress without fal
   await expect(page.getByText("El servidor guardo el avance autorizado.")).toBeVisible();
   expect(saveRequestSeen).toBe(true);
   await expect(page.getByRole("textbox", { name: "Nombre del solicitante" })).toHaveValue("Ana Perez");
+
+  await page.getByRole("textbox", { name: "Nombre del solicitante" }).fill("Ana Perez actualizada");
+  await page.getByRole("link", { name: "Mis tareas" }).click();
+  await expect(page.getByRole("alert")).toContainText("Hay cambios sin guardar");
+  await page.getByRole("button", { name: "Permanecer" }).click();
+  await expect(page).toHaveURL(new RegExp(`/my-work/tasks/${taskDocument.taskId}$`));
+  await expect(page.getByRole("textbox", { name: "Nombre del solicitante" })).toHaveValue(
+    "Ana Perez actualizada"
+  );
+
+  await page.getByRole("link", { name: "Mis tareas" }).click();
+  await page.getByRole("button", { name: "Guardar y salir" }).click();
+  await expect(page).toHaveURL(/\/my-work\/tasks$/);
 });

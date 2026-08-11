@@ -68,6 +68,8 @@ def _empty_collection(limit: int) -> dict[str, object]:
 def read_my_work_dashboard(
     tenant_context: TenantContext,
     *,
+    start_workflows_page: int = 1,
+    my_tasks_page: int = 1,
     my_processes_page: int = 1,
     my_processes_search: str = "",
 ) -> dict[str, object]:
@@ -77,6 +79,13 @@ def read_my_work_dashboard(
         tenant_context=tenant_context,
         page=my_processes_page,
         search=my_processes_search,
+    )
+    start_workflows_page_object = Paginator(
+        startable_workflows,
+        START_WORKFLOW_LIMIT,
+    ).get_page(start_workflows_page if start_workflows_page > 0 else 1)
+    my_tasks_page_object = Paginator(my_tasks, MY_TASK_LIMIT).get_page(
+        my_tasks_page if my_tasks_page > 0 else 1
     )
     return {
         "startWorkflows": {
@@ -88,10 +97,10 @@ def read_my_work_dashboard(
                     "availability": item.availability,
                     "versionNumber": item.version_number,
                 }
-                for item in startable_workflows[:START_WORKFLOW_LIMIT]
+                for item in start_workflows_page_object.object_list
             ],
             "limit": START_WORKFLOW_LIMIT,
-            "hasMore": len(startable_workflows) > START_WORKFLOW_LIMIT,
+            "hasMore": start_workflows_page_object.has_next(),
         },
         "myTasks": {
             "items": [
@@ -104,10 +113,10 @@ def read_my_work_dashboard(
                     "activatedAt": item["activatedAt"],
                     "openTaskRoute": item["openTaskRoute"],
                 }
-                for item in my_tasks[:MY_TASK_LIMIT]
+                for item in my_tasks_page_object.object_list
             ],
             "limit": MY_TASK_LIMIT,
-            "hasMore": len(my_tasks) > MY_TASK_LIMIT,
+            "hasMore": my_tasks_page_object.has_next(),
         },
         "myProcesses": my_processes,
     }

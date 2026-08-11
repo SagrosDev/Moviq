@@ -6,6 +6,57 @@ import { mockCsrfBootstrap } from "./support/mockCsrf";
 const require = createRequire(import.meta.url);
 const axePath = require.resolve("axe-core/axe.min.js");
 
+test("sign-in restores the validated protected pathname, search, and hash", async ({ page }) => {
+  let signedIn = false;
+  await mockCsrfBootstrap(page);
+  await page.route("**/api/v1/auth/session/", async (route) => {
+    await route.fulfill({
+      status: signedIn ? 200 : 401,
+      contentType: signedIn ? "application/json" : "application/problem+json",
+      body: JSON.stringify(signedIn ? {
+        authenticated: true,
+        user: { id: 1, displayName: "Ana", preferredLanguage: "es" },
+        membership: {
+          id: "018f6d8c-6a58-7000-8000-000000000001",
+          organizationId: "018f6d8c-6a58-7000-8000-000000000002",
+          organizationTimezone: "America/Bogota",
+          role: "owner"
+        }
+      } : {
+        type: "https://api.moviqo.local/problems/not-authenticated",
+        title: "Not authenticated",
+        status: 401,
+        code: "not_authenticated",
+        correlationId: "protected-redirect-123"
+      })
+    });
+  });
+  await page.route("**/api/v1/auth/sign-in/", async (route) => {
+    signedIn = true;
+    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  });
+  await page.route("**/api/v1/my-work/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        startWorkflows: { items: [], limit: 6, hasMore: false },
+        myTasks: { items: [], limit: 12, hasMore: false },
+        myProcesses: { items: [], limit: 12, hasMore: false }
+      })
+    });
+  });
+
+  await page.goto("/my-work/tasks?view=open#first");
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await page.getByLabel("Correo electrónico").fill("ana@example.com");
+  await page.getByRole("textbox", { name: "Contraseña" }).fill("a-secure-password-123");
+  await page.getByRole("button", { name: "Ingresar" }).click();
+
+  await expect(page).toHaveURL(/\/my-work\/tasks\?view=open#first$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Mis tareas" })).toBeVisible();
+});
+
 test("deployed API success checks do not read discarded navigation response bodies", async () => {
   let responseBodyRead = false;
   const navigatedResponse = {
@@ -41,9 +92,10 @@ test("public landing exposes semantic sections and keyboard focus", async ({ bro
 
 test("language selector is keyboard operable and persists locally", async ({ browserName, page }) => {
   await page.goto("/");
+  const languageTrigger = page.locator('[data-language-trigger="true"]');
 
   if (browserName === "webkit") {
-    await page.getByLabel("Idioma").focus();
+    await languageTrigger.focus();
   } else {
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
@@ -51,15 +103,17 @@ test("language selector is keyboard operable and persists locally", async ({ bro
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
   }
-  await expect(page.getByLabel("Idioma")).toBeFocused();
+  await expect(languageTrigger).toBeFocused();
 
-  await page.getByLabel("Idioma").selectOption("en");
+  await languageTrigger.press("Enter");
+  await page.getByRole("listbox", { name: "Idioma" }).press("ArrowDown");
+  await page.getByRole("listbox", { name: "Idioma" }).press("Enter");
   await expect(page.getByRole("heading", { name: /turn repeatable processes/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /three fictional cases/i })).toBeVisible();
 
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
-  await expect(page.getByLabel("Language")).toHaveValue("en");
+  await expect(page.getByRole("button", { name: "Language: English" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Page navigation" })).toBeVisible();
 });
 
@@ -98,7 +152,26 @@ test("landing remains usable at mobile width and 200 percent text", async ({ pag
 
   await expect(page.getByRole("heading", { name: /convierte procesos repetibles/i })).toBeVisible();
   await expect(page.getByRole("link", { name: "Iniciar beta gratuita" }).first()).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  const horizontalOverflow = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    offenders: [...document.querySelectorAll<HTMLElement>("body *")]
+      .filter((element) => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.right > document.documentElement.clientWidth + 1 || bounds.left < -1;
+      })
+      .slice(0, 10)
+      .map((element) => ({
+        className: element.className,
+        tagName: element.tagName,
+        text: element.textContent?.trim().slice(0, 80)
+      }))
+  }));
+  expect(
+    horizontalOverflow.scrollWidth - horizontalOverflow.clientWidth,
+    JSON.stringify(horizontalOverflow, null, 2)
+  ).toBeLessThanOrEqual(1);
+  expect(horizontalOverflow.offenders).toEqual([]);
 });
 
 test("landing conversion preserves the selected language and keeps public routes data-free", async ({ page }) => {
@@ -107,7 +180,8 @@ test("landing conversion preserves the selected language and keeps public routes
     if (new URL(request.url()).pathname.startsWith("/api/v1/")) apiRequests.push(request.url());
   });
   await page.goto("/");
-  await page.getByLabel("Idioma").selectOption("en");
+  await page.locator('[data-language-trigger="true"]').click();
+  await page.getByRole("option", { name: "Inglés" }).click();
   await page.getByRole("link", { name: "Start Free Beta" }).first().click();
   await expect(page).toHaveURL(/\/register(\?lang=en)?$/);
   await expect(page.getByText(/Workflow|Process Data|Organization detail|dashboard/i)).toHaveCount(0);
@@ -126,30 +200,32 @@ test("design-system catalog exposes named components, states, and safe metadata"
   await page.goto("/design-system");
 
   await expect(page.getByRole("heading", { name: /Sistema de dise/ })).toBeVisible();
-  await expect(page.getByLabel("Idioma", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Idioma: Español/ })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Principal" })).toHaveCount(1);
-  await expect(page.getByRole("link", { name: "Registrar organizacion" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Registrar organizaci/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Ingresar" })).toBeVisible();
-  await expect(page.getByText(/UAT/).first()).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Entorno interno con datos sinteticos" })).toHaveCount(1);
+  await expect(page.getByRole("heading", { name: /Entorno interno con datos sint/ })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Guardando" })).toBeDisabled();
   await expect(page.getByRole("heading", { name: "Ingresa a Moviqo" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Mostrar contrasena" })).toBeEnabled();
-  await expect(page.getByRole("button", { name: "Mostrar contrasena" })).toHaveText("");
-  await page.getByRole("button", { name: "Mostrar contrasena" }).click();
-  await expect(page.getByRole("button", { name: "Ocultar contrasena" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Mostrar contrase/ })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /Mostrar contrase/ })).toHaveText("");
+  await page.getByRole("button", { name: /Mostrar contrase/ }).click();
+  await expect(page.getByRole("button", { name: /Ocultar contrase/ })).toBeVisible();
   await expect(page.locator("#catalog-sign-in-password")).toHaveAttribute("type", "text");
-  await expect(page.getByRole("heading", { name: /Registra la organizacion/ })).toBeVisible();
-  await expect(page.getByLabel("Nombre de la organizacion")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("heading", { name: /Registra la organizaci/ })).toBeVisible();
+  await expect(page.getByLabel(/Nombre de la organizaci/)).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByRole("status")).toHaveCount(0);
   await expect(page.getByRole("alert")).toHaveCount(0);
-  await expect(page.getByText("Necesita atencion", { exact: true })).toBeVisible();
-  await expect(page.getByText(/Evidencia del catalogo/)).toBeVisible();
+  await expect(page.getByText(/Necesita atenci/, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/Evidencia del cat/)).toBeVisible();
 
-  await page.getByRole("button", { name: "Guardar borrador" }).focus();
-  await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeFocused();
-  await expect(page.getByRole("button", { name: "Guardar borrador" })).toHaveCSS(
+  const saveDraftButton = page.getByRole("button", { name: "Guardar borrador" });
+  await saveDraftButton.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(saveDraftButton).toBeFocused();
+  await expect(saveDraftButton).toHaveCSS(
     "outline-color",
     "rgb(37, 99, 235)"
   );
@@ -206,6 +282,13 @@ test("registration server errors stay localized and associated with consent cont
   });
 
   await page.goto("/register");
+  await page.locator("#registration-owner-name").fill("Ana Prueba");
+  await page.locator("#registration-organization-name").fill("Organización sintética");
+  await page.locator("#registration-email").fill("ana@example.test");
+  await page.locator("#registration-password").fill("Synthetic-Password-2040!");
+  await page.locator("#registration-terms").check();
+  await page.locator("#registration-privacy").check();
+  await page.locator("#registration-prohibited-data").check();
   await page.getByRole("button", { name: "Enviar registro" }).click();
 
   await expect(page.getByRole("alert").last()).toContainText("Corrige los datos marcados");

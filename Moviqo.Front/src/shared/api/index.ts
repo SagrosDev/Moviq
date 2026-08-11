@@ -6,10 +6,10 @@ export {
 } from "./client";
 export type { ApiClientOptions, ApiProblemDetails, NormalizedApiProblem } from "./client";
 export type { ApiResult } from "./model/apiResult";
-export type { QuerySnapshot } from "./query/queryRegistry";
+export type { QuerySnapshot } from "./query/queryClient";
 export {
-  clearProtectedQueryState,
-  createQueryKey,
-  createQueryRegistry,
-  queryRegistry
-} from "./query/queryRegistry";
+  clearServerState,
+  createMoviqoQueryClient,
+  moviqoQueryKeys,
+  shouldRetryServerQuery
+} from "./query/queryClient";

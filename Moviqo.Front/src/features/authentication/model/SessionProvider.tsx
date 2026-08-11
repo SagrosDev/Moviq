@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { bootstrapSession, signOut, type SessionContext } from "./session";
-import { resolveProtectedRedirectPath } from "./sessionRouting";
-import { clearProtectedQueryState } from "../../../shared/api";
+import { clearServerState } from "../../../shared/api";
 
 type SessionState =
   | { status: "loading" }
@@ -16,16 +16,11 @@ type SessionContextValue = {
 const sessionContext = createContext<SessionContextValue | undefined>(undefined);
 
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
+  const queryClient = useQueryClient();
   const [state, setState] = useState<SessionState>({ status: "loading" });
+  const previousOrganizationId = useRef<string | null>(null);
 
   useEffect(() => {
-    const redirectAnonymousIfRequired = () => {
-      const nextPath = resolveProtectedRedirectPath(window.location.pathname);
-      if (nextPath && window.location.pathname !== nextPath) {
-        window.location.assign(nextPath);
-      }
-    };
-
     const loadSession = async () => {
       try {
         const context = await bootstrapSession();
@@ -34,32 +29,44 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
-        clearProtectedQueryState("anonymous-session");
+        clearServerState(queryClient);
         setState({ status: "anonymous" });
-        redirectAnonymousIfRequired();
       } catch {
-        clearProtectedQueryState("session-bootstrap-failed");
+        clearServerState(queryClient);
         setState({ status: "anonymous" });
-        redirectAnonymousIfRequired();
       }
     };
 
     const handleSessionExpired = () => {
-      clearProtectedQueryState("session-expired");
+      clearServerState(queryClient);
       setState({ status: "anonymous" });
-      redirectAnonymousIfRequired();
     };
 
     void loadSession();
     window.addEventListener("moviqo:session-expired", handleSessionExpired);
     return () => window.removeEventListener("moviqo:session-expired", handleSessionExpired);
-  }, []);
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (state.status !== "authenticated") {
+      previousOrganizationId.current = null;
+      return;
+    }
+
+    const organizationId = state.context.membership.organizationId;
+    if (
+      previousOrganizationId.current
+      && previousOrganizationId.current !== organizationId
+    ) {
+      clearServerState(queryClient);
+    }
+    previousOrganizationId.current = organizationId;
+  }, [queryClient, state]);
 
   const signOutCurrentSession = async () => {
     await signOut();
-    clearProtectedQueryState("sign-out");
+    clearServerState(queryClient);
     setState({ status: "anonymous" });
-    window.location.assign("/sign-in");
   };
 
   return <sessionContext.Provider value={{ state, signOutCurrentSession }}>{children}</sessionContext.Provider>;

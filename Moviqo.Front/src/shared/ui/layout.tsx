@@ -1,7 +1,13 @@
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 export type HeaderNavigationItem = {
   href: string;
+  label: string;
+  current?: boolean;
+};
+
+export type BreadcrumbItem = {
+  href?: string;
   label: string;
   current?: boolean;
 };
@@ -17,6 +23,7 @@ type AppHeaderBaseProps = {
   brandMark?: ReactNode;
   actions?: ReactNode;
   size?: PageContainerProps["size"];
+  onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void;
 };
 
 type AppHeaderNavigationProps =
@@ -50,6 +57,12 @@ type CardProps = {
   labelledBy?: string;
 };
 
+type BreadcrumbsProps = {
+  items: readonly BreadcrumbItem[];
+  label: string;
+  onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void;
+};
+
 const containerClasses: Record<NonNullable<PageContainerProps["size"]>, string> = {
   compact: "max-w-2xl",
   default: "max-w-6xl",
@@ -68,6 +81,14 @@ const headerNavigationLinkClasses: Record<"current" | "default", string> = {
     "text-moviqo-ink-secondary hover:bg-moviqo-surface-soft hover:text-moviqo-primary"
 };
 
+export const isUnmodifiedPrimaryClick = (event: MouseEvent<HTMLAnchorElement>) => (
+  event.button === 0
+  && !event.metaKey
+  && !event.ctrlKey
+  && !event.shiftKey
+  && !event.altKey
+);
+
 export const AppShell = ({ children }: AppShellProps) => {
   return (
     <div className="min-h-screen bg-moviqo-surface-base font-moviqo-sans text-moviqo-ink-primary">
@@ -84,6 +105,7 @@ export const AppHeader = ({
   navigationLabel,
   navigation,
   actions,
+  onNavigate,
   size = "default"
 }: AppHeaderProps) => {
   return (
@@ -93,6 +115,7 @@ export const AppHeader = ({
           className="inline-flex min-h-11 items-center gap-moviqo-2 rounded-moviqo-control text-lg font-bold text-moviqo-ink-primary no-underline focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-moviqo-focus"
           href={brandHref}
           aria-label={brandHomeLabel}
+          onClick={(event) => onNavigate?.(brandHref, event)}
         >
           {brandMark}
           {brandLabel}
@@ -109,6 +132,7 @@ export const AppHeader = ({
                     className={`inline-flex min-h-11 items-center rounded-moviqo-control px-moviqo-3 text-sm font-semibold no-underline transition-colors focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-moviqo-focus ${headerNavigationLinkClasses[item.current ? "current" : "default"]}`}
                     href={item.href}
                     aria-current={item.current ? "page" : undefined}
+                    onClick={(event) => onNavigate?.(item.href, event)}
                   >
                     {item.label}
                   </a>
@@ -166,10 +190,33 @@ export const PageHeader = ({
 export const Card = ({ children, tone = "default", labelledBy }: CardProps) => {
   return (
     <section
-      className={`grid gap-moviqo-4 rounded-moviqo-guidance border p-moviqo-5 ${cardClasses[tone]}`}
+      className={`grid min-w-0 gap-moviqo-4 rounded-moviqo-guidance border p-moviqo-5 ${cardClasses[tone]}`}
       aria-labelledby={labelledBy}
     >
       {children}
     </section>
   );
 };
+
+export const Breadcrumbs = ({ items, label, onNavigate }: BreadcrumbsProps) => (
+  <nav aria-label={label}>
+    <ol className="m-0 flex list-none flex-wrap items-center gap-moviqo-2 p-0 text-sm">
+      {items.map((item, index) => (
+        <li className="flex items-center gap-moviqo-2" key={`${item.label}-${index}`}>
+          {index > 0 ? <span aria-hidden="true">/</span> : null}
+          {item.href && !item.current ? (
+            <a
+              className="min-h-11 content-center rounded-moviqo-control text-moviqo-primary underline-offset-4 hover:underline focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-moviqo-focus"
+              href={item.href}
+              onClick={(event) => onNavigate?.(item.href ?? "", event)}
+            >
+              {item.label}
+            </a>
+          ) : (
+            <span aria-current={item.current ? "page" : undefined}>{item.label}</span>
+          )}
+        </li>
+      ))}
+    </ol>
+  </nav>
+);

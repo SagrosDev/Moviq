@@ -17,7 +17,7 @@
     "validate:landing": "tsc -p tsconfig.test.json && node ./tests/build/prepare-test-build.mjs && node .test-build/tests/unit/landing-content.test.cjs",
     "typecheck": "npm run check:node && tsc --noEmit",
     "dev": "vite",
-    "test:unit": "tsc -p tsconfig.test.json && node ./tests/build/prepare-test-build.mjs && node .test-build/tests/unit/draft-state.test.cjs && node .test-build/tests/unit/non-authoritative-ui.test.cjs && node .test-build/tests/unit/api-client-contract.test.cjs && node .test-build/tests/unit/localization.test.cjs && node .test-build/tests/unit/landing-content.test.cjs && node .test-build/tests/unit/public-onboarding.test.cjs && node .test-build/tests/unit/password-field.test.cjs && node .test-build/tests/unit/design-system.test.cjs && node .test-build/tests/unit/shared-ui.test.cjs && node .test-build/tests/unit/registration-model.test.cjs && node .test-build/tests/unit/verification-flow.test.cjs && node .test-build/tests/unit/my-work-shell.test.cjs && node .test-build/tests/unit/workflow-design-create.test.cjs && node .test-build/tests/unit/task-form.test.cjs && node .test-build/tests/unit/stakeholder-preview.test.cjs",
+    "test:unit": "tsc -p tsconfig.test.json && node ./tests/build/prepare-test-build.mjs && node .test-build/tests/unit/draft-state.test.cjs && node .test-build/tests/unit/non-authoritative-ui.test.cjs && node .test-build/tests/unit/api-client-contract.test.cjs && node .test-build/tests/unit/localization.test.cjs && node .test-build/tests/unit/landing-content.test.cjs && node .test-build/tests/unit/public-onboarding.test.cjs && node .test-build/tests/unit/password-field.test.cjs && node .test-build/tests/unit/design-system.test.cjs && node .test-build/tests/unit/shared-ui.test.cjs && node .test-build/tests/unit/registration-model.test.cjs && node .test-build/tests/unit/verification-flow.test.cjs && node .test-build/tests/unit/application-foundation.test.cjs && node .test-build/tests/unit/application-routing.test.cjs && node .test-build/tests/unit/authoring-navigation.test.cjs && node .test-build/tests/unit/my-work-shell.test.cjs && node .test-build/tests/unit/workflow-design-create.test.cjs && node .test-build/tests/unit/task-form.test.cjs && node .test-build/tests/unit/stakeholder-preview.test.cjs",
     "test:architecture": "node tests/architecture/frontend-boundaries.test.mjs",
     "test": "npm run check:node && npm run test:architecture && npm run check:api-client && npm run test:unit",
     "build": "npm run check:node && npm run check:brand-assets && npm run check:api-client && npm run validate:landing && tsc --noEmit && vite build && node ./tests/build/scan-static-artifact.mjs",
@@ -27,11 +27,13 @@
     "test:e2e:deployed-journey": "npm run check:node && playwright test --project=deployed-journey-* tests/e2e/first-workflow-journey.spec.ts"
   },
   "dependencies": {
+    "@tanstack/react-query": "5.101.4",
     "@vitejs/plugin-react": "6.0.5",
     "@xyflow/react": "12.11.2",
     "openapi-fetch": "^0.17.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
+    "react-router": "7.18.0",
     "typescript": "~6.0.0",
     "vite": "~8.2.0"
   },

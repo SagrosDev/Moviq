@@ -1,6 +1,29 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const isDeployedJourney = process.env.PLAYWRIGHT_DEPLOYED_JOURNEY === "1";
+const resolveLocalHost = (value: string | undefined) => {
+  const candidate = value?.trim() || "127.0.0.1";
+  const labels = candidate.split(".");
+  const isSafeHostname = labels.every((label) => (
+    label.length > 0
+    && label.length <= 63
+    && /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(label)
+  ));
+  const isIpv4Candidate = labels.length === 4
+    && labels.every((label) => /^\d+$/.test(label));
+  const isValidIpv4 = labels.length === 4
+    && labels.every((label) => /^\d{1,3}$/.test(label) && Number(label) <= 255);
+  if (
+    candidate.length > 253
+    || (isIpv4Candidate ? !isValidIpv4 : !isSafeHostname)
+  ) {
+    throw new Error("MOVIQO_E2E_HOST must be a valid local hostname or IPv4 address.");
+  }
+  return candidate;
+};
+
+const localHost = resolveLocalHost(process.env.MOVIQO_E2E_HOST);
+const localOrigin = new URL(`http://${localHost}:5173`).origin;
 
 const localProjects = [
   {
@@ -84,7 +107,7 @@ export default defineConfig({
     : /(?:first-workflow-journey|stakeholder-preview-qualification)\.spec\.ts$/,
   workers: 1,
   use: {
-    baseURL: process.env.MOVIQO_E2E_BASE_URL ?? "http://127.0.0.1:5173",
+    baseURL: process.env.MOVIQO_E2E_BASE_URL ?? localOrigin,
     locale: "es-CO",
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
@@ -93,9 +116,10 @@ export default defineConfig({
   webServer: isDeployedJourney
     ? undefined
     : {
-        command: "npm run dev -- --host 127.0.0.1",
-        url: "http://127.0.0.1:5173",
-        reuseExistingServer: !process.env.CI
+        command: `npm run dev -- --host=${localHost}`,
+        url: localOrigin,
+        reuseExistingServer:
+          process.env.MOVIQO_E2E_REUSE_SERVER === "1" || !process.env.CI
       },
   projects: isDeployedJourney
     ? deployedJourneyProjects

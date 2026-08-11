@@ -1,5 +1,8 @@
 import { type FormEvent, useState } from "react";
-import { protectedEntryPath, signIn } from "../../../features/authentication";
+import {
+  resolveProtectedReturnDestination,
+  signIn
+} from "../../../features/authentication";
 import { useLanguage } from "../../../shared/localization";
 import {
   ActionBar,
@@ -14,6 +17,12 @@ import { PublicPageShell } from "../../../widgets/public-page-shell";
 
 export const SignInPage = () => {
   const { t } = useLanguage();
+  const historyState = typeof window !== "undefined" ? window.history.state : null;
+  const navigationState = typeof historyState === "object"
+    && historyState !== null
+    && "usr" in historyState
+    ? historyState.usr
+    : undefined;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
@@ -30,7 +39,7 @@ export const SignInPage = () => {
 
     try {
       await signIn({ email, password });
-      window.location.assign(protectedEntryPath);
+      window.location.assign(resolveProtectedReturnDestination(navigationState));
     } catch {
       setError(true);
       setPassword("");

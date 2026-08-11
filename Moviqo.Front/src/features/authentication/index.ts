@@ -9,6 +9,7 @@ export {
 export {
   isProtectedPath,
   protectedEntryPath,
+  resolveProtectedReturnDestination,
   resolveProtectedRedirectPath
 } from "./model/sessionRouting";
 export { SessionProvider, useSession } from "./model/SessionProvider";

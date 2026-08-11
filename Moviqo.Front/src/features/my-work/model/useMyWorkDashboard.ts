@@ -1,46 +1,54 @@
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
-  queryRegistry,
+  moviqoQueryKeys,
   type NormalizedApiProblem,
   type QuerySnapshot
 } from "../../../shared/api";
 import {
-  createMyWorkQueryKey,
-  loadMyWorkDashboard,
+  readMyWorkDashboard,
   type MyProcessesQuery,
   type MyWorkDashboard
 } from "./myWork";
 
 export const useMyWorkDashboard = (
   query: MyProcessesQuery,
+  organizationId: string,
   enabled = true
 ) => {
-  const queryKey = createMyWorkQueryKey(query);
-  const [snapshot, setSnapshot] = useState<
-    QuerySnapshot<MyWorkDashboard, NormalizedApiProblem>
-  >(() =>
-    queryRegistry.getSnapshot(queryKey)
-  );
-
-  const load = useCallback(async (force = false) => {
-    await loadMyWorkDashboard(query, force);
-  }, [query]);
-
-  useEffect(() => {
-    setSnapshot(queryRegistry.getSnapshot(queryKey));
-    const unsubscribe = queryRegistry.subscribe(queryKey, () => {
-      setSnapshot(queryRegistry.getSnapshot(queryKey));
-    });
-
-    if (enabled && queryRegistry.getSnapshot(queryKey).status === "idle") {
-      void load();
+  const result = useQuery({
+    enabled: enabled && Boolean(organizationId),
+    queryKey: moviqoQueryKeys.myWork(
+      organizationId,
+      query.myTasksPage,
+      query.startWorkflowsPage,
+      query.page,
+      query.search
+    ),
+    queryFn: async () => {
+      const response = await readMyWorkDashboard(query);
+      if (!response.ok) {
+        throw response.error;
+      }
+      return response.data;
     }
+  });
 
-    return unsubscribe;
-  }, [enabled, load, queryKey]);
+  const snapshot: QuerySnapshot<MyWorkDashboard, NormalizedApiProblem> = result.isPending
+    ? { status: "loading" }
+    : result.isError
+      ? {
+          status: "error",
+          error: result.error as unknown as NormalizedApiProblem,
+          updatedAt: Date.now()
+        }
+      : {
+          status: "success",
+          data: result.data,
+          updatedAt: result.dataUpdatedAt
+        };
 
   return {
     snapshot,
-    retry: () => load(true)
+    retry: () => result.refetch()
   };
 };

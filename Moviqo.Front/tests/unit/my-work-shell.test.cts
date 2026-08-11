@@ -2,24 +2,17 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { matchProcessDetailPath } from "../../src/app/ui/App";
 import {
   protectedEntryPath,
   resolveProtectedRedirectPath
 } from "../../src/features/authentication";
 import {
+  buildMyWorkDashboardQuery,
   MyWorkShell,
-  defaultMyProcessesQuery,
-  myWorkQueryKey
+  defaultMyProcessesQuery
 } from "../../src/features/my-work";
 import { resolveProcessDetailPageView } from "../../src/pages/process-detail/ui/ProcessDetailPage";
-import {
-  clearProtectedQueryState,
-  createQueryRegistry,
-  queryRegistry,
-  type NormalizedApiProblem,
-  type QuerySnapshot
-} from "../../src/shared/api";
+import type { NormalizedApiProblem, QuerySnapshot } from "../../src/shared/api";
 import { LanguageProvider, memoryLanguagePreferenceAdapter } from "../../src/shared/localization";
 import type { MyWorkDashboard } from "../../src/features/my-work";
 
@@ -37,8 +30,10 @@ const renderShell = (
           onStartWorkflow: () => undefined,
           onRetry: () => undefined,
           onMyProcessesPageChange: () => undefined,
+          onMyTasksPageChange: () => undefined,
           onMyProcessesSearchChange: () => undefined,
           onMyProcessesSearchSubmit: () => undefined,
+          onStartWorkflowsPageChange: () => undefined,
           showWorkflowCreation: false,
           startFeedbackByWorkflowId: {},
           startingWorkflowId: null,
@@ -57,40 +52,6 @@ test("protected authentication entry path targets the my-work route", () => {
   assert.equal(protectedEntryPath, "/my-work");
   assert.equal(resolveProtectedRedirectPath("/my-work"), "/sign-in");
   assert.equal(resolveProtectedRedirectPath("/"), null);
-});
-
-test("query registry clears protected query state and records the invalidation reason", () => {
-  const registry = createQueryRegistry();
-  registry.setSnapshot(myWorkQueryKey, {
-    status: "success",
-    data: {
-      myProcesses: { items: [], limit: 12, hasMore: false },
-      myTasks: { items: [], limit: 12, hasMore: false },
-      startWorkflows: { items: [], limit: 6, hasMore: false }
-    },
-    updatedAt: Date.now()
-  });
-
-  registry.clear("session-expired");
-
-  assert.equal(registry.getSnapshot(myWorkQueryKey).status, "idle");
-  assert.deepEqual(registry.getInvalidations(), [{ key: myWorkQueryKey, reason: "session-expired" }]);
-});
-
-test("shared protected query clearing resets the live my-work cache", () => {
-  queryRegistry.setSnapshot(myWorkQueryKey, {
-    status: "success",
-    data: {
-      myProcesses: { items: [], limit: 12, hasMore: false },
-      myTasks: { items: [], limit: 12, hasMore: false },
-      startWorkflows: { items: [], limit: 6, hasMore: false }
-    },
-    updatedAt: Date.now()
-  });
-
-  clearProtectedQueryState("unit-test");
-
-  assert.equal(queryRegistry.getSnapshot(myWorkQueryKey).status, "idle");
 });
 
 test("my-work shell renders semantic regions and localized empty states", () => {
@@ -117,6 +78,38 @@ test("my-work shell renders semantic regions and localized empty states", () => 
   assert.match(markup, /Crear flujo/);
   assert.match(markup, /No tienes tareas autorizadas para atender ahora/);
   assert.match(markup, /Buscar procesos completados/);
+});
+
+test("my-work pagination uses the generated endpoint query contract", () => {
+  assert.deepEqual(buildMyWorkDashboardQuery({
+    myTasksPage: 2,
+    page: 3,
+    search: "  approvals  ",
+    startWorkflowsPage: 4
+  }), {
+    myProcessesPage: 3,
+    myProcessesSearch: "approvals",
+    myTasksPage: 2,
+    startWorkflowsPage: 4
+  });
+});
+
+test("dedicated my-work modules retain an accessible region name", () => {
+  const markup = renderShell(
+    {
+      status: "success",
+      data: {
+        myProcesses: { items: [], limit: 12, hasMore: false },
+        myTasks: { items: [], limit: 12, hasMore: false },
+        startWorkflows: { items: [], limit: 6, hasMore: false }
+      },
+      updatedAt: Date.now()
+    },
+    { regions: ["myTasks"], showHeading: false, showRegionNavigation: false }
+  );
+
+  assert.match(markup, /<section class="my-work-shell" aria-label="Mis tareas">/);
+  assert.doesNotMatch(markup, /aria-labelledby="my-work-title"/);
 });
 
 test("my-work shell keeps permission denial localized and exposes only the safe code", () => {
@@ -237,6 +230,7 @@ test("my-work shell renders completed process cards with discovery controls", ()
     updatedAt: Date.now()
   }, {
     myProcessesQuery: {
+      ...defaultMyProcessesQuery,
       page: 2,
       search: "apro"
     }
@@ -249,11 +243,6 @@ test("my-work shell renders completed process cards with discovery controls", ()
   assert.match(markup, /Pagina anterior/);
   assert.match(markup, /Pagina siguiente/);
   assert.match(markup, /href="\/my-work\/processes\/process-1"/);
-});
-
-test("process detail route matching accepts canonical process paths", () => {
-  assert.equal(matchProcessDetailPath("/my-work/processes/019fd419-a0a8-7391-8591-de0204cb9455"), "019fd419-a0a8-7391-8591-de0204cb9455");
-  assert.equal(matchProcessDetailPath("/my-work/tasks/019fd419-a0a8-7391-8591-de0204cb9455"), null);
 });
 
 test("process detail page view resolves loading, error, and ready states", () => {

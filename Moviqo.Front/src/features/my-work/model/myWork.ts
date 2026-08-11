@@ -1,88 +1,16 @@
 import {
   createApiClient,
-  createQueryKey,
   normalizeApiProblem,
-  queryRegistry,
   readApiProblem,
-  type NormalizedApiProblem,
-  type QuerySnapshot
+  type NormalizedApiProblem
 } from "../../../shared/api";
+import type { components } from "../../../shared/api/generated/schema";
 
-export type MyWorkStartWorkflow = {
-  workflowId: string;
-  title: string;
-  description: string;
-  availability: string;
-  versionNumber: number;
-};
-
-export type StartWorkflowAccepted = {
-  processId: string;
-  taskId: string;
-  workflow: {
-    workflowId: string;
-    title: string;
-    versionNumber: number;
-  };
-  destinationRoute: string;
-};
-
-export type MyWorkTask = {
-  taskId: string;
-  title: string;
-  workflowName: string;
-  status: string;
-  processId: string;
-  activatedAt: string;
-  openTaskRoute: string;
-};
-
-export type MyWorkContributionSummary = {
-  kind: string;
-  label: string;
-};
-
-export type MyWorkProcess = {
-  processId: string;
-  processNumber: string;
-  workflowName: string;
-  workflowVersionNumber: number;
-  involvement: string;
-  currentStep: string;
-  systemStatus: string;
-  startedAt: string;
-  completedAt: string | null;
-  lastActivityAt: string;
-  viewRoute: string;
-  contributionSummary: MyWorkContributionSummary;
-};
-
-export type ProcessDetailHeader = {
-  processId: string;
-  processNumber: string;
-  workflowName: string;
-  workflowVersionNumber: number;
-  systemStatus: string;
-  currentStep: string;
-  startedAt: string;
-  completedAt: string | null;
-  lastActivityAt: string;
-  contributionSummary: MyWorkContributionSummary;
-};
-
-export type ProcessTimelineEvent = {
-  eventKind: string;
-  label: string;
-  actorDisplay: string;
-  occurredAt: string;
-  taskPosition: string;
-};
-
-export type ProcessDetailDocument = {
-  header: ProcessDetailHeader;
-  timeline: ProcessTimelineEvent[];
-};
-
+export type MyWorkStartWorkflow = components["schemas"]["StartWorkflowSummary"];
+export type StartWorkflowAccepted = components["schemas"]["StartProcessAccepted"];
+export type MyWorkTask = components["schemas"]["MyTaskSummary"];
+export type MyWorkProcess = components["schemas"]["MyProcessSummary"];
+export type ProcessDetailDocument = components["schemas"]["ProcessDetail"];
 export type MyWorkCollection<TItem> = {
   items: TItem[];
   limit: number;
@@ -90,15 +18,13 @@ export type MyWorkCollection<TItem> = {
 };
 
 export type MyProcessesQuery = {
+  myTasksPage: number;
   page: number;
   search: string;
+  startWorkflowsPage: number;
 };
 
-export type MyWorkDashboard = {
-  startWorkflows: MyWorkCollection<MyWorkStartWorkflow>;
-  myTasks: MyWorkCollection<MyWorkTask>;
-  myProcesses: MyWorkCollection<MyWorkProcess>;
-};
+export type MyWorkDashboard = components["schemas"]["MyWorkDashboard"];
 
 export type MyWorkRegion = "myTasks" | "startWorkflows" | "myProcesses";
 export type MyWorkDashboardResult =
@@ -111,29 +37,23 @@ export type ProcessDetailResult =
   | { ok: true; data: ProcessDetailDocument }
   | { ok: false; error: NormalizedApiProblem };
 
-export const createMyWorkQueryKey = (query: MyProcessesQuery) =>
-  createQueryKey("my-work", `dashboard:${query.page}:${query.search.trim().toLowerCase()}`);
-
 export const defaultMyProcessesQuery: MyProcessesQuery = {
+  myTasksPage: 1,
   page: 1,
-  search: ""
+  search: "",
+  startWorkflowsPage: 1
 };
-
-export const myWorkQueryKey = createMyWorkQueryKey(defaultMyProcessesQuery);
 
 const myWorkClient = createApiClient({ baseUrl: "/api/v1" });
 
-const buildMyWorkDashboardPath = (query: MyProcessesQuery) => {
-  const params = new URLSearchParams();
-  if (query.page > 1) {
-    params.set("myProcessesPage", String(query.page));
-  }
-  if (query.search.trim()) {
-    params.set("myProcessesSearch", query.search.trim());
-  }
-  const serialized = params.toString();
-  return serialized ? `/api/v1/my-work/?${serialized}` : "/api/v1/my-work/";
-};
+export const buildMyWorkDashboardQuery = (query: MyProcessesQuery) => ({
+  myProcessesPage: query.page > 1 ? query.page : undefined,
+  myProcessesSearch: query.search.trim() || undefined,
+  myTasksPage: query.myTasksPage > 1 ? query.myTasksPage : undefined,
+  startWorkflowsPage: query.startWorkflowsPage > 1
+    ? query.startWorkflowsPage
+    : undefined
+});
 
 export const formatDateTimeInTimeZone = (
   value: string | null,
@@ -158,18 +78,16 @@ export const readMyWorkDashboard = async (
   query: MyProcessesQuery = defaultMyProcessesQuery
 ): Promise<MyWorkDashboardResult> => {
   try {
-    const response = await (
-      myWorkClient as {
-        GET(path: string, init?: object): Promise<{ data?: unknown; response: Response }>;
-      }
-    ).GET(buildMyWorkDashboardPath(query), {});
-    if (!response.response.ok) {
+    const response = await myWorkClient.GET("/api/v1/my-work/", {
+      params: { query: buildMyWorkDashboardQuery(query) }
+    });
+    if (!response.response.ok || !response.data) {
       return { ok: false, error: await readApiProblem(response.response) };
     }
 
     return {
       ok: true,
-      data: response.data as unknown as MyWorkDashboard
+      data: response.data
     };
   } catch {
     return { ok: false, error: normalizeApiProblem(undefined, 0) };
@@ -180,52 +98,20 @@ export const readProcessDetailDocument = async (
   processId: string
 ): Promise<ProcessDetailResult> => {
   try {
-    const response = await (
-      myWorkClient as {
-        GET(path: string, init?: object): Promise<{ data?: unknown; response: Response }>;
-      }
-    ).GET(`/api/v1/my-work/processes/${processId}/`, {});
-    if (!response.response.ok) {
+    const response = await myWorkClient.GET("/api/v1/my-work/processes/{process_id}/", {
+      params: { path: { process_id: processId } }
+    });
+    if (!response.response.ok || !response.data) {
       return { ok: false, error: await readApiProblem(response.response) };
     }
 
     return {
       ok: true,
-      data: response.data as unknown as ProcessDetailDocument
+      data: response.data
     };
   } catch {
     return { ok: false, error: normalizeApiProblem(undefined, 0) };
   }
-};
-
-export const loadMyWorkDashboard = async (
-  query: MyProcessesQuery = defaultMyProcessesQuery,
-  force = false
-) => {
-  const queryKey = createMyWorkQueryKey(query);
-  const current = queryRegistry.getSnapshot<MyWorkDashboard, NormalizedApiProblem>(queryKey);
-  if (!force && current.status === "loading") return current;
-
-  queryRegistry.setSnapshot(queryKey, { status: "loading" });
-  const result = await readMyWorkDashboard(query);
-
-  if (result.ok) {
-    const snapshot: QuerySnapshot<MyWorkDashboard> = {
-      status: "success",
-      data: result.data,
-      updatedAt: Date.now()
-    };
-    queryRegistry.setSnapshot(queryKey, snapshot);
-    return snapshot;
-  }
-
-  const snapshot: QuerySnapshot<MyWorkDashboard, NormalizedApiProblem> = {
-    status: "error",
-    error: result.error,
-    updatedAt: Date.now()
-  };
-  queryRegistry.setSnapshot(queryKey, snapshot);
-  return snapshot;
 };
 
 export const startWorkflow = async (
@@ -243,14 +129,13 @@ export const startWorkflow = async (
         }
       }
     });
-    if (!response.response.ok) {
+    if (!response.response.ok || !response.data) {
       return { ok: false, error: await readApiProblem(response.response) };
     }
 
-    queryRegistry.invalidate(myWorkQueryKey, "workflow-started");
     return {
       ok: true,
-      data: response.data as StartWorkflowAccepted
+      data: response.data
     };
   } catch {
     return { ok: false, error: normalizeApiProblem(undefined, 0) };

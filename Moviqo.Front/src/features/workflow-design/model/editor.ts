@@ -504,12 +504,7 @@ export const reduceWorkflowDraftEditorState = (
 
   if (action.type === "save-failed") {
     const nextRetryCount = action.retryable ? state.retryCount + 1 : 0;
-    const exhaustedRetries = nextRetryCount > MAX_AUTOSAVE_RETRIES;
-    const nextStatus = action.conflict
-      ? "conflict"
-      : action.retryable && !exhaustedRetries
-        ? "retrying"
-        : "error";
+    const nextStatus = action.conflict ? "conflict" : "error";
     return {
       ...state,
       hasLocalChanges: true,

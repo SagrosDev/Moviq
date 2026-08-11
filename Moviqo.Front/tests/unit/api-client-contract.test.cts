@@ -6,7 +6,6 @@ import {
   normalizeApiProblem,
   type ApiProblemDetails
 } from "../../src/shared/api";
-import { normalizeAppPath } from "../../src/app/ui/App";
 import {
   readCsrfToken,
   rememberCsrfToken
@@ -225,11 +224,6 @@ test("API problem normalization keeps safe fields and supplies generic fallbacks
     { name: "nonFieldErrors", reason: "should not be a field" }
   ]);
   assert.equal(normalizeApiProblem(undefined).code, "api_error");
-});
-
-test("app route normalization accepts a trailing slash for workflow creation", () => {
-  assert.equal(normalizeAppPath("/my-work/workflows/new/"), "/my-work/workflows/new");
-  assert.equal(normalizeAppPath("/"), "/");
 });
 
 test("API problem normalization bounds untrusted values and prefers a valid header correlation", () => {

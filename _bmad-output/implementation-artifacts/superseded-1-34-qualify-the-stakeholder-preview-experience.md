@@ -2,9 +2,11 @@
 baseline_commit: fd59bd88ca0d447981cded4320aa8910be8e823e
 ---
 
-# Story 1.34: Qualify the Stakeholder Preview Experience
+# Superseded Planning Record: Former Story 1.34 — Qualify the Stakeholder Preview Experience
 
-Status: in-progress
+Status: superseded — not tracked
+
+> Superseded by the approved 2026-08-10 course correction. The active Story 1.34 is **Establish the Stakeholder-Ready Frontend System** and is complete. This record preserves completed implementation and review evidence; outstanding compatibility and accessibility qualification belongs to Story 10.7, failure and operability qualification to Story 10.8, and final Gate 1 certification to Story 10.9. References below to the former Story 1.35 numbering are historical.
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -238,7 +240,7 @@ Codex
 - `Moviqo.Front/tsconfig.test.json`
 - `Moviqo.Infrastructure/UAT-RELEASE-RUNBOOK.md`
 - `README.md`
-- `_bmad-output/implementation-artifacts/1-34-qualify-the-stakeholder-preview-experience.md`
+- `_bmad-output/implementation-artifacts/superseded-1-34-qualify-the-stakeholder-preview-experience.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ### Change Log

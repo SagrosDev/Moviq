@@ -1,9 +1,23 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { createRequire } from "node:module";
 import { mockCsrfBootstrap } from "./support/mockCsrf";
 
 const require = createRequire(import.meta.url);
 const axePath = require.resolve("axe-core/axe.min.js");
+
+const expectNoAccessibilityViolations = async (page: Page) => {
+  await page.addScriptTag({ path: axePath });
+  const result = await page.evaluate(async () => {
+    const axe = (window as unknown as { axe: typeof import("axe-core") }).axe;
+    return axe.run(document, {
+      runOnly: {
+        type: "tag",
+        values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
+      }
+    });
+  });
+  expect(result.violations, JSON.stringify(result.violations, null, 2)).toEqual([]);
+};
 
 const authenticatedSession = {
   authenticated: true,
@@ -33,6 +47,7 @@ test("authenticated runtime modules are separate, empty-state safe, and keyboard
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(emptyDashboard) });
   });
 
+  await page.setViewportSize({ width: 1920, height: 1000 });
   await page.goto("/my-work");
 
   await expect(page.getByRole("heading", { name: "Resumen" })).toBeVisible();
@@ -43,18 +58,22 @@ test("authenticated runtime modules are separate, empty-state safe, and keyboard
   await page.getByRole("link", { name: "Tareas", exact: true }).click();
   await expect(page).toHaveURL(/\/my-work\/tasks$/);
   await expect(page.getByRole("heading", { level: 1, name: "Mis tareas" })).toBeVisible();
-  await expect(page.getByText("No tienes tareas autorizadas para atender ahora.")).toBeVisible();
+  await expect(page.getByText(/No tienes tareas asignadas por ahora/)).toBeVisible();
 
   await page.getByRole("link", { name: "Iniciar proceso", exact: true }).click();
   await expect(page).toHaveURL(/\/processes\/start$/);
   await expect(page.getByRole("heading", { level: 1, name: "Iniciar un proceso" })).toBeVisible();
-  await expect(page.getByText("No hay procesos autorizados para iniciar ahora.")).toBeVisible();
+  await expect(page.getByText("No tienes flujos creados o asignados para iniciar un proceso.")).toBeVisible();
 
   await page.getByRole("link", { name: "Procesos", exact: true }).click();
   await expect(page).toHaveURL(/\/my-work\/processes$/);
   await expect(page.getByRole("heading", { level: 1, name: "Mis procesos" })).toBeVisible();
-  await expect(page.getByText("No tienes procesos autorizados para seguir ahora.")).toBeVisible();
+  await expect(page.getByText(/Aún no tienes procesos para consultar/)).toBeVisible();
   await expect(page.locator("#main-content")).toBeFocused();
+  const workspaceWidth = await page.locator("#main-content > div").evaluate((element) => (
+    element.getBoundingClientRect().width
+  ));
+  expect(workspaceWidth).toBeGreaterThan(1600);
 
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Mis procesos" })).toBeVisible();
@@ -65,6 +84,60 @@ test("authenticated runtime modules are separate, empty-state safe, and keyboard
     await page.keyboard.press("Tab");
   }
   await expect(page.getByRole("link", { name: "Saltar al contenido principal" })).toBeFocused();
+});
+
+test("process history switches between a semantic desktop table and equivalent mobile cards", async ({
+  page
+}) => {
+  const dashboard = {
+    ...emptyDashboard,
+    myProcesses: {
+      items: [
+        {
+          processId: "01987df4-ae8a-7000-8000-000000000211",
+          processNumber: "01987df4",
+          workflowName: "Aprobaciones",
+          workflowVersionNumber: 1,
+          involvement: "Iniciadora",
+          currentStep: "Finalizado",
+          systemStatus: "completed",
+          startedAt: "2026-08-05T00:00:00Z",
+          completedAt: "2026-08-05T01:00:00Z",
+          lastActivityAt: "2026-08-05T01:00:00Z",
+          viewRoute: "/my-work/processes/01987df4-ae8a-7000-8000-000000000211",
+          contributionSummary: { kind: "initiated", label: "Iniciaste este proceso." }
+        }
+      ],
+      limit: 12,
+      hasMore: false
+    }
+  };
+
+  await page.route("**/api/v1/auth/session/", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(authenticatedSession) });
+  });
+  await page.route("**/api/v1/my-work/", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(dashboard) });
+  });
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/my-work/processes");
+  await expect(page.getByRole("table")).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Flujo" })).toBeVisible();
+  await expect(page.locator("[data-process-layout='cards']")).toBeHidden();
+  await expect(page.getByRole("region", { name: /Tabla de procesos/ })).toHaveAttribute("tabindex", "0");
+  await expectNoAccessibilityViolations(page);
+
+  await page.setViewportSize({ width: 900, height: 800 });
+  await expect(page.getByRole("table")).toBeHidden();
+  await expect(page.locator("[data-process-layout='cards']")).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("table")).toBeHidden();
+  await expect(page.locator("[data-process-layout='cards']")).toBeVisible();
+  await expect(page.locator("[data-process-layout='cards']").getByRole("link", { name: "Ver proceso" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  await expectNoAccessibilityViolations(page);
 });
 
 test("my-work shows loading, safe retry, mobile resilience, and revoked-session redirect", async ({
@@ -107,26 +180,21 @@ test("my-work shows loading, safe retry, mobile resilience, and revoked-session 
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/my-work/tasks");
-  await expect(page.getByText("Cargando tu trabajo autorizado.").first()).toBeVisible();
-  await expect(page.getByRole("alert").getByText("No pudimos cargar tu trabajo autorizado. Intenta de nuevo.").first()).toBeVisible();
+  const loadingStatus = page.getByRole("status").filter({ hasText: "Cargando tus tareas asignadas." });
+  await expect(loadingStatus).toBeVisible();
+  const loadingSpinner = loadingStatus.locator("[aria-hidden='true']");
+  await expect(loadingSpinner).toBeVisible();
+  expect(await loadingSpinner.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
+  await expect(page.getByRole("alert").getByText("No pudimos cargar tus tareas. Intenta de nuevo en unos momentos.").first()).toBeVisible();
   await page.getByRole("button", { name: "Reintentar" }).first().click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Mis tareas" })).toBeVisible();
   await page.addStyleTag({ content: "html { font-size: 200%; }" });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
-  await page.addScriptTag({ path: axePath });
-  const result = await page.evaluate(async () => {
-    const axe = (window as unknown as { axe: typeof import("axe-core") }).axe;
-    return axe.run(document, {
-      runOnly: {
-        type: "tag",
-        values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
-      }
-    });
-  });
-  expect(result.violations, JSON.stringify(result.violations, null, 2)).toEqual([]);
+  await expectNoAccessibilityViolations(page);
 
   await page.reload();
   await expect(page).toHaveURL(/\/sign-in$/);

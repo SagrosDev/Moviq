@@ -325,17 +325,16 @@ test("unexpected workflow failure preserves work and suppresses a duplicate acti
 
 test("offline recovery and permission denial remain localized and data safe", async ({ page }, testInfo) => {
   const { language } = qualificationContext(testInfo);
-  let dashboardCalls = 0;
+  let dashboardMode: "offline" | "success" | "permission" = "offline";
 
   await mockAuthenticatedSession(page);
   await page.route("**/api/v1/my-work/", async (route) => {
-    dashboardCalls += 1;
-    if (dashboardCalls === 1) {
+    if (dashboardMode === "offline") {
       await new Promise((resolve) => setTimeout(resolve, 200));
       await route.abort("internetdisconnected");
       return;
     }
-    if (dashboardCalls === 2) {
+    if (dashboardMode === "success") {
       await route.fulfill({
         body: JSON.stringify({
           myProcesses: { hasMore: false, items: [], limit: 12 },
@@ -361,12 +360,22 @@ test("offline recovery and permission denial remain localized and data safe", as
     });
   });
 
-  await page.goto(`/my-work?lang=${language}`);
-  await expect(page.getByRole("alert").first()).toContainText(translate(language, "myWork.error"));
+  await page.goto(`/my-work/tasks?lang=${language}`);
+  await expect(page.getByRole("alert").first()).toContainText(
+    translate(language, "myWork.networkError"),
+    { timeout: 15_000 }
+  );
   await expect(page.getByText("Restricted process exists")).toHaveCount(0);
+  dashboardMode = "success";
   await page.getByRole("button", { name: translate(language, "myWork.retry") }).first().click();
-  await expect(page.getByRole("heading", { name: translate(language, "myWork.title") })).toBeVisible();
-  await page.reload();
-  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByText(translate(language, "myWork.myTasks.empty"))).toBeVisible();
+  dashboardMode = "permission";
+  await page.goto("about:blank");
+  await page.goto(`/my-work/tasks?lang=${language}`);
+  await expect(page).toHaveURL(/\/my-work\/tasks/);
+  await expect(page.getByRole("alert").first()).toContainText(
+    translate(language, "myWork.permissionDenied")
+  );
+  await expect(page.getByRole("button", { name: translate(language, "myWork.retry") })).toHaveCount(0);
   await expect(page.getByText("Restricted process exists")).toHaveCount(0);
 });

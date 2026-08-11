@@ -335,27 +335,6 @@ p {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
-.my-work-search__field {
-  display: grid;
-  gap: var(--space-xs);
-  min-width: 0;
-}
-
-.my-work-search__field span {
-  color: var(--ink-primary);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.my-work-search__field input {
-  min-width: 0;
-  width: 100%;
-}
-
-.my-work-search__action {
-  width: 100%;
-}
-
 .button {
   align-items: center;
   background: var(--primary);

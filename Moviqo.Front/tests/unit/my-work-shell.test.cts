@@ -76,8 +76,28 @@ test("my-work shell renders semantic regions and localized empty states", () => 
   assert.match(markup, /Iniciar un proceso/);
   assert.match(markup, /Mis procesos/);
   assert.match(markup, /Crear flujo/);
-  assert.match(markup, /No tienes tareas autorizadas para atender ahora/);
+  assert.match(markup, /No tienes tareas asignadas por ahora/);
+  assert.match(markup, /No tienes flujos creados o asignados para iniciar un proceso/);
+  assert.match(markup, /Aún no tienes procesos para consultar/);
   assert.match(markup, /Buscar procesos completados/);
+});
+
+test("my-work regions expose contextual loading states with a visual spinner", () => {
+  const tasksMarkup = renderShell({ status: "loading" }, {
+    regions: ["myTasks"],
+    showHeading: false,
+    showRegionNavigation: false
+  });
+  const startMarkup = renderShell({ status: "loading" }, {
+    regions: ["startWorkflows"],
+    showHeading: false,
+    showRegionNavigation: false
+  });
+
+  assert.match(tasksMarkup, /Cargando tus tareas asignadas/);
+  assert.match(startMarkup, /Buscando flujos que puedes iniciar/);
+  assert.match(tasksMarkup, /role="status"/);
+  assert.match(tasksMarkup, /animate-spin/);
 });
 
 test("my-work pagination uses the generated endpoint query contract", () => {
@@ -129,6 +149,60 @@ test("my-work shell keeps permission denial localized and exposes only the safe 
   assert.match(markup, /No tienes permiso para ver este trabajo/);
   assert.match(markup, /data-error-code="permission_denied"/);
   assert.doesNotMatch(markup, /Restricted process exists/);
+  assert.doesNotMatch(markup, /Reintentar/);
+});
+
+test("my-work shell distinguishes not-found and contextual server failures from empty work", () => {
+  const notFoundMarkup = renderShell({
+    status: "error",
+    error: {
+      type: "about:blank",
+      title: "Hidden runtime detail",
+      status: 404,
+      code: "resource_not_found",
+      correlationId: "safe-correlation-404",
+      invalidParams: []
+    },
+    updatedAt: Date.now()
+  }, { regions: ["startWorkflows"], showHeading: false, showRegionNavigation: false });
+  const serverMarkup = renderShell({
+    status: "error",
+    error: {
+      type: "about:blank",
+      title: "Provider failure",
+      status: 500,
+      code: "api_error",
+      correlationId: "safe-correlation-500",
+      invalidParams: []
+    },
+    updatedAt: Date.now()
+  }, { regions: ["myProcesses"], showHeading: false, showRegionNavigation: false });
+
+  assert.match(notFoundMarkup, /No encontramos este espacio de trabajo/);
+  assert.doesNotMatch(notFoundMarkup, /No tienes flujos creados/);
+  assert.match(notFoundMarkup, /Reintentar/);
+  assert.match(serverMarkup, /No pudimos cargar tus procesos/);
+  assert.doesNotMatch(serverMarkup, /Provider failure/);
+  assert.match(serverMarkup, /Reintentar/);
+});
+
+test("my-work shell does not mislabel malformed server errors as an expired session", () => {
+  const markup = renderShell({
+    status: "error",
+    error: {
+      type: "about:blank",
+      title: "Provider failure",
+      status: 500,
+      code: "authentication_failed",
+      correlationId: "safe-correlation-500",
+      invalidParams: []
+    },
+    updatedAt: Date.now()
+  }, { regions: ["myTasks"], showHeading: false, showRegionNavigation: false });
+
+  assert.match(markup, /No pudimos cargar tus tareas/);
+  assert.doesNotMatch(markup, /Tu sesión ya no está disponible/);
+  assert.match(markup, /Reintentar/);
 });
 
 test("my-work shell renders startable workflow cards with the start action and feedback", () => {
@@ -160,7 +234,7 @@ test("my-work shell renders startable workflow cards with the start action and f
   });
 
   assert.match(markup, /Aprobaciones/);
-  assert.match(markup, /Version 3/);
+  assert.match(markup, /Versión 3/);
   assert.match(markup, /Iniciando/);
   assert.match(markup, /Abriremos la primera tarea autorizada/);
 });
@@ -197,7 +271,7 @@ test("my-work shell renders assigned task cards with one open-task action", () =
   assert.match(markup, /href="\/my-work\/tasks\/task-1"/);
 });
 
-test("my-work shell renders completed process cards with discovery controls", () => {
+test("my-work shell renders completed processes as a semantic desktop table and mobile cards", () => {
   const markup = renderShell({
     status: "success",
     data: {
@@ -237,11 +311,17 @@ test("my-work shell renders completed process cards with discovery controls", ()
   });
 
   assert.match(markup, /Aprobaciones/);
+  assert.match(markup, /<table/);
+  assert.match(markup, /<caption class="sr-only">Mis procesos<\/caption>/);
+  assert.match(markup, /<th[^>]*scope="col"[^>]*>Flujo<\/th>/);
+  assert.match(markup, /<th[^>]*scope="col"[^>]*>Proceso<\/th>/);
+  assert.match(markup, /data-process-layout="table"/);
+  assert.match(markup, /data-process-layout="cards"/);
   assert.match(markup, /Proceso: process-/);
   assert.match(markup, /Paso actual: End/);
   assert.match(markup, /Ver proceso/);
-  assert.match(markup, /Pagina anterior/);
-  assert.match(markup, /Pagina siguiente/);
+  assert.match(markup, /Página anterior/);
+  assert.match(markup, /Página siguiente/);
   assert.match(markup, /href="\/my-work\/processes\/process-1"/);
 });
 

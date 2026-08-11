@@ -74,7 +74,15 @@ test("Moviqo-owned labels, navigation, statuses, validation, help, and catalog c
   assert.equal(translate("en", "catalog.task.title"), "Task card");
   assert.equal(
     translate("es", "myWork.permissionDenied"),
-    "No tienes permiso para ver este trabajo. Tu sesion sigue activa."
+    "No tienes permiso para ver este trabajo. Tu sesión sigue activa."
+  );
+  assert.equal(
+    translate("es", "myWork.startWorkflows.empty"),
+    "No tienes flujos creados o asignados para iniciar un proceso."
+  );
+  assert.equal(
+    translate("en", "myWork.myProcesses.loading"),
+    "Loading your processes."
   );
   assert.equal(
     translate("en", "myWork.permissionDenied"),

@@ -119,10 +119,10 @@ export const AuthenticatedLayout = () => {
         navigation={navigation}
         navigationLabel={t("app.nav.primary")}
         onNavigate={navigateWithinApplication}
-        size="wide"
+        size="workspace"
       />
       <main id="main-content" ref={mainRef} tabIndex={-1}>
-        <PageContainer size="wide">
+        <PageContainer size="workspace">
           <Outlet />
         </PageContainer>
       </main>

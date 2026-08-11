@@ -1,6 +1,11 @@
 import { useState, type MouseEvent, type ReactNode } from "react";
-import type { NormalizedApiProblem, QuerySnapshot } from "../../../shared/api";
+import {
+  isSessionExpiryProblem,
+  type NormalizedApiProblem,
+  type QuerySnapshot
+} from "../../../shared/api";
 import { useLanguage } from "../../../shared/localization";
+import { Button, ButtonLink, LoadingState, TextInput } from "../../../shared/ui";
 import type {
   MyProcessesQuery,
   MyWorkCollection,
@@ -52,10 +57,38 @@ const statusLabelFor = (status: string, t: Translate) => {
   return status;
 };
 
-const errorMessageFor = (snapshot: MyWorkSnapshot, t: Translate) =>
-  snapshot.status === "error" && snapshot.error.code === "permission_denied"
-    ? t("myWork.permissionDenied")
-    : t("myWork.error");
+const errorMessageFor = (
+  snapshot: MyWorkSnapshot,
+  region: MyWorkRegion,
+  t: Translate
+) => {
+  if (snapshot.status !== "error") {
+    return t("myWork.error");
+  }
+  if (isSessionExpiryProblem(snapshot.error.status, snapshot.error.code)) {
+    return t("myWork.sessionExpired");
+  }
+  if (snapshot.error.code === "permission_denied") {
+    return t("myWork.permissionDenied");
+  }
+  if (snapshot.error.code === "resource_not_found" || snapshot.error.status === 404) {
+    return t("myWork.resourceNotFound");
+  }
+  if (snapshot.error.status === 0) {
+    return t("myWork.networkError");
+  }
+  return ({
+    myTasks: t("myWork.myTasks.error"),
+    startWorkflows: t("myWork.startWorkflows.error"),
+    myProcesses: t("myWork.myProcesses.error")
+  })[region];
+};
+
+const canRetryMyWorkError = (snapshot: MyWorkSnapshot) => (
+  snapshot.status === "error"
+  && !isSessionExpiryProblem(snapshot.error.status, snapshot.error.code)
+  && snapshot.error.code !== "permission_denied"
+);
 
 export const MyWorkShell = ({
   snapshot,
@@ -209,8 +242,8 @@ const renderMyTasks = (
   return renderRegionState<MyWorkTask>(
     snapshot,
     t("myWork.myTasks.empty"),
-    errorMessageFor(snapshot, t),
-    t("myWork.loading"),
+    errorMessageFor(snapshot, "myTasks", t),
+    t("myWork.myTasks.loading"),
     t("myWork.retry"),
     onRetry,
     (item) => <article key={item.taskId} className="my-work-card">
@@ -219,13 +252,12 @@ const renderMyTasks = (
       <p>{`${t("myWork.myTasks.status")} ${statusLabelFor(item.status, t)}`}</p>
       <p>{`${t("myWork.myTasks.process")} ${toProcessReference(item.processId)}`}</p>
       <div className="button-row">
-        <a
-          className="button"
+        <ButtonLink
           href={item.openTaskRoute}
           onClick={(event) => onNavigate?.(item.openTaskRoute, event)}
         >
           {t("myWork.myTasks.open")}
-        </a>
+        </ButtonLink>
       </div>
     </article>,
     (dashboard) => dashboard.myTasks,
@@ -246,8 +278,8 @@ const renderStartWorkflows = (
   return renderRegionState<MyWorkStartWorkflow>(
     snapshot,
     t("myWork.startWorkflows.empty"),
-    errorMessageFor(snapshot, t),
-    t("myWork.loading"),
+    errorMessageFor(snapshot, "startWorkflows", t),
+    t("myWork.startWorkflows.loading"),
     t("myWork.retry"),
     onRetry,
     (item) => <article key={item.workflowId} className="my-work-card">
@@ -256,16 +288,14 @@ const renderStartWorkflows = (
       {item.description ? <p>{item.description}</p> : null}
       <p>{item.availability}</p>
       <div className="button-row">
-        <button
-          className="button"
-          type="button"
+        <Button
           disabled={startingWorkflowId === item.workflowId}
           onClick={() => onStartWorkflow(item.workflowId)}
         >
           {startingWorkflowId === item.workflowId
             ? t("myWork.startWorkflows.starting")
             : t("myWork.startWorkflows.start")}
-        </button>
+        </Button>
       </div>
       {startFeedbackByWorkflowId[item.workflowId] ? (
         <p role="status">{startFeedbackByWorkflowId[item.workflowId]}</p>
@@ -296,18 +326,17 @@ const renderMyProcesses = (
         onSearchSubmit();
       }}
     >
-      <label className="my-work-search__field">
-        <span>{t("myWork.myProcesses.searchLabel")}</span>
-        <input
-          type="search"
-          value={searchDraft}
-          placeholder={t("myWork.myProcesses.searchPlaceholder")}
-          onChange={(event) => onSearchChange(event.target.value)}
-        />
-      </label>
-      <button className="button my-work-search__action" type="submit">
+      <TextInput
+        id="my-processes-search"
+        label={t("myWork.myProcesses.searchLabel")}
+        type="search"
+        value={searchDraft}
+        placeholder={t("myWork.myProcesses.searchPlaceholder")}
+        onChange={(event) => onSearchChange(event.target.value)}
+      />
+      <Button type="submit" width="full">
         {t("myWork.myProcesses.searchAction")}
-      </button>
+      </Button>
     </form>
     <p>{t("myWork.myProcesses.discoveryHint")}</p>
   </div>;
@@ -315,7 +344,7 @@ const renderMyProcesses = (
   if (snapshot.status === "idle" || snapshot.status === "loading") {
     return <div>
       {controls}
-      <p className="status-panel" role="status">{t("myWork.loading")}</p>
+      <LoadingState>{t("myWork.myProcesses.loading")}</LoadingState>
     </div>;
   }
 
@@ -323,8 +352,10 @@ const renderMyProcesses = (
     return <div>
       {controls}
       <div className="status-panel" role="alert" data-error-code={snapshot.error.code}>
-        <p>{errorMessageFor(snapshot, t)}</p>
-        <button className="button" type="button" onClick={onRetry}>{t("myWork.retry")}</button>
+        <p>{errorMessageFor(snapshot, "myProcesses", t)}</p>
+        {canRetryMyWorkError(snapshot) ? (
+          <Button onClick={onRetry}>{t("myWork.retry")}</Button>
+        ) : null}
       </div>
     </div>;
   }
@@ -338,8 +369,56 @@ const renderMyProcesses = (
     {collection.items.length === 0 ? (
       <p className="status-panel" role="status">{t("myWork.myProcesses.empty")}</p>
     ) : (
-      <div className="my-work-cards">
-        {collection.items.map((item) => <article key={item.processId} className="my-work-card">
+      <>
+        <div
+          className="hidden max-w-full overflow-x-auto rounded-moviqo-control border border-moviqo-border focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-moviqo-focus desktop:block"
+          data-process-layout="table"
+          role="region"
+          aria-label={t("myWork.myProcesses.tableRegion")}
+          tabIndex={0}
+        >
+          <table className="w-full border-collapse">
+            <caption className="sr-only">{t("myWork.myProcesses.title")}</caption>
+            <thead>
+              <tr>
+                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.workflowColumn")}</th>
+                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.referenceColumn")}</th>
+                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.statusColumn")}</th>
+                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.stepColumn")}</th>
+                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.involvementColumn")}</th>
+                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.lastActivityColumn")}</th>
+                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.actionsColumn")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {collection.items.map((item) => <tr key={item.processId}>
+                <th className="border-b border-moviqo-border p-moviqo-3 text-left align-top font-semibold" scope="row">{item.workflowName}</th>
+                <td className="border-b border-moviqo-border p-moviqo-3 align-top">{item.processNumber}</td>
+                <td className="border-b border-moviqo-border p-moviqo-3 align-top">{statusLabelFor(item.systemStatus, t)}</td>
+                <td className="border-b border-moviqo-border p-moviqo-3 align-top">{item.currentStep}</td>
+                <td className="border-b border-moviqo-border p-moviqo-3 align-top">
+                  <span>{item.involvement}</span>
+                  <small className="mt-moviqo-1 block text-moviqo-ink-secondary">{item.contributionSummary.label}</small>
+                </td>
+                <td className="border-b border-moviqo-border p-moviqo-3 align-top">{formatDateTimeInTimeZone(item.completedAt ?? item.lastActivityAt, timeZone)}</td>
+                <td className="border-b border-moviqo-border p-moviqo-3 align-top">
+                  <ButtonLink
+                    href={item.viewRoute}
+                    variant="secondary"
+                    onClick={(event) => onNavigate?.(item.viewRoute, event)}
+                  >
+                    {t("myWork.myProcesses.view")}
+                  </ButtonLink>
+                </td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+        <div
+          className="grid min-w-0 gap-moviqo-3 break-words desktop:hidden"
+          data-process-layout="cards"
+        >
+          {collection.items.map((item) => <article key={item.processId} className="my-work-card">
           <h3>{item.workflowName}</h3>
           <p>{`${t("myWork.myProcesses.reference")} ${item.processNumber}`}</p>
           <p>{`${t("myWork.myProcesses.status")} ${statusLabelFor(item.systemStatus, t)}`}</p>
@@ -348,36 +427,33 @@ const renderMyProcesses = (
           <p>{`${t("myWork.myProcesses.lastActivity")} ${formatDateTimeInTimeZone(item.completedAt ?? item.lastActivityAt, timeZone)}`}</p>
           <p>{item.contributionSummary.label}</p>
           <div className="button-row">
-            <a
-              className="button"
+            <ButtonLink
               href={item.viewRoute}
+              variant="secondary"
               onClick={(event) => onNavigate?.(item.viewRoute, event)}
             >
               {t("myWork.myProcesses.view")}
-            </a>
+            </ButtonLink>
           </div>
         </article>)}
-      </div>
+        </div>
+      </>
     )}
     <div className="button-row">
-      <button
-        className="button"
-        data-variant="secondary"
-        type="button"
+      <Button
+        variant="secondary"
         disabled={!hasPreviousPage}
         onClick={() => onPageChange(query.page - 1)}
       >
         {t("myWork.myProcesses.previousPage")}
-      </button>
-      <button
-        className="button"
-        data-variant="secondary"
-        type="button"
+      </Button>
+      <Button
+        variant="secondary"
         disabled={!hasNextPage}
         onClick={() => onPageChange(query.page + 1)}
       >
         {t("myWork.myProcesses.nextPage")}
-      </button>
+      </Button>
     </div>
   </div>;
 };
@@ -394,13 +470,13 @@ const renderRegionState = <TItem,>(
   renderFooter?: (collection: MyWorkCollection<TItem>) => ReactNode
 ) => {
   if (snapshot.status === "idle" || snapshot.status === "loading") {
-    return <p className="status-panel" role="status">{loadingMessage}</p>;
+    return <LoadingState>{loadingMessage}</LoadingState>;
   }
 
   if (snapshot.status === "error") {
     return <div className="status-panel" role="alert" data-error-code={snapshot.error.code}>
       <p>{errorMessage}</p>
-      <button className="button" type="button" onClick={onRetry}>{retryLabel}</button>
+      {canRetryMyWorkError(snapshot) ? <Button onClick={onRetry}>{retryLabel}</Button> : null}
     </div>;
   }
 
@@ -424,22 +500,18 @@ const renderCollectionPagination = (
   onPageChange: (page: number) => void,
   t: Translate
 ) => <div className="button-row">
-  <button
-    className="button"
-    data-variant="secondary"
-    type="button"
+  <Button
+    variant="secondary"
     disabled={page <= 1}
     onClick={() => onPageChange(page - 1)}
   >
     {t("myWork.myProcesses.previousPage")}
-  </button>
-  <button
-    className="button"
-    data-variant="secondary"
-    type="button"
+  </Button>
+  <Button
+    variant="secondary"
     disabled={!hasMore}
     onClick={() => onPageChange(page + 1)}
   >
     {t("myWork.myProcesses.nextPage")}
-  </button>
+  </Button>
 </div>;

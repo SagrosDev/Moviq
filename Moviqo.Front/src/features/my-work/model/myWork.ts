@@ -1,7 +1,6 @@
 import {
   createApiClient,
   normalizeApiProblem,
-  readApiProblem,
   type NormalizedApiProblem
 } from "../../../shared/api";
 import type { components } from "../../../shared/api/generated/schema";
@@ -46,6 +45,12 @@ export const defaultMyProcessesQuery: MyProcessesQuery = {
 
 const myWorkClient = createApiClient({ baseUrl: "/api/v1" });
 
+const normalizeClientProblem = (error: unknown, response: Response) => normalizeApiProblem(
+  error,
+  response.status,
+  response.headers.get("X-Correlation-ID") ?? ""
+);
+
 export const buildMyWorkDashboardQuery = (query: MyProcessesQuery) => ({
   myProcessesPage: query.page > 1 ? query.page : undefined,
   myProcessesSearch: query.search.trim() || undefined,
@@ -82,7 +87,10 @@ export const readMyWorkDashboard = async (
       params: { query: buildMyWorkDashboardQuery(query) }
     });
     if (!response.response.ok || !response.data) {
-      return { ok: false, error: await readApiProblem(response.response) };
+      return {
+        ok: false,
+        error: normalizeClientProblem(response.error, response.response)
+      };
     }
 
     return {
@@ -102,7 +110,10 @@ export const readProcessDetailDocument = async (
       params: { path: { process_id: processId } }
     });
     if (!response.response.ok || !response.data) {
-      return { ok: false, error: await readApiProblem(response.response) };
+      return {
+        ok: false,
+        error: normalizeClientProblem(response.error, response.response)
+      };
     }
 
     return {
@@ -130,7 +141,10 @@ export const startWorkflow = async (
       }
     });
     if (!response.response.ok || !response.data) {
-      return { ok: false, error: await readApiProblem(response.response) };
+      return {
+        ok: false,
+        error: normalizeClientProblem(response.error, response.response)
+      };
     }
 
     return {

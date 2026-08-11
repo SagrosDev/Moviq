@@ -153,18 +153,25 @@ export type MessageKey =
   | "myWork.regionNav"
   | "myWork.loading"
   | "myWork.error"
+  | "myWork.networkError"
+  | "myWork.sessionExpired"
+  | "myWork.resourceNotFound"
   | "myWork.permissionDenied"
   | "myWork.retry"
   | "myWork.sessionLoading"
   | "myWork.myTasks.title"
   | "myWork.myTasks.summary"
   | "myWork.myTasks.empty"
+  | "myWork.myTasks.loading"
+  | "myWork.myTasks.error"
   | "myWork.myTasks.status"
   | "myWork.myTasks.process"
   | "myWork.myTasks.open"
   | "myWork.startWorkflows.title"
   | "myWork.startWorkflows.summary"
   | "myWork.startWorkflows.empty"
+  | "myWork.startWorkflows.loading"
+  | "myWork.startWorkflows.error"
   | "myWork.startWorkflows.version"
   | "myWork.startWorkflows.start"
   | "myWork.startWorkflows.starting"
@@ -173,6 +180,16 @@ export type MessageKey =
   | "myWork.myProcesses.title"
   | "myWork.myProcesses.summary"
   | "myWork.myProcesses.empty"
+  | "myWork.myProcesses.loading"
+  | "myWork.myProcesses.error"
+  | "myWork.myProcesses.tableRegion"
+  | "myWork.myProcesses.workflowColumn"
+  | "myWork.myProcesses.referenceColumn"
+  | "myWork.myProcesses.statusColumn"
+  | "myWork.myProcesses.stepColumn"
+  | "myWork.myProcesses.involvementColumn"
+  | "myWork.myProcesses.lastActivityColumn"
+  | "myWork.myProcesses.actionsColumn"
   | "myWork.myProcesses.reference"
   | "myWork.myProcesses.status"
   | "myWork.myProcesses.step"
@@ -590,42 +607,59 @@ export const spanishMessages: MessageDictionary = {
   "signIn.failure": "No pudimos autenticarte. Revisa tus datos e inténtalo de nuevo.",
   "myWork.eyebrow": "Trabajo autenticado",
   "myWork.title": "Mi trabajo",
-  "myWork.lede": "Consulta lo que puedes iniciar, atender y seguir dentro de tu membresia activa.",
-  "myWork.primaryNav": "Navegacion principal de Mi trabajo",
-  "myWork.regionNav": "Navegacion de regiones de Mi trabajo",
-  "myWork.loading": "Cargando tu trabajo autorizado.",
-  "myWork.error": "No pudimos cargar tu trabajo autorizado. Intenta de nuevo.",
-  "myWork.permissionDenied": "No tienes permiso para ver este trabajo. Tu sesion sigue activa.",
+  "myWork.lede": "Consulta lo que puedes iniciar, atender y seguir dentro de tu membresía activa.",
+  "myWork.primaryNav": "Navegación principal de Mi trabajo",
+  "myWork.regionNav": "Navegación de secciones de Mi trabajo",
+  "myWork.loading": "Cargando tu trabajo.",
+  "myWork.error": "No pudimos cargar esta información. Intenta de nuevo.",
+  "myWork.networkError": "No pudimos conectarnos. Revisa tu conexión e intenta de nuevo.",
+  "myWork.sessionExpired": "Tu sesión ya no está disponible. Inicia sesión de nuevo para continuar.",
+  "myWork.resourceNotFound": "No encontramos este espacio de trabajo. Actualiza la página o vuelve al inicio.",
+  "myWork.permissionDenied": "No tienes permiso para ver este trabajo. Tu sesión sigue activa.",
   "myWork.retry": "Reintentar",
-  "myWork.sessionLoading": "Estamos validando tu sesion segura.",
+  "myWork.sessionLoading": "Estamos validando tu sesión segura.",
   "myWork.myTasks.title": "Mis tareas",
-  "myWork.myTasks.summary": "Trabajo accionable asignado a tu membresia activa.",
-  "myWork.myTasks.empty": "No tienes tareas autorizadas para atender ahora.",
+  "myWork.myTasks.summary": "Tareas que necesitan tu atención.",
+  "myWork.myTasks.empty": "No tienes tareas asignadas por ahora. Cuando recibas una, aparecerá aquí.",
+  "myWork.myTasks.loading": "Cargando tus tareas asignadas.",
+  "myWork.myTasks.error": "No pudimos cargar tus tareas. Intenta de nuevo en unos momentos.",
   "myWork.myTasks.status": "Estado:",
   "myWork.myTasks.process": "Proceso:",
   "myWork.myTasks.open": "Abrir tarea",
   "myWork.startWorkflows.title": "Iniciar un proceso",
-  "myWork.startWorkflows.summary": "Flujos publicados que tu membresia puede iniciar.",
-  "myWork.startWorkflows.empty": "No hay procesos autorizados para iniciar ahora.",
-  "myWork.startWorkflows.version": "Version",
+  "myWork.startWorkflows.summary": "Flujos publicados que puedes iniciar.",
+  "myWork.startWorkflows.empty": "No tienes flujos creados o asignados para iniciar un proceso.",
+  "myWork.startWorkflows.loading": "Buscando flujos que puedes iniciar.",
+  "myWork.startWorkflows.error": "No pudimos cargar los flujos disponibles. Intenta de nuevo en unos momentos.",
+  "myWork.startWorkflows.version": "Versión",
   "myWork.startWorkflows.start": "Iniciar",
   "myWork.startWorkflows.starting": "Iniciando",
   "myWork.startWorkflows.startError": "No pudimos iniciar este proceso. Intenta de nuevo.",
   "myWork.startWorkflows.openingTask": "Abriremos la primera tarea autorizada.",
   "myWork.myProcesses.title": "Mis procesos",
   "myWork.myProcesses.summary": "Procesos en los que has participado o que puedes seguir.",
-  "myWork.myProcesses.empty": "No tienes procesos autorizados para seguir ahora.",
+  "myWork.myProcesses.empty": "Aún no tienes procesos para consultar. Los procesos que inicies o en los que participes aparecerán aquí.",
+  "myWork.myProcesses.loading": "Cargando tus procesos.",
+  "myWork.myProcesses.error": "No pudimos cargar tus procesos. Intenta de nuevo en unos momentos.",
+  "myWork.myProcesses.tableRegion": "Tabla de procesos; puedes desplazarla horizontalmente si es necesario",
+  "myWork.myProcesses.workflowColumn": "Flujo",
+  "myWork.myProcesses.referenceColumn": "Proceso",
+  "myWork.myProcesses.statusColumn": "Estado",
+  "myWork.myProcesses.stepColumn": "Paso actual",
+  "myWork.myProcesses.involvementColumn": "Tu participación",
+  "myWork.myProcesses.lastActivityColumn": "Última actividad",
+  "myWork.myProcesses.actionsColumn": "Acciones",
   "myWork.myProcesses.reference": "Proceso:",
   "myWork.myProcesses.status": "Estado:",
   "myWork.myProcesses.step": "Paso actual:",
-  "myWork.myProcesses.involvement": "Tu participacion:",
-  "myWork.myProcesses.lastActivity": "Ultima actividad:",
+  "myWork.myProcesses.involvement": "Tu participación:",
+  "myWork.myProcesses.lastActivity": "Última actividad:",
   "myWork.myProcesses.searchLabel": "Buscar procesos completados",
-  "myWork.myProcesses.searchPlaceholder": "Busca por proceso, flujo o participacion",
+  "myWork.myProcesses.searchPlaceholder": "Busca por proceso, flujo o participación",
   "myWork.myProcesses.searchAction": "Buscar",
-  "myWork.myProcesses.discoveryHint": "Usa la busqueda o cambia de pagina para encontrar procesos completados anteriores.",
-  "myWork.myProcesses.previousPage": "Pagina anterior",
-  "myWork.myProcesses.nextPage": "Pagina siguiente",
+  "myWork.myProcesses.discoveryHint": "Usa la búsqueda o cambia de página para encontrar procesos completados anteriores.",
+  "myWork.myProcesses.previousPage": "Página anterior",
+  "myWork.myProcesses.nextPage": "Página siguiente",
   "myWork.myProcesses.view": "Ver proceso",
   "processDetail.eyebrow": "Proceso completado",
   "processDetail.title": "Detalle del proceso",
@@ -1061,20 +1095,27 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.lede": "Review what you can start, do, and follow within your active membership.",
   "myWork.primaryNav": "My work primary navigation",
   "myWork.regionNav": "My work region navigation",
-  "myWork.loading": "Loading your authorized work.",
-  "myWork.error": "We could not load your authorized work. Try again.",
+  "myWork.loading": "Loading your work.",
+  "myWork.error": "We could not load this information. Try again.",
+  "myWork.networkError": "We could not connect. Check your connection and try again.",
+  "myWork.sessionExpired": "Your session is no longer available. Sign in again to continue.",
+  "myWork.resourceNotFound": "We could not find this workspace. Refresh the page or return home.",
   "myWork.permissionDenied": "You do not have permission to view this work. Your session remains active.",
   "myWork.retry": "Retry",
   "myWork.sessionLoading": "We are validating your secure session.",
   "myWork.myTasks.title": "My tasks",
-  "myWork.myTasks.summary": "Actionable work assigned to your active membership.",
-  "myWork.myTasks.empty": "You do not have any authorized tasks to work on right now.",
+  "myWork.myTasks.summary": "Tasks that need your attention.",
+  "myWork.myTasks.empty": "You do not have assigned tasks right now. New tasks will appear here.",
+  "myWork.myTasks.loading": "Loading your assigned tasks.",
+  "myWork.myTasks.error": "We could not load your tasks. Try again in a few moments.",
   "myWork.myTasks.status": "Status:",
   "myWork.myTasks.process": "Process:",
   "myWork.myTasks.open": "Open task",
   "myWork.startWorkflows.title": "Start a process",
-  "myWork.startWorkflows.summary": "Published workflows your membership may start.",
-  "myWork.startWorkflows.empty": "There are no authorized processes to start right now.",
+  "myWork.startWorkflows.summary": "Published workflows you can start.",
+  "myWork.startWorkflows.empty": "You do not have any workflows created or assigned to start a process.",
+  "myWork.startWorkflows.loading": "Finding workflows you can start.",
+  "myWork.startWorkflows.error": "We could not load the available workflows. Try again in a few moments.",
   "myWork.startWorkflows.version": "Version",
   "myWork.startWorkflows.start": "Start",
   "myWork.startWorkflows.starting": "Starting",
@@ -1082,7 +1123,17 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.startWorkflows.openingTask": "Opening the first authorized task.",
   "myWork.myProcesses.title": "My processes",
   "myWork.myProcesses.summary": "Processes you have participated in or may follow.",
-  "myWork.myProcesses.empty": "You do not have any authorized processes to follow right now.",
+  "myWork.myProcesses.empty": "You do not have processes to review yet. Processes you start or participate in will appear here.",
+  "myWork.myProcesses.loading": "Loading your processes.",
+  "myWork.myProcesses.error": "We could not load your processes. Try again in a few moments.",
+  "myWork.myProcesses.tableRegion": "Process table; scroll horizontally if needed",
+  "myWork.myProcesses.workflowColumn": "Workflow",
+  "myWork.myProcesses.referenceColumn": "Process",
+  "myWork.myProcesses.statusColumn": "Status",
+  "myWork.myProcesses.stepColumn": "Current step",
+  "myWork.myProcesses.involvementColumn": "Your involvement",
+  "myWork.myProcesses.lastActivityColumn": "Last activity",
+  "myWork.myProcesses.actionsColumn": "Actions",
   "myWork.myProcesses.reference": "Process:",
   "myWork.myProcesses.status": "Status:",
   "myWork.myProcesses.step": "Current step:",

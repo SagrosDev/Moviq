@@ -602,7 +602,11 @@ def test_existing_start_cannot_be_removed_from_saved_draft(django_user_model) ->
             tenant_context=tenant_context,
             workflow_id=created["workflowId"],
             expected_revision="1",
-            draft={**created["draft"], "elements": []},
+            draft={
+                **created["draft"],
+                "elements": [],
+                "layout": {"positions": {}},
+            },
             idempotency_key="workflow-save-without-start",
             request_hash=_request_hash("workflow-without-start"),
         )
@@ -619,6 +623,7 @@ def test_existing_start_cannot_be_removed_from_saved_draft(django_user_model) ->
     assert persisted.document["elements"] == [
         {"id": "start-1", "type": "start", "label": "Start"}
     ]
+    assert persisted.document["layout"] == created["draft"]["layout"]
 
 
 @pytest.mark.django_db(transaction=True)
@@ -641,7 +646,7 @@ def test_rejected_graph_save_replays_one_audit_result(django_user_model) -> None
         "status": "draft",
         "elements": [
             {"id": "start-1", "type": "start", "label": "Start"},
-            {"id": "task-1", "type": "task", "label": "Task"},
+            {"id": "start-2", "type": "start", "label": "Second Start"},
         ],
         "connections": [],
         "processFields": [],

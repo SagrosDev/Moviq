@@ -102,23 +102,25 @@ export const WorkflowDesignPage = () => {
 
   return (
     <div className="grid gap-moviqo-4">
-      <Breadcrumbs
-        items={[
-          { href: "/workflows", label: t("workflowCatalog.title") },
-          { current: true, label: acceptedSnapshot?.name ?? t("workflowDesign.editor.title") }
-        ]}
-        label={t("app.nav.primary")}
-        onNavigate={(href, event) => {
-          if (!isUnmodifiedPrimaryClick(event)) return;
-          event.preventDefault();
-          navigate(href);
-        }}
-      />
       <PageHeader
         actions={(
           <Button variant="secondary" onClick={() => navigate("/workflows")}>
             {t("workflowDesign.route.back")}
           </Button>
+        )}
+        breadcrumb={(
+          <Breadcrumbs
+            items={[
+              { href: "/workflows", label: t("workflowCatalog.title") },
+              { current: true, label: acceptedSnapshot?.name ?? t("workflowDesign.editor.title") }
+            ]}
+            label={t("app.nav.primary")}
+            onNavigate={(href, event) => {
+              if (!isUnmodifiedPrimaryClick(event)) return;
+              event.preventDefault();
+              navigate(href);
+            }}
+          />
         )}
         title={t("workflowDesign.editor.title")}
       />

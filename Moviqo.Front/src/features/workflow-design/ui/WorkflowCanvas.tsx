@@ -143,7 +143,7 @@ const WorkflowSequenceEdge = (props: EdgeProps<WorkflowFlowEdge>) => {
     {label ? (
       <EdgeLabelRenderer>
         <span
-          className="pointer-events-none absolute line-clamp-2 max-w-moviqo-node-task-width rounded-moviqo-pill border border-moviqo-border bg-moviqo-surface-raised px-moviqo-2 py-moviqo-1 text-moviqo-label font-semibold text-moviqo-ink-primary shadow-sm"
+          className="pointer-events-none absolute line-clamp-2 max-w-moviqo-edge-label-width break-words rounded-moviqo-pill border border-moviqo-border bg-moviqo-surface-raised px-moviqo-edge-label-inline py-moviqo-edge-label-block text-moviqo-node font-semibold text-moviqo-ink-primary shadow-sm"
           data-workflow-edge-label={props.id}
           style={{ transform: `${labelTransform} translate(${labelX}px, ${labelY}px)` }}
         >
@@ -242,7 +242,9 @@ export const WorkflowCanvas = ({
           type: MarkerType.ArrowClosed,
           color: edge.id === selectedConnectionId
             ? "var(--color-moviqo-focus)"
-            : "var(--color-moviqo-ink-secondary)"
+            : "var(--color-moviqo-ink-secondary)",
+          width: 24,
+          height: 24
         },
         selected: edge.id === selectedConnectionId
       };

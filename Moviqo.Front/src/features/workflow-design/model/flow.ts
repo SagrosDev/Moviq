@@ -124,7 +124,9 @@ export const deriveWorkflowFlowElements = (
       interactionWidth: 44,
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: "var(--color-moviqo-ink-secondary)"
+        color: "var(--color-moviqo-ink-secondary)",
+        width: 24,
+        height: 24
       }
     }))
   };

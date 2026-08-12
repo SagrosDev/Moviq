@@ -55,19 +55,48 @@ const readEdgeMarkerVisual = async (
       : "";
     const marker = markerId ? document.getElementById(markerId) : null;
     const arrow = marker?.querySelector(".arrowclosed") ?? null;
+    const markerElement = marker instanceof SVGMarkerElement ? marker : null;
+    const arrowElement = arrow instanceof SVGGraphicsElement ? arrow : null;
+    const markerWidth = Number(markerElement?.getAttribute("markerWidth") ?? 0);
+    const markerViewBox = markerElement?.viewBox.baseVal;
+    const arrowBox = arrowElement?.getBBox();
     const svgPath = path as SVGPathElement;
     const matrix = svgPath.getScreenCTM();
+    const pathScale = matrix ? Math.hypot(matrix.a, matrix.b) : 1;
+    const pathStrokeWidth = Number.parseFloat(getComputedStyle(path).strokeWidth) || 1;
+    const markerUnitScale = markerElement?.getAttribute("markerUnits") === "userSpaceOnUse"
+      ? 1
+      : pathStrokeWidth;
     const end = svgPath.getPointAtLength(svgPath.getTotalLength());
     const screenEnd = matrix ? end.matrixTransform(matrix) : end;
     const targetHandle = document.querySelector(
       `#workflow-element-${CSS.escape(targetId)} .moviqo-workflow-handle.react-flow__handle-left`
     );
     const targetRect = targetHandle?.getBoundingClientRect() ?? null;
+    const portVisualWidth = targetHandle
+      ? Number.parseFloat(getComputedStyle(targetHandle, "::before").width)
+      : 0;
+    const handleCssWidth = targetHandle
+      ? Number.parseFloat(getComputedStyle(targetHandle).width)
+      : 0;
+    const handleScale = targetRect && handleCssWidth > 0
+      ? targetRect.width / handleCssWidth
+      : 1;
+    const portRadius = portVisualWidth * handleScale / 2;
+    const markerTail = markerViewBox && markerViewBox.width > 0 && arrowBox
+      ? Math.abs(arrowBox.x - (markerElement?.refX.baseVal.value ?? 0))
+        * markerWidth / markerViewBox.width * markerUnitScale * pathScale
+      : 0;
     return {
       markerEnd,
       markerFound: marker !== null && arrow !== null,
+      markerWidth,
+      markerHeight: Number(marker?.getAttribute("markerHeight") ?? 0),
       markerFill: arrow ? getComputedStyle(arrow).fill : "",
       pathStroke: getComputedStyle(path).stroke,
+      markerTail,
+      portRadius,
+      visibleArrowTail: markerTail - portRadius,
       endpointDistance: targetRect
         ? Math.hypot(
             screenEnd.x - targetRect.x,
@@ -136,6 +165,7 @@ test("workflow editor saves optionally and publishes the current design directly
     });
   });
 
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`/workflows/${workflowId}/design`);
   await expect(page.getByRole("heading", { level: 1, name: "Diseña tu flujo de trabajo" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Ruta de aprobacion" })).toBeVisible();
@@ -144,6 +174,54 @@ test("workflow editor saves optionally and publishes the current design directly
   const compactSaveStatus = page.locator('[data-workflow-save-status="compact"]');
   await expect(compactSaveStatus).toContainText("Cambios guardados · Revisión 1");
   await expect(page.getByRole("heading", { name: "Estado del borrador" })).toHaveCount(0);
+  const compactHeader = page.locator('[data-page-header-layout="three-region"]');
+  const headerRegions = compactHeader.locator("[data-page-header-region]");
+  await expect(headerRegions).toHaveCount(3);
+  const breadcrumb = compactHeader.getByRole("navigation");
+  await expect(breadcrumb).toBeVisible();
+  await expect(breadcrumb.getByRole("link", { name: "Flujos" })).toHaveAttribute("href", "/workflows");
+  await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText("Ruta de aprobacion");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+  const backButton = page.getByRole("button", { name: "Volver a flujos" });
+  const backButtonBox = await backButton.boundingBox();
+  const breadcrumbLinkBox = await breadcrumb.getByRole("link", { name: "Flujos" }).boundingBox();
+  if (!backButtonBox || !breadcrumbLinkBox) {
+    throw new Error("Workflow header actions were not measurable.");
+  }
+  expect(backButtonBox.width).toBeGreaterThanOrEqual(44);
+  expect(backButtonBox.height).toBeGreaterThanOrEqual(44);
+  expect(breadcrumbLinkBox.height).toBeGreaterThanOrEqual(44);
+  const desktopHeaderBoxes = await headerRegions.evaluateAll((regions) => regions.map((region) => {
+    const rect = region.getBoundingClientRect();
+    return { top: rect.top, bottom: rect.bottom };
+  }));
+  expect(Math.max(...desktopHeaderBoxes.map((box) => box.top)))
+    .toBeLessThan(Math.min(...desktopHeaderBoxes.map((box) => box.bottom)));
+  expect(await compactHeader.evaluate((header) => header.scrollWidth <= header.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 1024, height: 720 });
+  const narrowHeaderBoxes = await headerRegions.evaluateAll((regions) => regions.map((region) => {
+    const rect = region.getBoundingClientRect();
+    return { top: rect.top, bottom: rect.bottom };
+  }));
+  expect(narrowHeaderBoxes[1]?.top).toBeGreaterThanOrEqual(narrowHeaderBoxes[0]?.bottom ?? 0);
+  expect(narrowHeaderBoxes[2]?.top).toBeGreaterThanOrEqual(narrowHeaderBoxes[1]?.bottom ?? 0);
+  expect(await compactHeader.evaluate((header) => header.scrollWidth <= header.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "200%";
+  });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  const enlargedBackButtonBox = await backButton.boundingBox();
+  if (!enlargedBackButtonBox) throw new Error("Enlarged Workflow back action was not measurable.");
+  expect(enlargedBackButtonBox.x).toBeGreaterThanOrEqual(0);
+  expect(enlargedBackButtonBox.x + enlargedBackButtonBox.width).toBeLessThanOrEqual(1024);
+  await backButton.focus();
+  await expect(backButton).toBeFocused();
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "";
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   await expect(page.getByRole("button", { name: "Agregar Inicio" })).toHaveCount(0);
   await page.getByRole("button", { name: "Agregar Tarea" }).click();
@@ -270,10 +348,22 @@ test("workflow editor saves optionally and publishes the current design directly
     (node) => (node as HTMLElement).style.transform
   )).toBe(endTransformBeforeSave);
   const handle = page.locator("#workflow-element-task-1 .moviqo-workflow-handle.react-flow__handle-right");
-  await expect(handle).toHaveCSS("width", "44px");
-  await expect(handle).toHaveCSS("height", "44px");
-  expect(await handle.evaluate((node) => getComputedStyle(node, "::before").width)).toBe("8px");
-  expect(await handle.evaluate((node) => getComputedStyle(node, "::before").height)).toBe("8px");
+  const handles = [
+    page.locator("#workflow-element-start-1 .moviqo-workflow-handle.react-flow__handle-right"),
+    page.locator("#workflow-element-task-1 .moviqo-workflow-handle.react-flow__handle-left"),
+    handle,
+    page.locator("#workflow-element-end-1 .moviqo-workflow-handle.react-flow__handle-left")
+  ];
+  for (const workflowHandle of handles) {
+    await expect(workflowHandle).toHaveCSS("width", "44px");
+    await expect(workflowHandle).toHaveCSS("height", "44px");
+    expect(await workflowHandle.evaluate((node) => getComputedStyle(node, "::before").width)).toBe("6px");
+    expect(await workflowHandle.evaluate((node) => getComputedStyle(node, "::before").height)).toBe("6px");
+    await workflowHandle.focus();
+    await expect(workflowHandle).toBeFocused();
+    await expect(workflowHandle).toHaveCSS("outline-width", "3px");
+    await expect(workflowHandle).toHaveCSS("outline-style", "solid");
+  }
   const canvasHost = page.locator(".react-flow").locator("..");
   expect((await canvasHost.boundingBox())?.height).toBeGreaterThanOrEqual(640);
   const canvasShell = page.locator(".workflow-canvas-shell");
@@ -292,9 +382,12 @@ test("workflow editor saves optionally and publishes the current design directly
   for (const visual of normalEdgeVisuals) {
     expect(visual.markerEnd).toMatch(/^url\(.+\)$/);
     expect(visual.markerFound).toBe(true);
+    expect(visual.markerWidth).toBe(24);
+    expect(visual.markerHeight).toBe(24);
+    expect(visual.visibleArrowTail).toBeGreaterThanOrEqual(2);
     expect(visual.markerFill).toBe(visual.pathStroke);
     expect(visual.markerFill).toBe("rgb(71, 85, 105)");
-    expect(visual.endpointDistance).toBeLessThanOrEqual(4);
+    expect(visual.endpointDistance).toBeLessThanOrEqual(visual.portRadius);
   }
   await expect(page.getByText("Conexión de secuencia", { exact: true })).toHaveCount(0);
   await taskNode.focus();
@@ -343,14 +436,19 @@ test("workflow editor saves optionally and publishes the current design directly
   if (!sourceHandleBox || !targetHandleBox || !labelBox) {
     throw new Error("Workflow edge endpoints or label were not measurable.");
   }
+  const endpointTolerance = await handle.evaluate((node) => {
+    const handleWidth = Number.parseFloat(getComputedStyle(node).width);
+    const handleScale = handleWidth > 0 ? node.getBoundingClientRect().width / handleWidth : 1;
+    return Number.parseFloat(getComputedStyle(node, "::before").width) * handleScale / 2;
+  });
   expect(Math.abs(edgeGeometry.start.x - (sourceHandleBox.x + sourceHandleBox.width)))
-    .toBeLessThanOrEqual(4);
+    .toBeLessThanOrEqual(endpointTolerance);
   expect(Math.abs(edgeGeometry.start.y - (sourceHandleBox.y + sourceHandleBox.height / 2)))
-    .toBeLessThanOrEqual(4);
+    .toBeLessThanOrEqual(endpointTolerance);
   expect(Math.abs(edgeGeometry.end.x - targetHandleBox.x))
-    .toBeLessThanOrEqual(4);
+    .toBeLessThanOrEqual(endpointTolerance);
   expect(Math.abs(edgeGeometry.end.y - (targetHandleBox.y + targetHandleBox.height / 2)))
-    .toBeLessThanOrEqual(4);
+    .toBeLessThanOrEqual(endpointTolerance);
   expect((labelBox?.y ?? 0) + (labelBox?.height ?? 0)).toBeLessThan(edgeGeometry.middle.y);
   await labeledEdge.focus();
   await page.keyboard.press("Enter");
@@ -358,7 +456,10 @@ test("workflow editor saves optionally and publishes the current design directly
   const remainingNormalEdgeVisual = await readEdgeMarkerVisual(page, "connection-1", "task-1");
   expect(selectedEdgeVisual.markerFill).toBe(selectedEdgeVisual.pathStroke);
   expect(selectedEdgeVisual.markerFill).toBe("rgb(37, 99, 235)");
-  expect(selectedEdgeVisual.endpointDistance).toBeLessThanOrEqual(4);
+  expect(selectedEdgeVisual.markerWidth).toBe(24);
+  expect(selectedEdgeVisual.markerHeight).toBe(24);
+  expect(selectedEdgeVisual.visibleArrowTail).toBeGreaterThanOrEqual(2);
+  expect(selectedEdgeVisual.endpointDistance).toBeLessThanOrEqual(selectedEdgeVisual.portRadius);
   expect(remainingNormalEdgeVisual.markerFill).toBe(remainingNormalEdgeVisual.pathStroke);
   expect(remainingNormalEdgeVisual.markerFill).toBe("rgb(71, 85, 105)");
   await expect(page.getByLabel("Etiqueta de la conexión")).toHaveValue("Solicitud revisada");
@@ -427,6 +528,7 @@ test("revision conflict expands focused recovery and reapplies local work after 
     });
   });
 
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`/workflows/${conflictWorkflowId}/design`);
   await page.getByRole("button", { name: "Agregar Tarea" }).click();
   await expect(page.getByRole("group", { name: "Tarea: Tarea" })).toBeVisible();
@@ -456,7 +558,7 @@ test("revision conflict expands focused recovery and reapplies local work after 
 
 test("edge labels avoid top clipping and vertical path overlap when wrapping", async ({ page }) => {
   const labelWorkflowId = "01987df4-ae8a-7000-8000-000000000250";
-  const longWorkflowName = "Aprobación de solicitudes internas con revisión administrativa regional";
+  const longWorkflowName = "AprobaciónRegionalAdministrativaSinOportunidadesDeSaltoEnElNombreDelFlujo";
   const topLabel = "Resultado superior con explicación extensa";
   const verticalLabel = "Continuación vertical con contexto completo";
   const draft = {
@@ -525,10 +627,14 @@ test("edge labels avoid top clipping and vertical path overlap when wrapping", a
     });
   });
 
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`/workflows/${labelWorkflowId}/design`);
   const workflowHeading = page.getByRole("heading", { level: 2, name: longWorkflowName });
   await expect(workflowHeading).toBeVisible();
   expect(await workflowHeading.evaluate((heading) => heading.scrollWidth <= heading.clientWidth)).toBe(true);
+  await expect(page.locator('[data-page-header-region="breadcrumb"] [aria-current="page"]'))
+    .toHaveText(longWorkflowName);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   const canvas = page.locator(".react-flow");
   await expect(canvas).toBeVisible();
   const topLabelElement = page.locator('[data-workflow-edge-label="connection-top"]');
@@ -556,9 +662,13 @@ test("edge labels avoid top clipping and vertical path overlap when wrapping", a
 
   expect(topLabelBox.y).toBeGreaterThanOrEqual(canvasBox.y);
   expect(topLabelBox.y).toBeGreaterThan(topMidpoint.y);
-  await expect(topLabelElement).toHaveCSS("max-width", "104px");
-  expect(topLabelBox.height).toBeGreaterThan(30);
+  await expect(topLabelElement).toHaveCSS("max-width", "80px");
+  await expect(topLabelElement).toHaveCSS("font-size", "12px");
+  await expect(topLabelElement).toHaveCSS("padding-left", "6px");
+  await expect(topLabelElement).toHaveCSS("padding-top", "2px");
+  expect(topLabelBox.height).toBeGreaterThan(24);
   expect(verticalLabelBox.x).toBeGreaterThan(verticalMidpoint.x);
-  await expect(verticalLabelElement).toHaveCSS("max-width", "104px");
-  expect(verticalLabelBox.height).toBeGreaterThan(30);
+  await expect(verticalLabelElement).toHaveCSS("max-width", "80px");
+  await expect(verticalLabelElement).toHaveCSS("font-size", "12px");
+  expect(verticalLabelBox.height).toBeGreaterThan(24);
 });

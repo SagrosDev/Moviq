@@ -45,6 +45,7 @@ type PageContainerProps = {
 
 type PageHeaderProps = {
   title: string;
+  breadcrumb?: ReactNode;
   eyebrow?: string;
   description?: string;
   actions?: ReactNode;
@@ -160,11 +161,47 @@ export const PageContainer = ({ children, size = "default" }: PageContainerProps
 
 export const PageHeader = ({
   title,
+  breadcrumb,
   eyebrow,
   description,
   actions,
   titleId
 }: PageHeaderProps) => {
+  if (breadcrumb) {
+    return (
+      <header
+        className="grid min-w-0 gap-moviqo-3 desktop:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] desktop:items-center"
+        data-page-header-layout="three-region"
+      >
+        <div className="min-w-0 break-words" data-page-header-region="breadcrumb">
+          {breadcrumb}
+        </div>
+        <div className="grid min-w-0 gap-moviqo-2" data-page-header-region="title">
+          {eyebrow ? (
+            <p
+              className="m-0 text-moviqo-body font-semibold text-moviqo-primary"
+              data-page-context="true"
+            >
+              {eyebrow}
+            </p>
+          ) : null}
+          <h1 className="m-0 break-words text-moviqo-display font-semibold text-moviqo-ink-primary" id={titleId}>
+            {title}
+          </h1>
+          {description ? <p className="m-0 text-lg leading-relaxed text-moviqo-ink-secondary">{description}</p> : null}
+        </div>
+        {actions ? (
+          <div
+            className="flex min-w-0 flex-wrap items-center gap-moviqo-2"
+            data-page-header-region="actions"
+          >
+            {actions}
+          </div>
+        ) : null}
+      </header>
+    );
+  }
+
   return (
     <header className="grid gap-moviqo-3">
       {eyebrow ? (
@@ -200,21 +237,26 @@ export const Card = ({ children, tone = "default", labelledBy }: CardProps) => {
 };
 
 export const Breadcrumbs = ({ items, label, onNavigate }: BreadcrumbsProps) => (
-  <nav aria-label={label}>
-    <ol className="m-0 flex list-none flex-wrap items-center gap-moviqo-2 p-0 text-sm">
+  <nav className="min-w-0 max-w-full" aria-label={label}>
+    <ol className="m-0 flex min-w-0 max-w-full list-none flex-wrap items-center gap-moviqo-2 p-0 text-sm">
       {items.map((item, index) => (
-        <li className="flex items-center gap-moviqo-2" key={`${item.label}-${index}`}>
-          {index > 0 ? <span aria-hidden="true">/</span> : null}
+        <li className="flex min-w-0 max-w-full items-center gap-moviqo-2" key={`${item.label}-${index}`}>
+          {index > 0 ? <span className="shrink-0" aria-hidden="true">/</span> : null}
           {item.href && !item.current ? (
             <a
-              className="min-h-11 content-center rounded-moviqo-control text-moviqo-primary underline-offset-4 hover:underline focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-moviqo-focus"
+              className="min-h-11 min-w-0 max-w-full content-center wrap-anywhere rounded-moviqo-control text-moviqo-primary underline-offset-4 hover:underline focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-moviqo-focus"
               href={item.href}
               onClick={(event) => onNavigate?.(item.href ?? "", event)}
             >
               {item.label}
             </a>
           ) : (
-            <span aria-current={item.current ? "page" : undefined}>{item.label}</span>
+            <span
+              className="min-w-0 max-w-full wrap-anywhere"
+              aria-current={item.current ? "page" : undefined}
+            >
+              {item.label}
+            </span>
           )}
         </li>
       ))}

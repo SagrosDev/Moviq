@@ -76,7 +76,9 @@ test("React Flow elements are derived from Moviqo IDs without changing the docum
   ]);
   assert.deepEqual(flow.edges[0]?.markerEnd, {
     type: "arrowclosed",
-    color: "var(--color-moviqo-ink-secondary)"
+    color: "var(--color-moviqo-ink-secondary)",
+    width: 24,
+    height: 24
   });
   assert.deepEqual(draft, before);
 });
@@ -567,6 +569,13 @@ test("editor gestures never create background save requests or a second graph pa
   assert.match(canvas, /\{workflowName\}/);
   assert.match(canvas, /markerEnd={props\.markerEnd}/);
   assert.match(canvas, /edge\.id === selectedConnectionId[\s\S]*--color-moviqo-focus/);
+  assert.match(canvas, /width: 24,[\s\S]*height: 24/);
+  assert.match(canvas, /max-w-moviqo-edge-label-width/);
+  assert.match(canvas, /text-moviqo-node/);
+  const styles = await readFile(join(process.cwd(), "src", "app", "styles.css"), "utf8");
+  assert.match(styles, /--spacing-moviqo-node-handle: 6px/);
+  assert.match(styles, /--spacing-moviqo-node-handle-hit: 2\.75rem/);
+  assert.match(styles, /--spacing-moviqo-edge-label-width: 5rem/);
   assert.match(workspace, /desktop:items-stretch/);
   assert.match(palette, /suppressNextClick/);
   assert.equal((transport.match(/normalizeApiProblem\(undefined, 0\)/g) ?? []).length, 4);

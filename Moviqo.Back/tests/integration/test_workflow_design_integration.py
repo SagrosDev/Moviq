@@ -18,6 +18,7 @@ from moviqo.modules.organizations.models import Membership, MembershipRole, Orga
 from moviqo.modules.workflow_design.application import (
     create_workflow_definition,
     publish_workflow_version,
+    read_workflow_draft,
     save_workflow_draft,
     validate_workflow_publication,
 )
@@ -303,6 +304,45 @@ def test_workflow_graph_save_advances_revision_once_and_records_semantic_audit(
         command_type="workflow-design.save-draft",
         event_type="workflow-design.process-field-updated",
     ).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_workflow_layout_only_save_reopens_exact_coordinates_and_audits(
+    django_user_model,
+) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow layout",
+        idempotency_key="workflow-create-layout",
+        request_hash=_request_hash("workflow-create-layout"),
+    )
+    layout = {"positions": {"start-1": {"x": -135.5, "y": 842.25}}}
+
+    saved = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft={**created["draft"], "layout": layout},
+        idempotency_key="workflow-save-layout",
+        request_hash=_request_hash("workflow-save-layout"),
+    )
+    reopened = read_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+    )
+
+    assert saved["revision"] == "2"
+    assert saved["draft"]["layout"] == layout
+    assert reopened is not None
+    assert reopened["draft"]["layout"] == layout
+    audit = TransactionalAuditRecord.objects.get(
+        command_type="workflow-design.save-draft",
+        event_type="workflow-design.graph-layout-updated",
+    )
+    assert audit.payload["elementIds"] == ["start-1"]
+    assert audit.payload["elementCount"] == 1
 
 
 @pytest.mark.django_db(transaction=True)

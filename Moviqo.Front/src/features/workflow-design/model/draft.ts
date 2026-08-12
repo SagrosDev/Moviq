@@ -11,6 +11,7 @@ export const normalizeWorkflowDraft = (
   draft: WorkflowDraftDocument
 ): WorkflowDraftDocument => ({
   ...draft,
+  layout: draft.layout ?? { positions: {} },
   publication: draft.publication ?? {
     starter: {
       mode: "unconfigured",

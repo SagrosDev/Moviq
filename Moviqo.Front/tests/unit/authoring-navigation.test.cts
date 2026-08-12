@@ -25,7 +25,8 @@ const draft: WorkflowDraftDocument = {
     { id: "end-1", type: "end", label: "End" }
   ],
   processFields: [],
-  formBindings: []
+  formBindings: [],
+  layout: { positions: {} }
 };
 
 test("workflow creation and task selection resolve canonical authoring destinations", () => {

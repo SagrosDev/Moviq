@@ -83,6 +83,14 @@ const normalizeGeneratedDraft = (
     width: contractValue(binding.width, ["full"]),
     label: binding.label ?? null
   })),
+  layout: {
+    positions: Object.fromEntries(
+      Object.entries(draft.layout?.positions ?? {}).map(([elementId, position]) => [
+        elementId,
+        { x: position.x, y: position.y }
+      ])
+    )
+  },
   ...(draft.publication ? {
     publication: {
       starter: {

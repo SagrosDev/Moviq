@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
+from math import isfinite
 from typing import Any
 
-CURRENT_DRAFT_SCHEMA_VERSION = 5
+CURRENT_DRAFT_SCHEMA_VERSION = 6
 CURRENT_DRAFT_FIELDS = frozenset(
     {
         "schemaVersion",
@@ -16,6 +17,7 @@ CURRENT_DRAFT_FIELDS = frozenset(
         "processFields",
         "formBindings",
         "publication",
+        "layout",
     }
 )
 CURRENT_ELEMENT_FIELDS = frozenset({"id", "type", "label"})
@@ -42,6 +44,8 @@ LEGACY_DRAFT_SCHEMA_VERSION = 1
 GRAPH_DRAFT_SCHEMA_VERSION = 2
 PUBLICATION_DRAFT_SCHEMA_VERSION = 3
 CONFIGURATION_DRAFT_SCHEMA_VERSION = 4
+CONNECTION_LABEL_DRAFT_SCHEMA_VERSION = 5
+MAXIMUM_LAYOUT_COORDINATE = 100_000
 SHORT_TEXT_MAXIMUM_LENGTH = 255
 STARTER_MODES = frozenset(
     {
@@ -98,6 +102,10 @@ def load_draft_document(payload: dict[str, Any]) -> dict[str, Any]:
 
     if schema_version == CONFIGURATION_DRAFT_SCHEMA_VERSION:
         payload = _upcast_v4_to_v5(payload)
+        schema_version = payload["schemaVersion"]
+
+    if schema_version == CONNECTION_LABEL_DRAFT_SCHEMA_VERSION:
+        payload = _upcast_v5_to_v6(payload)
     elif schema_version != CURRENT_DRAFT_SCHEMA_VERSION:
         raise UnsupportedDraftSchemaVersionError(
             f"Unsupported draft schema version: {schema_version}"
@@ -123,6 +131,7 @@ def dump_current_draft(payload: dict[str, Any]) -> dict[str, Any]:
     process_fields = payload.get("processFields", [])
     form_bindings = payload.get("formBindings", [])
     publication = payload.get("publication", {})
+    layout = payload.get("layout", {})
     if not isinstance(elements, list):
         raise WorkflowDraftSchemaError("Workflow draft elements must be a list.")
     if not isinstance(connections, list):
@@ -145,6 +154,10 @@ def dump_current_draft(payload: dict[str, Any]) -> dict[str, Any]:
         _normalize_form_binding(binding) for binding in form_bindings
     ]
     normalized_publication = _normalize_publication(publication)
+    normalized_layout = _normalize_layout(
+        layout,
+        element_ids={element["id"] for element in normalized_elements},
+    )
 
     return {
         "schemaVersion": payload["schemaVersion"],
@@ -157,6 +170,7 @@ def dump_current_draft(payload: dict[str, Any]) -> dict[str, Any]:
         "processFields": normalized_process_fields,
         "formBindings": normalized_form_bindings,
         "publication": normalized_publication,
+        "layout": normalized_layout,
     }
 
 
@@ -173,6 +187,7 @@ def new_workflow_draft_document(*, draft_id: str, workflow_id: str, name: str) -
             "processFields": [],
             "formBindings": [],
             "publication": {},
+            "layout": {"positions": {"start-1": {"x": 80, "y": 120}}},
         }
     )
 
@@ -258,12 +273,68 @@ def _upcast_v3_to_v4(payload: dict[str, Any]) -> dict[str, Any]:
 def _upcast_v4_to_v5(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         **payload,
-        "schemaVersion": CURRENT_DRAFT_SCHEMA_VERSION,
+        "schemaVersion": CONNECTION_LABEL_DRAFT_SCHEMA_VERSION,
         "connections": [
             {**connection, "label": connection.get("label")}
             for connection in payload.get("connections", [])
         ],
     }
+
+
+def _upcast_v5_to_v6(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **payload,
+        "schemaVersion": CURRENT_DRAFT_SCHEMA_VERSION,
+        "layout": {"positions": {}},
+    }
+
+
+def _normalize_layout(
+    payload: Any,
+    *,
+    element_ids: set[str],
+) -> dict[str, dict[str, dict[str, int | float]]]:
+    if not isinstance(payload, dict):
+        raise WorkflowDraftSchemaError("Workflow draft layout must be an object.")
+    unknown_fields = sorted(set(payload) - {"positions"})
+    if unknown_fields:
+        raise UnknownDraftFieldError(
+            "Unknown workflow layout fields: " + ", ".join(unknown_fields)
+        )
+    positions = payload.get("positions", {})
+    if not isinstance(positions, dict):
+        raise WorkflowDraftSchemaError(
+            "Workflow draft layout positions must be an object."
+        )
+
+    normalized_positions: dict[str, dict[str, int | float]] = {}
+    for element_id, position in positions.items():
+        if not isinstance(element_id, str) or element_id not in element_ids:
+            raise WorkflowDraftSchemaError(
+                "Workflow draft layout positions must reference existing elements."
+            )
+        if not isinstance(position, dict) or set(position) != {"x", "y"}:
+            raise WorkflowDraftSchemaError(
+                "Workflow draft layout positions must contain only x and y coordinates."
+            )
+        normalized_position: dict[str, int | float] = {}
+        for axis in ("x", "y"):
+            coordinate = position[axis]
+            if (
+                isinstance(coordinate, bool)
+                or not isinstance(coordinate, int | float)
+                or not isfinite(coordinate)
+                or abs(coordinate) > MAXIMUM_LAYOUT_COORDINATE
+            ):
+                raise WorkflowDraftSchemaError(
+                    "Workflow draft layout coordinates must be finite numbers "
+                    f"between {-MAXIMUM_LAYOUT_COORDINATE} and "
+                    f"{MAXIMUM_LAYOUT_COORDINATE}."
+                )
+            normalized_position[axis] = coordinate
+        normalized_positions[element_id] = normalized_position
+
+    return {"positions": normalized_positions}
 
 
 def _normalize_publication(payload: dict[str, Any]) -> dict[str, Any]:

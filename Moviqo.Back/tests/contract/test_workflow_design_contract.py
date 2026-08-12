@@ -4,6 +4,7 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.test import Client
 
+from moviqo.modules.governance.models import TransactionalAuditRecord
 from moviqo.modules.organizations.models import (
     Membership,
     MembershipRole,
@@ -19,7 +20,7 @@ def _publishable_workflow_payload(
     draft_id: str,
 ) -> dict[str, object]:
     return {
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "draftId": draft_id,
         "workflowId": workflow_id,
         "name": "Workflow intake",
@@ -65,6 +66,13 @@ def _publishable_workflow_payload(
                 "mode": "workflowInitiator",
                 "membershipId": None,
             },
+        },
+        "layout": {
+            "positions": {
+                "start-1": {"x": 80, "y": 120},
+                "task-1": {"x": 240, "y": 160},
+                "end-1": {"x": 420, "y": 120},
+            }
         },
     }
 
@@ -121,7 +129,7 @@ def test_workflow_creation_returns_authoritative_draft_payload(workflow_design_m
         "teams": [],
     }
     assert payload["draft"] == {
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "draftId": payload["draft"]["draftId"],
         "workflowId": payload["workflowId"],
         "name": "Workflow intake",
@@ -141,6 +149,7 @@ def test_workflow_creation_returns_authoritative_draft_payload(workflow_design_m
                 "membershipId": None,
             },
         },
+        "layout": {"positions": {"start-1": {"x": 80, "y": 120}}},
     }
 
 
@@ -535,7 +544,7 @@ def test_workflow_catalog_lists_authorized_workflows(workflow_design_member) -> 
                 "workflowId": created.json()["workflowId"],
                 "name": "Workflow intake",
                 "revision": "1",
-                "schemaVersion": 5,
+                "schemaVersion": 6,
                 "updatedAt": response.json()["items"][0]["updatedAt"],
             }
         ]
@@ -580,7 +589,7 @@ def test_workflow_draft_detail_returns_authoritative_server_payload(
         "name": "Workflow intake",
         "revision": "1",
         "draft": {
-            "schemaVersion": 5,
+            "schemaVersion": 6,
             "draftId": response.json()["draft"]["draftId"],
             "workflowId": workflow_id,
             "name": "Workflow intake",
@@ -600,6 +609,7 @@ def test_workflow_draft_detail_returns_authoritative_server_payload(
                     "membershipId": None,
                 },
             },
+            "layout": {"positions": {"start-1": {"x": 80, "y": 120}}},
         },
     }
 
@@ -687,7 +697,7 @@ def test_workflow_draft_save_returns_authoritative_graph_payload(
         "name": "Workflow intake",
         "revision": "2",
         "draft": {
-            "schemaVersion": 5,
+            "schemaVersion": 6,
             "draftId": draft_id,
             "workflowId": workflow_id,
             "name": "Workflow intake",
@@ -746,8 +756,52 @@ def test_workflow_draft_save_returns_authoritative_graph_payload(
                     "membershipId": None,
                 },
             },
+            "layout": {"positions": {"start-1": {"x": 80, "y": 120}}},
         },
     }
+
+
+@pytest.mark.django_db
+def test_workflow_layout_only_save_round_trips_exact_positions_and_audits_once(
+    workflow_design_member,
+) -> None:
+    user, _organization, _membership = workflow_design_member
+    client = Client()
+    client.force_login(user)
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Workflow layout"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-layout"},
+    ).json()
+    moved_layout = {
+        "positions": {"start-1": {"x": -135.5, "y": 842.25}}
+    }
+
+    saved = client.put(
+        f"/api/v1/workflow-design/workflows/{created['workflowId']}/draft/",
+        data={
+            "expectedRevision": "1",
+            "draft": {**created["draft"], "layout": moved_layout},
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-layout"},
+    )
+    reopened = client.get(
+        f"/api/v1/workflow-design/workflows/{created['workflowId']}/draft/"
+    )
+
+    assert saved.status_code == 200
+    assert saved.json()["revision"] == "2"
+    assert saved.json()["draft"]["layout"] == moved_layout
+    assert reopened.status_code == 200
+    assert reopened.json()["draft"]["layout"] == moved_layout
+    audit = TransactionalAuditRecord.objects.get(
+        command_type="workflow-design.save-draft",
+        event_type="workflow-design.graph-layout-updated",
+    )
+    assert audit.payload["elementIds"] == ["start-1"]
+    assert audit.payload["elementCount"] == 1
 
 
 @pytest.mark.django_db
@@ -1634,7 +1688,7 @@ def test_workflow_publish_returns_authoritative_published_version_payload(
         "versionNumber": 1,
         "publishedAt": payload["publishedVersion"]["publishedAt"],
         "sourceRevision": "2",
-        "schemaVersion": 5,
+        "schemaVersion": 6,
     }
     assert WorkflowVersion.objects.filter(workflow_id=workflow_id).count() == 1
 

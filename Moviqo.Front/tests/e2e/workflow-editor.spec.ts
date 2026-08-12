@@ -31,7 +31,7 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
     throw error;
   });
   let savedDraft: Record<string, unknown> = {
-    schemaVersion: 5,
+    schemaVersion: 6,
     draftId: "01987df4-ae8a-7000-8000-000000000211",
     workflowId,
     name: "Ruta de aprobacion",
@@ -39,7 +39,8 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
     elements: [{ id: "start-1", type: "start", label: "Start" }],
     connections: [],
     processFields: [],
-    formBindings: []
+    formBindings: [],
+    layout: { positions: { "start-1": { x: 80, y: 120 } } }
   };
   let revision = "1";
   let saveBody: Record<string, unknown> | null = null;
@@ -58,7 +59,7 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
     if (route.request().method() === "PUT") {
       saveBody = route.request().postDataJSON() as Record<string, unknown>;
       savedDraft = saveBody.draft as Record<string, unknown>;
-      revision = "2";
+      revision = String(Number(revision) + 1);
     }
     await route.fulfill({
       status: 200,
@@ -88,7 +89,7 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
           versionNumber: 1,
           publishedAt: "2026-08-11T12:00:00Z",
           sourceRevision: revision,
-          schemaVersion: 5
+          schemaVersion: 6
         }
       })
     });
@@ -120,6 +121,28 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
   );
   await page.getByLabel("Etiqueta de la conexión").fill("Solicitud revisada");
 
+  const taskNodeBeforeSave = page.getByRole("group", { name: "Tarea: Revisar solicitud" });
+  const taskBox = await taskNodeBeforeSave.boundingBox();
+  if (!taskBox) throw new Error("Task node was not measurable before dragging.");
+  await page.mouse.move(taskBox.x + taskBox.width / 2, taskBox.y + taskBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    taskBox.x + taskBox.width / 2 + 30,
+    taskBox.y + taskBox.height / 2 + 20,
+    { steps: 5 }
+  );
+  await page.mouse.up();
+  await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeEnabled();
+  await taskNodeBeforeSave.focus();
+  await page.keyboard.press("ArrowDown");
+  const taskTransformBeforeSave = await taskNodeBeforeSave.evaluate(
+    (node) => (node as HTMLElement).style.transform
+  );
+  const endNodeBeforeSave = page.getByRole("group", { name: "Fin: Fin" });
+  const endTransformBeforeSave = await endNodeBeforeSave.evaluate(
+    (node) => (node as HTMLElement).style.transform
+  );
+
   await page.keyboard.press("Control+S");
   await expect(page.getByText(/2/).filter({ hasText: /Revisi/ })).toBeVisible();
   expect(saveBody).toMatchObject({ expectedRevision: "1" });
@@ -127,6 +150,7 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
   const savedDocument = saveBody?.draft as {
     elements: Array<Record<string, unknown>>;
     connections: Array<Record<string, unknown>>;
+    layout: { positions: Record<string, { x: number; y: number }> };
   };
   expect(savedDocument.elements.find((element) => element.id === "task-1")).toMatchObject({
     id: "task-1",
@@ -139,16 +163,43 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
     targetId: "end-1",
     label: "Solicitud revisada"
   });
+  expect(savedDocument.layout.positions["task-1"]).toBeDefined();
+  expect(savedDocument.layout.positions["end-1"]).toBeDefined();
 
   await page.reload();
   const taskNode = page.getByRole("group", { name: "Tarea: Revisar solicitud" });
   await expect(taskNode).toBeVisible();
+  const taskVisual = page.locator("#workflow-element-task-1");
+  const startVisual = page.locator("#workflow-element-start-1");
+  const endVisual = page.locator("#workflow-element-end-1");
+  await expect(taskVisual).toHaveCSS("font-size", "12px");
+  await expect(taskVisual).toHaveCSS("min-width", "104px");
+  await expect(taskVisual).toHaveCSS("min-height", "40px");
+  await expect(startVisual).toHaveCSS("width", "48px");
+  await expect(startVisual).toHaveCSS("height", "48px");
+  await expect(endVisual).toHaveCSS("width", "48px");
+  await expect(endVisual).toHaveCSS("height", "48px");
+  expect(await taskNode.evaluate((node) => (node as HTMLElement).style.transform))
+    .toBe(taskTransformBeforeSave);
+  expect(await page.getByRole("group", { name: "Fin: Fin" }).evaluate(
+    (node) => (node as HTMLElement).style.transform
+  )).toBe(endTransformBeforeSave);
+  const handle = page.locator("#workflow-element-task-1 .react-flow__handle-right");
+  await expect(handle).toHaveCSS("width", "44px");
+  await expect(handle).toHaveCSS("height", "44px");
+  expect(await handle.evaluate((node) => getComputedStyle(node, "::before").width)).toBe("12px");
   await taskNode.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Nombre de la tarea")).toHaveValue("Revisar solicitud");
-  const positionBefore = await taskNode.boundingBox();
+  const taskPositionBefore = savedDocument.layout.positions["task-1"];
   await page.keyboard.press("ArrowRight");
-  await expect.poll(async () => (await taskNode.boundingBox())?.x).toBeGreaterThan(positionBefore?.x ?? 0);
+  await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeEnabled();
+  await page.keyboard.press("Control+S");
+  const keyboardSavedDocument = saveBody?.draft as {
+    layout: { positions: Record<string, { x: number; y: number }> };
+  };
+  expect(keyboardSavedDocument.layout.positions["task-1"]?.x)
+    .toBe((taskPositionBefore?.x ?? 0) + 5);
   await expect(page.getByText("Solicitud revisada", { exact: true })).toBeVisible();
   const labeledEdge = page.locator('.react-flow__edge[data-id="connection-2"]');
   await labeledEdge.focus();
@@ -156,9 +207,9 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
   await expect(page.getByLabel("Etiqueta de la conexión")).toHaveValue("Solicitud revisada");
   await page.getByRole("button", { name: /Validar publicaci/ }).click();
   await expect(page.getByText(/listo para publicar/)).toBeVisible();
-  expect(validationBody).toEqual({ expectedRevision: "2" });
+  expect(validationBody).toEqual({ expectedRevision: "3" });
 
   await page.getByRole("button", { name: /Publicar versi/ }).click();
   await expect(page.getByText(/versi.n publicada.*Versi.n 1/i)).toBeVisible();
-  expect(publishBody).toEqual({ expectedRevision: "2" });
+  expect(publishBody).toEqual({ expectedRevision: "3" });
 });

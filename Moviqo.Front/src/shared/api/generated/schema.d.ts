@@ -730,6 +730,7 @@ export interface components {
             processFields?: components["schemas"]["WorkflowProcessField"][];
             formBindings?: components["schemas"]["WorkflowFormBinding"][];
             publication?: components["schemas"]["WorkflowPublication"];
+            layout?: components["schemas"]["WorkflowLayout"];
         };
         WorkflowDraftSaveRequest: {
             expectedRevision: string;
@@ -747,6 +748,17 @@ export interface components {
             position?: number;
             width?: string;
             label?: string | null;
+        };
+        WorkflowLayout: {
+            positions?: {
+                [key: string]: components["schemas"]["WorkflowPosition"];
+            };
+        };
+        WorkflowPosition: {
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
         };
         WorkflowProcessField: {
             id?: string;

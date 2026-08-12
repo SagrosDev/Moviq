@@ -23,6 +23,7 @@ from moviqo.modules.organizations.application import (
     resolve_tenant_context,
 )
 from moviqo.modules.organizations.application.views import AuthenticatedRequestPermission
+from moviqo.modules.workflow_design.application.schema import MAXIMUM_LAYOUT_COORDINATE
 from moviqo.modules.workflow_design.application.services import (
     WorkflowDraftRevisionConflictError,
     WorkflowDraftValidationAPIError,
@@ -89,6 +90,24 @@ class WorkflowConfigurationDirectorySerializer(serializers.Serializer):
     teams = WorkflowDirectoryTeamSerializer(many=True)
 
 
+class WorkflowPositionSerializer(serializers.Serializer):
+    x = serializers.FloatField(
+        min_value=-MAXIMUM_LAYOUT_COORDINATE,
+        max_value=MAXIMUM_LAYOUT_COORDINATE,
+    )
+    y = serializers.FloatField(
+        min_value=-MAXIMUM_LAYOUT_COORDINATE,
+        max_value=MAXIMUM_LAYOUT_COORDINATE,
+    )
+
+
+class WorkflowLayoutSerializer(serializers.Serializer):
+    positions = serializers.DictField(
+        child=WorkflowPositionSerializer(),
+        required=False,
+    )
+
+
 class WorkflowDraftDocumentSerializer(serializers.Serializer):
     schemaVersion = serializers.IntegerField(min_value=1)
     draftId = serializers.CharField()
@@ -131,6 +150,7 @@ class WorkflowDraftDocumentSerializer(serializers.Serializer):
     processFields = WorkflowProcessFieldSerializer(many=True, required=False)
     formBindings = WorkflowFormBindingSerializer(many=True, required=False)
     publication = WorkflowPublicationSerializer(required=False)
+    layout = WorkflowLayoutSerializer(required=False)
 
 
 class WorkflowDraftSaveRequestSerializer(serializers.Serializer):

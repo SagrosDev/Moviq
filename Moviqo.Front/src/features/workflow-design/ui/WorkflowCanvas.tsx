@@ -28,7 +28,6 @@ import type { WorkflowDraftDocument, WorkflowElementType } from "../model/types"
 type WorkflowCanvasProps = {
   draft: WorkflowDraftDocument;
   disabled: boolean;
-  positions: Record<string, XYPosition>;
   selectedElementId: string | null;
   selectedConnectionId: string | null;
   pointerElementType: WorkflowElementType | null;
@@ -41,9 +40,9 @@ type WorkflowCanvasProps = {
 };
 
 const nodeClasses: Record<WorkflowElementType, string> = {
-  start: "size-moviqo-node-terminal rounded-full border-moviqo-success bg-moviqo-surface-raised p-moviqo-2 text-moviqo-label",
-  task: "min-h-moviqo-node-task-height min-w-moviqo-node-task-width rounded-moviqo-control border-moviqo-accent bg-moviqo-surface-raised px-moviqo-3 py-moviqo-2 text-moviqo-label",
-  end: "size-moviqo-node-terminal rounded-full border-moviqo-ink-primary bg-moviqo-surface-soft p-moviqo-2 text-moviqo-label"
+  start: "size-moviqo-node-terminal rounded-full border-moviqo-success bg-moviqo-surface-raised p-moviqo-1 text-moviqo-node",
+  task: "min-h-moviqo-node-task-height min-w-moviqo-node-task-width rounded-moviqo-control border-moviqo-accent bg-moviqo-surface-raised px-moviqo-2 py-moviqo-1 text-moviqo-node",
+  end: "size-moviqo-node-terminal rounded-full border-moviqo-ink-primary bg-moviqo-surface-soft p-moviqo-1 text-moviqo-node"
 };
 
 const WorkflowNode = ({ data, selected }: NodeProps<WorkflowFlowNode>) => {
@@ -63,7 +62,7 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowFlowNode>) => {
       {element.type !== "start" ? (
         <Handle
           aria-label={t("workflowDesign.editor.incomingHandle")}
-          className="moviqo-workflow-handle !border-2 !border-moviqo-primary !bg-moviqo-surface-raised"
+          className="moviqo-workflow-handle"
           position={Position.Left}
           type="target"
         />
@@ -73,7 +72,7 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowFlowNode>) => {
       {element.type !== "end" ? (
         <Handle
           aria-label={t("workflowDesign.editor.outgoingHandle")}
-          className="moviqo-workflow-handle !border-2 !border-moviqo-primary !bg-moviqo-surface-raised"
+          className="moviqo-workflow-handle"
           position={Position.Right}
           type="source"
         />
@@ -120,7 +119,6 @@ const isWorkflowElementType = (value: string): value is WorkflowElementType =>
 export const WorkflowCanvas = ({
   draft,
   disabled,
-  positions,
   selectedElementId,
   selectedConnectionId,
   pointerElementType,
@@ -134,8 +132,8 @@ export const WorkflowCanvas = ({
   const { t } = useLanguage();
   const instanceRef = useRef<ReactFlowInstance<WorkflowFlowNode, WorkflowFlowEdge> | null>(null);
   const flow = useMemo(
-    () => deriveWorkflowFlowElements(draft, positions),
-    [draft, positions]
+    () => deriveWorkflowFlowElements(draft),
+    [draft]
   );
   const nodes = useMemo(
     () => flow.nodes.map((node) => {
@@ -305,6 +303,7 @@ export const WorkflowCanvas = ({
           deleteKeyCode={null}
           edges={edges}
           edgeTypes={edgeTypes}
+          elevateEdgesOnSelect={false}
           elementsSelectable={!disabled}
           fitView
           nodes={nodes}

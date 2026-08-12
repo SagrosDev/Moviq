@@ -17,6 +17,15 @@ export type WorkflowDraftConnection = {
   label?: string | null;
 };
 
+export type WorkflowLayoutPosition = {
+  x: number;
+  y: number;
+};
+
+export type WorkflowDraftLayout = {
+  positions: Record<string, WorkflowLayoutPosition>;
+};
+
 export type WorkflowProcessField = {
   id: string;
   kind: WorkflowProcessFieldKind;
@@ -93,6 +102,7 @@ export type WorkflowDraftDocument = {
   processFields: WorkflowProcessField[];
   formBindings: WorkflowTaskFormControl[];
   publication?: WorkflowPublicationConfiguration;
+  layout: WorkflowDraftLayout;
 };
 
 export type WorkflowCreationAccepted = {

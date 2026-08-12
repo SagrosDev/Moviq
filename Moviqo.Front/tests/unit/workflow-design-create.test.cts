@@ -41,7 +41,7 @@ const createAccepted = (
   name: "Workflow intake",
   revision,
   draft: {
-    schemaVersion: 5,
+    schemaVersion: 6,
     draftId: "01987df4-ae8a-7000-8000-000000000111",
     workflowId: "01987df4-ae8a-7000-8000-000000000110",
     name: "Workflow intake",
@@ -50,6 +50,7 @@ const createAccepted = (
     connections: [],
     processFields: [],
     formBindings: [],
+    layout: { positions: {} },
     ...draftOverrides
   }
 });
@@ -185,7 +186,8 @@ test("guided controls create stable sequential IDs for multiple tasks", () => {
     elements: [{ id: "task-1", type: "task", label: "Task" }],
     connections: [],
     processFields: [],
-    formBindings: []
+    formBindings: [],
+    layout: { positions: {} }
   };
 
   const updated = addGuidedWorkflowElement(draft, "task", labels);
@@ -224,7 +226,8 @@ test("guided controls can create one reusable short text field for the first tas
     elements: [{ id: "task-1", type: "task", label: "Task" }],
     connections: [],
     processFields: [],
-    formBindings: []
+    formBindings: [],
+    layout: { positions: {} }
   };
 
   const updated = upsertShortTextProcessField(draft, {
@@ -271,7 +274,8 @@ test("rebinding keeps the same field identity instead of duplicating the definit
         maximumLength: 255
       }
     ],
-    formBindings: []
+    formBindings: [],
+    layout: { positions: {} }
   };
 
   const bound = setFirstTaskFieldBinding(draft, true);
@@ -396,13 +400,18 @@ test("terminal idempotency reuse clears the failed command until the user saves 
 
 test("stale save conflicts preserve local work and support explicit reapply", () => {
   const accepted = createAccepted();
-  const edited = reduceWorkflowDraftEditorState(
+  const withStart = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
     {
       type: "start-added",
       labels: { start: "Start", task: "Task", end: "End" }
     }
   );
+  const edited = reduceWorkflowDraftEditorState(withStart, {
+    type: "element-positioned",
+    elementId: "start-1",
+    position: { x: 320, y: 240 }
+  });
   const conflicted = reduceWorkflowDraftEditorState(edited, {
     type: "save-failed",
     errorCode: "workflow_draft_revision_conflict",
@@ -431,6 +440,7 @@ test("stale save conflicts preserve local work and support explicit reapply", ()
   assert.equal(reloaded.conflictLatestLoaded, true);
   assert.equal(reapplied.saveStatus, "unsaved");
   assert.equal(reapplied.localDraft.elements.length, 1);
+  assert.deepEqual(reapplied.localDraft.layout.positions["start-1"], { x: 320, y: 240 });
   assert.equal(reapplied.lastAcknowledgedRevision, "2");
 });
 

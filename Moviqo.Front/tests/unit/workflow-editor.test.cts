@@ -29,7 +29,7 @@ const createAccepted = (
   name: "Approvals",
   revision,
   draft: {
-    schemaVersion: 5,
+    schemaVersion: 6,
     draftId: "draft-1",
     workflowId: "workflow-1",
     name: "Approvals",
@@ -38,6 +38,7 @@ const createAccepted = (
     connections: [],
     processFields: [],
     formBindings: [],
+    layout: { positions: {} },
     ...draftOverrides
   }
 });
@@ -56,10 +57,9 @@ const completeDraft = (): WorkflowDraftDocument => createAccepted({
 
 test("React Flow elements are derived from Moviqo IDs without changing the document", () => {
   const draft = completeDraft();
+  draft.layout.positions["task-1"] = { x: 420, y: 180 };
   const before = structuredClone(draft);
-  const flow = deriveWorkflowFlowElements(draft, {
-    "task-1": { x: 420, y: 180 }
-  });
+  const flow = deriveWorkflowFlowElements(draft);
 
   assert.deepEqual(flow.nodes.map((node) => [node.id, node.type]), [
     ["start-1", "start"],
@@ -90,12 +90,90 @@ test("fallback positions follow the saved topology before disconnected element o
 
   assert.deepEqual(workflowTopologyOrder(draft), ["start-1", "task-1", "end-1", "task-2"]);
   const positions = new Map(
-    deriveWorkflowFlowElements(draft, {}).nodes.map((node) => [node.id, node.position])
+    deriveWorkflowFlowElements(draft).nodes.map((node) => [node.id, node.position])
   );
   assert.deepEqual(positions.get("start-1"), { x: 80, y: 120 });
   assert.deepEqual(positions.get("task-1"), { x: 280, y: 120 });
   assert.deepEqual(positions.get("end-1"), { x: 480, y: 120 });
   assert.deepEqual(positions.get("task-2"), { x: 680, y: 120 });
+});
+
+test("partial layouts allocate fallback positions away from saved nodes", () => {
+  const draft = completeDraft();
+  draft.layout.positions["start-1"] = { x: 280, y: 120 };
+  const positions = new Map(
+    deriveWorkflowFlowElements(draft).nodes.map((node) => [node.id, node.position])
+  );
+
+  assert.deepEqual(positions.get("start-1"), { x: 280, y: 120 });
+  assert.notDeepEqual(positions.get("task-1"), positions.get("start-1"));
+  assert.notDeepEqual(positions.get("end-1"), positions.get("task-1"));
+});
+
+test("pointer and keyboard position commands update the authoritative dirty draft", () => {
+  const initial = createWorkflowDraftEditorState(
+    createWorkflowDraftState(createAccepted(completeDraft(), "3"))
+  );
+  const moved = reduceWorkflowDraftEditorState(initial, {
+    type: "element-positioned",
+    elementId: "task-1",
+    position: { x: 415.5, y: -72 }
+  });
+
+  assert.equal(moved.hasLocalChanges, true);
+  assert.equal(moved.saveStatus, "unsaved");
+  assert.deepEqual(moved.localDraft.layout.positions["task-1"], {
+    x: 415.5,
+    y: -72
+  });
+  assert.deepEqual(deriveWorkflowFlowElements(moved.localDraft).nodes[1]?.position, {
+    x: 415.5,
+    y: -72
+  });
+});
+
+test("stale position callbacks cannot add layout entries for missing elements", () => {
+  const initial = createWorkflowDraftEditorState(
+    createWorkflowDraftState(createAccepted(completeDraft(), "3"))
+  );
+  const unchanged = reduceWorkflowDraftEditorState(initial, {
+    type: "element-positioned",
+    elementId: "removed-task",
+    position: { x: 200, y: 100 }
+  });
+
+  assert.equal(unchanged, initial);
+  assert.equal(unchanged.localDraft.layout.positions["removed-task"], undefined);
+});
+
+test("add-at-position stores the new element coordinate in the draft", () => {
+  const initial = createWorkflowDraftEditorState(createWorkflowDraftState(createAccepted()));
+  const added = reduceWorkflowDraftEditorState(initial, {
+    type: "element-added",
+    elementType: "task",
+    labels: { start: "Start", task: "Task", end: "End" },
+    position: { x: 260, y: 90 }
+  });
+
+  assert.deepEqual(added.localDraft.layout.positions["task-1"], { x: 260, y: 90 });
+});
+
+test("keyboard-added elements persist their fallback canvas coordinate", () => {
+  const initial = createWorkflowDraftEditorState(createWorkflowDraftState(createAccepted({
+    elements: [{ id: "start-1", type: "start", label: "Start" }],
+    layout: { positions: { "start-1": { x: 80, y: 120 } } }
+  })));
+  const added = reduceWorkflowDraftEditorState(initial, {
+    type: "element-added",
+    elementType: "task",
+    labels: { start: "Start", task: "Task", end: "End" }
+  });
+
+  assert.deepEqual(added.localDraft.layout.positions["task-1"], { x: 280, y: 120 });
+  assert.deepEqual(
+    deriveWorkflowFlowElements(added.localDraft).nodes.find((node) => node.id === "task-1")?.position,
+    { x: 280, y: 120 }
+  );
 });
 
 test("Task and connection labels remain authoritative reducer edits", () => {

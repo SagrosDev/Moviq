@@ -7,8 +7,6 @@ import type {
 } from "./types";
 import type { WorkflowElementLabels } from "./editor";
 
-export type WorkflowFlowPositions = Record<string, XYPosition>;
-
 export type WorkflowFlowNodeData = Record<string, unknown> & {
   element: WorkflowDraftElement;
 };
@@ -49,10 +47,17 @@ export type WorkflowConnectResult =
          | "maximum-cardinality";
     };
 
+const FALLBACK_COLUMNS = 500;
 const fallbackPosition = (index: number): XYPosition => ({
-  x: 80 + index * 200,
-  y: 120
+  x: 80 + (index % FALLBACK_COLUMNS) * 200,
+  y: 120 + Math.floor(index / FALLBACK_COLUMNS) * 160
 });
+
+const overlapsPosition = (candidate: XYPosition, occupied: XYPosition[]) =>
+  occupied.some((position) => (
+    Math.abs(position.x - candidate.x) < 160
+    && Math.abs(position.y - candidate.y) < 80
+  ));
 
 export const workflowTopologyOrder = (draft: WorkflowDraftDocument): string[] => {
   const visited = new Set<string>();
@@ -76,18 +81,29 @@ export const workflowTopologyOrder = (draft: WorkflowDraftDocument): string[] =>
 };
 
 export const deriveWorkflowFlowElements = (
-  draft: WorkflowDraftDocument,
-  positions: WorkflowFlowPositions
+  draft: WorkflowDraftDocument
 ): { nodes: WorkflowFlowNode[]; edges: WorkflowFlowEdge[] } => {
   const topologyIndex = new Map(
     workflowTopologyOrder(draft).map((elementId, index) => [elementId, index])
   );
+  const occupiedPositions = Object.values(draft.layout.positions);
+  const positionFor = (elementId: string): XYPosition => {
+    const saved = draft.layout.positions[elementId];
+    if (saved) return saved;
+    let fallbackIndex = topologyIndex.get(elementId) ?? topologyIndex.size;
+    let fallback = fallbackPosition(fallbackIndex);
+    while (overlapsPosition(fallback, occupiedPositions)) {
+      fallbackIndex += 1;
+      fallback = fallbackPosition(fallbackIndex);
+    }
+    occupiedPositions.push(fallback);
+    return fallback;
+  };
   return {
     nodes: draft.elements.map((element) => ({
       id: element.id,
       type: element.type,
-      position: positions[element.id]
-        ?? fallbackPosition(topologyIndex.get(element.id) ?? topologyIndex.size),
+      position: positionFor(element.id),
       data: { element }
     })),
     edges: draft.connections.map((connection) => ({

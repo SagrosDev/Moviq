@@ -24,10 +24,13 @@ def test_new_workflow_draft_seeds_one_start_step() -> None:
         name="Workflow intake",
     )
 
-    assert draft["schemaVersion"] == 5
+    assert draft["schemaVersion"] == 6
     assert draft["elements"] == [
         {"id": "start-1", "type": "start", "label": "Start"}
     ]
+    assert draft["layout"] == {
+        "positions": {"start-1": {"x": 80, "y": 120}}
+    }
 
 
 def test_schema_registry_upcasts_v4_connections_with_optional_labels() -> None:
@@ -56,8 +59,62 @@ def test_schema_registry_upcasts_v4_connections_with_optional_labels() -> None:
         }
     )
 
-    assert loaded["schemaVersion"] == 5
+    assert loaded["schemaVersion"] == 6
     assert loaded["connections"][0]["label"] is None
+    assert loaded["layout"] == {"positions": {}}
+
+
+def test_schema_registry_upcasts_v5_with_an_empty_layout() -> None:
+    loaded = load_draft_document(
+        {
+            "schemaVersion": 5,
+            "draftId": "draft-1",
+            "workflowId": "workflow-1",
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": [{"id": "task-1", "type": "task", "label": "Review"}],
+            "connections": [],
+            "processFields": [],
+            "formBindings": [],
+            "publication": {},
+        }
+    )
+
+    assert loaded["schemaVersion"] == 6
+    assert loaded["layout"] == {"positions": {}}
+
+
+@pytest.mark.parametrize(
+    "positions",
+    [
+        {"missing": {"x": 10, "y": 20}},
+        {"task-1": {"x": float("inf"), "y": 20}},
+        {"task-1": {"x": True, "y": 20}},
+        {"task-1": {"x": 100_001, "y": 20}},
+        {"task-1": {"x": 10}},
+    ],
+)
+def test_schema_registry_rejects_invalid_layout_positions(
+    positions: dict[str, object],
+) -> None:
+    with pytest.raises(ValueError):
+        dump_current_draft(
+            {
+                "schemaVersion": 6,
+                "draftId": "draft-1",
+                "workflowId": "workflow-1",
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "task-1", "type": "task", "label": "Review"}
+                ],
+                "connections": [],
+                "processFields": [],
+                "formBindings": [],
+                "publication": {},
+                "layout": {"positions": positions},
+            }
+        )
 
 
 def test_draft_integrity_handles_a_long_linear_graph_without_recursion() -> None:
@@ -100,7 +157,7 @@ def test_schema_registry_reads_supported_historical_fixture() -> None:
     loaded = load_draft_document(payload)
 
     assert loaded == {
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "draftId": "01987df4-ae8a-7000-8000-000000000111",
         "workflowId": "01987df4-ae8a-7000-8000-000000000110",
         "name": "Workflow intake",
@@ -120,6 +177,7 @@ def test_schema_registry_reads_supported_historical_fixture() -> None:
                 "membershipId": None,
             },
         },
+        "layout": {"positions": {}},
     }
 
 
@@ -249,7 +307,7 @@ def test_schema_registry_upcasts_story_1_22_graph_fixture() -> None:
         }
     )
 
-    assert loaded["schemaVersion"] == 5
+    assert loaded["schemaVersion"] == 6
     assert loaded["processFields"] == []
     assert loaded["formBindings"] == []
     assert loaded["publication"] == {

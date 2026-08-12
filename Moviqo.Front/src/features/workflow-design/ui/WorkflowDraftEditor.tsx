@@ -196,7 +196,6 @@ export const WorkflowDraftEditor = ({
           disabled={editingDisabled}
           draft={state.localDraft}
           pointerElementType={pointerElementType}
-          positions={state.presentationPositions}
           selectedConnectionId={state.selectedConnectionId}
           selectedElementId={state.selectedElementId}
           onAddAtPosition={addAtPosition}

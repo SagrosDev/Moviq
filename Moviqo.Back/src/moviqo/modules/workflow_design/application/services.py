@@ -493,17 +493,19 @@ def _save_workflow_draft_side_effects(
             previous_document=previous_document,
             draft=draft,
         ),
+        "layout": draft.get("layout", previous_document["layout"]),
     }
     try:
+        validated_document = validate_workflow_draft_integrity(candidate_document)
         previous_start_ids = {
             element["id"]
             for element in previous_document["elements"]
             if element["type"] == "start"
         }
         candidate_start_ids = {
-            element.get("id")
-            for element in candidate_document["elements"]
-            if isinstance(element, dict) and element.get("type") == "start"
+            element["id"]
+            for element in validated_document["elements"]
+            if element["type"] == "start"
         }
         if previous_start_ids and not previous_start_ids.issubset(candidate_start_ids):
             raise WorkflowDraftValidationError(
@@ -515,7 +517,6 @@ def _save_workflow_draft_side_effects(
                     }
                 ]
             )
-        validated_document = validate_workflow_draft_integrity(candidate_document)
         publication_issues = validate_publication_configuration(
             tenant_context=tenant_context,
             publication=validated_document["publication"],
@@ -1194,6 +1195,28 @@ def _collect_graph_audit_events(
                     },
                 )
             )
+
+    previous_positions = previous_document["layout"]["positions"]
+    current_positions = current_document["layout"]["positions"]
+    moved_element_ids = sorted(
+        element_id
+        for element_id in set(previous_positions) | set(current_positions)
+        if previous_positions.get(element_id) != current_positions.get(element_id)
+    )
+    if moved_element_ids:
+        events.append(
+            (
+                "workflow-design.graph-layout-updated",
+                {
+                    "workflowId": workflow_id,
+                    "draftId": draft_id,
+                    "revision": next_revision,
+                    "previousRevision": previous_revision,
+                    "elementIds": moved_element_ids,
+                    "elementCount": len(moved_element_ids),
+                },
+            )
+        )
 
     if not events:
         events.append(

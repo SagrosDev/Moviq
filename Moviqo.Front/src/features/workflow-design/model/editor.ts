@@ -25,7 +25,11 @@ import type {
   WorkflowElementType
 } from "./types";
 import type { XYPosition } from "@xyflow/react";
-import { addWorkflowElementCommand, adaptFlowConnection } from "./flow";
+import {
+  addWorkflowElementCommand,
+  adaptFlowConnection,
+  deriveWorkflowFlowElements
+} from "./flow";
 
 const workflowDesignClient = createApiClient({ baseUrl: "/api/v1" });
 export type WorkflowSaveCommand = {
@@ -74,7 +78,6 @@ export type WorkflowDraftEditorState = {
   focusedChecklistSection: "starter" | "assignment" | "canvas" | "field" | null;
   selectedElementId: string | null;
   selectedConnectionId: string | null;
-  presentationPositions: Record<string, XYPosition>;
   lastOperation: WorkflowEditorOperation | null;
   operationSequence: number;
   lastValidatedRevision: DraftRevision | null;
@@ -123,7 +126,6 @@ export const createWorkflowDraftEditorState = (
   focusedChecklistSection: null,
   selectedElementId: null,
   selectedConnectionId: null,
-  presentationPositions: {},
   lastOperation: null,
   operationSequence: 0,
   lastValidatedRevision: null,
@@ -190,7 +192,6 @@ export const syncWorkflowDraftEditorState = (
         focusedChecklistSection: state.focusedChecklistSection,
         selectedElementId: state.selectedElementId,
         selectedConnectionId: state.selectedConnectionId,
-        presentationPositions: state.presentationPositions,
         lastOperation: state.lastOperation,
         operationSequence: state.operationSequence
       });
@@ -541,13 +542,17 @@ export const reduceWorkflowDraftEditorState = (
         operationSequence: state.operationSequence + 1
       };
     }
+    const position = action.position
+      ?? deriveWorkflowFlowElements(result.draft).nodes.find(
+        (node) => node.id === result.elementId
+      )?.position;
+    const positionedDraft = position
+      ? withElementPosition(result.draft, result.elementId, position)
+      : result.draft;
     return {
-      ...markDirty(result.draft),
+      ...markDirty(positionedDraft),
       selectedElementId: result.elementId,
       selectedConnectionId: null,
-      presentationPositions: action.position
-        ? { ...state.presentationPositions, [result.elementId]: action.position }
-        : state.presentationPositions,
       lastOperation: { kind: "add", status: "accepted", elementId: result.elementId },
       operationSequence: state.operationSequence + 1
     };
@@ -637,13 +642,19 @@ export const reduceWorkflowDraftEditorState = (
   }
 
   if (action.type === "element-positioned") {
-    return {
-      ...state,
-      presentationPositions: {
-        ...state.presentationPositions,
-        [action.elementId]: action.position
-      }
-    };
+    if (!state.localDraft.elements.some((element) => element.id === action.elementId)) {
+      return state;
+    }
+    const previousPosition = state.localDraft.layout.positions[action.elementId];
+    if (
+      previousPosition?.x === action.position.x
+      && previousPosition.y === action.position.y
+    ) return state;
+    return markDirty(withElementPosition(
+      state.localDraft,
+      action.elementId,
+      action.position
+    ));
   }
 
   if (action.type === "short-text-configured") {
@@ -925,6 +936,20 @@ export const saveWorkflowDraft = async (
     return { ok: false, error: normalizeApiProblem(undefined, 0) };
   }
 };
+
+const withElementPosition = (
+  draft: WorkflowDraftDocument,
+  elementId: string,
+  position: XYPosition
+): WorkflowDraftDocument => ({
+  ...draft,
+  layout: {
+    positions: {
+      ...draft.layout.positions,
+      [elementId]: position
+    }
+  }
+});
 
 export const validateWorkflowPublication = async (
   workflowId: string,

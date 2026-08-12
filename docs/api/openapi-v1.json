@@ -1,3289 +1,2198 @@
-{
-    "openapi": "3.0.3",
-    "info": {
-        "title": "Moviqo API",
-        "version": "0.1.0"
-    },
-    "paths": {
-        "/api/v1/auth/csrf/": {
-            "get": {
-                "operationId": "organizations_csrf_token",
-                "tags": [
-                    "auth"
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CsrfTokenResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/password-recovery/": {
-            "post": {
-                "operationId": "organizations_password_recovery",
-                "tags": [
-                    "auth"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PasswordRecoveryRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PasswordRecoveryRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PasswordRecoveryRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PasswordRecoveryResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/password-reset/": {
-            "post": {
-                "operationId": "organizations_password_reset",
-                "tags": [
-                    "auth"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PasswordResetRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PasswordResetRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PasswordResetRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PasswordRecoveryResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/session/": {
-            "get": {
-                "operationId": "organizations_current_session",
-                "tags": [
-                    "auth"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SessionContext"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/sign-in/": {
-            "post": {
-                "operationId": "organizations_sign_in",
-                "tags": [
-                    "auth"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SignInRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SignInRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SignInRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SessionContext"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "401": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/sign-out/": {
-            "post": {
-                "operationId": "organizations_sign_out",
-                "tags": [
-                    "auth"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Session ended"
-                    }
-                }
-            }
-        },
-        "/api/v1/my-work/": {
-            "get": {
-                "operationId": "workflow_runtime_my_work_dashboard",
-                "parameters": [
-                    {
-                        "in": "query",
-                        "name": "myProcessesPage",
-                        "schema": {
-                            "type": "integer"
-                        },
-                        "description": "One-based page of authorized completed processes."
-                    },
-                    {
-                        "in": "query",
-                        "name": "myProcessesSearch",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "description": "Search authorized completed process summaries."
-                    },
-                    {
-                        "in": "query",
-                        "name": "myTasksPage",
-                        "schema": {
-                            "type": "integer"
-                        },
-                        "description": "One-based page of directly assigned open tasks."
-                    },
-                    {
-                        "in": "query",
-                        "name": "myTasksSearch",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "description": "Search directly assigned open task summaries."
-                    },
-                    {
-                        "in": "query",
-                        "name": "startWorkflowsPage",
-                        "schema": {
-                            "type": "integer"
-                        },
-                        "description": "One-based page of authorized startable workflows."
-                    }
-                ],
-                "tags": [
-                    "my-work"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MyWorkDashboard"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "403": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/my-work/processes/{process_id}/": {
-            "get": {
-                "operationId": "workflow_runtime_process_detail",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "process_id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "my-work"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProcessDetail"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "403": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/my-work/start-workflows/{workflow_id}/start/": {
-            "post": {
-                "operationId": "workflow_runtime_start_process",
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "Idempotency-Key",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    },
-                    {
-                        "in": "path",
-                        "name": "workflow_id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "my-work"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/StartProcessAccepted"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "403": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "409": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/my-work/tasks/{task_id}/complete/": {
-            "post": {
-                "operationId": "workflow_runtime_task_form_complete",
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "Idempotency-Key",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    },
-                    {
-                        "in": "path",
-                        "name": "task_id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "my-work"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/TaskFormSaveRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/TaskFormSaveRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/TaskFormSaveRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TaskCompletionAccepted"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "403": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "409": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/my-work/tasks/{task_id}/form/": {
-            "get": {
-                "operationId": "workflow_runtime_task_form_detail",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "task_id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "my-work"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TaskFormDocument"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "403": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            },
-            "put": {
-                "operationId": "workflow_runtime_task_form_save",
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "Idempotency-Key",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    },
-                    {
-                        "in": "path",
-                        "name": "task_id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "my-work"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/TaskFormSaveRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/TaskFormSaveRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/TaskFormSaveRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TaskFormDocument"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "403": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "409": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/organizations/protected-memberships/{membership_id}/": {
-            "get": {
-                "operationId": "organizations_protected_membership_detail",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "membership_id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "organizations"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProtectedMembership"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/organizations/registrations/": {
-            "post": {
-                "operationId": "organizations_register_initial_owner",
-                "tags": [
-                    "organizations"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/InitialRegistrationRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/InitialRegistrationRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/InitialRegistrationRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InitialRegistrationResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "409": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/organizations/registrations/verify-email/": {
-            "post": {
-                "operationId": "organizations_verify_initial_registration",
-                "tags": [
-                    "organizations"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RegistrationVerificationRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RegistrationVerificationRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RegistrationVerificationRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/RegistrationVerificationResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/organizations/testing/synthetic-runs/": {
-            "post": {
-                "operationId": "organizations_create_synthetic_journey_run",
-                "tags": [
-                    "organizations"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SyntheticJourneyRunRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SyntheticJourneyRunRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SyntheticJourneyRunRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SyntheticJourneyRunResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/organizations/testing/synthetic-runs/rotate/": {
-            "post": {
-                "operationId": "organizations_rotate_synthetic_journey_run",
-                "tags": [
-                    "organizations"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SyntheticVerificationLinkRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SyntheticVerificationLinkRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SyntheticVerificationLinkRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SyntheticJourneyRotationResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/organizations/testing/synthetic-runs/verification-link/": {
-            "post": {
-                "operationId": "organizations_read_synthetic_verification_link",
-                "tags": [
-                    "organizations"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SyntheticVerificationLinkRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SyntheticVerificationLinkRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SyntheticVerificationLinkRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SyntheticVerificationLinkResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/schema/": {
-            "get": {
-                "operationId": "schema_retrieve",
-                "description": "OpenApi3 schema for this API. Format can be selected via content negotiation.\n\n- YAML: application/vnd.oai.openapi\n- JSON: application/vnd.oai.openapi+json",
-                "parameters": [
-                    {
-                        "in": "query",
-                        "name": "lang",
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "af",
-                                "ar",
-                                "ar-dz",
-                                "ast",
-                                "az",
-                                "be",
-                                "bg",
-                                "bn",
-                                "br",
-                                "bs",
-                                "ca",
-                                "ckb",
-                                "cs",
-                                "cy",
-                                "da",
-                                "de",
-                                "dsb",
-                                "el",
-                                "en",
-                                "en-au",
-                                "en-gb",
-                                "eo",
-                                "es",
-                                "es-ar",
-                                "es-co",
-                                "es-mx",
-                                "es-ni",
-                                "es-ve",
-                                "et",
-                                "eu",
-                                "fa",
-                                "fi",
-                                "fr",
-                                "fy",
-                                "ga",
-                                "gd",
-                                "gl",
-                                "he",
-                                "hi",
-                                "hr",
-                                "hsb",
-                                "hu",
-                                "hy",
-                                "ia",
-                                "id",
-                                "ig",
-                                "io",
-                                "is",
-                                "it",
-                                "ja",
-                                "ka",
-                                "kab",
-                                "kk",
-                                "km",
-                                "kn",
-                                "ko",
-                                "ky",
-                                "lb",
-                                "lt",
-                                "lv",
-                                "mk",
-                                "ml",
-                                "mn",
-                                "mr",
-                                "ms",
-                                "my",
-                                "nb",
-                                "ne",
-                                "nl",
-                                "nn",
-                                "os",
-                                "pa",
-                                "pl",
-                                "pt",
-                                "pt-br",
-                                "ro",
-                                "ru",
-                                "sk",
-                                "sl",
-                                "sq",
-                                "sr",
-                                "sr-latn",
-                                "sv",
-                                "sw",
-                                "ta",
-                                "te",
-                                "tg",
-                                "th",
-                                "tk",
-                                "tr",
-                                "tt",
-                                "udm",
-                                "ug",
-                                "uk",
-                                "ur",
-                                "uz",
-                                "vi",
-                                "zh-hans",
-                                "zh-hant"
-                            ]
-                        }
-                    }
-                ],
-                "tags": [
-                    "schema"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {}
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/vnd.oai.openapi+json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {}
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/system/ping/": {
-            "get": {
-                "operationId": "system_ping",
-                "tags": [
-                    "system"
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SystemPing"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "409": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "500": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/workflow-design/workflows/": {
-            "get": {
-                "operationId": "workflow_design_catalog_list",
-                "tags": [
-                    "workflow-design"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/WorkflowCatalogResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "403": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            },
-            "post": {
-                "operationId": "workflow_design_workflow_create",
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "Idempotency-Key",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "workflow-design"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkflowCreateRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkflowCreateRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkflowCreateRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/WorkflowCreateResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "403": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "409": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/workflow-design/workflows/{workflow_id}/draft/": {
-            "get": {
-                "operationId": "workflow_design_draft_detail",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "workflow_id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "workflow-design"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/WorkflowCreateResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "403": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            },
-            "put": {
-                "operationId": "workflow_design_draft_save",
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "Idempotency-Key",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    },
-                    {
-                        "in": "path",
-                        "name": "workflow_id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "workflow-design"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkflowDraftSaveRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkflowDraftSaveRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkflowDraftSaveRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/WorkflowCreateResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "403": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "409": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/workflow-design/workflows/{workflow_id}/publication-validation/": {
-            "post": {
-                "operationId": "workflow_design_publication_validation",
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "Idempotency-Key",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    },
-                    {
-                        "in": "path",
-                        "name": "workflow_id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "workflow-design"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkflowPublicationValidationRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkflowPublicationValidationRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkflowPublicationValidationRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/WorkflowPublicationValidationResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "403": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "409": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        },
-        "/api/v1/workflow-design/workflows/{workflow_id}/publish/": {
-            "post": {
-                "operationId": "workflow_design_publish",
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "Idempotency-Key",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    },
-                    {
-                        "in": "path",
-                        "name": "workflow_id",
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "workflow-design"
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkflowPublishRequest"
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkflowPublishRequest"
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/WorkflowPublishRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "security": [
-                    {
-                        "cookieAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/WorkflowPublishResponse"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "403": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "404": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "409": {
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetails"
-                                }
-                            }
-                        },
-                        "description": ""
-                    }
-                }
-            }
-        }
-    },
-    "components": {
-        "schemas": {
-            "CsrfTokenResponse": {
-                "type": "object",
-                "properties": {
-                    "csrfToken": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "csrfToken"
-                ]
-            },
-            "InitialRegistrationRequest": {
-                "type": "object",
-                "properties": {
-                    "ownerName": {
-                        "type": "string",
-                        "maxLength": 120
-                    },
-                    "organizationName": {
-                        "type": "string",
-                        "maxLength": 120
-                    },
-                    "email": {
-                        "oneOf": [
-                            {
-                                "type": "string",
-                                "format": "email",
-                                "maxLength": 254
-                            },
-                            {
-                                "type": "string",
-                                "maxLength": 0
-                            }
-                        ]
-                    },
-                    "password": {
-                        "type": "string",
-                        "maxLength": 128
-                    },
-                    "language": {
-                        "type": "string",
-                        "maxLength": 8
-                    },
-                    "region": {
-                        "type": "string",
-                        "maxLength": 8
-                    },
-                    "timezone": {
-                        "type": "string",
-                        "maxLength": 64
-                    },
-                    "currency": {
-                        "type": "string",
-                        "maxLength": 8
-                    },
-                    "termsAccepted": {
-                        "type": "boolean"
-                    },
-                    "privacyAccepted": {
-                        "type": "boolean"
-                    },
-                    "termsVersion": {
-                        "type": "string",
-                        "maxLength": 64
-                    },
-                    "privacyVersion": {
-                        "type": "string",
-                        "maxLength": 64
-                    },
-                    "prohibitedDataAcknowledged": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "prohibitedDataAcknowledged"
-                ]
-            },
-            "InitialRegistrationResponse": {
-                "type": "object",
-                "properties": {
-                    "status": {
-                        "type": "string"
-                    },
-                    "email": {
-                        "type": "string",
-                        "format": "email"
-                    },
-                    "language": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "email",
-                    "language",
-                    "status"
-                ]
-            },
-            "MyProcessCollection": {
-                "type": "object",
-                "properties": {
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MyProcessSummary"
-                        }
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "minimum": 1
-                    },
-                    "hasMore": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "hasMore",
-                    "items",
-                    "limit"
-                ]
-            },
-            "MyProcessSummary": {
-                "type": "object",
-                "properties": {
-                    "processId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "processNumber": {
-                        "type": "string"
-                    },
-                    "workflowName": {
-                        "type": "string"
-                    },
-                    "workflowVersionNumber": {
-                        "type": "integer",
-                        "minimum": 1
-                    },
-                    "involvement": {
-                        "type": "string"
-                    },
-                    "currentStep": {
-                        "type": "string"
-                    },
-                    "systemStatus": {
-                        "type": "string"
-                    },
-                    "startedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "completedAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "nullable": true
-                    },
-                    "lastActivityAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "viewRoute": {
-                        "type": "string"
-                    },
-                    "contributionSummary": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "required": [
-                    "completedAt",
-                    "contributionSummary",
-                    "currentStep",
-                    "involvement",
-                    "lastActivityAt",
-                    "processId",
-                    "processNumber",
-                    "startedAt",
-                    "systemStatus",
-                    "viewRoute",
-                    "workflowName",
-                    "workflowVersionNumber"
-                ]
-            },
-            "MyTaskCollection": {
-                "type": "object",
-                "properties": {
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MyTaskSummary"
-                        }
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "minimum": 1
-                    },
-                    "hasMore": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "hasMore",
-                    "items",
-                    "limit"
-                ]
-            },
-            "MyTaskSummary": {
-                "type": "object",
-                "properties": {
-                    "taskId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "title": {
-                        "type": "string"
-                    },
-                    "workflowName": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "processId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "activatedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "openTaskRoute": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "activatedAt",
-                    "openTaskRoute",
-                    "processId",
-                    "status",
-                    "taskId",
-                    "title",
-                    "workflowName"
-                ]
-            },
-            "MyWorkDashboard": {
-                "type": "object",
-                "properties": {
-                    "startWorkflows": {
-                        "$ref": "#/components/schemas/StartWorkflowCollection"
-                    },
-                    "myTasks": {
-                        "$ref": "#/components/schemas/MyTaskCollection"
-                    },
-                    "myProcesses": {
-                        "$ref": "#/components/schemas/MyProcessCollection"
-                    }
-                },
-                "required": [
-                    "myProcesses",
-                    "myTasks",
-                    "startWorkflows"
-                ]
-            },
-            "PasswordRecoveryRequest": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 254
-                    }
-                },
-                "required": [
-                    "email"
-                ]
-            },
-            "PasswordRecoveryResponse": {
-                "type": "object",
-                "properties": {
-                    "status": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "status"
-                ]
-            },
-            "PasswordResetRequest": {
-                "type": "object",
-                "properties": {
-                    "token": {
-                        "type": "string",
-                        "maxLength": 512
-                    },
-                    "password": {
-                        "type": "string",
-                        "maxLength": 128
-                    }
-                },
-                "required": [
-                    "password",
-                    "token"
-                ]
-            },
-            "ProblemDetails": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "format": "uri"
-                    },
-                    "title": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "integer"
-                    },
-                    "code": {
-                        "type": "string"
-                    },
-                    "detail": {
-                        "type": "string"
-                    },
-                    "correlationId": {
-                        "type": "string"
-                    },
-                    "invalidParams": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                },
-                "required": [
-                    "code",
-                    "correlationId",
-                    "status",
-                    "title",
-                    "type"
-                ]
-            },
-            "ProcessDetail": {
-                "type": "object",
-                "properties": {
-                    "header": {
-                        "$ref": "#/components/schemas/ProcessDetailHeader"
-                    },
-                    "timeline": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/ProcessTimelineEvent"
-                        }
-                    }
-                },
-                "required": [
-                    "header",
-                    "timeline"
-                ]
-            },
-            "ProcessDetailHeader": {
-                "type": "object",
-                "properties": {
-                    "processId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "processNumber": {
-                        "type": "string"
-                    },
-                    "workflowName": {
-                        "type": "string"
-                    },
-                    "workflowVersionNumber": {
-                        "type": "integer",
-                        "minimum": 1
-                    },
-                    "systemStatus": {
-                        "type": "string"
-                    },
-                    "currentStep": {
-                        "type": "string"
-                    },
-                    "startedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "completedAt": {
-                        "type": "string",
-                        "format": "date-time",
-                        "nullable": true
-                    },
-                    "lastActivityAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "contributionSummary": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "required": [
-                    "completedAt",
-                    "contributionSummary",
-                    "currentStep",
-                    "lastActivityAt",
-                    "processId",
-                    "processNumber",
-                    "startedAt",
-                    "systemStatus",
-                    "workflowName",
-                    "workflowVersionNumber"
-                ]
-            },
-            "ProcessTimelineEvent": {
-                "type": "object",
-                "properties": {
-                    "eventKind": {
-                        "type": "string"
-                    },
-                    "label": {
-                        "type": "string"
-                    },
-                    "actorDisplay": {
-                        "type": "string"
-                    },
-                    "occurredAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "taskPosition": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "actorDisplay",
-                    "eventKind",
-                    "label",
-                    "occurredAt",
-                    "taskPosition"
-                ]
-            },
-            "ProtectedMembership": {
-                "type": "object",
-                "properties": {
-                    "membershipId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "organizationId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "role": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "membershipId",
-                    "organizationId",
-                    "role"
-                ]
-            },
-            "RegistrationVerificationRequest": {
-                "type": "object",
-                "properties": {
-                    "token": {
-                        "type": "string",
-                        "maxLength": 512
-                    }
-                }
-            },
-            "RegistrationVerificationResponse": {
-                "type": "object",
-                "properties": {
-                    "status": {
-                        "type": "string"
-                    },
-                    "email": {
-                        "type": "string",
-                        "format": "email"
-                    },
-                    "language": {
-                        "type": "string"
-                    },
-                    "nextStep": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "email",
-                    "language",
-                    "nextStep",
-                    "status"
-                ]
-            },
-            "SessionContext": {
-                "type": "object",
-                "properties": {
-                    "authenticated": {
-                        "type": "boolean"
-                    },
-                    "user": {
-                        "$ref": "#/components/schemas/SessionUser"
-                    },
-                    "membership": {
-                        "$ref": "#/components/schemas/SessionMembership"
-                    }
-                },
-                "required": [
-                    "authenticated",
-                    "membership",
-                    "user"
-                ]
-            },
-            "SessionMembership": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "organizationId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "organizationTimezone": {
-                        "type": "string"
-                    },
-                    "role": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "organizationId",
-                    "organizationTimezone",
-                    "role"
-                ]
-            },
-            "SessionUser": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "preferredLanguage": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "displayName",
-                    "id",
-                    "preferredLanguage"
-                ]
-            },
-            "SignInRequest": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 254
-                    },
-                    "password": {
-                        "type": "string",
-                        "maxLength": 128
-                    }
-                },
-                "required": [
-                    "email",
-                    "password"
-                ]
-            },
-            "StartProcessAccepted": {
-                "type": "object",
-                "properties": {
-                    "processId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "taskId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "workflow": {
-                        "$ref": "#/components/schemas/StartProcessAcceptedWorkflow"
-                    },
-                    "destinationRoute": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "destinationRoute",
-                    "processId",
-                    "taskId",
-                    "workflow"
-                ]
-            },
-            "StartProcessAcceptedWorkflow": {
-                "type": "object",
-                "properties": {
-                    "workflowId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "title": {
-                        "type": "string"
-                    },
-                    "versionNumber": {
-                        "type": "integer",
-                        "minimum": 1
-                    }
-                },
-                "required": [
-                    "title",
-                    "versionNumber",
-                    "workflowId"
-                ]
-            },
-            "StartWorkflowCollection": {
-                "type": "object",
-                "properties": {
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/StartWorkflowSummary"
-                        }
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "minimum": 1
-                    },
-                    "hasMore": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "hasMore",
-                    "items",
-                    "limit"
-                ]
-            },
-            "StartWorkflowSummary": {
-                "type": "object",
-                "properties": {
-                    "workflowId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "title": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "availability": {
-                        "type": "string"
-                    },
-                    "versionNumber": {
-                        "type": "integer",
-                        "minimum": 1
-                    }
-                },
-                "required": [
-                    "availability",
-                    "description",
-                    "title",
-                    "versionNumber",
-                    "workflowId"
-                ]
-            },
-            "SyntheticJourneyRotationResponse": {
-                "type": "object",
-                "properties": {
-                    "status": {
-                        "type": "string"
-                    },
-                    "organizationRef": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "organizationRef",
-                    "status"
-                ]
-            },
-            "SyntheticJourneyRunRequest": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 254
-                    }
-                },
-                "required": [
-                    "email"
-                ]
-            },
-            "SyntheticJourneyRunResponse": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email"
-                    },
-                    "runToken": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "email",
-                    "runToken"
-                ]
-            },
-            "SyntheticVerificationLinkRequest": {
-                "type": "object",
-                "properties": {
-                    "runToken": {
-                        "type": "string",
-                        "maxLength": 2048
-                    }
-                },
-                "required": [
-                    "runToken"
-                ]
-            },
-            "SyntheticVerificationLinkResponse": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string",
-                        "format": "email"
-                    },
-                    "verificationUrl": {
-                        "type": "string",
-                        "format": "uri"
-                    }
-                },
-                "required": [
-                    "email",
-                    "verificationUrl"
-                ]
-            },
-            "SystemPing": {
-                "type": "object",
-                "properties": {
-                    "status": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "status"
-                ]
-            },
-            "TaskCompletionAccepted": {
-                "type": "object",
-                "properties": {
-                    "taskId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "processId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "workflowId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "workflowVersionId": {
-                        "type": "string",
-                        "format": "uuid",
-                        "nullable": true
-                    },
-                    "workflowName": {
-                        "type": "string"
-                    },
-                    "taskTitle": {
-                        "type": "string"
-                    },
-                    "taskStatus": {
-                        "type": "string"
-                    },
-                    "processStatus": {
-                        "type": "string"
-                    },
-                    "taskRevision": {
-                        "type": "string"
-                    },
-                    "definitionRevision": {
-                        "type": "string"
-                    },
-                    "routeTargetId": {
-                        "type": "string"
-                    },
-                    "completedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "destinationRoute": {
-                        "type": "string"
-                    },
-                    "handoffMessage": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "completedAt",
-                    "definitionRevision",
-                    "destinationRoute",
-                    "handoffMessage",
-                    "processId",
-                    "processStatus",
-                    "routeTargetId",
-                    "taskId",
-                    "taskRevision",
-                    "taskStatus",
-                    "taskTitle",
-                    "workflowId",
-                    "workflowName",
-                    "workflowVersionId"
-                ]
-            },
-            "TaskFormActions": {
-                "type": "object",
-                "properties": {
-                    "saveDraft": {
-                        "type": "boolean"
-                    },
-                    "complete": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "complete",
-                    "saveDraft"
-                ]
-            },
-            "TaskFormBody": {
-                "type": "object",
-                "properties": {
-                    "controls": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/TaskFormControl"
-                        }
-                    }
-                },
-                "required": [
-                    "controls"
-                ]
-            },
-            "TaskFormControl": {
-                "type": "object",
-                "properties": {
-                    "controlId": {
-                        "type": "string"
-                    },
-                    "fieldId": {
-                        "type": "string"
-                    },
-                    "kind": {
-                        "type": "string"
-                    },
-                    "label": {
-                        "type": "string"
-                    },
-                    "helpText": {
-                        "type": "string"
-                    },
-                    "placeholder": {
-                        "type": "string"
-                    },
-                    "width": {
-                        "type": "string"
-                    },
-                    "position": {
-                        "type": "integer",
-                        "minimum": 0
-                    },
-                    "value": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "controlId",
-                    "fieldId",
-                    "helpText",
-                    "kind",
-                    "label",
-                    "placeholder",
-                    "position",
-                    "value",
-                    "width"
-                ]
-            },
-            "TaskFormDocument": {
-                "type": "object",
-                "properties": {
-                    "taskId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "processId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "workflowId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "workflowVersionId": {
-                        "type": "string",
-                        "format": "uuid",
-                        "nullable": true
-                    },
-                    "workflowName": {
-                        "type": "string"
-                    },
-                    "taskTitle": {
-                        "type": "string"
-                    },
-                    "taskElementId": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "taskRevision": {
-                        "type": "string"
-                    },
-                    "definitionRevision": {
-                        "type": "string"
-                    },
-                    "actions": {
-                        "$ref": "#/components/schemas/TaskFormActions"
-                    },
-                    "form": {
-                        "$ref": "#/components/schemas/TaskFormBody"
-                    }
-                },
-                "required": [
-                    "actions",
-                    "definitionRevision",
-                    "form",
-                    "processId",
-                    "status",
-                    "taskElementId",
-                    "taskId",
-                    "taskRevision",
-                    "taskTitle",
-                    "workflowId",
-                    "workflowName",
-                    "workflowVersionId"
-                ]
-            },
-            "TaskFormSaveControl": {
-                "type": "object",
-                "properties": {
-                    "controlId": {
-                        "type": "string"
-                    },
-                    "fieldId": {
-                        "type": "string"
-                    },
-                    "value": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "controlId",
-                    "fieldId",
-                    "value"
-                ]
-            },
-            "TaskFormSaveRequest": {
-                "type": "object",
-                "properties": {
-                    "expectedTaskRevision": {
-                        "type": "string"
-                    },
-                    "controls": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/TaskFormSaveControl"
-                        }
-                    }
-                },
-                "required": [
-                    "controls",
-                    "expectedTaskRevision"
-                ]
-            },
-            "WorkflowAssignmentConfiguration": {
-                "type": "object",
-                "properties": {
-                    "mode": {
-                        "type": "string"
-                    },
-                    "membershipId": {
-                        "type": "string",
-                        "nullable": true
-                    }
-                }
-            },
-            "WorkflowCatalogItem": {
-                "type": "object",
-                "properties": {
-                    "workflowId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "revision": {
-                        "type": "string"
-                    },
-                    "schemaVersion": {
-                        "type": "integer",
-                        "minimum": 1
-                    },
-                    "updatedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                },
-                "required": [
-                    "name",
-                    "revision",
-                    "schemaVersion",
-                    "updatedAt",
-                    "workflowId"
-                ]
-            },
-            "WorkflowCatalogResponse": {
-                "type": "object",
-                "properties": {
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/WorkflowCatalogItem"
-                        }
-                    }
-                },
-                "required": [
-                    "items"
-                ]
-            },
-            "WorkflowConfigurationDirectory": {
-                "type": "object",
-                "properties": {
-                    "memberships": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/WorkflowDirectoryMembership"
-                        }
-                    },
-                    "teams": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/WorkflowDirectoryTeam"
-                        }
-                    }
-                },
-                "required": [
-                    "memberships",
-                    "teams"
-                ]
-            },
-            "WorkflowConnection": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "sourceId": {
-                        "type": "string"
-                    },
-                    "targetId": {
-                        "type": "string"
-                    },
-                    "label": {
-                        "type": "string",
-                        "nullable": true
-                    }
-                },
-                "required": [
-                    "id",
-                    "sourceId",
-                    "targetId",
-                    "type"
-                ]
-            },
-            "WorkflowCreateRequest": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "maxLength": 120
-                    }
-                },
-                "required": [
-                    "name"
-                ]
-            },
-            "WorkflowCreateResponse": {
-                "type": "object",
-                "properties": {
-                    "workflowId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "organizationId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "createdByMembershipId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "configurationDirectory": {
-                        "$ref": "#/components/schemas/WorkflowConfigurationDirectory"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "revision": {
-                        "type": "string"
-                    },
-                    "draft": {
-                        "$ref": "#/components/schemas/WorkflowDraftDocument"
-                    }
-                },
-                "required": [
-                    "configurationDirectory",
-                    "createdByMembershipId",
-                    "draft",
-                    "name",
-                    "organizationId",
-                    "revision",
-                    "workflowId"
-                ]
-            },
-            "WorkflowDirectoryMembership": {
-                "type": "object",
-                "properties": {
-                    "membershipId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "role": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "displayName",
-                    "membershipId",
-                    "role"
-                ]
-            },
-            "WorkflowDirectoryTeam": {
-                "type": "object",
-                "properties": {
-                    "teamId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "activeMemberCount": {
-                        "type": "integer",
-                        "minimum": 1
-                    },
-                    "membershipIds": {
-                        "type": "array",
-                        "items": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                },
-                "required": [
-                    "activeMemberCount",
-                    "membershipIds",
-                    "name",
-                    "teamId"
-                ]
-            },
-            "WorkflowDraftDocument": {
-                "type": "object",
-                "properties": {
-                    "schemaVersion": {
-                        "type": "integer",
-                        "minimum": 1
-                    },
-                    "draftId": {
-                        "type": "string"
-                    },
-                    "workflowId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "elements": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/WorkflowElement"
-                        }
-                    },
-                    "connections": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/WorkflowConnection"
-                        }
-                    },
-                    "processFields": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/WorkflowProcessField"
-                        }
-                    },
-                    "formBindings": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/WorkflowFormBinding"
-                        }
-                    },
-                    "publication": {
-                        "$ref": "#/components/schemas/WorkflowPublication"
-                    }
-                },
-                "required": [
-                    "draftId",
-                    "name",
-                    "schemaVersion",
-                    "status",
-                    "workflowId"
-                ]
-            },
-            "WorkflowDraftSaveRequest": {
-                "type": "object",
-                "properties": {
-                    "expectedRevision": {
-                        "type": "string"
-                    },
-                    "draft": {
-                        "$ref": "#/components/schemas/WorkflowDraftDocument"
-                    }
-                },
-                "required": [
-                    "draft",
-                    "expectedRevision"
-                ]
-            },
-            "WorkflowElement": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "label": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "id",
-                    "label",
-                    "type"
-                ]
-            },
-            "WorkflowFormBinding": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "taskElementId": {
-                        "type": "string"
-                    },
-                    "fieldId": {
-                        "type": "string"
-                    },
-                    "position": {
-                        "type": "integer",
-                        "minimum": 0
-                    },
-                    "width": {
-                        "type": "string"
-                    },
-                    "label": {
-                        "type": "string",
-                        "nullable": true
-                    }
-                },
-                "required": [
-                    "fieldId",
-                    "taskElementId"
-                ]
-            },
-            "WorkflowProcessField": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "kind": {
-                        "type": "string"
-                    },
-                    "label": {
-                        "type": "string"
-                    },
-                    "helpText": {
-                        "type": "string"
-                    },
-                    "placeholder": {
-                        "type": "string"
-                    },
-                    "defaultValue": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "minimumLength": {
-                        "type": "integer",
-                        "minimum": 0
-                    },
-                    "maximumLength": {
-                        "type": "integer",
-                        "minimum": 0
-                    }
-                },
-                "required": [
-                    "kind",
-                    "label"
-                ]
-            },
-            "WorkflowPublication": {
-                "type": "object",
-                "properties": {
-                    "starter": {
-                        "$ref": "#/components/schemas/WorkflowStarterConfiguration"
-                    },
-                    "assignment": {
-                        "$ref": "#/components/schemas/WorkflowAssignmentConfiguration"
-                    }
-                }
-            },
-            "WorkflowPublicationIssue": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string"
-                    },
-                    "severity": {
-                        "type": "string"
-                    },
-                    "target": {
-                        "type": "string"
-                    },
-                    "elementId": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "fieldId": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "bindingId": {
-                        "type": "string",
-                        "nullable": true
-                    },
-                    "message": {
-                        "type": "string"
-                    },
-                    "actionLabel": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "actionLabel",
-                    "bindingId",
-                    "code",
-                    "elementId",
-                    "fieldId",
-                    "message",
-                    "severity",
-                    "target"
-                ]
-            },
-            "WorkflowPublicationValidationRequest": {
-                "type": "object",
-                "properties": {
-                    "expectedRevision": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "expectedRevision"
-                ]
-            },
-            "WorkflowPublicationValidationResponse": {
-                "type": "object",
-                "properties": {
-                    "workflowId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "revision": {
-                        "type": "string"
-                    },
-                    "publishable": {
-                        "type": "boolean"
-                    },
-                    "issues": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/WorkflowPublicationIssue"
-                        }
-                    }
-                },
-                "required": [
-                    "issues",
-                    "publishable",
-                    "revision",
-                    "workflowId"
-                ]
-            },
-            "WorkflowPublishRequest": {
-                "type": "object",
-                "properties": {
-                    "expectedRevision": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "expectedRevision"
-                ]
-            },
-            "WorkflowPublishResponse": {
-                "type": "object",
-                "properties": {
-                    "workflowId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "organizationId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "createdByMembershipId": {
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "configurationDirectory": {
-                        "$ref": "#/components/schemas/WorkflowConfigurationDirectory"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "revision": {
-                        "type": "string"
-                    },
-                    "draft": {
-                        "$ref": "#/components/schemas/WorkflowDraftDocument"
-                    },
-                    "publishedVersion": {
-                        "$ref": "#/components/schemas/WorkflowPublishedVersion"
-                    }
-                },
-                "required": [
-                    "configurationDirectory",
-                    "createdByMembershipId",
-                    "draft",
-                    "name",
-                    "organizationId",
-                    "publishedVersion",
-                    "revision",
-                    "workflowId"
-                ]
-            },
-            "WorkflowPublishedVersion": {
-                "type": "object",
-                "properties": {
-                    "versionNumber": {
-                        "type": "integer",
-                        "minimum": 1
-                    },
-                    "publishedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "sourceRevision": {
-                        "type": "string"
-                    },
-                    "schemaVersion": {
-                        "type": "integer",
-                        "minimum": 1
-                    }
-                },
-                "required": [
-                    "publishedAt",
-                    "schemaVersion",
-                    "sourceRevision",
-                    "versionNumber"
-                ]
-            },
-            "WorkflowStarterConfiguration": {
-                "type": "object",
-                "properties": {
-                    "mode": {
-                        "type": "string"
-                    },
-                    "teamIds": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "membershipIds": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "securitySchemes": {
-            "cookieAuth": {
-                "type": "apiKey",
-                "in": "cookie",
-                "name": "sessionid"
-            }
-        }
-    }
-}
+openapi: 3.0.3
+info:
+  title: Moviqo API
+  version: 0.1.0
+paths:
+  /api/v1/auth/csrf/:
+    get:
+      operationId: organizations_csrf_token
+      tags:
+      - auth
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CsrfTokenResponse'
+          description: ''
+  /api/v1/auth/password-recovery/:
+    post:
+      operationId: organizations_password_recovery
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordRecoveryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordRecoveryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordRecoveryRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordRecoveryResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/auth/password-reset/:
+    post:
+      operationId: organizations_password_reset
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordRecoveryResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/auth/session/:
+    get:
+      operationId: organizations_current_session
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionContext'
+          description: ''
+  /api/v1/auth/sign-in/:
+    post:
+      operationId: organizations_sign_in
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionContext'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/auth/sign-out/:
+    post:
+      operationId: organizations_sign_out
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Session ended
+  /api/v1/my-work/:
+    get:
+      operationId: workflow_runtime_my_work_dashboard
+      parameters:
+      - in: query
+        name: myProcessesPage
+        schema:
+          type: integer
+        description: One-based page of authorized completed processes.
+      - in: query
+        name: myProcessesSearch
+        schema:
+          type: string
+        description: Search authorized completed process summaries.
+      - in: query
+        name: myTasksPage
+        schema:
+          type: integer
+        description: One-based page of directly assigned open tasks.
+      - in: query
+        name: myTasksSearch
+        schema:
+          type: string
+        description: Search directly assigned open task summaries.
+      - in: query
+        name: startWorkflowsPage
+        schema:
+          type: integer
+        description: One-based page of authorized startable workflows.
+      tags:
+      - my-work
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyWorkDashboard'
+          description: ''
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/my-work/processes/{process_id}/:
+    get:
+      operationId: workflow_runtime_process_detail
+      parameters:
+      - in: path
+        name: process_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - my-work
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessDetail'
+          description: ''
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/my-work/start-workflows/{workflow_id}/start/:
+    post:
+      operationId: workflow_runtime_start_process
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: workflow_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - my-work
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartProcessAccepted'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/my-work/tasks/{task_id}/complete/:
+    post:
+      operationId: workflow_runtime_task_form_complete
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: task_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - my-work
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskFormSaveRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskFormSaveRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskFormSaveRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCompletionAccepted'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/my-work/tasks/{task_id}/form/:
+    get:
+      operationId: workflow_runtime_task_form_detail
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - my-work
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskFormDocument'
+          description: ''
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+    put:
+      operationId: workflow_runtime_task_form_save
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: task_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - my-work
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskFormSaveRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskFormSaveRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskFormSaveRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskFormDocument'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/organizations/protected-memberships/{membership_id}/:
+    get:
+      operationId: organizations_protected_membership_detail
+      parameters:
+      - in: path
+        name: membership_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - organizations
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProtectedMembership'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/organizations/registrations/:
+    post:
+      operationId: organizations_register_initial_owner
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitialRegistrationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InitialRegistrationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InitialRegistrationRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitialRegistrationResponse'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/organizations/registrations/verify-email/:
+    post:
+      operationId: organizations_verify_initial_registration
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationVerificationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegistrationVerificationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegistrationVerificationRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationVerificationResponse'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/organizations/testing/synthetic-runs/:
+    post:
+      operationId: organizations_create_synthetic_journey_run
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyntheticJourneyRunRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SyntheticJourneyRunRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SyntheticJourneyRunRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyntheticJourneyRunResponse'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/organizations/testing/synthetic-runs/rotate/:
+    post:
+      operationId: organizations_rotate_synthetic_journey_run
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyntheticVerificationLinkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SyntheticVerificationLinkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SyntheticVerificationLinkRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyntheticJourneyRotationResponse'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/organizations/testing/synthetic-runs/verification-link/:
+    post:
+      operationId: organizations_read_synthetic_verification_link
+      tags:
+      - organizations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyntheticVerificationLinkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SyntheticVerificationLinkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SyntheticVerificationLinkRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyntheticVerificationLinkResponse'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/system/ping/:
+    get:
+      operationId: system_ping
+      tags:
+      - system
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemPing'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/workflow-design/workflows/:
+    get:
+      operationId: workflow_design_catalog_list
+      tags:
+      - workflow-design
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowCatalogResponse'
+          description: ''
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+    post:
+      operationId: workflow_design_workflow_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        required: true
+      tags:
+      - workflow-design
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowCreateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowCreateResponse'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/workflow-design/workflows/{workflow_id}/draft/:
+    get:
+      operationId: workflow_design_draft_detail
+      parameters:
+      - in: path
+        name: workflow_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - workflow-design
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowCreateResponse'
+          description: ''
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+    put:
+      operationId: workflow_design_draft_save
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: workflow_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - workflow-design
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowDraftSaveRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowDraftSaveRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowDraftSaveRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowCreateResponse'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/workflow-design/workflows/{workflow_id}/publication-validation/:
+    post:
+      operationId: workflow_design_publication_validation
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: workflow_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - workflow-design
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowPublicationValidationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowPublicationValidationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowPublicationValidationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowPublicationValidationResponse'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+  /api/v1/workflow-design/workflows/{workflow_id}/publish/:
+    post:
+      operationId: workflow_design_publish
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: workflow_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - workflow-design
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowPublishRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowPublishRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowPublishRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowPublishResponse'
+          description: ''
+        '400':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+          description: ''
+components:
+  schemas:
+    CsrfTokenResponse:
+      type: object
+      properties:
+        csrfToken:
+          type: string
+      required:
+      - csrfToken
+    InitialRegistrationRequest:
+      type: object
+      properties:
+        ownerName:
+          type: string
+          maxLength: 120
+        organizationName:
+          type: string
+          maxLength: 120
+        email:
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        password:
+          type: string
+          maxLength: 128
+        language:
+          type: string
+          maxLength: 8
+        region:
+          type: string
+          maxLength: 8
+        timezone:
+          type: string
+          maxLength: 64
+        currency:
+          type: string
+          maxLength: 8
+        termsAccepted:
+          type: boolean
+        privacyAccepted:
+          type: boolean
+        termsVersion:
+          type: string
+          maxLength: 64
+        privacyVersion:
+          type: string
+          maxLength: 64
+        prohibitedDataAcknowledged:
+          type: boolean
+      required:
+      - prohibitedDataAcknowledged
+    InitialRegistrationResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        email:
+          type: string
+          format: email
+        language:
+          type: string
+      required:
+      - email
+      - language
+      - status
+    MyProcessCollection:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyProcessSummary'
+        limit:
+          type: integer
+          minimum: 1
+        hasMore:
+          type: boolean
+      required:
+      - hasMore
+      - items
+      - limit
+    MyProcessSummary:
+      type: object
+      properties:
+        processId:
+          type: string
+          format: uuid
+        processNumber:
+          type: string
+        workflowName:
+          type: string
+        workflowVersionNumber:
+          type: integer
+          minimum: 1
+        involvement:
+          type: string
+        currentStep:
+          type: string
+        systemStatus:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastActivityAt:
+          type: string
+          format: date-time
+        viewRoute:
+          type: string
+        contributionSummary:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+      - completedAt
+      - contributionSummary
+      - currentStep
+      - involvement
+      - lastActivityAt
+      - processId
+      - processNumber
+      - startedAt
+      - systemStatus
+      - viewRoute
+      - workflowName
+      - workflowVersionNumber
+    MyTaskCollection:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyTaskSummary'
+        limit:
+          type: integer
+          minimum: 1
+        hasMore:
+          type: boolean
+      required:
+      - hasMore
+      - items
+      - limit
+    MyTaskSummary:
+      type: object
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        workflowName:
+          type: string
+        status:
+          type: string
+        processId:
+          type: string
+          format: uuid
+        activatedAt:
+          type: string
+          format: date-time
+        openTaskRoute:
+          type: string
+      required:
+      - activatedAt
+      - openTaskRoute
+      - processId
+      - status
+      - taskId
+      - title
+      - workflowName
+    MyWorkDashboard:
+      type: object
+      properties:
+        startWorkflows:
+          $ref: '#/components/schemas/StartWorkflowCollection'
+        myTasks:
+          $ref: '#/components/schemas/MyTaskCollection'
+        myProcesses:
+          $ref: '#/components/schemas/MyProcessCollection'
+      required:
+      - myProcesses
+      - myTasks
+      - startWorkflows
+    PasswordRecoveryRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+      required:
+      - email
+    PasswordRecoveryResponse:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    PasswordResetRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          maxLength: 512
+        password:
+          type: string
+          maxLength: 128
+      required:
+      - password
+      - token
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+        detail:
+          type: string
+        correlationId:
+          type: string
+        invalidParams:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: string
+      required:
+      - code
+      - correlationId
+      - status
+      - title
+      - type
+    ProcessDetail:
+      type: object
+      properties:
+        header:
+          $ref: '#/components/schemas/ProcessDetailHeader'
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessTimelineEvent'
+      required:
+      - header
+      - timeline
+    ProcessDetailHeader:
+      type: object
+      properties:
+        processId:
+          type: string
+          format: uuid
+        processNumber:
+          type: string
+        workflowName:
+          type: string
+        workflowVersionNumber:
+          type: integer
+          minimum: 1
+        systemStatus:
+          type: string
+        currentStep:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastActivityAt:
+          type: string
+          format: date-time
+        contributionSummary:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+      - completedAt
+      - contributionSummary
+      - currentStep
+      - lastActivityAt
+      - processId
+      - processNumber
+      - startedAt
+      - systemStatus
+      - workflowName
+      - workflowVersionNumber
+    ProcessTimelineEvent:
+      type: object
+      properties:
+        eventKind:
+          type: string
+        label:
+          type: string
+        actorDisplay:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        taskPosition:
+          type: string
+      required:
+      - actorDisplay
+      - eventKind
+      - label
+      - occurredAt
+      - taskPosition
+    ProtectedMembership:
+      type: object
+      properties:
+        membershipId:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        role:
+          type: string
+      required:
+      - membershipId
+      - organizationId
+      - role
+    RegistrationVerificationRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          maxLength: 512
+    RegistrationVerificationResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        email:
+          type: string
+          format: email
+        language:
+          type: string
+        nextStep:
+          type: string
+      required:
+      - email
+      - language
+      - nextStep
+      - status
+    SessionContext:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/SessionUser'
+        membership:
+          $ref: '#/components/schemas/SessionMembership'
+      required:
+      - authenticated
+      - membership
+      - user
+    SessionMembership:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        organizationTimezone:
+          type: string
+        role:
+          type: string
+      required:
+      - id
+      - organizationId
+      - organizationTimezone
+      - role
+    SessionUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        displayName:
+          type: string
+        preferredLanguage:
+          type: string
+      required:
+      - displayName
+      - id
+      - preferredLanguage
+    SignInRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          maxLength: 128
+      required:
+      - email
+      - password
+    StartProcessAccepted:
+      type: object
+      properties:
+        processId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        workflow:
+          $ref: '#/components/schemas/StartProcessAcceptedWorkflow'
+        destinationRoute:
+          type: string
+      required:
+      - destinationRoute
+      - processId
+      - taskId
+      - workflow
+    StartProcessAcceptedWorkflow:
+      type: object
+      properties:
+        workflowId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        versionNumber:
+          type: integer
+          minimum: 1
+      required:
+      - title
+      - versionNumber
+      - workflowId
+    StartWorkflowCollection:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StartWorkflowSummary'
+        limit:
+          type: integer
+          minimum: 1
+        hasMore:
+          type: boolean
+      required:
+      - hasMore
+      - items
+      - limit
+    StartWorkflowSummary:
+      type: object
+      properties:
+        workflowId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        availability:
+          type: string
+        versionNumber:
+          type: integer
+          minimum: 1
+      required:
+      - availability
+      - description
+      - title
+      - versionNumber
+      - workflowId
+    SyntheticJourneyRotationResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        organizationRef:
+          type: string
+      required:
+      - organizationRef
+      - status
+    SyntheticJourneyRunRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+      required:
+      - email
+    SyntheticJourneyRunResponse:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        runToken:
+          type: string
+      required:
+      - email
+      - runToken
+    SyntheticVerificationLinkRequest:
+      type: object
+      properties:
+        runToken:
+          type: string
+          maxLength: 2048
+      required:
+      - runToken
+    SyntheticVerificationLinkResponse:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        verificationUrl:
+          type: string
+          format: uri
+      required:
+      - email
+      - verificationUrl
+    SystemPing:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    TaskCompletionAccepted:
+      type: object
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        processId:
+          type: string
+          format: uuid
+        workflowId:
+          type: string
+          format: uuid
+        workflowVersionId:
+          type: string
+          format: uuid
+          nullable: true
+        workflowName:
+          type: string
+        taskTitle:
+          type: string
+        taskStatus:
+          type: string
+        processStatus:
+          type: string
+        taskRevision:
+          type: string
+        definitionRevision:
+          type: string
+        routeTargetId:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+        destinationRoute:
+          type: string
+        handoffMessage:
+          type: string
+      required:
+      - completedAt
+      - definitionRevision
+      - destinationRoute
+      - handoffMessage
+      - processId
+      - processStatus
+      - routeTargetId
+      - taskId
+      - taskRevision
+      - taskStatus
+      - taskTitle
+      - workflowId
+      - workflowName
+      - workflowVersionId
+    TaskFormActions:
+      type: object
+      properties:
+        saveDraft:
+          type: boolean
+        complete:
+          type: boolean
+      required:
+      - complete
+      - saveDraft
+    TaskFormBody:
+      type: object
+      properties:
+        controls:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskFormControl'
+      required:
+      - controls
+    TaskFormControl:
+      type: object
+      properties:
+        controlId:
+          type: string
+        fieldId:
+          type: string
+        kind:
+          type: string
+        label:
+          type: string
+        helpText:
+          type: string
+        placeholder:
+          type: string
+        width:
+          type: string
+        position:
+          type: integer
+          minimum: 0
+        value:
+          type: string
+      required:
+      - controlId
+      - fieldId
+      - helpText
+      - kind
+      - label
+      - placeholder
+      - position
+      - value
+      - width
+    TaskFormDocument:
+      type: object
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        processId:
+          type: string
+          format: uuid
+        workflowId:
+          type: string
+          format: uuid
+        workflowVersionId:
+          type: string
+          format: uuid
+          nullable: true
+        workflowName:
+          type: string
+        taskTitle:
+          type: string
+        taskElementId:
+          type: string
+        status:
+          type: string
+        taskRevision:
+          type: string
+        definitionRevision:
+          type: string
+        actions:
+          $ref: '#/components/schemas/TaskFormActions'
+        form:
+          $ref: '#/components/schemas/TaskFormBody'
+      required:
+      - actions
+      - definitionRevision
+      - form
+      - processId
+      - status
+      - taskElementId
+      - taskId
+      - taskRevision
+      - taskTitle
+      - workflowId
+      - workflowName
+      - workflowVersionId
+    TaskFormSaveControl:
+      type: object
+      properties:
+        controlId:
+          type: string
+        fieldId:
+          type: string
+        value:
+          type: string
+      required:
+      - controlId
+      - fieldId
+      - value
+    TaskFormSaveRequest:
+      type: object
+      properties:
+        expectedTaskRevision:
+          type: string
+        controls:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskFormSaveControl'
+      required:
+      - controls
+      - expectedTaskRevision
+    WorkflowAssignmentConfiguration:
+      type: object
+      properties:
+        mode:
+          type: string
+        membershipId:
+          type: string
+          nullable: true
+    WorkflowCatalogItem:
+      type: object
+      properties:
+        workflowId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        revision:
+          type: string
+        schemaVersion:
+          type: integer
+          minimum: 1
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - name
+      - revision
+      - schemaVersion
+      - updatedAt
+      - workflowId
+    WorkflowCatalogResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowCatalogItem'
+      required:
+      - items
+    WorkflowConfigurationDirectory:
+      type: object
+      properties:
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowDirectoryMembership'
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowDirectoryTeam'
+      required:
+      - memberships
+      - teams
+    WorkflowConnection:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        sourceId:
+          type: string
+        targetId:
+          type: string
+        label:
+          type: string
+          nullable: true
+      required:
+      - id
+      - sourceId
+      - targetId
+      - type
+    WorkflowCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 120
+      required:
+      - name
+    WorkflowCreateResponse:
+      type: object
+      properties:
+        workflowId:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        createdByMembershipId:
+          type: string
+          format: uuid
+        configurationDirectory:
+          $ref: '#/components/schemas/WorkflowConfigurationDirectory'
+        name:
+          type: string
+        revision:
+          type: string
+        draft:
+          $ref: '#/components/schemas/WorkflowDraftDocument'
+      required:
+      - configurationDirectory
+      - createdByMembershipId
+      - draft
+      - name
+      - organizationId
+      - revision
+      - workflowId
+    WorkflowDirectoryMembership:
+      type: object
+      properties:
+        membershipId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        role:
+          type: string
+      required:
+      - displayName
+      - membershipId
+      - role
+    WorkflowDirectoryTeam:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        activeMemberCount:
+          type: integer
+          minimum: 1
+        membershipIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - activeMemberCount
+      - membershipIds
+      - name
+      - teamId
+    WorkflowDraftDocument:
+      type: object
+      properties:
+        schemaVersion:
+          type: integer
+          minimum: 1
+        draftId:
+          type: string
+        workflowId:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        elements:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowElement'
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowConnection'
+        processFields:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowProcessField'
+        formBindings:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowFormBinding'
+        publication:
+          $ref: '#/components/schemas/WorkflowPublication'
+        layout:
+          $ref: '#/components/schemas/WorkflowLayout'
+      required:
+      - draftId
+      - name
+      - schemaVersion
+      - status
+      - workflowId
+    WorkflowDraftSaveRequest:
+      type: object
+      properties:
+        expectedRevision:
+          type: string
+        draft:
+          $ref: '#/components/schemas/WorkflowDraftDocument'
+      required:
+      - draft
+      - expectedRevision
+    WorkflowElement:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        label:
+          type: string
+      required:
+      - id
+      - label
+      - type
+    WorkflowFormBinding:
+      type: object
+      properties:
+        id:
+          type: string
+        taskElementId:
+          type: string
+        fieldId:
+          type: string
+        position:
+          type: integer
+          minimum: 0
+        width:
+          type: string
+        label:
+          type: string
+          nullable: true
+      required:
+      - fieldId
+      - taskElementId
+    WorkflowLayout:
+      type: object
+      properties:
+        positions:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/WorkflowPosition'
+    WorkflowPosition:
+      type: object
+      properties:
+        x:
+          type: number
+          format: double
+          maximum: 100000
+          minimum: -100000
+        y:
+          type: number
+          format: double
+          maximum: 100000
+          minimum: -100000
+      required:
+      - x
+      - y
+    WorkflowProcessField:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        label:
+          type: string
+        helpText:
+          type: string
+        placeholder:
+          type: string
+        defaultValue:
+          type: string
+          nullable: true
+        minimumLength:
+          type: integer
+          minimum: 0
+        maximumLength:
+          type: integer
+          minimum: 0
+      required:
+      - kind
+      - label
+    WorkflowPublication:
+      type: object
+      properties:
+        starter:
+          $ref: '#/components/schemas/WorkflowStarterConfiguration'
+        assignment:
+          $ref: '#/components/schemas/WorkflowAssignmentConfiguration'
+    WorkflowPublicationIssue:
+      type: object
+      properties:
+        code:
+          type: string
+        severity:
+          type: string
+        target:
+          type: string
+        elementId:
+          type: string
+          nullable: true
+        fieldId:
+          type: string
+          nullable: true
+        bindingId:
+          type: string
+          nullable: true
+        message:
+          type: string
+        actionLabel:
+          type: string
+      required:
+      - actionLabel
+      - bindingId
+      - code
+      - elementId
+      - fieldId
+      - message
+      - severity
+      - target
+    WorkflowPublicationValidationRequest:
+      type: object
+      properties:
+        expectedRevision:
+          type: string
+      required:
+      - expectedRevision
+    WorkflowPublicationValidationResponse:
+      type: object
+      properties:
+        workflowId:
+          type: string
+          format: uuid
+        revision:
+          type: string
+        publishable:
+          type: boolean
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowPublicationIssue'
+      required:
+      - issues
+      - publishable
+      - revision
+      - workflowId
+    WorkflowPublishRequest:
+      type: object
+      properties:
+        expectedRevision:
+          type: string
+      required:
+      - expectedRevision
+    WorkflowPublishResponse:
+      type: object
+      properties:
+        workflowId:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        createdByMembershipId:
+          type: string
+          format: uuid
+        configurationDirectory:
+          $ref: '#/components/schemas/WorkflowConfigurationDirectory'
+        name:
+          type: string
+        revision:
+          type: string
+        draft:
+          $ref: '#/components/schemas/WorkflowDraftDocument'
+        publishedVersion:
+          $ref: '#/components/schemas/WorkflowPublishedVersion'
+      required:
+      - configurationDirectory
+      - createdByMembershipId
+      - draft
+      - name
+      - organizationId
+      - publishedVersion
+      - revision
+      - workflowId
+    WorkflowPublishedVersion:
+      type: object
+      properties:
+        versionNumber:
+          type: integer
+          minimum: 1
+        publishedAt:
+          type: string
+          format: date-time
+        sourceRevision:
+          type: string
+        schemaVersion:
+          type: integer
+          minimum: 1
+      required:
+      - publishedAt
+      - schemaVersion
+      - sourceRevision
+      - versionNumber
+    WorkflowStarterConfiguration:
+      type: object
+      properties:
+        mode:
+          type: string
+        teamIds:
+          type: array
+          items:
+            type: string
+        membershipIds:
+          type: array
+          items:
+            type: string
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

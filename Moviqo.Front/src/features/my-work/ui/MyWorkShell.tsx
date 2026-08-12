@@ -26,10 +26,13 @@ type MyWorkShellProps = {
   workflowCreationHref?: string | null;
   showWorkflowCreation: boolean;
   myProcessesQuery: MyProcessesQuery;
+  myTasksSearchDraft: string;
   myProcessesSearchDraft: string;
   myProcessesTimeZone: string;
   onMyProcessesSearchChange(value: string): void;
   onMyProcessesSearchSubmit(): void;
+  onMyTasksSearchChange(value: string): void;
+  onMyTasksSearchSubmit(): void;
   onMyProcessesPageChange(page: number): void;
   onMyTasksPageChange(page: number): void;
   onStartWorkflowsPageChange(page: number): void;
@@ -71,16 +74,10 @@ const errorMessageFor = (
   if (snapshot.error.code === "permission_denied") {
     return t("myWork.permissionDenied");
   }
-  if (snapshot.error.code === "resource_not_found" || snapshot.error.status === 404) {
-    return t("myWork.resourceNotFound");
-  }
-  if (snapshot.error.status === 0) {
-    return t("myWork.networkError");
-  }
   return ({
-    myTasks: t("myWork.myTasks.error"),
-    startWorkflows: t("myWork.startWorkflows.error"),
-    myProcesses: t("myWork.myProcesses.error")
+    myTasks: t("myWork.myTasks.unavailable"),
+    startWorkflows: t("myWork.startWorkflows.unavailable"),
+    myProcesses: t("myWork.myProcesses.unavailable")
   })[region];
 };
 
@@ -88,6 +85,11 @@ const canRetryMyWorkError = (snapshot: MyWorkSnapshot) => (
   snapshot.status === "error"
   && !isSessionExpiryProblem(snapshot.error.status, snapshot.error.code)
   && snapshot.error.code !== "permission_denied"
+);
+
+const isMissingMyWork = (snapshot: MyWorkSnapshot) => (
+  snapshot.status === "error"
+  && (snapshot.error.code === "resource_not_found" || snapshot.error.status === 404)
 );
 
 export const MyWorkShell = ({
@@ -99,10 +101,13 @@ export const MyWorkShell = ({
   workflowCreationHref,
   showWorkflowCreation,
   myProcessesQuery,
+  myTasksSearchDraft,
   myProcessesSearchDraft,
   myProcessesTimeZone,
   onMyProcessesSearchChange,
   onMyProcessesSearchSubmit,
+  onMyTasksSearchChange,
+  onMyTasksSearchSubmit,
   onMyProcessesPageChange,
   onMyTasksPageChange,
   onStartWorkflowsPageChange,
@@ -124,7 +129,6 @@ export const MyWorkShell = ({
     aria-labelledby={showHeading ? "my-work-title" : undefined}
   >
     {showHeading ? <div className="page-heading">
-      <p className="eyebrow">{t("myWork.eyebrow")}</p>
       <h1 id="my-work-title">{t("myWork.title")}</h1>
       <p className="lede">{t("myWork.lede")}</p>
       {showWorkflowCreation && workflowCreationHref ? <div className="button-row">
@@ -156,7 +160,10 @@ export const MyWorkShell = ({
           snapshot,
           onRetry,
           t,
-          myProcessesQuery.myTasksPage,
+          myProcessesQuery,
+          myTasksSearchDraft,
+          onMyTasksSearchChange,
+          onMyTasksSearchSubmit,
           onMyTasksPageChange,
           onNavigate
         )}
@@ -175,7 +182,10 @@ export const MyWorkShell = ({
           startingWorkflowId,
           t,
           myProcessesQuery.startWorkflowsPage,
-          onStartWorkflowsPageChange
+          onStartWorkflowsPageChange,
+          showWorkflowCreation,
+          workflowCreationHref,
+          onNavigate
         )}
       </MyWorkRegionSection> : null}
       {regions.includes("myProcesses") ? <MyWorkRegionSection
@@ -235,13 +245,37 @@ const renderMyTasks = (
   snapshot: MyWorkSnapshot,
   onRetry: () => void,
   t: Translate,
-  page: number,
+  query: MyProcessesQuery,
+  searchDraft: string,
+  onSearchChange: (value: string) => void,
+  onSearchSubmit: () => void,
   onPageChange: (page: number) => void,
   onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void
 ) => {
-  return renderRegionState<MyWorkTask>(
+  const controls = <form
+    className="my-work-search"
+    onSubmit={(event) => {
+      event.preventDefault();
+      onSearchSubmit();
+    }}
+  >
+    <TextInput
+      id="my-tasks-search"
+      label={t("myWork.myTasks.searchLabel")}
+      type="search"
+      value={searchDraft}
+      placeholder={t("myWork.myTasks.searchPlaceholder")}
+      onChange={(event) => onSearchChange(event.target.value)}
+    />
+    <Button type="submit" width="full">
+      {t("myWork.myTasks.searchAction")}
+    </Button>
+  </form>;
+  const content = renderRegionState<MyWorkTask>(
     snapshot,
-    t("myWork.myTasks.empty"),
+    query.taskSearch
+      ? t("myWork.myTasks.noMatches")
+      : t("myWork.myTasks.empty"),
     errorMessageFor(snapshot, "myTasks", t),
     t("myWork.myTasks.loading"),
     t("myWork.retry"),
@@ -261,8 +295,14 @@ const renderMyTasks = (
       </div>
     </article>,
     (dashboard) => dashboard.myTasks,
-    (collection) => renderCollectionPagination(page, collection.hasMore, onPageChange, t)
+    (collection) => renderCollectionPagination(
+      query.myTasksPage,
+      collection.hasMore,
+      onPageChange,
+      t
+    )
   );
+  return <div>{controls}{content}</div>;
 };
 
 const renderStartWorkflows = (
@@ -273,11 +313,27 @@ const renderStartWorkflows = (
   startingWorkflowId: string | null,
   t: Translate,
   page: number,
-  onPageChange: (page: number) => void
+  onPageChange: (page: number) => void,
+  showWorkflowCreation: boolean,
+  workflowCreationHref?: string | null,
+  onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void
 ) => {
   return renderRegionState<MyWorkStartWorkflow>(
     snapshot,
-    t("myWork.startWorkflows.empty"),
+    <div className="status-panel" role="status">
+      <strong>{showWorkflowCreation
+        ? t("myWork.startWorkflows.emptyAuthor")
+        : t("myWork.startWorkflows.emptyMember")}</strong>
+      <p>{t("myWork.startWorkflows.emptyHelp")}</p>
+      {showWorkflowCreation && workflowCreationHref ? (
+        <ButtonLink
+          href={workflowCreationHref}
+          onClick={(event) => onNavigate?.(workflowCreationHref, event)}
+        >
+          {t("workflowCatalog.create")}
+        </ButtonLink>
+      ) : null}
+    </div>,
     errorMessageFor(snapshot, "startWorkflows", t),
     t("myWork.startWorkflows.loading"),
     t("myWork.retry"),
@@ -349,6 +405,16 @@ const renderMyProcesses = (
   }
 
   if (snapshot.status === "error") {
+    if (isMissingMyWork(snapshot)) {
+      return <div>
+        {controls}
+        <p className="status-panel" role="status">
+          {query.search
+            ? t("myWork.myProcesses.noMatches")
+            : t("myWork.myProcesses.empty")}
+        </p>
+      </div>;
+    }
     return <div>
       {controls}
       <div className="status-panel" role="alert" data-error-code={snapshot.error.code}>
@@ -367,7 +433,11 @@ const renderMyProcesses = (
   return <div>
     {controls}
     {collection.items.length === 0 ? (
-      <p className="status-panel" role="status">{t("myWork.myProcesses.empty")}</p>
+      <p className="status-panel" role="status">
+        {query.search
+          ? t("myWork.myProcesses.noMatches")
+          : t("myWork.myProcesses.empty")}
+      </p>
     ) : (
       <>
         <div
@@ -460,7 +530,7 @@ const renderMyProcesses = (
 
 const renderRegionState = <TItem,>(
   snapshot: MyWorkSnapshot,
-  emptyMessage: string,
+  emptyContent: ReactNode,
   errorMessage: string,
   loadingMessage: string,
   retryLabel: string,
@@ -474,6 +544,11 @@ const renderRegionState = <TItem,>(
   }
 
   if (snapshot.status === "error") {
+    if (isMissingMyWork(snapshot)) {
+      return typeof emptyContent === "string" ? (
+        <p className="status-panel" role="status">{emptyContent}</p>
+      ) : emptyContent;
+    }
     return <div className="status-panel" role="alert" data-error-code={snapshot.error.code}>
       <p>{errorMessage}</p>
       {canRetryMyWorkError(snapshot) ? <Button onClick={onRetry}>{retryLabel}</Button> : null}
@@ -483,7 +558,9 @@ const renderRegionState = <TItem,>(
   const collection = selectCollection(snapshot.data);
   if (collection.items.length === 0) {
     return <>
-      <p className="status-panel" role="status">{emptyMessage}</p>
+      {typeof emptyContent === "string" ? (
+        <p className="status-panel" role="status">{emptyContent}</p>
+      ) : emptyContent}
       {renderFooter?.(collection)}
     </>;
   }

@@ -77,8 +77,13 @@ test("Moviqo-owned labels, navigation, statuses, validation, help, and catalog c
     "No tienes permiso para ver este trabajo. Tu sesión sigue activa."
   );
   assert.equal(
-    translate("es", "myWork.startWorkflows.empty"),
-    "No tienes flujos creados o asignados para iniciar un proceso."
+    translate("es", "myWork.startWorkflows.emptyAuthor"),
+    "Crea un flujo para iniciar"
+  );
+  assert.equal(translate("es", "formLauncher.noWorkflows"), "Aún no tienes formularios");
+  assert.equal(
+    translate("es", "myWork.startWorkflows.pageLede"),
+    "Elige un flujo publicado para iniciar un proceso nuevo."
   );
   assert.equal(
     translate("en", "myWork.myProcesses.loading"),
@@ -104,9 +109,12 @@ test("public and onboarding Spanish copy preserves required spelling and accents
     ["environment.banner.title", "Entorno interno con datos sintéticos"],
     ["password.policy.helper", "Usa entre 15 y 128 caracteres. Evita contraseñas comunes o expuestas."],
     ["registration.organization.title", "Organización"],
-    ["registration.title", "Registra la organización y a su primera persona responsable."],
+    ["registration.title", "Registra tu organización y la primera persona responsable."],
     ["verification.eyebrow", "Verificación de correo"],
     ["signIn.email", "Correo electrónico"],
+    ["processDetail.timelineTitle", "Línea de tiempo"],
+    ["workflowDesign.create.eyebrow", "Diseño de flujos"],
+    ["workflowDesign.create.body", "Usa un nombre claro para identificar el flujo. Después podrás agregar las tareas y definir quién participa."],
     ["passwordRecovery.title", "Recupera tu contraseña"],
     ["passwordRecovery.resetFailure", "El enlace no es válido o la contraseña no cumple la política."]
   ] as const;
@@ -128,7 +136,7 @@ test("reviewed English onboarding copy describes current behavior", () => {
 });
 
 test("missing English resources fall back to Spanish instead of internal keys", () => {
-  assert.equal(translate("en", "catalog.fallbackOnly"), "Texto de respaldo en espanol");
+  assert.equal(translate("en", "catalog.fallbackOnly"), "Texto de respaldo en español");
 });
 
 test("language preference adapter persists supported languages through isolated storage key", () => {

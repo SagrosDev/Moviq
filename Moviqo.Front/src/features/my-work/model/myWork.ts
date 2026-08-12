@@ -18,6 +18,7 @@ export type MyWorkCollection<TItem> = {
 
 export type MyProcessesQuery = {
   myTasksPage: number;
+  taskSearch: string;
   page: number;
   search: string;
   startWorkflowsPage: number;
@@ -38,6 +39,7 @@ export type ProcessDetailResult =
 
 export const defaultMyProcessesQuery: MyProcessesQuery = {
   myTasksPage: 1,
+  taskSearch: "",
   page: 1,
   search: "",
   startWorkflowsPage: 1
@@ -55,6 +57,7 @@ export const buildMyWorkDashboardQuery = (query: MyProcessesQuery) => ({
   myProcessesPage: query.page > 1 ? query.page : undefined,
   myProcessesSearch: query.search.trim() || undefined,
   myTasksPage: query.myTasksPage > 1 ? query.myTasksPage : undefined,
+  myTasksSearch: query.taskSearch.trim() || undefined,
   startWorkflowsPage: query.startWorkflowsPage > 1
     ? query.startWorkflowsPage
     : undefined

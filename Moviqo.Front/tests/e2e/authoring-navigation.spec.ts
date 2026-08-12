@@ -134,13 +134,45 @@ test("workflow creation, dirty navigation, form launch, and deep-link reload sta
     new RegExp(`/workflows/${workflowId}/tasks/${taskElementId}/form$`)
   );
   await expect(page.getByRole("heading", { level: 1, name: "Diseñador de formulario" })).toBeVisible();
-  await expect(page.getByText(/El diseño del formulario estará disponible aquí/)).toBeVisible();
+  await expect(page.getByText(/Aquí podrás diseñar el formulario de esta tarea/)).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Diseñador de formulario" })).toBeVisible();
   expect(draftReads).toBeGreaterThanOrEqual(1);
 
   await page.goto("/workflows/01987df4-ae8a-7000-8000-000000000999/design");
-  await expect(page.getByRole("alert")).toContainText(/borrador no está disponible/i);
+  await expect(page.getByRole("alert")).toContainText(/No encontramos este borrador/i);
   await expect(page.getByRole("button", { name: "Volver a flujos" })).toBeVisible();
+});
+
+test("empty authoring pages guide an owner to create the first workflow", async ({ page }) => {
+  await mockCsrfBootstrap(page);
+  await page.route("**/api/v1/auth/session/", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(authenticatedSession)
+    });
+  });
+  await page.route("**/api/v1/workflow-design/workflows/", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [] })
+    });
+  });
+
+  await page.goto("/forms");
+  await expect(page.getByRole("heading", { level: 2, name: "Aún no tienes formularios" })).toBeVisible();
+  await expect(page.locator("ol").getByRole("listitem")).toHaveText([
+    "Crea un flujo de proceso y agrega al menos una tarea.",
+    "Vuelve a Formularios para diseñar los campos de esa tarea."
+  ]);
+  await page.getByRole("button", { name: "Crear flujo" }).click();
+  await expect(page).toHaveURL(/\/workflows\/new$/);
+
+  await page.goto("/workflows");
+  await expect(page.getByRole("heading", { level: 2, name: "Crea tu primer flujo" })).toBeVisible();
+  await expect(page.getByText(/Aún no tienes flujos/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Crear flujo" })).toBeVisible();
 });

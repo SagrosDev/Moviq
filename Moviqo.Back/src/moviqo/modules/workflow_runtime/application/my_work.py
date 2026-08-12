@@ -70,11 +70,15 @@ def read_my_work_dashboard(
     *,
     start_workflows_page: int = 1,
     my_tasks_page: int = 1,
+    my_tasks_search: str = "",
     my_processes_page: int = 1,
     my_processes_search: str = "",
 ) -> dict[str, object]:
     startable_workflows = list_startable_workflows(tenant_context=tenant_context)
-    my_tasks = list_assigned_tasks(tenant_context=tenant_context)
+    my_tasks = list_assigned_tasks(
+        tenant_context=tenant_context,
+        search=my_tasks_search,
+    )
     my_processes = list_my_processes(
         tenant_context=tenant_context,
         page=my_processes_page,
@@ -122,7 +126,11 @@ def read_my_work_dashboard(
     }
 
 
-def list_assigned_tasks(*, tenant_context: TenantContext) -> list[dict[str, object]]:
+def list_assigned_tasks(
+    *,
+    tenant_context: TenantContext,
+    search: str = "",
+) -> list[dict[str, object]]:
     tasks = (
         TaskOccurrence.objects.select_related("workflow", "workflow_version", "process")
         .filter(
@@ -137,9 +145,21 @@ def list_assigned_tasks(*, tenant_context: TenantContext) -> list[dict[str, obje
     summaries: list[dict[str, object]] = []
     for task in tasks:
         summary = _task_summary(task)
-        if summary is not None:
+        if summary is not None and _matches_task_search(summary=summary, search=search):
             summaries.append(summary)
     return summaries
+
+
+def _matches_task_search(*, summary: dict[str, object], search: str) -> bool:
+    normalized_search = search.strip().lower()
+    if not normalized_search:
+        return True
+    haystacks = (
+        str(summary["title"]).lower(),
+        str(summary["workflowName"]).lower(),
+        str(summary["processId"])[:8].lower(),
+    )
+    return any(normalized_search in haystack for haystack in haystacks)
 
 
 def list_my_processes(

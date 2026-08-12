@@ -33,11 +33,14 @@ const renderShell = (
           onMyTasksPageChange: () => undefined,
           onMyProcessesSearchChange: () => undefined,
           onMyProcessesSearchSubmit: () => undefined,
+          onMyTasksSearchChange: () => undefined,
+          onMyTasksSearchSubmit: () => undefined,
           onStartWorkflowsPageChange: () => undefined,
           showWorkflowCreation: false,
           startFeedbackByWorkflowId: {},
           startingWorkflowId: null,
           myProcessesQuery: defaultMyProcessesQuery,
+          myTasksSearchDraft: defaultMyProcessesQuery.taskSearch,
           myProcessesSearchDraft: defaultMyProcessesQuery.search,
           myProcessesTimeZone: "America/Bogota",
           workflowCreationHref: null,
@@ -67,7 +70,7 @@ test("my-work shell renders semantic regions and localized empty states", () => 
     },
     {
       showWorkflowCreation: true,
-      workflowCreationHref: "/my-work/workflows/new"
+      workflowCreationHref: "/workflows/new"
     }
   );
 
@@ -76,10 +79,12 @@ test("my-work shell renders semantic regions and localized empty states", () => 
   assert.match(markup, /Iniciar un proceso/);
   assert.match(markup, /Mis procesos/);
   assert.match(markup, /Crear flujo/);
-  assert.match(markup, /No tienes tareas asignadas por ahora/);
-  assert.match(markup, /No tienes flujos creados o asignados para iniciar un proceso/);
-  assert.match(markup, /Aún no tienes procesos para consultar/);
+  assert.match(markup, /No tienes tareas pendientes/);
+  assert.match(markup, /Crea un flujo para iniciar/);
+  assert.match(markup, /href="\/workflows\/new"/);
+  assert.match(markup, /Aún no hay procesos relacionados contigo/);
   assert.match(markup, /Buscar procesos completados/);
+  assert.match(markup, /Buscar tareas/);
 });
 
 test("my-work regions expose contextual loading states with a visual spinner", () => {
@@ -103,6 +108,7 @@ test("my-work regions expose contextual loading states with a visual spinner", (
 test("my-work pagination uses the generated endpoint query contract", () => {
   assert.deepEqual(buildMyWorkDashboardQuery({
     myTasksPage: 2,
+    taskSearch: "  review  ",
     page: 3,
     search: "  approvals  ",
     startWorkflowsPage: 4
@@ -110,6 +116,7 @@ test("my-work pagination uses the generated endpoint query contract", () => {
     myProcessesPage: 3,
     myProcessesSearch: "approvals",
     myTasksPage: 2,
+    myTasksSearch: "review",
     startWorkflowsPage: 4
   });
 });
@@ -152,7 +159,7 @@ test("my-work shell keeps permission denial localized and exposes only the safe 
   assert.doesNotMatch(markup, /Reintentar/);
 });
 
-test("my-work shell distinguishes not-found and contextual server failures from empty work", () => {
+test("my-work shell maps missing collections to empty guidance and keeps server failures refreshable", () => {
   const notFoundMarkup = renderShell({
     status: "error",
     error: {
@@ -178,12 +185,12 @@ test("my-work shell distinguishes not-found and contextual server failures from 
     updatedAt: Date.now()
   }, { regions: ["myProcesses"], showHeading: false, showRegionNavigation: false });
 
-  assert.match(notFoundMarkup, /No encontramos este espacio de trabajo/);
+  assert.match(notFoundMarkup, /Todavía no hay flujos para iniciar/);
   assert.doesNotMatch(notFoundMarkup, /No tienes flujos creados/);
-  assert.match(notFoundMarkup, /Reintentar/);
-  assert.match(serverMarkup, /No pudimos cargar tus procesos/);
+  assert.doesNotMatch(notFoundMarkup, /Actualizar/);
+  assert.match(serverMarkup, /Actualiza para cargar tus procesos/);
   assert.doesNotMatch(serverMarkup, /Provider failure/);
-  assert.match(serverMarkup, /Reintentar/);
+  assert.match(serverMarkup, /Actualizar/);
 });
 
 test("my-work shell does not mislabel malformed server errors as an expired session", () => {
@@ -200,9 +207,9 @@ test("my-work shell does not mislabel malformed server errors as an expired sess
     updatedAt: Date.now()
   }, { regions: ["myTasks"], showHeading: false, showRegionNavigation: false });
 
-  assert.match(markup, /No pudimos cargar tus tareas/);
-  assert.doesNotMatch(markup, /Tu sesión ya no está disponible/);
-  assert.match(markup, /Reintentar/);
+  assert.match(markup, /Actualiza para cargar tus tareas/);
+  assert.doesNotMatch(markup, /Tu sesión terminó/);
+  assert.match(markup, /Actualizar/);
 });
 
 test("my-work shell renders startable workflow cards with the start action and feedback", () => {

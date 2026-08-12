@@ -95,7 +95,7 @@ test("task completion removes the form document and invalidates organization rea
   const organizationId = "organization-1";
   const taskQueryKey = moviqoQueryKeys.taskForm(organizationId, taskFormDocument.taskId);
   const otherTaskQueryKey = moviqoQueryKeys.taskForm(organizationId, "task-2");
-  const myWorkQueryKey = moviqoQueryKeys.myWork(organizationId, 1, 1, 1, "");
+  const myWorkQueryKey = moviqoQueryKeys.myWork(organizationId, 1, "", 1, 1, "");
   queryClient.setQueryData(taskQueryKey, taskFormDocument);
   queryClient.setQueryData(otherTaskQueryKey, { ...taskFormDocument, taskId: "task-2" });
   queryClient.setQueryData(myWorkQueryKey, {

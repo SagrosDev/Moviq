@@ -219,6 +219,13 @@ class MyWorkDashboardView(APIView):
                 description="One-based page of directly assigned open tasks.",
             ),
             OpenApiParameter(
+                name="myTasksSearch",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Search directly assigned open task summaries.",
+            ),
+            OpenApiParameter(
                 name="myProcessesPage",
                 type=int,
                 location=OpenApiParameter.QUERY,
@@ -249,6 +256,7 @@ class MyWorkDashboardView(APIView):
             request.query_params.get("myTasksPage"),
             default=1,
         )
+        my_tasks_search = request.query_params.get("myTasksSearch", "")
         my_processes_page = _positive_integer(
             request.query_params.get("myProcessesPage"),
             default=1,
@@ -259,6 +267,7 @@ class MyWorkDashboardView(APIView):
                 tenant_context,
                 start_workflows_page=start_workflows_page,
                 my_tasks_page=my_tasks_page,
+                my_tasks_search=my_tasks_search,
                 my_processes_page=my_processes_page,
                 my_processes_search=my_processes_search,
             )

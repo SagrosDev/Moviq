@@ -16,8 +16,7 @@ import { moviqoQueryKeys } from "../../../shared/api";
 import { useLanguage, type MessageKey } from "../../../shared/localization";
 import {
   Alert,
-  Button,
-  Card,
+  ButtonLink,
   isUnmodifiedPrimaryClick,
   PageHeader
 } from "../../../shared/ui";
@@ -42,6 +41,7 @@ export const MyWorkPage = ({ module }: { module: MyWorkModule }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [myProcessesQuery, setMyProcessesQuery] = useState<MyProcessesQuery>(defaultMyProcessesQuery);
+  const [myTasksSearchDraft, setMyTasksSearchDraft] = useState(defaultMyProcessesQuery.taskSearch);
   const [myProcessesSearchDraft, setMyProcessesSearchDraft] = useState(defaultMyProcessesQuery.search);
   const [startingWorkflowId, setStartingWorkflowId] = useState<string | null>(null);
   const [startFeedbackByWorkflowId, setStartFeedbackByWorkflowId] = useState<Record<string, string | undefined>>({});
@@ -52,31 +52,17 @@ export const MyWorkPage = ({ module }: { module: MyWorkModule }) => {
   const { retry, snapshot } = useMyWorkDashboard(
     myProcessesQuery,
     organizationId,
-    module !== "dashboard" && state.status === "authenticated"
+    state.status === "authenticated"
   );
 
   if (state.status !== "authenticated") {
     return <Alert announcement="polite">{t("app.loading")}</Alert>;
   }
 
-  if (module === "dashboard") {
-    const canAuthor = canCreateWorkflow(state.context.membership.role);
-    return (
-      <div className="grid gap-moviqo-6">
-        <PageHeader description={t("dashboard.lede")} title={t("dashboard.title")} />
-        <div className="grid gap-moviqo-4 tablet:grid-cols-2">
-          <Card><Button onClick={() => navigate("/my-work/tasks")}>{t("dashboard.tasks")}</Button></Card>
-          <Card><Button onClick={() => navigate("/my-work/processes")}>{t("dashboard.processes")}</Button></Card>
-          <Card><Button onClick={() => navigate("/processes/start")}>{t("dashboard.startProcess")}</Button></Card>
-          {canAuthor ? (
-            <Card><Button onClick={() => navigate("/workflows")}>{t("dashboard.authoring")}</Button></Card>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-
-  const region = regionByModule[module];
+  const selectedModule = module === "dashboard" ? "tasks" : module;
+  const region = regionByModule[selectedModule];
+  const isWorkModule = selectedModule !== "start-process";
+  const canAuthor = canCreateWorkflow(state.context.membership.role);
 
   const handleStartWorkflow = async (workflowId: string) => {
     const idempotencyKey = startKeyByWorkflowId[workflowId]
@@ -102,12 +88,42 @@ export const MyWorkPage = ({ module }: { module: MyWorkModule }) => {
   return (
     <div className="grid gap-moviqo-6">
       <PageHeader
-        description={t("myWork.lede")}
-        eyebrow={t("myWork.eyebrow")}
-        title={t(titleKeyByModule[module])}
+        description={isWorkModule
+          ? t("myWork.lede")
+          : t("myWork.startWorkflows.pageLede")}
+        title={isWorkModule ? t("myWork.title") : t(titleKeyByModule[selectedModule])}
       />
+      {isWorkModule ? (
+        <nav className="flex flex-wrap gap-moviqo-2" aria-label={t("myWork.tabs")}>
+          <ButtonLink
+            aria-current={selectedModule === "tasks" ? "page" : undefined}
+            href="/my-work/tasks"
+            variant={selectedModule === "tasks" ? "primary" : "secondary"}
+            onClick={(event) => {
+              if (!isUnmodifiedPrimaryClick(event)) return;
+              event.preventDefault();
+              navigate("/my-work/tasks");
+            }}
+          >
+            {t("myWork.myTasks.title")}
+          </ButtonLink>
+          <ButtonLink
+            aria-current={selectedModule === "processes" ? "page" : undefined}
+            href="/my-work/processes"
+            variant={selectedModule === "processes" ? "primary" : "secondary"}
+            onClick={(event) => {
+              if (!isUnmodifiedPrimaryClick(event)) return;
+              event.preventDefault();
+              navigate("/my-work/processes");
+            }}
+          >
+            {t("myWork.myProcesses.title")}
+          </ButtonLink>
+        </nav>
+      ) : null}
       <MyWorkShell
         myProcessesQuery={myProcessesQuery}
+        myTasksSearchDraft={myTasksSearchDraft}
         myProcessesSearchDraft={myProcessesSearchDraft}
         myProcessesTimeZone={state.context.membership.organizationTimezone}
         onMyProcessesPageChange={(page) => {
@@ -127,6 +143,14 @@ export const MyWorkPage = ({ module }: { module: MyWorkModule }) => {
             search: myProcessesSearchDraft.trim()
           }));
         }}
+        onMyTasksSearchChange={setMyTasksSearchDraft}
+        onMyTasksSearchSubmit={() => {
+          setMyProcessesQuery((current) => ({
+            ...current,
+            myTasksPage: 1,
+            taskSearch: myTasksSearchDraft.trim()
+          }));
+        }}
         onNavigate={(href, event) => {
           if (!isUnmodifiedPrimaryClick(event)) return;
           event.preventDefault();
@@ -143,11 +167,11 @@ export const MyWorkPage = ({ module }: { module: MyWorkModule }) => {
         regions={[region]}
         showHeading={false}
         showRegionNavigation={false}
-        showWorkflowCreation={false}
+        showWorkflowCreation={selectedModule === "start-process" && canAuthor}
         snapshot={snapshot}
         startFeedbackByWorkflowId={startFeedbackByWorkflowId}
         startingWorkflowId={startingWorkflowId}
-        workflowCreationHref={null}
+        workflowCreationHref={selectedModule === "start-process" && canAuthor ? "/workflows/new" : null}
       />
     </div>
   );

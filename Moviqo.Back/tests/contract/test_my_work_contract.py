@@ -213,7 +213,6 @@ def _publish_workflow(
         tenant_context=_tenant_context(membership),
         workflow_id=created["workflowId"],
         expected_revision=saved["revision"],
-        draft=saved["draft"],
         idempotency_key=f"workflow-publish-{uuid.uuid4().hex}",
         request_hash=_request_hash(f"publish-{name}"),
     )
@@ -1233,7 +1232,6 @@ def test_completed_process_summary_uses_bound_task_field_order_for_safe_contribu
         tenant_context=_tenant_context(owner_membership),
         workflow_id=created["workflowId"],
         expected_revision=saved["revision"],
-        draft=saved["draft"],
         idempotency_key=f"workflow-publish-{uuid.uuid4().hex}",
         request_hash=_request_hash("ordered-field-publish"),
     )

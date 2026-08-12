@@ -11,15 +11,18 @@ export const normalizeWorkflowDraft = (
   draft: WorkflowDraftDocument
 ): WorkflowDraftDocument => ({
   ...draft,
+  elements: draft.elements.map((element) => element.type === "task"
+    ? {
+        ...element,
+        assignment: element.assignment ?? { mode: "unconfigured", membershipId: null }
+      }
+    : element),
+  layout: draft.layout ?? { positions: {} },
   publication: draft.publication ?? {
     starter: {
       mode: "unconfigured",
       teamIds: [],
       membershipIds: []
-    },
-    assignment: {
-      mode: "unconfigured",
-      membershipId: null
     }
   }
 });

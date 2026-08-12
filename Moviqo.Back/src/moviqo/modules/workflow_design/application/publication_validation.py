@@ -4,7 +4,6 @@ from collections import defaultdict, deque
 from typing import Any
 
 from moviqo.modules.workflow_design.application.publication_configuration import (
-    ASSIGNMENT_TARGET,
     STARTER_TARGET,
 )
 
@@ -33,14 +32,8 @@ def validate_workflow_for_publication(
     if publication_configuration_issues is None:
         publication = document.get("publication", {})
         starter = publication.get("starter", {})
-        assignment = publication.get("assignment", {})
         starter_mode = starter.get("mode") or (
             "allActiveMembers" if starter.get("isConfigured", False) else "unconfigured"
-        )
-        assignment_mode = assignment.get("mode") or (
-            "workflowInitiator"
-            if assignment.get("isConfigured", False)
-            else "unconfigured"
         )
         if starter_mode == "unconfigured":
             issues.append(
@@ -54,18 +47,17 @@ def validate_workflow_for_publication(
                     action_label="Configure starter",
                 )
             )
-        if assignment_mode == "unconfigured":
-            issues.append(
-                _issue(
-                    code="assignment_missing",
-                    target=ASSIGNMENT_TARGET,
-                    message=(
-                        "We need one more detail before publishing: "
-                        "choose who receives the first task."
-                    ),
-                    action_label="Configure assignment",
+        for task in tasks:
+            if task.get("assignment", {}).get("mode", "unconfigured") == "unconfigured":
+                issues.append(
+                    _issue(
+                        code="assignment_missing",
+                        target=f"elements.{task['id']}.assignment",
+                        element_id=task["id"],
+                        message=f"Choose who receives the Task '{task['label']}'.",
+                        action_label="Configure Task assignment",
+                    )
                 )
-            )
 
     if len(starts) != 1:
         issues.append(
@@ -138,31 +130,36 @@ def validate_workflow_for_publication(
                 )
 
     process_field_by_id = {field["id"]: field for field in document["processFields"]}
-    first_task_bindings = []
-    if first_task_id is not None:
-        first_task_bindings = [
+    task_bindings: list[dict[str, Any]] = []
+    for task in tasks:
+        bindings = [
             binding
             for binding in document["formBindings"]
-            if binding["taskElementId"] == first_task_id
+            if binding["taskElementId"] == task["id"]
         ]
-        if not first_task_bindings:
+        task_bindings.extend(bindings)
+        if not bindings:
             issues.append(
                 _issue(
-                    code="first_task_form_missing",
-                    target=f"elements.{first_task_id}",
-                    element_id=first_task_id,
-                    message="Add one visible field to the first Task form before publishing.",
-                    action_label="Open first task form",
+                    code="task_form_missing",
+                    target=f"elements.{task['id']}",
+                    element_id=task["id"],
+                    message=(
+                        f"Add one visible field to the Task '{task['label']}' "
+                        "before publishing."
+                    ),
+                    action_label="Open Task form",
                 )
             )
 
-    for binding in first_task_bindings:
+    for binding in task_bindings:
         field = process_field_by_id.get(binding["fieldId"])
         if field is None:
             issues.append(
                 _issue(
-                    code="first_task_binding_missing_field",
+                    code="task_binding_missing_field",
                     target=f"formBindings.{binding['id']}",
+                    element_id=binding["taskElementId"],
                     binding_id=binding["id"],
                     message=(
                         "Reconnect this Task field to an existing reusable field "
@@ -177,8 +174,9 @@ def validate_workflow_for_publication(
         if not label:
             issues.append(
                 _issue(
-                    code="first_task_form_decorative",
+                    code="task_form_decorative",
                     target=f"processFields.{field['id']}",
+                    element_id=binding["taskElementId"],
                     field_id=field["id"],
                     binding_id=binding["id"],
                     message=(
@@ -269,9 +267,9 @@ def _deduplicate_and_sort(issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "start_path_incomplete": 7,
         "path_disconnected": 8,
         "path_to_end_missing": 9,
-        "first_task_form_missing": 10,
-        "first_task_binding_missing_field": 11,
-        "first_task_form_decorative": 12,
+        "task_form_missing": 10,
+        "task_binding_missing_field": 11,
+        "task_form_decorative": 12,
     }
     seen: set[tuple[Any, ...]] = set()
     deduplicated: list[dict[str, Any]] = []

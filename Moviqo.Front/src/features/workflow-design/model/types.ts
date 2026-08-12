@@ -7,6 +7,7 @@ export type WorkflowDraftElement = {
   id: string;
   type: WorkflowElementType;
   label: string;
+  assignment?: WorkflowAssignmentConfiguration;
 };
 
 export type WorkflowDraftConnection = {
@@ -14,6 +15,16 @@ export type WorkflowDraftConnection = {
   type: WorkflowConnectionType;
   sourceId: string;
   targetId: string;
+  label?: string | null;
+};
+
+export type WorkflowLayoutPosition = {
+  x: number;
+  y: number;
+};
+
+export type WorkflowDraftLayout = {
+  positions: Record<string, WorkflowLayoutPosition>;
 };
 
 export type WorkflowProcessField = {
@@ -60,12 +71,12 @@ export type WorkflowAssignmentConfiguration = {
 
 export type WorkflowPublicationConfiguration = {
   starter: WorkflowStarterConfiguration;
-  assignment: WorkflowAssignmentConfiguration;
 };
 
 export type WorkflowConfigurationDirectoryMembership = {
   membershipId: string;
   displayName: string;
+  email: string;
   role: string;
 };
 
@@ -92,6 +103,7 @@ export type WorkflowDraftDocument = {
   processFields: WorkflowProcessField[];
   formBindings: WorkflowTaskFormControl[];
   publication?: WorkflowPublicationConfiguration;
+  layout: WorkflowDraftLayout;
 };
 
 export type WorkflowCreationAccepted = {

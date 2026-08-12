@@ -1,24 +1,32 @@
 export { canCreateWorkflow } from "./model/access";
 export {
-  autosaveDelayMs,
   addGuidedWorkflowElement,
   applyWorkflowDraftSave,
   canPublishWorkflow,
+  canSaveWorkflow,
   clearPublicationChecklist,
   connectWorkflowElements,
   createWorkflowPublishRequestKey,
   createWorkflowDraftEditorState,
   focusChecklistTarget,
-  MAX_AUTOSAVE_RETRIES,
+  hasInvalidWorkflowTaskLabels,
+  publicationIssuesFromInvalidParams,
   publishWorkflow,
   reduceWorkflowDraftEditorState,
   saveWorkflowDraft,
   setFirstTaskFieldBinding,
-  shouldScheduleAutosave,
   upsertShortTextProcessField,
   validateWorkflowPublication
 } from "./model/editor";
+export {
+  adaptFlowConnection,
+  addWorkflowElementCommand,
+  canConnectWorkflowByKeyboard,
+  deriveWorkflowFlowElements,
+  workflowTopologyOrder
+} from "./model/flow";
 export { createWorkflowDraftState } from "./model/draft";
+export { formatWorkflowMemberIdentity } from "./model/memberIdentity";
 export {
   createWorkflow,
   initialWorkflowCreationFormState,

@@ -2821,6 +2821,10 @@
                     },
                     "targetId": {
                         "type": "string"
+                    },
+                    "label": {
+                        "type": "string",
+                        "nullable": true
                     }
                 },
                 "required": [
@@ -2890,12 +2894,25 @@
                     "displayName": {
                         "type": "string"
                     },
+                    "email": {
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "format": "email"
+                            },
+                            {
+                                "type": "string",
+                                "maxLength": 0
+                            }
+                        ]
+                    },
                     "role": {
                         "type": "string"
                     }
                 },
                 "required": [
                     "displayName",
+                    "email",
                     "membershipId",
                     "role"
                 ]
@@ -2974,6 +2991,9 @@
                     },
                     "publication": {
                         "$ref": "#/components/schemas/WorkflowPublication"
+                    },
+                    "layout": {
+                        "$ref": "#/components/schemas/WorkflowLayout"
                     }
                 },
                 "required": [
@@ -3010,6 +3030,9 @@
                     },
                     "label": {
                         "type": "string"
+                    },
+                    "assignment": {
+                        "$ref": "#/components/schemas/WorkflowAssignmentConfiguration"
                     }
                 },
                 "required": [
@@ -3045,6 +3068,38 @@
                 "required": [
                     "fieldId",
                     "taskElementId"
+                ]
+            },
+            "WorkflowLayout": {
+                "type": "object",
+                "properties": {
+                    "positions": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/WorkflowPosition"
+                        }
+                    }
+                }
+            },
+            "WorkflowPosition": {
+                "type": "object",
+                "properties": {
+                    "x": {
+                        "type": "number",
+                        "format": "double",
+                        "maximum": 100000,
+                        "minimum": -100000
+                    },
+                    "y": {
+                        "type": "number",
+                        "format": "double",
+                        "maximum": 100000,
+                        "minimum": -100000
+                    }
+                },
+                "required": [
+                    "x",
+                    "y"
                 ]
             },
             "WorkflowProcessField": {
@@ -3088,9 +3143,6 @@
                 "properties": {
                     "starter": {
                         "$ref": "#/components/schemas/WorkflowStarterConfiguration"
-                    },
-                    "assignment": {
-                        "$ref": "#/components/schemas/WorkflowAssignmentConfiguration"
                     }
                 }
             },
@@ -3141,13 +3193,9 @@
                 "properties": {
                     "expectedRevision": {
                         "type": "string"
-                    },
-                    "draft": {
-                        "$ref": "#/components/schemas/WorkflowDraftDocument"
                     }
                 },
                 "required": [
-                    "draft",
                     "expectedRevision"
                 ]
             },

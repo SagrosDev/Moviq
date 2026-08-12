@@ -25,6 +25,7 @@ type FormSectionProps = {
 type FormFieldProps = {
   id: string;
   label: string;
+  labelEmphasis?: "standard" | "strong";
   helpText?: string;
   errorMessage?: string;
   required?: boolean;
@@ -34,6 +35,7 @@ type FormFieldProps = {
 type TextInputProps = Omit<ComponentPropsWithRef<"input">, "className" | "id"> & {
   id: string;
   label: string;
+  labelEmphasis?: "standard" | "strong";
   helpText?: string;
   errorMessage?: string;
 };
@@ -47,6 +49,7 @@ export type SelectOption = {
 type SelectFieldProps = Omit<ComponentPropsWithRef<"select">, "className" | "id"> & {
   id: string;
   label: string;
+  labelEmphasis?: "standard" | "strong";
   helpText?: string;
   errorMessage?: string;
   options: readonly SelectOption[];
@@ -120,6 +123,7 @@ export const FormSection = ({ title, description, children, titleId }: FormSecti
 export const FormField = ({
   id,
   label,
+  labelEmphasis = "standard",
   helpText,
   errorMessage,
   required,
@@ -127,7 +131,12 @@ export const FormField = ({
 }: FormFieldProps) => {
   return (
     <div className="grid min-w-0 gap-moviqo-2">
-      <label className="text-moviqo-label font-semibold text-moviqo-ink-primary" htmlFor={id}>
+      <label
+        className={labelEmphasis === "strong"
+          ? "text-moviqo-body font-bold text-moviqo-ink-primary"
+          : "text-moviqo-label font-semibold text-moviqo-ink-primary"}
+        htmlFor={id}
+      >
         {label}
         {required ? <span aria-hidden="true"> *</span> : null}
       </label>
@@ -146,6 +155,7 @@ export const FormField = ({
 export const TextInput = ({
   id,
   label,
+  labelEmphasis,
   helpText,
   errorMessage,
   required,
@@ -155,7 +165,7 @@ export const TextInput = ({
   ...inputProps
 }: TextInputProps) => {
   return (
-    <FormField id={id} label={label} helpText={helpText} errorMessage={errorMessage} required={required}>
+    <FormField id={id} label={label} labelEmphasis={labelEmphasis} helpText={helpText} errorMessage={errorMessage} required={required}>
       <input
         {...inputProps}
         className={fieldControlClasses}
@@ -172,6 +182,7 @@ export const TextInput = ({
 export const SelectField = ({
   id,
   label,
+  labelEmphasis,
   helpText,
   errorMessage,
   required,
@@ -182,7 +193,7 @@ export const SelectField = ({
   ...selectProps
 }: SelectFieldProps) => {
   return (
-    <FormField id={id} label={label} helpText={helpText} errorMessage={errorMessage} required={required}>
+    <FormField id={id} label={label} labelEmphasis={labelEmphasis} helpText={helpText} errorMessage={errorMessage} required={required}>
       <select
         {...selectProps}
         className={fieldControlClasses}

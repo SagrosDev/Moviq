@@ -39,3 +39,21 @@ These items are not outstanding work for the active Story 1.34. Compatibility, r
 - source_spec: `_bmad-output/implementation-artifacts/spec-authenticated-workspace-ux.md`
   summary: Announce My Work pagination results and restore deliberate focus after page changes.
   evidence: Existing pagination replaces the collection above the focused control without a result announcement or focus transition for keyboard and screen-reader users.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-36-task-names-compact-nodes.md`
+  summary: Preserve actionable backend Workflow save-validation reasons in localized recovery guidance.
+  evidence: The pre-existing controller maps every server `invalidParam` to one generic message, so distinct graph, configuration, and schema failures lose their specific correction guidance.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-36-persist-compact-canvas-layout.md`
+  summary: Rebase conflict snapshots onto the latest Workflow draft instead of replacing it wholesale.
+  evidence: Existing reload/reapply restores the entire stale local document, so concurrent graph or configuration changes can be overwritten; persisted canvas layout now shares that pre-existing recovery behavior.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-36-streamline-workflow-authoring.md`
+  summary: Complete the routed Form Designer so every selected Task can create and maintain its own form bindings.
+  evidence: Workflow Properties already routes a selected Task ID to the Form Designer, but the destination page remains the pre-existing reserved placeholder. Publication readiness can identify Task-specific missing forms, while authoring those forms remains owned by the unfinished Form Designer capability.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-36-compact-editor-header-visible-arrows.md`
+  summary: Make Workflow edge-label placement viewport-aware at every canvas boundary after pan, zoom, and fit.
+  evidence: Existing placement uses flow-space midpoint heuristics and does not measure final screen clearance at the left, right, top, or bottom overflow boundary.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-36-compact-editor-header-visible-arrows.md`
+  summary: Define a product policy for visually presenting arbitrarily long connector labels.
+  evidence: Connection labels have no contract length limit, while a compact finite canvas must choose between visual truncation, expansion, or an explicit detail affordance.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-36-compact-editor-header-visible-arrows.md`
+  summary: Stabilize the existing Firefox Workflow pointer-drag connection journey.
+  evidence: Firefox passed the new header and label geometry scenarios but intermittently created only one of two edges at the pre-existing manual pointer-drag step; the 44px Handle geometry is unchanged and Chromium passes the same gesture.

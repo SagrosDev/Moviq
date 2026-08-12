@@ -46,6 +46,7 @@ export const WorkflowDesignPage = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [saveRequestToken, setSaveRequestToken] = useState(0);
   const [saveBeforeLeaving, setSaveBeforeLeaving] = useState(false);
+  const [pendingFormTaskId, setPendingFormTaskId] = useState<string | null>(null);
   const blocker = useBlocker(isDirty);
 
   useEffect(() => {
@@ -54,6 +55,7 @@ export const WorkflowDesignPage = () => {
     setAcceptedSnapshot(null);
     setIsDirty(false);
     setSaveBeforeLeaving(false);
+    setPendingFormTaskId(null);
   }, [acceptedSnapshot?.workflowId, workflowId]);
 
   useEffect(() => {
@@ -76,6 +78,7 @@ export const WorkflowDesignPage = () => {
   useEffect(() => {
     if (saveBeforeLeaving && !isDirty && blocker.state === "blocked") {
       setSaveBeforeLeaving(false);
+      setPendingFormTaskId(null);
       blocker.proceed();
     }
   }, [blocker, isDirty, saveBeforeLeaving]);
@@ -98,28 +101,27 @@ export const WorkflowDesignPage = () => {
   const hasAcceptedWorkflow = Boolean(draftState && acceptedSnapshot);
 
   return (
-    <div className="grid gap-moviqo-6">
-      <Breadcrumbs
-        items={[
-          { href: "/workflows", label: t("workflowCatalog.title") },
-          { current: true, label: acceptedSnapshot?.name ?? t("workflowDesign.editor.title") }
-        ]}
-        label={t("app.nav.primary")}
-        onNavigate={(href, event) => {
-          if (!isUnmodifiedPrimaryClick(event)) return;
-          event.preventDefault();
-          navigate(href);
-        }}
-      />
+    <div className="grid gap-moviqo-4">
       <PageHeader
         actions={(
           <Button variant="secondary" onClick={() => navigate("/workflows")}>
             {t("workflowDesign.route.back")}
           </Button>
         )}
-        description={acceptedSnapshot?.name}
-        eyebrow={t("workflowDesign.editor.eyebrow")}
-        title={t("workflowDesign.editor.title")}
+        breadcrumb={(
+          <Breadcrumbs
+            items={[
+              { href: "/workflows", label: t("workflowCatalog.title") }
+            ]}
+            label={t("app.nav.primary")}
+            onNavigate={(href, event) => {
+              if (!isUnmodifiedPrimaryClick(event)) return;
+              event.preventDefault();
+              navigate(href);
+            }}
+          />
+        )}
+        title={acceptedSnapshot?.name ?? t("workflowDesign.editor.title")}
       />
       {blocker.state === "blocked" ? (
         <Alert announcement="assertive" title={t("workflowDesign.leave.title")} tone="warning">
@@ -129,16 +131,20 @@ export const WorkflowDesignPage = () => {
               setSaveBeforeLeaving(true);
               setSaveRequestToken((current) => current + 1);
             }}>
-              {t("workflowDesign.leave.save")}
+              {pendingFormTaskId
+                ? t("workflowDesign.leave.saveAndDesignForm")
+                : t("workflowDesign.leave.save")}
             </Button>
             <Button variant="destructive" onClick={() => {
               setSaveBeforeLeaving(false);
+              setPendingFormTaskId(null);
               blocker.proceed();
             }}>
               {t("workflowDesign.leave.discard")}
             </Button>
             <Button variant="secondary" onClick={() => {
               setSaveBeforeLeaving(false);
+              setPendingFormTaskId(null);
               blocker.reset();
             }}>
               {t("workflowDesign.leave.stay")}
@@ -164,6 +170,7 @@ export const WorkflowDesignPage = () => {
           onAccepted={acceptSavedDraft}
           onDirtyChange={setIsDirty}
           onDesignTaskForm={(taskElementId) => {
+            setPendingFormTaskId(taskElementId);
             navigate(formDesignPath(workflowId, taskElementId));
           }}
           saveRequestToken={saveRequestToken}

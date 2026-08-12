@@ -410,6 +410,28 @@ def persist_task_form_values(
     return persisted_values
 
 
+def copy_task_process_field_values(
+    *,
+    source_task: TaskOccurrence,
+    target_task: TaskOccurrence,
+) -> None:
+    source_values = TaskProcessFieldValue.objects.filter(
+        task=source_task,
+        organization_id=source_task.organization_id,
+    )
+    TaskProcessFieldValue.objects.bulk_create(
+        [
+            TaskProcessFieldValue(
+                organization_id=target_task.organization_id,
+                task=target_task,
+                field_id=value.field_id,
+                value_text=value.value_text,
+            )
+            for value in source_values
+        ]
+    )
+
+
 def load_authoritative_task_document(task: TaskOccurrence) -> dict[str, Any] | None:
     if task.workflow_version_id:
         version = read_published_workflow_version(
@@ -463,7 +485,9 @@ def resolve_task_completion_route(
         return None
     target_id = outgoing_targets[0]
     target = elements.get(target_id)
-    if target is None or target.get("type") != "end":
+    if target is None or target.get("type") not in {"task", "end"}:
+        return None
+    if document.get("schemaVersion", 0) < 7 and target.get("type") == "task":
         return None
     return target_id
 

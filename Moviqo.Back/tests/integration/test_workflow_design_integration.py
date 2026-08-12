@@ -18,6 +18,7 @@ from moviqo.modules.organizations.models import Membership, MembershipRole, Orga
 from moviqo.modules.workflow_design.application import (
     create_workflow_definition,
     publish_workflow_version,
+    read_workflow_draft,
     save_workflow_draft,
     validate_workflow_publication,
 )
@@ -193,6 +194,7 @@ def test_workflow_graph_save_advances_revision_once_and_records_semantic_audit(
                     "type": "sequence",
                     "sourceId": "start-1",
                     "targetId": "task-1",
+                    "label": "Submitted",
                 },
                 {
                     "id": "connection-2",
@@ -227,15 +229,15 @@ def test_workflow_graph_save_advances_revision_once_and_records_semantic_audit(
             command_type="workflow-design.save-draft"
         ).order_by("created_at")
     )
-    assert len(audit_records) == 7
+    assert len(audit_records) == 6
     assert {record.event_type for record in audit_records} == {
         "workflow-design.graph-element-added",
         "workflow-design.graph-connection-added",
         "workflow-design.process-field-created",
         "workflow-design.process-field-bound",
     }
-    assert any(record.payload.get("elementId") == "start-1" for record in audit_records)
     assert any(record.payload.get("connectionId") == "connection-1" for record in audit_records)
+    assert any(record.payload.get("label") == "Submitted" for record in audit_records)
     assert any(record.payload.get("fieldId") == "field-1" for record in audit_records)
 
     updated = save_workflow_draft(
@@ -259,6 +261,7 @@ def test_workflow_graph_save_advances_revision_once_and_records_semantic_audit(
                     "type": "sequence",
                     "sourceId": "start-1",
                     "targetId": "task-1",
+                    "label": "Accepted",
                 },
                 {
                     "id": "connection-2",
@@ -291,10 +294,95 @@ def test_workflow_graph_save_advances_revision_once_and_records_semantic_audit(
         command_type="workflow-design.save-draft",
         event_type="workflow-design.graph-element-updated",
     ).count() == 1
+    connection_update = TransactionalAuditRecord.objects.get(
+        command_type="workflow-design.save-draft",
+        event_type="workflow-design.graph-connection-updated",
+    )
+    assert connection_update.payload["previousLabel"] == "Submitted"
+    assert connection_update.payload["label"] == "Accepted"
     assert TransactionalAuditRecord.objects.filter(
         command_type="workflow-design.save-draft",
         event_type="workflow-design.process-field-updated",
     ).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_workflow_layout_only_save_reopens_exact_coordinates_and_audits(
+    django_user_model,
+) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow layout",
+        idempotency_key="workflow-create-layout",
+        request_hash=_request_hash("workflow-create-layout"),
+    )
+    layout = {"positions": {"start-1": {"x": -135.5, "y": 842.25}}}
+
+    saved = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft={**created["draft"], "layout": layout},
+        idempotency_key="workflow-save-layout",
+        request_hash=_request_hash("workflow-save-layout"),
+    )
+    reopened = read_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+    )
+
+    assert saved["revision"] == "2"
+    assert saved["draft"]["layout"] == layout
+    assert reopened is not None
+    assert reopened["draft"]["layout"] == layout
+    audit = TransactionalAuditRecord.objects.get(
+        command_type="workflow-design.save-draft",
+        event_type="workflow-design.graph-layout-updated",
+    )
+    assert audit.payload["elementIds"] == ["start-1"]
+    assert audit.payload["elementCount"] == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_incomplete_draft_save_and_authoritative_publication_validation(
+    django_user_model,
+) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow intake",
+        idempotency_key="workflow-create-incomplete",
+        request_hash=_request_hash("workflow-create-incomplete"),
+    )
+    saved = save_workflow_draft(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision="1",
+        draft={
+            **created["draft"],
+            "elements": [{"id": "start-1", "type": "start", "label": "Start"}],
+        },
+        idempotency_key="workflow-save-incomplete",
+        request_hash=_request_hash("workflow-save-incomplete"),
+    )
+    validation = validate_workflow_publication(
+        tenant_context=tenant_context,
+        workflow_id=created["workflowId"],
+        expected_revision=saved["revision"],
+        idempotency_key="workflow-validate-incomplete",
+        request_hash=_request_hash("workflow-validate-incomplete"),
+    )
+
+    assert saved["revision"] == "2"
+    assert validation["revision"] == "2"
+    assert validation["publishable"] is False
+    assert {issue["code"] for issue in validation["issues"]} >= {
+        "first_task_missing",
+        "end_step_invalid",
+    }
 
 
 @pytest.mark.django_db(transaction=True)
@@ -488,12 +576,54 @@ def test_rejected_graph_save_keeps_last_valid_draft_unchanged(django_user_model)
     draft = WorkflowDraft.objects.get(workflow_id=created["workflowId"])
     assert exc_info.value.default_code == "workflow_draft_invalid"
     assert draft.revision == "1"
-    assert draft.document["elements"] == []
+    assert draft.document["elements"] == [
+        {"id": "start-1", "type": "start", "label": "Start"}
+    ]
     rejection_audit = TransactionalAuditRecord.objects.get(
         command_type="workflow-design.save-draft",
         event_type="workflow-design.draft-edit-rejected",
     )
     assert rejection_audit.payload["draftId"] == created["draft"]["draftId"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_existing_start_cannot_be_removed_from_saved_draft(django_user_model) -> None:
+    _integration_only()
+    tenant_context = _tenant_context(django_user_model)
+    created = create_workflow_definition(
+        tenant_context=tenant_context,
+        name="Workflow intake",
+        idempotency_key="workflow-create-start-guard",
+        request_hash=_request_hash("Workflow intake"),
+    )
+
+    with pytest.raises(WorkflowDraftValidationAPIError) as exc_info:
+        save_workflow_draft(
+            tenant_context=tenant_context,
+            workflow_id=created["workflowId"],
+            expected_revision="1",
+            draft={
+                **created["draft"],
+                "elements": [],
+                "layout": {"positions": {}},
+            },
+            idempotency_key="workflow-save-without-start",
+            request_hash=_request_hash("workflow-without-start"),
+        )
+
+    assert exc_info.value.invalid_params == [
+        {
+            "name": "elements",
+            "code": "start_required",
+            "reason": "The existing Start element cannot be removed.",
+        }
+    ]
+    persisted = WorkflowDraft.objects.get(workflow_id=created["workflowId"])
+    assert persisted.revision == "1"
+    assert persisted.document["elements"] == [
+        {"id": "start-1", "type": "start", "label": "Start"}
+    ]
+    assert persisted.document["layout"] == created["draft"]["layout"]
 
 
 @pytest.mark.django_db(transaction=True)
@@ -516,7 +646,7 @@ def test_rejected_graph_save_replays_one_audit_result(django_user_model) -> None
         "status": "draft",
         "elements": [
             {"id": "start-1", "type": "start", "label": "Start"},
-            {"id": "task-1", "type": "task", "label": "Task"},
+            {"id": "start-2", "type": "start", "label": "Second Start"},
         ],
         "connections": [],
         "processFields": [],
@@ -693,7 +823,6 @@ def test_publication_validation_does_not_advance_revision_and_is_deterministic(
         tenant_context=tenant_context,
         workflow_id=created["workflowId"],
         expected_revision="2",
-        draft=saved["draft"],
         idempotency_key="workflow-validate-1",
         request_hash=_request_hash("workflow-validate-1"),
     )
@@ -701,7 +830,6 @@ def test_publication_validation_does_not_advance_revision_and_is_deterministic(
         tenant_context=tenant_context,
         workflow_id=created["workflowId"],
         expected_revision="2",
-        draft=saved["draft"],
         idempotency_key="workflow-validate-2",
         request_hash=_request_hash("workflow-validate-2"),
     )
@@ -738,13 +866,13 @@ def test_workflow_publish_replays_one_committed_version_and_evidence(
         idempotency_key="workflow-save-1",
         request_hash=_request_hash("workflow-save-1"),
     )
+    assert saved["revision"] == "2"
     request_hash = _request_hash("workflow-publish-1")
 
     first = publish_workflow_version(
         tenant_context=tenant_context,
         workflow_id=created["workflowId"],
         expected_revision="2",
-        draft=saved["draft"],
         idempotency_key="workflow-publish-1",
         request_hash=request_hash,
     )
@@ -752,7 +880,6 @@ def test_workflow_publish_replays_one_committed_version_and_evidence(
         tenant_context=tenant_context,
         workflow_id=created["workflowId"],
         expected_revision="2",
-        draft=saved["draft"],
         idempotency_key="workflow-publish-1",
         request_hash=request_hash,
     )
@@ -794,13 +921,13 @@ def test_stale_publish_attempts_record_rejection_audit_evidence(
         idempotency_key="workflow-save-1",
         request_hash=_request_hash("workflow-save-1"),
     )
+    assert saved["revision"] == "2"
 
     with pytest.raises(WorkflowDraftRevisionConflictError):
         publish_workflow_version(
             tenant_context=tenant_context,
             workflow_id=created["workflowId"],
             expected_revision="1",
-            draft=saved["draft"],
             idempotency_key="workflow-publish-stale",
             request_hash=_request_hash("workflow-publish-stale"),
         )
@@ -835,6 +962,7 @@ def test_concurrent_publish_attempts_serialize_to_distinct_versions(
         idempotency_key="workflow-save-1",
         request_hash=_request_hash("workflow-save-1"),
     )
+    assert saved["revision"] == "2"
     start_gate = threading.Event()
 
     def attempt_publish(idempotency_key: str) -> int:
@@ -845,7 +973,6 @@ def test_concurrent_publish_attempts_serialize_to_distinct_versions(
                 tenant_context=tenant_context,
                 workflow_id=created["workflowId"],
                 expected_revision="2",
-                draft=saved["draft"],
                 idempotency_key=idempotency_key,
                 request_hash=_request_hash(idempotency_key),
             )
@@ -887,7 +1014,6 @@ def test_later_draft_saves_do_not_mutate_published_snapshot(django_user_model) -
         tenant_context=tenant_context,
         workflow_id=created["workflowId"],
         expected_revision="2",
-        draft=saved["draft"],
         idempotency_key="workflow-publish-1",
         request_hash=_request_hash("workflow-publish-1"),
     )
@@ -937,11 +1063,11 @@ def test_published_versions_reject_mutation_attempts(django_user_model) -> None:
         idempotency_key="workflow-save-1",
         request_hash=_request_hash("workflow-save-1"),
     )
+    assert saved["revision"] == "2"
     publish_workflow_version(
         tenant_context=tenant_context,
         workflow_id=created["workflowId"],
         expected_revision="2",
-        draft=saved["draft"],
         idempotency_key="workflow-publish-1",
         request_hash=_request_hash("workflow-publish-1"),
     )

@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  autosaveDelayMs,
-  MAX_AUTOSAVE_RETRIES,
   addGuidedWorkflowElement,
   applyWorkflowDraftSave,
   canPublishWorkflow,
@@ -15,7 +13,6 @@ import {
   reduceWorkflowDraftEditorState,
   reduceWorkflowCreationForm,
   setFirstTaskFieldBinding,
-  shouldScheduleAutosave,
   upsertShortTextProcessField,
   type WorkflowCreationAccepted,
   type WorkflowCreationFormState,
@@ -36,6 +33,7 @@ const createAccepted = (
       {
         membershipId: "01987df4-ae8a-7000-8000-000000000102",
         displayName: "Designer",
+        email: "designer@example.com",
         role: "designer"
       }
     ],
@@ -44,7 +42,7 @@ const createAccepted = (
   name: "Workflow intake",
   revision,
   draft: {
-    schemaVersion: 4,
+    schemaVersion: 7,
     draftId: "01987df4-ae8a-7000-8000-000000000111",
     workflowId: "01987df4-ae8a-7000-8000-000000000110",
     name: "Workflow intake",
@@ -53,6 +51,7 @@ const createAccepted = (
     connections: [],
     processFields: [],
     formBindings: [],
+    layout: { positions: {} },
     ...draftOverrides
   }
 });
@@ -127,13 +126,15 @@ test("guided controls can build the minimum start task end draft without drag", 
       id: "connection-1",
       type: "sequence",
       sourceId: "start-1",
-      targetId: "task-1"
+      targetId: "task-1",
+      label: null
     },
     {
       id: "connection-2",
       type: "sequence",
       sourceId: "task-1",
-      targetId: "end-1"
+      targetId: "end-1",
+      label: null
     }
   ]);
 });
@@ -175,7 +176,7 @@ test("authoritative save replaces the local draft with the server revision", () 
   assert.equal(saved.conflict, false);
 });
 
-test("guided controls do not create a second task in the single-path editor", () => {
+test("guided controls create stable sequential IDs for multiple tasks", () => {
   const labels = { start: "Start", task: "Task", end: "End" };
   const draft: WorkflowDraftDocument = {
     schemaVersion: 3,
@@ -186,13 +187,15 @@ test("guided controls do not create a second task in the single-path editor", ()
     elements: [{ id: "task-1", type: "task", label: "Task" }],
     connections: [],
     processFields: [],
-    formBindings: []
+    formBindings: [],
+    layout: { positions: {} }
   };
 
   const updated = addGuidedWorkflowElement(draft, "task", labels);
 
-  assert.equal(updated.elements.length, 1);
-  assert.equal(updated.elements[0]?.label, "Task");
+  assert.equal(updated.elements.length, 2);
+  assert.equal(updated.elements[1]?.id, "task-2");
+  assert.equal(updated.elements[1]?.label, "Task 2");
 });
 
 test("server sync preserves local edits until a save is accepted", () => {
@@ -224,7 +227,8 @@ test("guided controls can create one reusable short text field for the first tas
     elements: [{ id: "task-1", type: "task", label: "Task" }],
     connections: [],
     processFields: [],
-    formBindings: []
+    formBindings: [],
+    layout: { positions: {} }
   };
 
   const updated = upsertShortTextProcessField(draft, {
@@ -271,7 +275,8 @@ test("rebinding keeps the same field identity instead of duplicating the definit
         maximumLength: 255
       }
     ],
-    formBindings: []
+    formBindings: [],
+    layout: { positions: {} }
   };
 
   const bound = setFirstTaskFieldBinding(draft, true);
@@ -304,7 +309,7 @@ test("save failures retain field-level invalid param targets for guided inputs",
   assert.deepEqual(state.errorMessages, ["Use 255 or fewer for maximum length."]);
 });
 
-test("local semantic edits queue one autosave key until the pending attempt changes", () => {
+test("local semantic edits remain unsaved without creating a background command", () => {
   const accepted = createAccepted();
   const initial = createWorkflowDraftEditorState(createWorkflowDraftState(accepted));
 
@@ -318,11 +323,11 @@ test("local semantic edits queue one autosave key until the pending attempt chan
   });
 
   assert.equal(edited.saveStatus, "unsaved");
-  assert.equal(typeof edited.pendingAutosaveRequestKey, "string");
-  assert.equal(editedAgain.pendingAutosaveRequestKey, edited.pendingAutosaveRequestKey);
+  assert.equal(edited.pendingSaveCommand, null);
+  assert.equal(editedAgain.pendingSaveCommand, null);
 });
 
-test("retryable save failures preserve the logical attempt and expose explicit retry", () => {
+test("retryable save failures preserve the immutable explicit command", () => {
   const accepted = createAccepted();
   const edited = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
@@ -333,7 +338,11 @@ test("retryable save failures preserve the logical attempt and expose explicit r
   );
   const requested = reduceWorkflowDraftEditorState(edited, {
     type: "save-requested",
-    requestKey: edited.pendingAutosaveRequestKey!,
+    command: {
+      requestKey: "save-1",
+      expectedRevision: "1" as never,
+      draft: structuredClone(edited.localDraft)
+    },
     retry: false
   });
   const failed = reduceWorkflowDraftEditorState(requested, {
@@ -347,18 +356,19 @@ test("retryable save failures preserve the logical attempt and expose explicit r
 
   const retryRequested = reduceWorkflowDraftEditorState(failed, {
     type: "save-requested",
-    requestKey: failed.pendingAutosaveRequestKey!,
+    command: failed.pendingSaveCommand!,
     retry: true
   });
 
   assert.equal(failed.saveStatus, "error");
   assert.equal(failed.retryCount, 1);
-  assert.equal(failed.pendingAutosaveRequestKey, edited.pendingAutosaveRequestKey);
+  assert.equal(failed.pendingSaveCommand?.requestKey, "save-1");
+  assert.deepEqual(failed.pendingSaveCommand?.draft, requested.pendingSaveCommand?.draft);
   assert.equal(failed.hasLocalChanges, true);
   assert.equal(retryRequested.saveStatus, "retrying");
 });
 
-test("retryable failures do not schedule themselves after explicit saving", () => {
+test("terminal idempotency reuse clears the failed command until the user saves again", () => {
   const accepted = createAccepted();
   const edited = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
@@ -367,57 +377,16 @@ test("retryable failures do not schedule themselves after explicit saving", () =
       labels: { start: "Start", task: "Task", end: "End" }
     }
   );
-  const retrying = reduceWorkflowDraftEditorState(edited, {
-    type: "save-failed",
-    errorCode: "network_error",
-    errorMessages: ["Try again."],
-    invalidFieldNames: [],
-    retryable: true,
-    conflict: false
+  const requested = reduceWorkflowDraftEditorState(edited, {
+    type: "save-requested",
+    command: {
+      requestKey: "save-1",
+      expectedRevision: "1" as never,
+      draft: structuredClone(edited.localDraft)
+    },
+    retry: false
   });
-
-  assert.equal(shouldScheduleAutosave(edited), true);
-  assert.equal(autosaveDelayMs(edited), 800);
-  assert.equal(shouldScheduleAutosave(retrying), false);
-  assert.equal(autosaveDelayMs(retrying), null);
-});
-
-test("autosave retries stop after the configured retry budget", () => {
-  const accepted = createAccepted();
-  let state = reduceWorkflowDraftEditorState(
-    createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
-    {
-      type: "start-added",
-      labels: { start: "Start", task: "Task", end: "End" }
-    }
-  );
-
-  for (let retry = 1; retry <= MAX_AUTOSAVE_RETRIES + 1; retry += 1) {
-    state = reduceWorkflowDraftEditorState(state, {
-      type: "save-failed",
-      errorCode: "network_error",
-      errorMessages: ["Try again."],
-      invalidFieldNames: [],
-      retryable: true,
-      conflict: false
-    });
-  }
-
-  assert.equal(state.saveStatus, "error");
-  assert.equal(state.retryCount, MAX_AUTOSAVE_RETRIES + 1);
-  assert.equal(shouldScheduleAutosave(state), false);
-});
-
-test("terminal idempotency reuse rotates the autosave key instead of retrying forever", () => {
-  const accepted = createAccepted();
-  const edited = reduceWorkflowDraftEditorState(
-    createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
-    {
-      type: "start-added",
-      labels: { start: "Start", task: "Task", end: "End" }
-    }
-  );
-  const failed = reduceWorkflowDraftEditorState(edited, {
+  const failed = reduceWorkflowDraftEditorState(requested, {
     type: "save-failed",
     errorCode: "idempotency_key_reused",
     errorMessages: ["Use a new key before retrying."],
@@ -427,19 +396,23 @@ test("terminal idempotency reuse rotates the autosave key instead of retrying fo
   });
 
   assert.equal(failed.saveStatus, "error");
-  assert.notEqual(failed.pendingAutosaveRequestKey, edited.pendingAutosaveRequestKey);
-  assert.equal(shouldScheduleAutosave(failed), false);
+  assert.equal(failed.pendingSaveCommand, null);
 });
 
 test("stale save conflicts preserve local work and support explicit reapply", () => {
   const accepted = createAccepted();
-  const edited = reduceWorkflowDraftEditorState(
+  const withStart = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
     {
       type: "start-added",
       labels: { start: "Start", task: "Task", end: "End" }
     }
   );
+  const edited = reduceWorkflowDraftEditorState(withStart, {
+    type: "element-positioned",
+    elementId: "start-1",
+    position: { x: 320, y: 240 }
+  });
   const conflicted = reduceWorkflowDraftEditorState(edited, {
     type: "save-failed",
     errorCode: "workflow_draft_revision_conflict",
@@ -447,6 +420,9 @@ test("stale save conflicts preserve local work and support explicit reapply", ()
     invalidFieldNames: ["expectedRevision"],
     retryable: false,
     conflict: true
+  });
+  const prematureReapply = reduceWorkflowDraftEditorState(conflicted, {
+    type: "reapply-conflict-draft"
   });
   const reloaded = reduceWorkflowDraftEditorState(conflicted, {
     type: "reload-latest-succeeded",
@@ -458,10 +434,14 @@ test("stale save conflicts preserve local work and support explicit reapply", ()
 
   assert.equal(conflicted.saveStatus, "conflict");
   assert.equal(conflicted.localDraft.elements.length, 1);
+  assert.equal(prematureReapply, conflicted);
   assert.equal(reloaded.hasLocalChanges, false);
   assert.equal(reloaded.lastAcknowledgedRevision, "2");
+  assert.equal(reloaded.saveStatus, "conflict");
+  assert.equal(reloaded.conflictLatestLoaded, true);
   assert.equal(reapplied.saveStatus, "unsaved");
   assert.equal(reapplied.localDraft.elements.length, 1);
+  assert.deepEqual(reapplied.localDraft.layout.positions["start-1"], { x: 320, y: 240 });
   assert.equal(reapplied.lastAcknowledgedRevision, "2");
 });
 
@@ -536,7 +516,7 @@ test("publication validation failure keeps the checklist retry state explicit", 
   assert.deepEqual(state.publicationIssues, []);
 });
 
-test("publish is blocked while local autosave work is still pending", () => {
+test("publish accepts the current unsaved design without a prior save", () => {
   const accepted = createAccepted({}, "2");
   const edited = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
@@ -546,10 +526,10 @@ test("publish is blocked while local autosave work is still pending", () => {
     }
   );
 
-  assert.equal(canPublishWorkflow(edited), false);
+  assert.equal(canPublishWorkflow(edited), true);
 });
 
-test("publish is blocked while publication validation is in flight", () => {
+test("publish does not depend on the removed standalone validation action", () => {
   const accepted = createAccepted({}, "2");
   const validating = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
@@ -559,7 +539,7 @@ test("publish is blocked while publication validation is in flight", () => {
     }
   );
 
-  assert.equal(canPublishWorkflow(validating), false);
+  assert.equal(canPublishWorkflow(validating), true);
 });
 
 test("publish success appears only after the authoritative response arrives", () => {
@@ -575,7 +555,7 @@ test("publish success appears only after the authoritative response arrives", ()
       versionNumber: 1,
       publishedAt: "2026-08-05T12:00:00Z",
       sourceRevision: "2",
-      schemaVersion: 4
+      schemaVersion: 5
     }
   };
   const succeeded = reduceWorkflowDraftEditorState(requested, {
@@ -583,11 +563,17 @@ test("publish success appears only after the authoritative response arrives", ()
     requestKey: "publish-1",
     accepted: publishAccepted
   });
+  const parentSynced = reduceWorkflowDraftEditorState(succeeded, {
+    type: "server-synced",
+    draftState: createWorkflowDraftState(publishAccepted)
+  });
 
   assert.equal(requested.publishStatus, "publishing");
   assert.equal(requested.publishedVersion, null);
   assert.equal(succeeded.publishStatus, "success");
   assert.equal(succeeded.publishedVersion?.versionNumber, 1);
+  assert.equal(parentSynced.publishStatus, "success");
+  assert.equal(parentSynced.publishedVersion?.versionNumber, 1);
 });
 
 test("stale publish failure keeps the draft intact and reports an error", () => {
@@ -608,6 +594,9 @@ test("stale publish failure keeps the draft intact and reports an error", () => 
   assert.equal(failed.publishStatus, "error");
   assert.equal(failed.publishErrorCode, "workflow_draft_revision_conflict");
   assert.equal(failed.localDraft.workflowId, accepted.workflowId);
+  assert.equal(failed.revisionRecoveryRequired, true);
+  assert.equal(failed.validatedRevisionPublishable, false);
+  assert.equal(canPublishWorkflow(failed), false);
 });
 
 test("invalid publish failure keeps checklist blockers actionable", () => {
@@ -645,6 +634,7 @@ test("invalid publish failure keeps checklist blockers actionable", () => {
 test("checklist target focus maps to stable editor sections", () => {
   assert.equal(focusChecklistTarget("configuration.starter"), "starter");
   assert.equal(focusChecklistTarget("configuration.assignment"), "assignment");
+  assert.equal(focusChecklistTarget("elements.task-1.assignment"), "assignment");
   assert.equal(focusChecklistTarget("elements.task-1"), "canvas");
   assert.equal(focusChecklistTarget("processFields.field-1"), "field");
 });
@@ -656,11 +646,13 @@ test("starter selection preserves both chosen teams and chosen members", () => {
       {
         membershipId: "01987df4-ae8a-7000-8000-000000000102",
         displayName: "Designer",
+        email: "designer@example.com",
         role: "designer"
       },
       {
         membershipId: "01987df4-ae8a-7000-8000-000000000103",
         displayName: "Operator",
+        email: "operator@example.com",
         role: "member"
       }
     ],

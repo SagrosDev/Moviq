@@ -6,13 +6,16 @@ from django.utils import timezone
 
 from moviqo.building_blocks.commands import execute_atomic_command
 from moviqo.building_blocks.tenancy.runtime import TenantContext
+from moviqo.modules.organizations.application import read_active_membership_by_id
 from moviqo.modules.workflow_runtime.application.my_work import OPEN_TASK_STATUSES
+from moviqo.modules.workflow_runtime.application.task_assignment import resolve_task_assignee
 from moviqo.modules.workflow_runtime.application.task_form import (
     TaskCompletionRouteError,
     TaskFormRevisionConflictError,
     TaskFormValidationAPIError,
     build_task_form_projection,
     can_complete_task,
+    copy_task_process_field_values,
     load_authoritative_task_document,
     persist_task_form_values,
     resolve_task_completion_route,
@@ -182,6 +185,37 @@ def _complete_task_side_effects(
             ],
         )
 
+    element_by_id = {
+        element["id"]: element for element in document.get("elements", [])
+    }
+    route_target_element = element_by_id.get(route_target)
+    next_assignee = None
+    if route_target_element and route_target_element.get("type") == "task":
+        initiator_membership = read_active_membership_by_id(
+            organization_id=process.organization_id,
+            membership_id=process.initiator_membership_id,
+        )
+        next_assignee = resolve_task_assignee(
+            organization_id=process.organization_id,
+            snapshot=document,
+            task_element_id=route_target,
+            initiator_membership=initiator_membership,
+        )
+        if next_assignee is None:
+            return _rejected_complete_outcome(
+                code=TaskCompletionRouteError.default_code,
+                invalid_params=[
+                    {
+                        "name": "nonFieldErrors",
+                        "code": "assignee_unavailable",
+                        "reason": (
+                            "The next Task assignee is no longer active. Ask a "
+                            "Designer to publish a corrected Workflow version."
+                        ),
+                    }
+                ],
+            )
+
     persisted_values = persist_task_form_values(
         tenant_context=tenant_context,
         task=task,
@@ -194,9 +228,31 @@ def _complete_task_side_effects(
     task.completed_at = completed_at
     task.save(update_fields=["revision", "status", "completed_at", "updated_at"])
 
-    process.status = "completed"
-    process.completed_at = completed_at
-    process.save(update_fields=["status", "completed_at", "last_activity_at"])
+    next_task = None
+    if next_assignee is not None:
+        next_task = TaskOccurrence.objects.create(
+            organization_id=task.organization_id,
+            workflow_id=task.workflow_id,
+            workflow_version_id=task.workflow_version_id,
+            process=process,
+            task_element_id=route_target,
+            assignee_membership_id=next_assignee.membership_id,
+            assignee_user_id=next_assignee.user_id,
+            activated_by_membership_id=tenant_context.membership_id,
+            activated_by_user_id=tenant_context.user_id,
+            definition_revision=task.definition_revision,
+            revision="1",
+            status="assigned",
+        )
+        process.last_activity_at = completed_at
+        process.save(update_fields=["last_activity_at"])
+    else:
+        process.status = "completed"
+        process.completed_at = completed_at
+        process.save(update_fields=["status", "completed_at", "last_activity_at"])
+
+    if next_task is not None:
+        copy_task_process_field_values(source_task=task, target_task=next_task)
 
     payload = {
         "taskId": str(task.id),
@@ -214,7 +270,11 @@ def _complete_task_side_effects(
         "routeTargetId": route_target,
         "completedAt": completed_at.isoformat(),
         "destinationRoute": "/my-work",
-        "handoffMessage": "The task is complete and this process reached its end.",
+        "handoffMessage": (
+            "The task is complete and the next task is assigned."
+            if next_task is not None
+            else "The task is complete and this process reached its end."
+        ),
     }
     command_context.append_audit(
         event_type="workflow-runtime.task-completed",
@@ -223,17 +283,31 @@ def _complete_task_side_effects(
             "fieldValues": persisted_values,
         },
     )
-    command_context.append_audit(
-        event_type="workflow-runtime.process-completed",
-        payload={
-            "processId": str(process.id),
-            "workflowId": str(task.workflow_id),
-            "workflowVersionId": str(task.workflow_version_id),
-            "routeTargetId": route_target,
-            "completedAt": completed_at.isoformat(),
-            "taskId": str(task.id),
-        },
-    )
+    if next_task is not None:
+        command_context.append_audit(
+            event_type="workflow-runtime.task-assigned",
+            payload={
+                "processId": str(process.id),
+                "workflowId": str(task.workflow_id),
+                "workflowVersionId": str(task.workflow_version_id),
+                "taskId": str(next_task.id),
+                "taskElementId": route_target,
+                "assigneeMembershipId": str(next_assignee.membership_id),
+                "activatedAt": next_task.created_at.isoformat(),
+            },
+        )
+    else:
+        command_context.append_audit(
+            event_type="workflow-runtime.process-completed",
+            payload={
+                "processId": str(process.id),
+                "workflowId": str(task.workflow_id),
+                "workflowVersionId": str(task.workflow_version_id),
+                "routeTargetId": route_target,
+                "completedAt": completed_at.isoformat(),
+                "taskId": str(task.id),
+            },
+        )
     return {
         "outcome": COMPLETE_OUTCOME_ACCEPTED,
         "payload": payload,

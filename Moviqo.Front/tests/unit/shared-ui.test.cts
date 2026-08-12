@@ -11,6 +11,7 @@ import {
   AppHeader,
   AppShell,
   Badge,
+  Breadcrumbs,
   Button,
   ButtonLink,
   Card,
@@ -135,6 +136,51 @@ test("PageContainer offers an unconstrained authenticated workspace without chan
   assert.match(workspaceMarkup, /px-moviqo-gutter-mobile/);
 });
 
+test("PageHeader composes an optional breadcrumb, title, and action in semantic responsive order", () => {
+  const currentWorkflow = "ApprovalWorkflowNameWithoutAnyBreakOpportunity";
+  const markup = renderToStaticMarkup(
+    createElement(PageHeader, {
+      breadcrumb: createElement(Breadcrumbs, {
+        items: [
+          { href: "/workflows", label: "Workflows" },
+          { current: true, label: currentWorkflow }
+        ],
+        label: "Breadcrumb"
+      }),
+      title: "Design your workflow",
+      actions: createElement(Button, {
+        variant: "secondary",
+        children: "Back to workflows"
+      })
+    })
+  );
+
+  assert.match(markup, /data-page-header-layout="three-region"/);
+  assert.match(markup, /desktop:grid-cols-\[auto_minmax\(0,1fr\)_auto\]/);
+  assert.match(markup, /data-page-header-region="breadcrumb"/);
+  assert.match(markup, /data-page-header-region="title"/);
+  assert.match(markup, /data-page-header-region="actions"/);
+  assert.match(markup, /text-moviqo-heading/);
+  assert.match(markup, /<nav[^>]+aria-label="Breadcrumb"/);
+  assert.match(markup, /href="\/workflows"/);
+  assert.match(markup, /min-h-11[^"\n]*wrap-anywhere/);
+  assert.match(markup, /aria-current="page"/);
+  assert.match(markup, /wrap-anywhere/);
+  assert.ok(markup.indexOf("Workflows") < markup.indexOf(currentWorkflow));
+  assert.ok(markup.indexOf(currentWorkflow) < markup.indexOf("Design your workflow"));
+  assert.ok(markup.indexOf("Design your workflow") < markup.indexOf("Back to workflows"));
+  assert.equal((markup.match(/<h1/g) ?? []).length, 1);
+
+  const defaultMarkup = renderToStaticMarkup(
+    createElement(PageHeader, {
+      title: "Catalog",
+      actions: createElement(Button, { children: "Create" })
+    })
+  );
+  assert.doesNotMatch(defaultMarkup, /data-page-header-layout/);
+  assert.match(defaultMarkup, /flex flex-wrap items-start justify-between/);
+});
+
 test("Form Grid spans stack narrowly and use complete static responsive classes", () => {
   const markup = renderToStaticMarkup(
     createElement(
@@ -167,6 +213,20 @@ test("field primitives associate labels, help, and inline errors", () => {
   assert.match(markup, /aria-invalid="true"/);
   assert.match(markup, /aria-describedby="organization-name-help organization-name-error"/);
   assert.match(markup, /id="organization-name-error"/);
+});
+
+test("field primitives offer an opt-in strong label hierarchy", () => {
+  const markup = renderToStaticMarkup(
+    createElement(TextInput, {
+      id: "workflow-property-name",
+      label: "Task name",
+      labelEmphasis: "strong",
+      value: "Review",
+      readOnly: true
+    })
+  );
+
+  assert.match(markup, /text-moviqo-body font-bold/);
 });
 
 test("field primitives preserve caller descriptions, required labels, and refs", () => {

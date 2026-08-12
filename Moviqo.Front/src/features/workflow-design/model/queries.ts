@@ -56,13 +56,23 @@ const normalizeGeneratedDraft = (
   elements: (draft.elements ?? []).map((element) => ({
     id: element.id,
     type: contractValue<WorkflowElementType>(element.type, ["start", "task", "end"]),
-    label: element.label
+    label: element.label,
+    ...(element.type === "task" ? {
+      assignment: {
+        mode: contractValue<WorkflowAssignmentMode>(
+          element.assignment?.mode ?? "unconfigured",
+          ["unconfigured", "workflowInitiator", "specificMember"]
+        ),
+        membershipId: element.assignment?.membershipId ?? null
+      }
+    } : {})
   })),
   connections: (draft.connections ?? []).map((connection) => ({
     id: connection.id,
     type: contractValue<WorkflowConnectionType>(connection.type, ["sequence"]),
     sourceId: connection.sourceId,
-    targetId: connection.targetId
+    targetId: connection.targetId,
+    label: connection.label?.trim() || null
   })),
   processFields: (draft.processFields ?? []).map((field) => ({
     id: requiredContractString(field.id),
@@ -82,6 +92,14 @@ const normalizeGeneratedDraft = (
     width: contractValue(binding.width, ["full"]),
     label: binding.label ?? null
   })),
+  layout: {
+    positions: Object.fromEntries(
+      Object.entries(draft.layout?.positions ?? {}).map(([elementId, position]) => [
+        elementId,
+        { x: position.x, y: position.y }
+      ])
+    )
+  },
   ...(draft.publication ? {
     publication: {
       starter: {
@@ -96,17 +114,6 @@ const normalizeGeneratedDraft = (
         ),
         teamIds: draft.publication.starter?.teamIds ?? [],
         membershipIds: draft.publication.starter?.membershipIds ?? []
-      },
-      assignment: {
-        mode: contractValue<WorkflowAssignmentMode>(
-          draft.publication.assignment?.mode ?? "unconfigured",
-          [
-          "unconfigured",
-          "workflowInitiator",
-          "specificMember"
-          ]
-        ),
-        membershipId: draft.publication.assignment?.membershipId ?? null
       }
     }
   } : {})

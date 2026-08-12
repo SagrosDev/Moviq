@@ -214,14 +214,28 @@ test("API problem normalization keeps safe fields and supplies generic fallbacks
     code: "validation_failed",
     status: 400,
     invalidParams: [
-      { name: "email", reason: "Enter a valid email address.", code: "invalid_email" },
+      {
+        name: "elements.task-2.assignment",
+        reason: "Choose an assignee.",
+        code: "assignment_missing",
+        elementId: "task-2",
+        fieldId: "field-1",
+        bindingId: "binding-2"
+      },
       { name: "password/secret", reason: "should not be a field" }
     ]
   });
 
   assert.equal(problem.code, "validation_failed");
   assert.deepEqual(problem.invalidParams, [
-    { name: "email", reason: "Enter a valid email address.", code: "invalid_email" },
+    {
+      name: "elements.task-2.assignment",
+      reason: "Choose an assignee.",
+      code: "assignment_missing",
+      elementId: "task-2",
+      fieldId: "field-1",
+      bindingId: "binding-2"
+    },
     { name: "nonFieldErrors", reason: "should not be a field" }
   ]);
   assert.equal(normalizeApiProblem(undefined).code, "api_error");

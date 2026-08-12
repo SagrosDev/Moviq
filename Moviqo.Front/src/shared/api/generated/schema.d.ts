@@ -689,6 +689,7 @@ export interface components {
             type: string;
             sourceId: string;
             targetId: string;
+            label?: string | null;
         };
         WorkflowCreateRequest: {
             name: string;
@@ -709,6 +710,7 @@ export interface components {
             /** Format: uuid */
             membershipId: string;
             displayName: string;
+            email: string;
             role: string;
         };
         WorkflowDirectoryTeam: {
@@ -729,6 +731,7 @@ export interface components {
             processFields?: components["schemas"]["WorkflowProcessField"][];
             formBindings?: components["schemas"]["WorkflowFormBinding"][];
             publication?: components["schemas"]["WorkflowPublication"];
+            layout?: components["schemas"]["WorkflowLayout"];
         };
         WorkflowDraftSaveRequest: {
             expectedRevision: string;
@@ -738,6 +741,7 @@ export interface components {
             id: string;
             type: string;
             label: string;
+            assignment?: components["schemas"]["WorkflowAssignmentConfiguration"];
         };
         WorkflowFormBinding: {
             id?: string;
@@ -746,6 +750,17 @@ export interface components {
             position?: number;
             width?: string;
             label?: string | null;
+        };
+        WorkflowLayout: {
+            positions?: {
+                [key: string]: components["schemas"]["WorkflowPosition"];
+            };
+        };
+        WorkflowPosition: {
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
         };
         WorkflowProcessField: {
             id?: string;
@@ -759,7 +774,6 @@ export interface components {
         };
         WorkflowPublication: {
             starter?: components["schemas"]["WorkflowStarterConfiguration"];
-            assignment?: components["schemas"]["WorkflowAssignmentConfiguration"];
         };
         WorkflowPublicationIssue: {
             code: string;
@@ -773,7 +787,6 @@ export interface components {
         };
         WorkflowPublicationValidationRequest: {
             expectedRevision: string;
-            draft: components["schemas"]["WorkflowDraftDocument"];
         };
         WorkflowPublicationValidationResponse: {
             /** Format: uuid */

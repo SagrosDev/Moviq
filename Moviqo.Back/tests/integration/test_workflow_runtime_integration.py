@@ -112,7 +112,6 @@ def _publish_workflow(tenant_context: TenantContext) -> str:
         tenant_context=tenant_context,
         workflow_id=created["workflowId"],
         expected_revision=saved["revision"],
-        draft=saved["draft"],
         idempotency_key="workflow-publish-1",
         request_hash=_request_hash("workflow-publish-1"),
     )

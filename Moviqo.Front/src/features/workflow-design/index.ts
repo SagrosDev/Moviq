@@ -26,6 +26,7 @@ export {
   workflowTopologyOrder
 } from "./model/flow";
 export { createWorkflowDraftState } from "./model/draft";
+export { formatWorkflowMemberIdentity } from "./model/memberIdentity";
 export {
   createWorkflow,
   initialWorkflowCreationFormState,

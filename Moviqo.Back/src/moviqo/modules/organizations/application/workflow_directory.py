@@ -17,6 +17,7 @@ from moviqo.modules.organizations.models import (
 class WorkflowDesignMembershipOption:
     membership_id: str
     display_name: str
+    email: str
     role: str
 
 
@@ -42,6 +43,7 @@ def workflow_design_directory(
         WorkflowDesignMembershipOption(
             membership_id=str(membership.id),
             display_name=membership.user.display_name or membership.user.username,
+            email=membership.user.normalized_email,
             role=membership.role,
         )
         for membership in Membership.objects.select_related("user")

@@ -33,6 +33,7 @@ const createAccepted = (
       {
         membershipId: "01987df4-ae8a-7000-8000-000000000102",
         displayName: "Designer",
+        email: "designer@example.com",
         role: "designer"
       }
     ],
@@ -645,11 +646,13 @@ test("starter selection preserves both chosen teams and chosen members", () => {
       {
         membershipId: "01987df4-ae8a-7000-8000-000000000102",
         displayName: "Designer",
+        email: "designer@example.com",
         role: "designer"
       },
       {
         membershipId: "01987df4-ae8a-7000-8000-000000000103",
         displayName: "Operator",
+        email: "operator@example.com",
         role: "member"
       }
     ],

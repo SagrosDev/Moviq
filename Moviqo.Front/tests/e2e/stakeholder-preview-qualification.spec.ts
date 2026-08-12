@@ -36,6 +36,7 @@ const workflowAccepted = {
       {
         membershipId: "018f6d8c-6a58-7000-8000-000000000001",
         displayName: "Ana",
+        email: "ana@example.com",
         role: "owner"
       }
     ],

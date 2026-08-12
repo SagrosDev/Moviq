@@ -4,6 +4,20 @@ import { mockCsrfBootstrap } from "./support/mockCsrf";
 const workflowId = "01987df4-ae8a-7000-8000-000000000210";
 const organizationId = "018f6d8c-6a58-7000-8000-000000000002";
 const membershipId = "018f6d8c-6a58-7000-8000-000000000001";
+const configurationDirectory = {
+  memberships: [{
+    membershipId,
+    displayName: "Local Owner",
+    email: "owner@local.test",
+    role: "owner"
+  }, {
+    membershipId: "018f6d8c-6a58-7000-8000-000000000009",
+    displayName: "DUPLICATE@LOCAL.TEST",
+    email: "duplicate@local.test",
+    role: "member"
+  }],
+  teams: []
+};
 
 const authenticatedSession = {
   authenticated: true,
@@ -20,7 +34,7 @@ const createAcceptedWorkflow = (revision: string, draft: Record<string, unknown>
   workflowId,
   organizationId,
   createdByMembershipId: membershipId,
-  configurationDirectory: { memberships: [], teams: [] },
+  configurationDirectory,
   name: "Ruta de aprobacion",
   revision,
   draft
@@ -95,7 +109,19 @@ test("workflow editor saves optionally and publishes the current design directly
   await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeDisabled();
   expect(saveBody).toBeNull();
   await page.getByLabel("Nombre de la tarea").fill("Revisar solicitud");
-  await page.getByLabel("Quién recibe esta tarea").selectOption("workflowInitiator");
+  const taskAssignment = page.getByLabel("Quién recibe esta tarea");
+  await expect(page.getByText("Quién recibe esta tarea", { exact: true })).toHaveCSS("font-weight", "700");
+  await taskAssignment.selectOption("specificMember");
+  const specificAssignee = page.getByLabel("Una persona específica");
+  await expect(specificAssignee.locator("option", { hasText: "Local Owner (owner@local.test)" }))
+    .toHaveAttribute("value", membershipId);
+  await expect(specificAssignee.locator("option", { hasText: "duplicate@local.test" }))
+    .toHaveText("duplicate@local.test");
+  await expect(specificAssignee.locator("option", { hasText: "DUPLICATE@LOCAL.TEST (" }))
+    .toHaveCount(0);
+  await specificAssignee.selectOption(membershipId);
+  const properties = page.getByRole("region", { name: "Propiedades" });
+  await expect(properties.getByText("Tarea", { exact: true })).toHaveCount(0);
   await page.getByLabel("Quién puede iniciar").selectOption("allActiveMembers");
   await page.getByRole("button", { name: "Agregar Fin" }).dragTo(page.locator(".react-flow"), {
     targetPosition: { x: 120, y: 260 }
@@ -105,12 +131,13 @@ test("workflow editor saves optionally and publishes the current design directly
   await expect(page.getByRole("group", { name: "Tarea: Revisar solicitud" })).toBeVisible();
   await expect(page.getByRole("group", { name: "Fin: Fin" })).toBeVisible();
 
-  await page.locator("#workflow-element-start-1 .react-flow__handle-right").focus();
+  await page.locator("#workflow-element-start-1 .moviqo-workflow-handle.react-flow__handle-right").focus();
   await page.keyboard.press("Enter");
-  await page.locator("#workflow-element-task-1 .react-flow__handle-left").focus();
+  await page.locator("#workflow-element-task-1 .moviqo-workflow-handle.react-flow__handle-left").focus();
   await page.keyboard.press("Enter");
-  const pointerSource = page.locator("#workflow-element-task-1 .react-flow__handle-right");
-  const pointerTarget = page.locator("#workflow-element-end-1 .react-flow__handle-left");
+  await page.waitForTimeout(250);
+  const pointerSource = page.locator("#workflow-element-task-1 .moviqo-workflow-handle.react-flow__handle-right");
+  const pointerTarget = page.locator("#workflow-element-end-1 .moviqo-workflow-handle.react-flow__handle-left");
   const pointerSourceBox = await pointerSource.boundingBox();
   const pointerTargetBox = await pointerTarget.boundingBox();
   if (!pointerSourceBox || !pointerTargetBox) {
@@ -126,7 +153,10 @@ test("workflow editor saves optionally and publishes the current design directly
     pointerTargetBox.y + pointerTargetBox.height / 2,
     { steps: 10 }
   );
+  await page.waitForTimeout(100);
   await page.mouse.up();
+  await expect(page.locator(".react-flow__edge")).toHaveCount(2);
+  await expect(page.getByText("Revisar solicitud → Fin", { exact: true })).toBeVisible();
   const connectionLabel = page.getByLabel("Etiqueta de la conexión");
   await expect(connectionLabel).toBeVisible();
   await connectionLabel.fill("Solicitud revisada");
@@ -164,7 +194,8 @@ test("workflow editor saves optionally and publishes the current design directly
   };
   expect(savedDocument.elements.find((element) => element.id === "task-1")).toMatchObject({
     id: "task-1",
-    label: "Revisar solicitud"
+    label: "Revisar solicitud",
+    assignment: { mode: "specificMember", membershipId }
   });
   expect(savedDocument.connections.find(
     (connection) => connection.sourceId === "task-1"
@@ -194,16 +225,38 @@ test("workflow editor saves optionally and publishes the current design directly
   expect(await page.getByRole("group", { name: "Fin: Fin" }).evaluate(
     (node) => (node as HTMLElement).style.transform
   )).toBe(endTransformBeforeSave);
-  const handle = page.locator("#workflow-element-task-1 .react-flow__handle-right");
+  const handle = page.locator("#workflow-element-task-1 .moviqo-workflow-handle.react-flow__handle-right");
   await expect(handle).toHaveCSS("width", "44px");
   await expect(handle).toHaveCSS("height", "44px");
   expect(await handle.evaluate((node) => getComputedStyle(node, "::before").width)).toBe("8px");
-  await expect(page.locator(".react-flow").locator("..")).toHaveCSS("height", "640px");
+  expect(await handle.evaluate((node) => getComputedStyle(node, "::before").height)).toBe("8px");
+  const canvasHost = page.locator(".react-flow").locator("..");
+  expect((await canvasHost.boundingBox())?.height).toBeGreaterThanOrEqual(640);
+  const canvasShell = page.locator(".workflow-canvas-shell");
+  const editorColumn = canvasShell.locator("xpath=preceding-sibling::div[1]");
+  const canvasShellBox = await canvasShell.boundingBox();
+  const editorColumnBox = await editorColumn.boundingBox();
+  if (!canvasShellBox || !editorColumnBox) {
+    throw new Error("Workflow editor columns were not measurable.");
+  }
+  expect(canvasShellBox?.height).toBe(editorColumnBox?.height);
   await expect(page.locator(".react-flow__arrowhead")).toHaveCount(1);
   await expect(page.getByText("Conexión de secuencia", { exact: true })).toHaveCount(0);
   await taskNode.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Nombre de la tarea")).toHaveValue("Revisar solicitud");
+  const canvasHeightBeforeDeleteWarning = (await canvasShell.boundingBox())?.height;
+  await page.getByRole("button", { name: "Eliminar elemento" }).click();
+  await expect(page.getByRole("button", { name: "Sí, eliminar elemento" })).toBeVisible();
+  const tallCanvasBox = await canvasShell.boundingBox();
+  const tallEditorColumnBox = await editorColumn.boundingBox();
+  if (!tallCanvasBox || !tallEditorColumnBox || canvasHeightBeforeDeleteWarning === undefined) {
+    throw new Error("Tall Workflow Properties state was not measurable.");
+  }
+  expect(tallCanvasBox.height).toBe(tallEditorColumnBox.height);
+  expect(tallCanvasBox.height).toBeGreaterThanOrEqual(canvasHeightBeforeDeleteWarning);
+  await page.getByRole("button", { name: "Cancelar" }).click();
+  await taskNode.focus();
   const taskPositionBefore = savedDocument.layout.positions["task-1"];
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeEnabled();
@@ -215,6 +268,35 @@ test("workflow editor saves optionally and publishes the current design directly
     .toBe((taskPositionBefore?.x ?? 0) + 5);
   await expect(page.getByText("Solicitud revisada", { exact: true })).toBeVisible();
   const labeledEdge = page.locator('.react-flow__edge[data-id="connection-2"]');
+  const labeledEdgePath = labeledEdge.locator(".react-flow__edge-path");
+  const labelBox = await page.getByText("Solicitud revisada", { exact: true }).boundingBox();
+  const edgeGeometry = await labeledEdgePath.evaluate((path) => {
+    const svgPath = path as SVGPathElement;
+    const matrix = svgPath.getScreenCTM();
+    const screenPoint = (point: DOMPoint) => {
+      const transformed = matrix ? point.matrixTransform(matrix) : point;
+      return { x: transformed.x, y: transformed.y };
+    };
+    return {
+      start: screenPoint(svgPath.getPointAtLength(0)),
+      middle: screenPoint(svgPath.getPointAtLength(svgPath.getTotalLength() / 2)),
+      end: screenPoint(svgPath.getPointAtLength(svgPath.getTotalLength()))
+    };
+  });
+  const sourceHandleBox = await page.locator("#workflow-element-task-1 .moviqo-workflow-handle.react-flow__handle-right").boundingBox();
+  const targetHandleBox = await page.locator("#workflow-element-end-1 .moviqo-workflow-handle.react-flow__handle-left").boundingBox();
+  if (!sourceHandleBox || !targetHandleBox || !labelBox) {
+    throw new Error("Workflow edge endpoints or label were not measurable.");
+  }
+  expect(Math.abs(edgeGeometry.start.x - (sourceHandleBox.x + sourceHandleBox.width)))
+    .toBeLessThanOrEqual(4);
+  expect(Math.abs(edgeGeometry.start.y - (sourceHandleBox.y + sourceHandleBox.height / 2)))
+    .toBeLessThanOrEqual(4);
+  expect(Math.abs(edgeGeometry.end.x - targetHandleBox.x))
+    .toBeLessThanOrEqual(4);
+  expect(Math.abs(edgeGeometry.end.y - (targetHandleBox.y + targetHandleBox.height / 2)))
+    .toBeLessThanOrEqual(4);
+  expect((labelBox?.y ?? 0) + (labelBox?.height ?? 0)).toBeLessThan(edgeGeometry.middle.y);
   await labeledEdge.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Etiqueta de la conexión")).toHaveValue("Solicitud revisada");
@@ -225,4 +307,109 @@ test("workflow editor saves optionally and publishes the current design directly
   expect(publishBody).toMatchObject({ expectedRevision: "3" });
   expect((publishBody?.draft as { connections: Array<{ label?: string }> }).connections[1]?.label)
     .toBe("Solicitud lista para publicar");
+});
+
+test("edge labels avoid top clipping and vertical path overlap when wrapping", async ({ page }) => {
+  const labelWorkflowId = "01987df4-ae8a-7000-8000-000000000250";
+  const topLabel = "Resultado superior con explicación extensa";
+  const verticalLabel = "Continuación vertical con contexto completo";
+  const draft = {
+    schemaVersion: 7,
+    draftId: "01987df4-ae8a-7000-8000-000000000251",
+    workflowId: labelWorkflowId,
+    name: "Etiquetas geométricas",
+    status: "draft",
+    elements: [
+      { id: "start-1", type: "start", label: "Start" },
+      {
+        id: "task-1",
+        type: "task",
+        label: "Revisar geometría",
+        assignment: { mode: "workflowInitiator", membershipId: null }
+      },
+      { id: "end-1", type: "end", label: "End" }
+    ],
+    connections: [
+      {
+        id: "connection-top",
+        type: "sequence",
+        sourceId: "start-1",
+        targetId: "task-1",
+        label: topLabel
+      },
+      {
+        id: "connection-vertical",
+        type: "sequence",
+        sourceId: "task-1",
+        targetId: "end-1",
+        label: verticalLabel
+      }
+    ],
+    processFields: [],
+    formBindings: [],
+    publication: {
+      starter: { mode: "allActiveMembers", teamIds: [], membershipIds: [] }
+    },
+    layout: {
+      positions: {
+        "start-1": { x: 80, y: 0 },
+        "task-1": { x: 280, y: 0 },
+        "end-1": { x: 280, y: 240 }
+      }
+    }
+  };
+
+  await mockCsrfBootstrap(page);
+  await page.route("**/api/v1/auth/session/", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(authenticatedSession)
+    });
+  });
+  await page.route(`**/api/v1/workflow-design/workflows/${labelWorkflowId}/draft/`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...createAcceptedWorkflow("1", draft),
+        workflowId: labelWorkflowId,
+        name: draft.name
+      })
+    });
+  });
+
+  await page.goto(`/workflows/${labelWorkflowId}/design`);
+  const canvas = page.locator(".react-flow");
+  await expect(canvas).toBeVisible();
+  const topLabelElement = page.locator('[data-workflow-edge-label="connection-top"]');
+  const verticalLabelElement = page.locator('[data-workflow-edge-label="connection-vertical"]');
+  await expect(topLabelElement).toHaveText(topLabel);
+  await expect(verticalLabelElement).toHaveText(verticalLabel);
+
+  const edgeMidpoint = async (connectionId: string) => page
+    .locator(`.react-flow__edge[data-id="${connectionId}"] .react-flow__edge-path`)
+    .evaluate((path) => {
+      const svgPath = path as SVGPathElement;
+      const midpoint = svgPath.getPointAtLength(svgPath.getTotalLength() / 2);
+      const matrix = svgPath.getScreenCTM();
+      const transformed = matrix ? midpoint.matrixTransform(matrix) : midpoint;
+      return { x: transformed.x, y: transformed.y };
+    });
+  const canvasBox = await canvas.boundingBox();
+  const topLabelBox = await topLabelElement.boundingBox();
+  const verticalLabelBox = await verticalLabelElement.boundingBox();
+  if (!canvasBox || !topLabelBox || !verticalLabelBox) {
+    throw new Error("Workflow edge label geometry was not measurable.");
+  }
+  const topMidpoint = await edgeMidpoint("connection-top");
+  const verticalMidpoint = await edgeMidpoint("connection-vertical");
+
+  expect(topLabelBox.y).toBeGreaterThanOrEqual(canvasBox.y);
+  expect(topLabelBox.y).toBeGreaterThan(topMidpoint.y);
+  await expect(topLabelElement).toHaveCSS("max-width", "104px");
+  expect(topLabelBox.height).toBeGreaterThan(30);
+  expect(verticalLabelBox.x).toBeGreaterThan(verticalMidpoint.x);
+  await expect(verticalLabelElement).toHaveCSS("max-width", "104px");
+  expect(verticalLabelBox.height).toBeGreaterThan(30);
 });

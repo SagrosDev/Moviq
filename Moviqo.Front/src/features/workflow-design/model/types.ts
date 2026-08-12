@@ -76,6 +76,7 @@ export type WorkflowPublicationConfiguration = {
 export type WorkflowConfigurationDirectoryMembership = {
   membershipId: string;
   displayName: string;
+  email: string;
   role: string;
 };
 

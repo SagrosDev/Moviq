@@ -8,6 +8,7 @@ import type {
   WorkflowDraftDocument,
   WorkflowDraftElement
 } from "../model/types";
+import { formatWorkflowMemberIdentity } from "../model/memberIdentity";
 
 type WorkflowPropertiesProps = {
   configurationDirectory: WorkflowConfigurationDirectory;
@@ -60,7 +61,6 @@ export const WorkflowProperties = ({
   const selectedConnectionTarget = draft.elements.find(
     (element) => element.id === selectedConnection?.targetId
   );
-
   useEffect(() => {
     setDeleteConfirmationOpen(false);
   }, [selectedElement?.id]);
@@ -104,14 +104,12 @@ export const WorkflowProperties = ({
                 helpText={t("workflowDesign.editor.taskNameHelp")}
                 id="workflow-task-name"
                 label={t("workflowDesign.editor.taskName")}
+                labelEmphasis="strong"
                 required
                 value={selectedElement.label}
                 onChange={(event) => onRenameTask(selectedElement.id, event.target.value)}
               />
             ) : <strong>{typeLabels[selectedElement.type]}</strong>}
-            <p className="m-0 text-sm text-moviqo-ink-secondary">
-              {typeLabels[selectedElement.type]}
-            </p>
           </div>
           {selectedElement.type === "task" ? (
             <div className="grid gap-moviqo-3">
@@ -120,6 +118,7 @@ export const WorkflowProperties = ({
                 helpText={t("workflowDesign.editor.taskAssignmentHelp")}
                 id={`workflow-task-assignment-${selectedElement.id}`}
                 label={t("workflowDesign.editor.taskAssignmentTitle")}
+                labelEmphasis="strong"
                 options={[
                   { value: "unconfigured", label: t("workflowDesign.editor.assignmentEmpty") },
                   { value: "workflowInitiator", label: t("workflowDesign.editor.assignmentWorkflowInitiator") },
@@ -136,11 +135,16 @@ export const WorkflowProperties = ({
                   disabled={disabled}
                   id={`workflow-task-assignee-${selectedElement.id}`}
                   label={t("workflowDesign.editor.assignmentSpecificMember")}
+                  labelEmphasis="strong"
                   options={[
                     { value: "", label: t("workflowDesign.editor.assignmentEmpty") },
                     ...configurationDirectory.memberships.map((membership) => ({
                       value: membership.membershipId,
-                      label: membership.displayName
+                      label: formatWorkflowMemberIdentity(
+                        membership.displayName,
+                        membership.email,
+                        membership.membershipId
+                      )
                     }))
                   ]}
                   value={assignedMember?.membershipId ?? ""}
@@ -205,6 +209,7 @@ export const WorkflowProperties = ({
             helpText={t("workflowDesign.editor.connectionLabelHelp")}
             id="workflow-connection-label"
             label={t("workflowDesign.editor.connectionLabel")}
+            labelEmphasis="strong"
             value={selectedConnection.label ?? ""}
             onChange={(event) => onRenameConnection(selectedConnection.id, event.target.value)}
           />

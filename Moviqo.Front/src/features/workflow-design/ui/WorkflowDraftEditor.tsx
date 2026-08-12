@@ -186,8 +186,8 @@ export const WorkflowDraftEditor = ({
           </Button>
         </Alert>
       ) : null}
-      <div className="grid items-start gap-moviqo-4 desktop:grid-cols-[20rem_minmax(0,1fr)]">
-        <div className="grid gap-moviqo-4">
+      <div className="grid items-start gap-moviqo-4 desktop:grid-cols-[20rem_minmax(0,1fr)] desktop:items-stretch">
+        <div className="grid content-start gap-moviqo-4">
           <WorkflowElementPalette
             disabled={editingDisabled}
             hasStart={state.localDraft.elements.some((element) => element.type === "start")}

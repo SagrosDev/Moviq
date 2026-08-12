@@ -12,6 +12,7 @@ import {
   createWorkflowDraftEditorState,
   createWorkflowDraftState,
   deriveWorkflowFlowElements,
+  formatWorkflowMemberIdentity,
   hasInvalidWorkflowTaskLabels,
   publicationIssuesFromInvalidParams,
   reduceWorkflowDraftEditorState,
@@ -209,6 +210,22 @@ test("each Task owns its independent assignment", () => {
     { mode: "workflowInitiator", membershipId: null }
   );
   assert.equal(assigned.localDraft.publication?.starter.mode, "unconfigured");
+});
+
+test("Workflow member identity avoids empty or duplicated email decoration", () => {
+  assert.equal(
+    formatWorkflowMemberIdentity("Local Owner", "owner@local.test", "membership-1"),
+    "Local Owner (owner@local.test)"
+  );
+  assert.equal(
+    formatWorkflowMemberIdentity("OWNER@LOCAL.TEST", "owner@local.test", "membership-1"),
+    "owner@local.test"
+  );
+  assert.equal(
+    formatWorkflowMemberIdentity("Legacy Owner", "", "membership-1"),
+    "Legacy Owner"
+  );
+  assert.equal(formatWorkflowMemberIdentity("", "", "membership-1"), "membership-1");
 });
 
 test("add-at-position stores the new element coordinate in the draft", () => {
@@ -534,6 +551,11 @@ test("editor gestures never create background save requests or a second graph pa
   const properties = await readFile(join(featureRoot, "ui", "WorkflowProperties.tsx"), "utf8");
   assert.match(properties, /workflow-delete-element-confirm/);
   assert.match(properties, /restoreDeleteTriggerRef/);
+  assert.match(properties, /formatWorkflowMemberIdentity\(/);
+  assert.match(properties, /labelEmphasis="strong"/);
+  assert.doesNotMatch(properties, /\{typeLabels\[selectedElement\.type\]\}\s*<\/p>/);
+  assert.match(canvas, /calc\(-100% - var\(--spacing-moviqo-2\)\)/);
+  assert.match(workspace, /desktop:items-stretch/);
   assert.match(palette, /suppressNextClick/);
   assert.equal((transport.match(/normalizeApiProblem\(undefined, 0\)/g) ?? []).length, 4);
   assert.match(canvas, /onNodeDragStop={[\s\S]*onPosition/);

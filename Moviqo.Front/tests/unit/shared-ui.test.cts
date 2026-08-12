@@ -169,6 +169,20 @@ test("field primitives associate labels, help, and inline errors", () => {
   assert.match(markup, /id="organization-name-error"/);
 });
 
+test("field primitives offer an opt-in strong label hierarchy", () => {
+  const markup = renderToStaticMarkup(
+    createElement(TextInput, {
+      id: "workflow-property-name",
+      label: "Task name",
+      labelEmphasis: "strong",
+      value: "Review",
+      readOnly: true
+    })
+  );
+
+  assert.match(markup, /text-moviqo-body font-bold/);
+});
+
 test("field primitives preserve caller descriptions, required labels, and refs", () => {
   const selectRef = createRef<HTMLSelectElement>();
   const checkboxRef = createRef<HTMLInputElement>();

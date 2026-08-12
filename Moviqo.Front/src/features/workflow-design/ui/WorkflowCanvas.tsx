@@ -118,17 +118,30 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowFlowNode>) => {
 const WorkflowSequenceEdge = (props: EdgeProps<WorkflowFlowEdge>) => {
   const [edgePath, labelX, labelY] = getSmoothStepPath(props);
   const label = props.data?.connection.label;
+  const mostlyVertical = Math.abs(props.targetY - props.sourceY)
+    > Math.abs(props.targetX - props.sourceX);
+  const nearCanvasTop = labelY < 64;
+  const labelTransform = mostlyVertical
+    ? "translate(var(--spacing-moviqo-2), -50%)"
+    : nearCanvasTop
+      ? "translate(-50%, var(--spacing-moviqo-2))"
+      : "translate(-50%, calc(-100% - var(--spacing-moviqo-2)))";
   return <>
     <BaseEdge
-      {...props}
       className={props.selected ? "!stroke-moviqo-focus" : "!stroke-moviqo-ink-secondary"}
+      id={props.id}
+      interactionWidth={props.interactionWidth}
+      markerEnd={props.markerEnd}
+      markerStart={props.markerStart}
       path={edgePath}
+      style={props.style}
     />
     {label ? (
       <EdgeLabelRenderer>
         <span
           className="pointer-events-none absolute line-clamp-2 max-w-moviqo-node-task-width rounded-moviqo-pill border border-moviqo-border bg-moviqo-surface-raised px-moviqo-2 py-moviqo-1 text-moviqo-label font-semibold text-moviqo-ink-primary shadow-sm"
-          style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
+          data-workflow-edge-label={props.id}
+          style={{ transform: `${labelTransform} translate(${labelX}px, ${labelY}px)` }}
         >
           {label}
         </span>
@@ -283,6 +296,7 @@ export const WorkflowCanvas = ({
   };
 
   return (
+    <div className="workflow-canvas-shell grid min-h-moviqo-workspace">
     <Card labelledBy="workflow-canvas-title">
       <div className="grid gap-moviqo-1">
         <h2 className="m-0 text-moviqo-heading font-semibold" id="workflow-canvas-title" tabIndex={-1}>
@@ -294,7 +308,7 @@ export const WorkflowCanvas = ({
       </div>
       <div
         aria-describedby="workflow-graph-summary"
-        className="h-moviqo-workspace overflow-hidden rounded-moviqo-control border border-moviqo-border bg-moviqo-surface-soft"
+        className="min-h-moviqo-workspace overflow-hidden rounded-moviqo-control border border-moviqo-border bg-moviqo-surface-soft"
         onDragOver={(event) => {
           event.preventDefault();
           event.dataTransfer.dropEffect = disabled ? "none" : "copy";
@@ -390,5 +404,6 @@ export const WorkflowCanvas = ({
         </ReactFlow>
       </div>
     </Card>
+    </div>
   );
 };

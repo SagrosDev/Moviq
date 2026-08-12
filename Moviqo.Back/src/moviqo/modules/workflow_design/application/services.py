@@ -1422,6 +1422,7 @@ def _serialize_workflow_design_directory(
             {
                 "membershipId": option.membership_id,
                 "displayName": option.display_name,
+                "email": option.email,
                 "role": option.role,
             }
             for option in directory.memberships

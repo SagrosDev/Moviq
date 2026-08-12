@@ -74,6 +74,7 @@ class WorkflowPublicationSerializer(serializers.Serializer):
 class WorkflowDirectoryMembershipSerializer(serializers.Serializer):
     membershipId = serializers.UUIDField()
     displayName = serializers.CharField()
+    email = serializers.EmailField(allow_blank=True)
     role = serializers.CharField()
 
 

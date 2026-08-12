@@ -2894,12 +2894,25 @@
                     "displayName": {
                         "type": "string"
                     },
+                    "email": {
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "format": "email"
+                            },
+                            {
+                                "type": "string",
+                                "maxLength": 0
+                            }
+                        ]
+                    },
                     "role": {
                         "type": "string"
                     }
                 },
                 "required": [
                     "displayName",
+                    "email",
                     "membershipId",
                     "role"
                 ]

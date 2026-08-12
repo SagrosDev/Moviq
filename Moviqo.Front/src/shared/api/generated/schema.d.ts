@@ -710,6 +710,7 @@ export interface components {
             /** Format: uuid */
             membershipId: string;
             displayName: string;
+            email: string;
             role: string;
         };
         WorkflowDirectoryTeam: {

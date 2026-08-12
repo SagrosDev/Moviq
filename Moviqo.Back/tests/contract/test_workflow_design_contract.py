@@ -129,6 +129,7 @@ def test_workflow_creation_returns_authoritative_draft_payload(workflow_design_m
             {
                 "membershipId": str(membership.id),
                 "displayName": "Designer",
+                "email": "designer@example.com",
                 "role": MembershipRole.DESIGNER,
             }
         ],
@@ -523,6 +524,20 @@ def test_workflow_creation_returns_active_team_directory_options(
     )
 
     assert response.status_code == 201
+    assert response.json()["configurationDirectory"]["memberships"] == [
+        {
+            "membershipId": str(membership.id),
+            "displayName": "Designer",
+            "email": "designer@example.com",
+            "role": MembershipRole.DESIGNER,
+        },
+        {
+            "membershipId": str(teammate_membership.id),
+            "displayName": "Team Member",
+            "email": "team-member@example.com",
+            "role": MembershipRole.MEMBER,
+        },
+    ]
     assert response.json()["configurationDirectory"]["teams"] == [
         {
             "teamId": str(team.id),
@@ -684,6 +699,7 @@ def test_workflow_creation_ignores_hostile_tenant_identifiers(workflow_design_me
     assert response.json()["organizationId"] == str(organization.id)
     assert str(other_organization.id) not in response.content.decode("utf-8")
     assert str(other_membership.id) not in response.content.decode("utf-8")
+    assert "other-owner@example.com" not in response.content.decode("utf-8")
 
 
 @pytest.mark.django_db
@@ -746,6 +762,7 @@ def test_workflow_draft_detail_returns_authoritative_server_payload(
                 {
                     "membershipId": str(membership.id),
                     "displayName": "Designer",
+                    "email": "designer@example.com",
                     "role": MembershipRole.DESIGNER,
                 }
             ],
@@ -850,6 +867,7 @@ def test_workflow_draft_save_returns_authoritative_graph_payload(
                 {
                     "membershipId": str(membership.id),
                     "displayName": "Designer",
+                    "email": "designer@example.com",
                     "role": MembershipRole.DESIGNER,
                 }
             ],
@@ -1710,6 +1728,43 @@ def test_workflow_publication_validation_rejects_client_draft_shape(
             "reason": "Remove this field and validate the saved revision.",
         }
     ]
+
+
+@pytest.mark.django_db
+def test_workflow_directory_preserves_legacy_member_with_blank_email(
+    workflow_design_member,
+    django_user_model,
+) -> None:
+    user, _organization, membership = workflow_design_member
+    legacy_user = django_user_model.objects.create_user(
+        username="legacy-workflow-member",
+        email="",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Legacy User",
+    )
+    legacy_membership = Membership.objects.create(
+        organization=membership.organization,
+        user=legacy_user,
+        role=MembershipRole.MEMBER,
+    )
+    client = Client()
+    client.force_login(user)
+
+    response = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Legacy directory"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-legacy-directory"},
+    )
+
+    assert response.status_code == 201
+    assert {
+        "membershipId": str(legacy_membership.id),
+        "displayName": "Legacy User",
+        "email": "",
+        "role": MembershipRole.MEMBER,
+    } in response.json()["configurationDirectory"]["memberships"]
 
 
 @pytest.mark.django_db

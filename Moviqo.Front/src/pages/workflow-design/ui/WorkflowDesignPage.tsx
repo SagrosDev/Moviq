@@ -111,8 +111,7 @@ export const WorkflowDesignPage = () => {
         breadcrumb={(
           <Breadcrumbs
             items={[
-              { href: "/workflows", label: t("workflowCatalog.title") },
-              { current: true, label: acceptedSnapshot?.name ?? t("workflowDesign.editor.title") }
+              { href: "/workflows", label: t("workflowCatalog.title") }
             ]}
             label={t("app.nav.primary")}
             onNavigate={(href, event) => {
@@ -122,7 +121,7 @@ export const WorkflowDesignPage = () => {
             }}
           />
         )}
-        title={t("workflowDesign.editor.title")}
+        title={acceptedSnapshot?.name ?? t("workflowDesign.editor.title")}
       />
       {blocker.state === "blocked" ? (
         <Alert announcement="assertive" title={t("workflowDesign.leave.title")} tone="warning">
@@ -168,7 +167,6 @@ export const WorkflowDesignPage = () => {
         <WorkflowDraftEditor
           configurationDirectory={acceptedSnapshot.configurationDirectory}
           draftState={draftState}
-          workflowName={acceptedSnapshot.name}
           onAccepted={acceptSavedDraft}
           onDirtyChange={setIsDirty}
           onDesignTaskForm={(taskElementId) => {

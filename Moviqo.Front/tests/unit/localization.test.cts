@@ -116,6 +116,7 @@ test("public and onboarding Spanish copy preserves required spelling and accents
     ["workflowDesign.create.eyebrow", "Diseño de flujos"],
     ["workflowDesign.create.body", "Usa un nombre claro para identificar el flujo. Después podrás agregar las tareas y definir quién participa."],
     ["workflowDesign.editor.title", "Diseña tu flujo de trabajo"],
+    ["workflowDesign.editor.canvasTitle", "Lienzo del flujo"],
     ["workflowDesign.editor.saveSuccess", "Cambios guardados"],
     ["passwordRecovery.title", "Recupera tu contraseña"],
     ["passwordRecovery.resetFailure", "El enlace no es válido o la contraseña no cumple la política."]
@@ -136,6 +137,7 @@ test("reviewed English onboarding copy describes current behavior", () => {
     "Sign in with this verified email to continue."
   );
   assert.equal(translate("en", "workflowDesign.editor.title"), "Design your workflow");
+  assert.equal(translate("en", "workflowDesign.editor.canvasTitle"), "Workflow canvas");
   assert.equal(translate("en", "workflowDesign.editor.saveSuccess"), "Changes saved");
 });
 

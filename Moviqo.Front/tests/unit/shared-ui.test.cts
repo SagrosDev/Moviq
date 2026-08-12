@@ -156,10 +156,11 @@ test("PageHeader composes an optional breadcrumb, title, and action in semantic 
   );
 
   assert.match(markup, /data-page-header-layout="three-region"/);
-  assert.match(markup, /desktop:grid-cols-\[minmax\(0,1fr\)_minmax\(0,2fr\)_auto\]/);
+  assert.match(markup, /desktop:grid-cols-\[auto_minmax\(0,1fr\)_auto\]/);
   assert.match(markup, /data-page-header-region="breadcrumb"/);
   assert.match(markup, /data-page-header-region="title"/);
   assert.match(markup, /data-page-header-region="actions"/);
+  assert.match(markup, /text-moviqo-heading/);
   assert.match(markup, /<nav[^>]+aria-label="Breadcrumb"/);
   assert.match(markup, /href="\/workflows"/);
   assert.match(markup, /min-h-11[^"\n]*wrap-anywhere/);

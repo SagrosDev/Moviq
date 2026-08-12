@@ -260,6 +260,7 @@ export type MessageKey =
   | "workflowDesign.editor.addAccepted"
   | "workflowDesign.editor.addRejected"
   | "workflowDesign.editor.canvasBody"
+  | "workflowDesign.editor.canvasTitle"
   | "workflowDesign.editor.incomingHandle"
   | "workflowDesign.editor.outgoingHandle"
   | "workflowDesign.editor.outlineTitle"
@@ -806,6 +807,7 @@ export const spanishMessages: MessageDictionary = {
     "Este borrador ya tiene ese elemento. Inicio y Fin se agregan una sola vez.",
   "workflowDesign.editor.canvasBody":
     "Mueve los pasos o arrastra desde el conector visible de salida hasta el conector de entrada. Con el teclado, activa primero la salida y luego la entrada.",
+  "workflowDesign.editor.canvasTitle": "Lienzo del flujo",
   "workflowDesign.editor.incomingHandle": "Conexión de secuencia entrante",
   "workflowDesign.editor.outgoingHandle": "Conexión de secuencia saliente",
   "workflowDesign.editor.outlineTitle": "Esquema accesible",
@@ -1386,6 +1388,7 @@ export const englishMessages: Partial<MessageDictionary> = {
     "This draft already has that element. Start and End can each be added once.",
   "workflowDesign.editor.canvasBody":
     "Move steps or drag from the visible outgoing connector to an incoming connector. With the keyboard, activate the output and then the input.",
+  "workflowDesign.editor.canvasTitle": "Workflow canvas",
   "workflowDesign.editor.incomingHandle": "Incoming sequence connection",
   "workflowDesign.editor.outgoingHandle": "Outgoing sequence connection",
   "workflowDesign.editor.outlineTitle": "Accessible outline",

@@ -32,7 +32,6 @@ type WorkflowDraftEditorProps = {
   onDesignTaskForm?: (taskElementId: string) => void;
   onDirtyChange?: (isDirty: boolean) => void;
   saveRequestToken?: number;
-  workflowName: string;
 };
 
 export const WorkflowDraftEditor = ({
@@ -41,8 +40,7 @@ export const WorkflowDraftEditor = ({
   onAccepted,
   onDesignTaskForm,
   onDirtyChange,
-  saveRequestToken = 0,
-  workflowName
+  saveRequestToken = 0
 }: WorkflowDraftEditorProps) => {
   const { t } = useLanguage();
   const controller = useWorkflowDraftEditor({
@@ -222,7 +220,6 @@ export const WorkflowDraftEditor = ({
           selectedConnectionId={state.selectedConnectionId}
           selectedElementId={state.selectedElementId}
           status={<WorkflowCompactSaveStatus state={state} />}
-          workflowName={workflowName}
           onAddAtPosition={addAtPosition}
           onConnect={controller.connect}
           onPointerElementHandled={() => setPointerElementType(null)}

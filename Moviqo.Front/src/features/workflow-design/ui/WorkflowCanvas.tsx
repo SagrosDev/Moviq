@@ -18,6 +18,7 @@ import {
   Position,
   ReactFlow,
   getSmoothStepPath,
+  type ConnectionLineComponentProps,
   type EdgeProps,
   type EdgeTypes,
   type NodeProps,
@@ -43,7 +44,6 @@ type WorkflowCanvasProps = {
   selectedConnectionId: string | null;
   pointerElementType: WorkflowElementType | null;
   status: ReactNode;
-  workflowName: string;
   onPointerElementHandled: () => void;
   onAddAtPosition: (elementType: WorkflowElementType, position: XYPosition) => void;
   onConnect: (sourceId: string, targetId: string) => void;
@@ -56,6 +56,24 @@ const nodeClasses: Record<WorkflowElementType, string> = {
   start: "size-moviqo-node-terminal rounded-full border-moviqo-success bg-moviqo-surface-raised p-moviqo-1 text-moviqo-node",
   task: "min-h-moviqo-node-task-height min-w-moviqo-node-task-width rounded-moviqo-control border-moviqo-accent bg-moviqo-surface-raised px-moviqo-2 py-moviqo-1 text-moviqo-node",
   end: "size-moviqo-node-terminal rounded-full border-moviqo-ink-primary bg-moviqo-surface-soft p-moviqo-1 text-moviqo-node"
+};
+
+const WORKFLOW_HANDLE_HALF_SIZE = 22;
+
+const moveHandlePointToNodeBoundary = (
+  point: XYPosition,
+  position: Position
+): XYPosition => {
+  if (position === Position.Left) {
+    return { ...point, x: point.x + WORKFLOW_HANDLE_HALF_SIZE };
+  }
+  if (position === Position.Right) {
+    return { ...point, x: point.x - WORKFLOW_HANDLE_HALF_SIZE };
+  }
+  if (position === Position.Top) {
+    return { ...point, y: point.y + WORKFLOW_HANDLE_HALF_SIZE };
+  }
+  return { ...point, y: point.y - WORKFLOW_HANDLE_HALF_SIZE };
 };
 
 const WorkflowNode = ({ data, selected }: NodeProps<WorkflowFlowNode>) => {
@@ -78,7 +96,8 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowFlowNode>) => {
   };
   return (
     <div
-      className={`grid place-content-center border-2 text-center text-moviqo-ink-primary shadow-sm focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-moviqo-focus ${nodeClasses[element.type]} ${selected ? "outline-3 outline-offset-3 outline-moviqo-focus" : ""}`}
+      className={`moviqo-workflow-node grid place-content-center border-2 text-center text-moviqo-ink-primary shadow-sm focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-moviqo-focus ${nodeClasses[element.type]} ${selected ? "outline-3 outline-offset-3 outline-moviqo-focus" : ""}`}
+      data-workflow-node-drag-surface="true"
       id={`workflow-element-${element.id}`}
     >
       {element.type !== "start" ? (
@@ -120,7 +139,21 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowFlowNode>) => {
 };
 
 const WorkflowSequenceEdge = (props: EdgeProps<WorkflowFlowEdge>) => {
-  const [edgePath, labelX, labelY] = getSmoothStepPath(props);
+  const source = moveHandlePointToNodeBoundary(
+    { x: props.sourceX, y: props.sourceY },
+    props.sourcePosition
+  );
+  const target = moveHandlePointToNodeBoundary(
+    { x: props.targetX, y: props.targetY },
+    props.targetPosition
+  );
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    ...props,
+    sourceX: source.x,
+    sourceY: source.y,
+    targetX: target.x,
+    targetY: target.y
+  });
   const label = props.data?.connection.label;
   const mostlyVertical = Math.abs(props.targetY - props.sourceY)
     > Math.abs(props.targetX - props.sourceX);
@@ -154,6 +187,42 @@ const WorkflowSequenceEdge = (props: EdgeProps<WorkflowFlowEdge>) => {
   </>;
 };
 
+const WorkflowConnectionLine = ({
+  connectionLineStyle,
+  fromPosition,
+  fromX,
+  fromY,
+  toHandle,
+  toPosition,
+  toX,
+  toY
+}: ConnectionLineComponentProps<WorkflowFlowNode>) => {
+  const source = moveHandlePointToNodeBoundary(
+    { x: fromX, y: fromY },
+    fromPosition
+  );
+  const target = toHandle
+    ? moveHandlePointToNodeBoundary({ x: toX, y: toY }, toPosition)
+    : { x: toX, y: toY };
+  const [connectionPath] = getSmoothStepPath({
+    sourceX: source.x,
+    sourceY: source.y,
+    sourcePosition: fromPosition,
+    targetX: target.x,
+    targetY: target.y,
+    targetPosition: toPosition
+  });
+
+  return (
+    <path
+      className="react-flow__connection-path !stroke-moviqo-ink-secondary"
+      d={connectionPath}
+      fill="none"
+      style={connectionLineStyle}
+    />
+  );
+};
+
 const nodeTypes: NodeTypes = {
   start: WorkflowNode,
   task: WorkflowNode,
@@ -174,7 +243,6 @@ export const WorkflowCanvas = ({
   selectedConnectionId,
   pointerElementType,
   status,
-  workflowName,
   onPointerElementHandled,
   onAddAtPosition,
   onConnect,
@@ -314,8 +382,8 @@ export const WorkflowCanvas = ({
     <Card labelledBy="workflow-canvas-title">
       <div className="grid min-w-0 gap-moviqo-2 tablet:grid-cols-[minmax(0,1fr)_auto] tablet:items-start">
         <div className="grid min-w-0 gap-moviqo-1">
-          <h2 className="m-0 break-words text-moviqo-heading font-semibold" id="workflow-canvas-title" tabIndex={-1}>
-            {workflowName}
+          <h2 className="sr-only" id="workflow-canvas-title" tabIndex={-1}>
+            {t("workflowDesign.editor.canvasTitle")}
           </h2>
           <p className="m-0 text-sm text-moviqo-ink-secondary">
             {t("workflowDesign.editor.canvasBody")}
@@ -387,6 +455,9 @@ export const WorkflowCanvas = ({
         <ReactFlow<WorkflowFlowNode, WorkflowFlowEdge>
           ariaLabelConfig={ariaLabelConfig}
           colorMode="light"
+          connectionLineComponent={WorkflowConnectionLine}
+          connectionDragThreshold={1}
+          connectionRadius={WORKFLOW_HANDLE_HALF_SIZE}
           deleteKeyCode={null}
           edges={edges}
           edgeTypes={edgeTypes}

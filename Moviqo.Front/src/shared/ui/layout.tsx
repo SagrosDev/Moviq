@@ -170,7 +170,7 @@ export const PageHeader = ({
   if (breadcrumb) {
     return (
       <header
-        className="grid min-w-0 gap-moviqo-3 desktop:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] desktop:items-center"
+        className="grid min-w-0 gap-moviqo-3 desktop:grid-cols-[auto_minmax(0,1fr)_auto] desktop:items-center"
         data-page-header-layout="three-region"
       >
         <div className="min-w-0 break-words" data-page-header-region="breadcrumb">
@@ -185,7 +185,7 @@ export const PageHeader = ({
               {eyebrow}
             </p>
           ) : null}
-          <h1 className="m-0 break-words text-moviqo-display font-semibold text-moviqo-ink-primary" id={titleId}>
+          <h1 className="m-0 min-w-0 max-w-full wrap-anywhere text-moviqo-heading font-semibold text-moviqo-ink-primary" id={titleId}>
             {title}
           </h1>
           {description ? <p className="m-0 text-lg leading-relaxed text-moviqo-ink-secondary">{description}</p> : null}

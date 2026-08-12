@@ -519,7 +519,7 @@ test("the Workflow editor composes focused regions and does not embed Form field
   }
   assert.doesNotMatch(editor, /<WorkflowOutline/);
   assert.match(editor, /desktop:grid-cols-\[20rem_minmax\(0,1fr\)\]/);
-  assert.match(editor, /workflowName={workflowName}/);
+  assert.doesNotMatch(editor, /workflowName/);
   assert.match(controller, /useReducer\s*\(/);
   assert.match(controller, /canSaveWorkflow\(state\)/);
   assert.match(editor, /focusedChecklistSection/);
@@ -566,7 +566,13 @@ test("editor gestures never create background save requests or a second graph pa
   assert.match(properties, /labelEmphasis="strong"/);
   assert.doesNotMatch(properties, /\{typeLabels\[selectedElement\.type\]\}\s*<\/p>/);
   assert.match(canvas, /calc\(-100% - var\(--spacing-moviqo-2\)\)/);
-  assert.match(canvas, /\{workflowName\}/);
+  assert.match(canvas, /workflowDesign\.editor\.canvasTitle/);
+  assert.match(canvas, /<h2 className="sr-only"/);
+  assert.match(canvas, /data-workflow-node-drag-surface="true"/);
+  assert.match(canvas, /WORKFLOW_HANDLE_HALF_SIZE = 22/);
+  assert.match(canvas, /moveHandlePointToNodeBoundary/);
+  assert.match(canvas, /connectionLineComponent={WorkflowConnectionLine}/);
+  assert.match(canvas, /connectionRadius={WORKFLOW_HANDLE_HALF_SIZE}/);
   assert.match(canvas, /markerEnd={props\.markerEnd}/);
   assert.match(canvas, /edge\.id === selectedConnectionId[\s\S]*--color-moviqo-focus/);
   assert.match(canvas, /width: 24,[\s\S]*height: 24/);
@@ -574,7 +580,11 @@ test("editor gestures never create background save requests or a second graph pa
   assert.match(canvas, /text-moviqo-node/);
   const styles = await readFile(join(process.cwd(), "src", "app", "styles.css"), "utf8");
   assert.match(styles, /--spacing-moviqo-node-handle: 6px/);
-  assert.match(styles, /--spacing-moviqo-node-handle-hit: 2\.75rem/);
+  assert.match(styles, /--spacing-moviqo-node-handle-hit: 44px/);
+  assert.match(styles, /react-flow__handle-left[\s\S]*translate\(-50%, -50%\)/);
+  assert.match(styles, /react-flow__handle-right[\s\S]*translate\(50%, -50%\)/);
+  assert.match(styles, /left: 50%/);
+  assert.match(styles, /react-flow__node\.draggable[\s\S]*cursor: grab/);
   assert.match(styles, /--spacing-moviqo-edge-label-width: 5rem/);
   assert.match(workspace, /desktop:items-stretch/);
   assert.match(palette, /suppressNextClick/);

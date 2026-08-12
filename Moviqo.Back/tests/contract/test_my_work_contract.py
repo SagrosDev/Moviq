@@ -624,6 +624,7 @@ def test_my_work_dashboard_pages_every_direct_assigned_open_task(active_member) 
     client = Client()
     client.force_login(user)
     task_ids: list[str] = []
+    process_ids: list[str] = []
     for index in range(13):
         start_response = client.post(
             f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
@@ -632,9 +633,13 @@ def test_my_work_dashboard_pages_every_direct_assigned_open_task(active_member) 
         )
         assert start_response.status_code == 200
         task_ids.append(start_response.json()["taskId"])
+        process_ids.append(start_response.json()["processId"])
 
     first_page = client.get("/api/v1/my-work/?myTasksPage=0")
     second_page = client.get("/api/v1/my-work/?myTasksPage=2")
+    searched_page = client.get(
+        f"/api/v1/my-work/?myTasksSearch={process_ids[0][:8]}&myTasksPage=2"
+    )
 
     assert first_page.status_code == 200
     assert first_page.json()["myTasks"]["limit"] == 12
@@ -645,6 +650,11 @@ def test_my_work_dashboard_pages_every_direct_assigned_open_task(active_member) 
     assert second_page.status_code == 200
     assert second_page.json()["myTasks"]["hasMore"] is False
     assert [item["taskId"] for item in second_page.json()["myTasks"]["items"]] == [
+        task_ids[0]
+    ]
+    assert searched_page.status_code == 200
+    assert searched_page.json()["myTasks"]["hasMore"] is False
+    assert [item["taskId"] for item in searched_page.json()["myTasks"]["items"]] == [
         task_ids[0]
     ]
 

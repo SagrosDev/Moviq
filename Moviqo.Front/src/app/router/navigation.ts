@@ -1,7 +1,7 @@
 import type { MessageKey } from "../../shared/localization";
 
 export type AuthenticatedNavigationItem = {
-  id: "dashboard" | "tasks" | "processes" | "start-process" | "workflows" | "forms";
+  id: "dashboard" | "start-process" | "workflows" | "forms";
   href: string;
   labelKey: MessageKey;
   current: boolean;
@@ -17,7 +17,9 @@ const routeIsCurrent = (href: string, pathname: string) => {
   const normalizedPathname = normalizePathname(pathname);
   const isFormDesignPath = /\/workflows\/[^/]+\/tasks\/[^/]+\/form$/.test(normalizedPathname);
   if (href === "/my-work") {
-    return normalizedPathname === href;
+    return normalizedPathname === href
+      || normalizedPathname.startsWith("/my-work/tasks")
+      || normalizedPathname.startsWith("/my-work/processes");
   }
   if (href === "/workflows") {
     return !isFormDesignPath && (
@@ -35,8 +37,6 @@ export const authenticatedNavigationForRole = (
 ): AuthenticatedNavigationItem[] => {
   const baseItems: Omit<AuthenticatedNavigationItem, "current">[] = [
     { id: "dashboard", href: "/my-work", labelKey: "app.nav.dashboard" },
-    { id: "tasks", href: "/my-work/tasks", labelKey: "app.nav.tasks" },
-    { id: "processes", href: "/my-work/processes", labelKey: "app.nav.processes" },
     { id: "start-process", href: "/processes/start", labelKey: "app.nav.startProcess" }
   ];
   const authoringItems: Omit<AuthenticatedNavigationItem, "current">[] = [
@@ -57,8 +57,8 @@ export const authenticatedPageTitleKey = (pathname: string): MessageKey => {
   const normalizedPathname = normalizePathname(pathname);
   if (normalizedPathname === "/my-work") return "app.nav.dashboard";
   if (normalizedPathname === "/processes/start") return "app.nav.startProcess";
-  if (normalizedPathname.startsWith("/my-work/tasks")) return "app.nav.tasks";
-  if (normalizedPathname.startsWith("/my-work/processes")) return "app.nav.processes";
+  if (normalizedPathname.startsWith("/my-work/tasks")) return "app.nav.work";
+  if (normalizedPathname.startsWith("/my-work/processes")) return "app.nav.work";
   if (
     normalizedPathname === "/forms"
     || /\/tasks\/[^/]+\/form$/.test(normalizedPathname)

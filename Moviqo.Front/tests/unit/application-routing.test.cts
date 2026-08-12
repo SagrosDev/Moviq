@@ -86,8 +86,6 @@ test("authoring navigation is role-aware and exposes current location", () => {
 
   assert.deepEqual(ownerItems.map((item) => item.id), [
     "dashboard",
-    "tasks",
-    "processes",
     "start-process",
     "workflows",
     "forms"
@@ -95,11 +93,11 @@ test("authoring navigation is role-aware and exposes current location", () => {
   assert.equal(ownerItems.find((item) => item.id === "workflows")?.current, true);
   assert.deepEqual(memberItems.map((item) => item.id), [
     "dashboard",
-    "tasks",
-    "processes",
     "start-process"
   ]);
-  assert.equal(memberItems.find((item) => item.id === "tasks")?.current, true);
+  assert.equal(memberItems.find((item) => item.id === "dashboard")?.current, true);
+  assert.equal(authenticatedPageTitleKey("/my-work/tasks"), "app.nav.work");
+  assert.equal(authenticatedPageTitleKey("/my-work/processes"), "app.nav.work");
 
   const formItems = authenticatedNavigationForRole(
     "designer",

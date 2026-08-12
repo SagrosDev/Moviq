@@ -19,6 +19,10 @@ type BadgeProps = {
   tone?: "neutral" | FeedbackTone;
 };
 
+type LoadingStateProps = {
+  children: ReactNode;
+};
+
 export type ErrorSummaryItem = {
   id: string;
   fieldId?: string;
@@ -103,6 +107,23 @@ export const Badge = ({ children, tone = "neutral" }: BadgeProps) => {
       <span aria-hidden="true">{badgeMarks[tone]}</span>
       {children}
     </span>
+  );
+};
+
+export const LoadingState = ({ children }: LoadingStateProps) => {
+  return (
+    <div
+      className="flex min-h-20 items-center gap-moviqo-3 rounded-moviqo-guidance border border-moviqo-border bg-moviqo-surface-raised p-moviqo-4 text-moviqo-ink-primary"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <span
+        aria-hidden="true"
+        className="size-6 shrink-0 animate-spin rounded-moviqo-pill border-2 border-moviqo-border border-t-moviqo-primary motion-reduce:animate-none"
+      />
+      <span>{children}</span>
+    </div>
   );
 };
 

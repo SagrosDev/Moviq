@@ -992,6 +992,8 @@ export interface operations {
                 myProcessesSearch?: string;
                 /** @description One-based page of directly assigned open tasks. */
                 myTasksPage?: number;
+                /** @description Search directly assigned open task summaries. */
+                myTasksSearch?: string;
                 /** @description One-based page of authorized startable workflows. */
                 startWorkflowsPage?: number;
             };

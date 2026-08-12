@@ -258,6 +258,14 @@
                     },
                     {
                         "in": "query",
+                        "name": "myTasksSearch",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Search directly assigned open task summaries."
+                    },
+                    {
+                        "in": "query",
                         "name": "startWorkflowsPage",
                         "schema": {
                             "type": "integer"

@@ -95,7 +95,8 @@ export type ApiClientOptions = {
 };
 
 export const isSessionExpiryProblem = (status: number, code: string) =>
-  status === 401 || (status === 403 && code === "authentication_failed");
+  status === 401
+  || (status === 403 && (code === "authentication_failed" || code === "not_authenticated"));
 
 const responseProblemCode = async (response: Response) => {
   if (response.status !== 403) {

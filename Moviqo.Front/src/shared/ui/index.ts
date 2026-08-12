@@ -11,7 +11,7 @@ export {
   TextInput
 } from "./forms";
 export type { FormGridSpan, SelectOption } from "./forms";
-export { ActionBar, Alert, Badge, ErrorSummary } from "./feedback";
+export { ActionBar, Alert, Badge, ErrorSummary, LoadingState } from "./feedback";
 export type { ErrorSummaryItem, FeedbackTone } from "./feedback";
 export {
   AppHeader,

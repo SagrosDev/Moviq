@@ -36,6 +36,7 @@ test("API client seam is created from generated OpenAPI paths", () => {
 test("API client keeps authorization denial distinct from session expiry", () => {
   assert.equal(isSessionExpiryProblem(401, "api_error"), true);
   assert.equal(isSessionExpiryProblem(403, "authentication_failed"), true);
+  assert.equal(isSessionExpiryProblem(403, "not_authenticated"), true);
   assert.equal(isSessionExpiryProblem(403, "permission_denied"), false);
 });
 

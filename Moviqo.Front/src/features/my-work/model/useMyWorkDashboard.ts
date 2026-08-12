@@ -20,6 +20,7 @@ export const useMyWorkDashboard = (
     queryKey: moviqoQueryKeys.myWork(
       organizationId,
       query.myTasksPage,
+      query.taskSearch,
       query.startWorkflowsPage,
       query.page,
       query.search

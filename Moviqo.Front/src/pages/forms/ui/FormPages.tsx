@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useSession } from "../../../features/authentication";
 import {
+  canCreateWorkflow,
   formDesignPath,
   resolveTaskElement,
   useWorkflowCatalogQuery,
@@ -27,7 +28,11 @@ export const FormLauncherPage = () => {
   const organizationId = state.status === "authenticated"
     ? state.context.membership.organizationId
     : "";
+  const canAuthor = state.status === "authenticated"
+    && canCreateWorkflow(state.context.membership.role);
   const catalogQuery = useWorkflowCatalogQuery(organizationId);
+  const showEmptyCatalog = catalogQuery.isError
+    || (catalogQuery.isSuccess && catalogQuery.data.items.length === 0);
   const [workflowId, setWorkflowId] = useState("");
   const [taskElementId, setTaskElementId] = useState("");
   const draftQuery = useWorkflowDraftQuery(organizationId, workflowId, Boolean(workflowId));
@@ -51,15 +56,29 @@ export const FormLauncherPage = () => {
     <div className="grid gap-moviqo-6">
       <PageHeader
         description={t("formLauncher.lede")}
-        eyebrow={t("formLauncher.eyebrow")}
         title={t("formLauncher.title")}
       />
-      {catalogQuery.isError ? (
-        <Alert announcement="assertive" tone="error">{t("formLauncher.unavailable")}</Alert>
-      ) : catalogQuery.isPending ? (
+      {catalogQuery.isPending ? (
         <Alert announcement="polite">{t("workflowCatalog.loading")}</Alert>
-      ) : catalogQuery.data.items.length === 0 ? (
-        <Alert announcement="polite">{t("formLauncher.noWorkflows")}</Alert>
+      ) : showEmptyCatalog ? (
+        <Card labelledBy="forms-empty-title">
+          <div className="grid gap-moviqo-4" role="status">
+            <h2 className="m-0 text-moviqo-heading" id="forms-empty-title">
+              {t("formLauncher.noWorkflows")}
+            </h2>
+            <ol className="m-0 grid gap-moviqo-2 pl-moviqo-6 text-moviqo-ink-secondary">
+              <li>{t("formLauncher.emptyStepWorkflow")}</li>
+              <li>{t("formLauncher.emptyStepForm")}</li>
+            </ol>
+            {canAuthor ? (
+              <div>
+                <Button onClick={() => navigate("/workflows/new")}>
+                  {t("workflowCatalog.create")}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </Card>
       ) : (
         <Card>
           <div className="grid gap-moviqo-4 tablet:grid-cols-2">
@@ -68,7 +87,7 @@ export const FormLauncherPage = () => {
               label={t("formLauncher.workflow")}
               options={[
                 { value: "", label: t("formLauncher.selectWorkflow") },
-                ...catalogQuery.data.items.map((workflow) => ({
+                ...(catalogQuery.data?.items ?? []).map((workflow) => ({
                   value: workflow.workflowId,
                   label: workflow.name
                 }))
@@ -89,7 +108,11 @@ export const FormLauncherPage = () => {
             />
           </div>
           {draftQuery.isError ? (
-            <Alert announcement="assertive" tone="error">{t("formLauncher.unavailable")}</Alert>
+            <Alert announcement="assertive" title={t("formLauncher.unavailable")} tone="error">
+              <Button variant="secondary" onClick={() => void draftQuery.refetch()}>
+                {t("workflowCatalog.retry")}
+              </Button>
+            </Alert>
           ) : workflowId && !draftQuery.isPending && tasks.length === 0 ? (
             <Alert announcement="polite">{t("formLauncher.noTasks")}</Alert>
           ) : null}

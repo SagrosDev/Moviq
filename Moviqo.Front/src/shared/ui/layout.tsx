@@ -40,7 +40,7 @@ type AppHeaderProps = AppHeaderBaseProps & AppHeaderNavigationProps;
 
 type PageContainerProps = {
   children: ReactNode;
-  size?: "compact" | "default" | "wide";
+  size?: "compact" | "default" | "wide" | "workspace";
 };
 
 type PageHeaderProps = {
@@ -66,7 +66,8 @@ type BreadcrumbsProps = {
 const containerClasses: Record<NonNullable<PageContainerProps["size"]>, string> = {
   compact: "max-w-2xl",
   default: "max-w-6xl",
-  wide: "max-w-screen-desktop"
+  wide: "max-w-screen-desktop",
+  workspace: "max-w-none"
 };
 
 const cardClasses: Record<NonNullable<CardProps["tone"]>, string> = {

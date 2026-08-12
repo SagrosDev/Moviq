@@ -11,6 +11,8 @@ const forbiddenPatterns = [
   /PRIVATE_KEY/i,
   /BEGIN RSA PRIVATE KEY/i,
   /VITE_SERVER_/i,
+  /127\.0\.0\.1:8000/i,
+  /localhost:8000/i,
   /SECRET/i
 ];
 

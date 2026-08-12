@@ -1,7 +1,6 @@
 import {
   createApiClient,
   normalizeApiProblem,
-  readApiProblem,
   type NormalizedApiProblem
 } from "../../../shared/api";
 import type { components } from "../../../shared/api/generated/schema";
@@ -19,6 +18,7 @@ export type MyWorkCollection<TItem> = {
 
 export type MyProcessesQuery = {
   myTasksPage: number;
+  taskSearch: string;
   page: number;
   search: string;
   startWorkflowsPage: number;
@@ -39,6 +39,7 @@ export type ProcessDetailResult =
 
 export const defaultMyProcessesQuery: MyProcessesQuery = {
   myTasksPage: 1,
+  taskSearch: "",
   page: 1,
   search: "",
   startWorkflowsPage: 1
@@ -46,10 +47,17 @@ export const defaultMyProcessesQuery: MyProcessesQuery = {
 
 const myWorkClient = createApiClient({ baseUrl: "/api/v1" });
 
+const normalizeClientProblem = (error: unknown, response: Response) => normalizeApiProblem(
+  error,
+  response.status,
+  response.headers.get("X-Correlation-ID") ?? ""
+);
+
 export const buildMyWorkDashboardQuery = (query: MyProcessesQuery) => ({
   myProcessesPage: query.page > 1 ? query.page : undefined,
   myProcessesSearch: query.search.trim() || undefined,
   myTasksPage: query.myTasksPage > 1 ? query.myTasksPage : undefined,
+  myTasksSearch: query.taskSearch.trim() || undefined,
   startWorkflowsPage: query.startWorkflowsPage > 1
     ? query.startWorkflowsPage
     : undefined
@@ -82,7 +90,10 @@ export const readMyWorkDashboard = async (
       params: { query: buildMyWorkDashboardQuery(query) }
     });
     if (!response.response.ok || !response.data) {
-      return { ok: false, error: await readApiProblem(response.response) };
+      return {
+        ok: false,
+        error: normalizeClientProblem(response.error, response.response)
+      };
     }
 
     return {
@@ -102,7 +113,10 @@ export const readProcessDetailDocument = async (
       params: { path: { process_id: processId } }
     });
     if (!response.response.ok || !response.data) {
-      return { ok: false, error: await readApiProblem(response.response) };
+      return {
+        ok: false,
+        error: normalizeClientProblem(response.error, response.response)
+      };
     }
 
     return {
@@ -130,7 +144,10 @@ export const startWorkflow = async (
       }
     });
     if (!response.response.ok || !response.data) {
-      return { ok: false, error: await readApiProblem(response.response) };
+      return {
+        ok: false,
+        error: normalizeClientProblem(response.error, response.response)
+      };
     }
 
     return {

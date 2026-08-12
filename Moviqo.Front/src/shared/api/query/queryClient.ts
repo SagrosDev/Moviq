@@ -52,6 +52,7 @@ export const moviqoQueryKeys = {
   myWork: (
     organizationId: string,
     myTasksPage: number,
+    taskSearch: string,
     startWorkflowsPage: number,
     myProcessesPage: number,
     search: string
@@ -61,6 +62,7 @@ export const moviqoQueryKeys = {
     {
       myProcessesPage,
       myTasksPage,
+      taskSearch: taskSearch.trim().toLowerCase(),
       search: search.trim().toLowerCase(),
       startWorkflowsPage
     }

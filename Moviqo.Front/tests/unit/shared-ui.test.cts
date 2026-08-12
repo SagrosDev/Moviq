@@ -20,6 +20,7 @@ import {
   FormGridItem,
   FormSection,
   isUnmodifiedPrimaryClick,
+  LoadingState,
   PageContainer,
   PageHeader,
   PasswordField,
@@ -42,6 +43,7 @@ test("shared UI exports the complete domain-free primitive foundation", () => {
     FormGrid,
     FormGridItem,
     FormSection,
+    LoadingState,
     PageContainer,
     PageHeader,
     PasswordField,
@@ -122,6 +124,15 @@ test("AppHeader shares the wide PageContainer alignment contract", () => {
   );
 
   assert.match(markup, /max-w-screen-desktop/);
+});
+
+test("PageContainer offers an unconstrained authenticated workspace without changing wide pages", () => {
+  const workspaceMarkup = renderToStaticMarkup(
+    createElement(PageContainer, { size: "workspace", children: "Workspace" })
+  );
+
+  assert.match(workspaceMarkup, /max-w-none/);
+  assert.match(workspaceMarkup, /px-moviqo-gutter-mobile/);
 });
 
 test("Form Grid spans stack narrowly and use complete static responsive classes", () => {
@@ -246,6 +257,20 @@ test("static alerts are not live regions and info badges use an informational ma
   assert.doesNotMatch(staticAlert, /role=/);
   assert.match(liveAlert, /role="status"/);
   assert.match(infoBadge, /aria-hidden="true">i<\/span>/);
+});
+
+test("LoadingState exposes one polite named status and a decorative visual spinner", () => {
+  const markup = renderToStaticMarkup(
+    createElement(LoadingState, { children: "Loading assigned tasks." })
+  );
+
+  assert.match(markup, /role="status"/);
+  assert.match(markup, /aria-live="polite"/);
+  assert.match(markup, /aria-atomic="true"/);
+  assert.match(markup, /aria-hidden="true"/);
+  assert.match(markup, /animate-spin/);
+  assert.match(markup, /motion-reduce:animate-none/);
+  assert.equal((markup.match(/Loading assigned tasks\./g) ?? []).length, 1);
 });
 
 test("ErrorSummary is focusable and links actionable errors to their controls", () => {

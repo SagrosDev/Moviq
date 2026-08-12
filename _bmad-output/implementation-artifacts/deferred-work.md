@@ -26,3 +26,16 @@ These items are not outstanding work for the active Story 1.34. Compatibility, r
 
 - Localize the pre-existing server-owned runtime labels and summaries rendered by My Work and Process Detail. The current API supplies English availability, involvement, and contribution strings that appear verbatim in the Spanish interface; this behavior predates Story 1.35 and should be corrected through a deliberate localized response contract rather than folded into the routing change.
 - Paginate authorized My Work querysets before materializing every matching Task and Workflow. The existing dashboard reader loads full authorized collections before applying the newly exposed page slices; this pre-existing scaling cost should be addressed as a dedicated query-performance change.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-authenticated-workspace-ux.md`
+  summary: Replace server-owned English process involvement and contribution labels with stable localized values.
+  evidence: Existing My Work process cards and the new table render API-provided `involvement` and `contributionSummary.label` strings verbatim, which produces mixed-language Spanish screens.
+- source_spec: `_bmad-output/implementation-artifacts/spec-authenticated-workspace-ux.md`
+  summary: Distinguish an empty process history from searches or later pages that contain no matches.
+  evidence: Existing process state handling uses the same first-use empty message whenever the current collection has zero items, even when search or pagination is active.
+- source_spec: `_bmad-output/implementation-artifacts/spec-authenticated-workspace-ux.md`
+  summary: Format process timestamps with the selected Moviqo language and clarify last-activity timestamp authority.
+  evidence: Existing formatting follows the browser locale and prefers `completedAt` over `lastActivityAt` under a “Last activity” label.
+- source_spec: `_bmad-output/implementation-artifacts/spec-authenticated-workspace-ux.md`
+  summary: Announce My Work pagination results and restore deliberate focus after page changes.
+  evidence: Existing pagination replaces the collection above the focused control without a result announcement or focus transition for keyboard and screen-reader users.

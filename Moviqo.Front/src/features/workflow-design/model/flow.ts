@@ -122,7 +122,10 @@ export const deriveWorkflowFlowElements = (
       target: connection.targetId,
       data: { connection },
       interactionWidth: 44,
-      markerEnd: { type: MarkerType.ArrowClosed }
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: "var(--color-moviqo-ink-secondary)"
+      }
     }))
   };
 };

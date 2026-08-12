@@ -74,6 +74,10 @@ test("React Flow elements are derived from Moviqo IDs without changing the docum
     ["connection-1", "start-1", "task-1"],
     ["connection-2", "task-1", "end-1"]
   ]);
+  assert.deepEqual(flow.edges[0]?.markerEnd, {
+    type: "arrowclosed",
+    color: "var(--color-moviqo-ink-secondary)"
+  });
   assert.deepEqual(draft, before);
 });
 
@@ -505,6 +509,7 @@ test("the Workflow editor composes focused regions and does not embed Form field
     "WorkflowProperties",
     "WorkflowPublicationConfiguration",
     "WorkflowPublicationChecklist",
+    "WorkflowCompactSaveStatus",
     "WorkflowSaveStatus",
     "WorkflowEditorActionBar"
   ]) {
@@ -512,6 +517,7 @@ test("the Workflow editor composes focused regions and does not embed Form field
   }
   assert.doesNotMatch(editor, /<WorkflowOutline/);
   assert.match(editor, /desktop:grid-cols-\[20rem_minmax\(0,1fr\)\]/);
+  assert.match(editor, /workflowName={workflowName}/);
   assert.match(controller, /useReducer\s*\(/);
   assert.match(controller, /canSaveWorkflow\(state\)/);
   assert.match(editor, /focusedChecklistSection/);
@@ -543,6 +549,9 @@ test("editor gestures never create background save requests or a second graph pa
   assert.match(controller, /if \(!canSaveWorkflow\(state\)\) return false/);
   assert.match(controller, /if \(canSaveWorkflow\(state\)\)/);
   assert.match(actions, /workflow-publish-error-summary/);
+  assert.match(actions, /if \(!hasRecoveryFeedback\) return null/);
+  assert.match(actions, /aria-live="polite"/);
+  assert.doesNotMatch(actions, /<h2 className="m-0 text-base font-semibold" id="workflow-save-status-title">/);
   assert.match(workspace, /workflow-checklist-title/);
   const checklist = await readFile(join(featureRoot, "ui", "WorkflowPublicationChecklist.tsx"), "utf8");
   assert.match(checklist, /task_form_missing:\s*"workflowDesign\.editor\.issue\.taskFormMissing"/);
@@ -555,6 +564,9 @@ test("editor gestures never create background save requests or a second graph pa
   assert.match(properties, /labelEmphasis="strong"/);
   assert.doesNotMatch(properties, /\{typeLabels\[selectedElement\.type\]\}\s*<\/p>/);
   assert.match(canvas, /calc\(-100% - var\(--spacing-moviqo-2\)\)/);
+  assert.match(canvas, /\{workflowName\}/);
+  assert.match(canvas, /markerEnd={props\.markerEnd}/);
+  assert.match(canvas, /edge\.id === selectedConnectionId[\s\S]*--color-moviqo-focus/);
   assert.match(workspace, /desktop:items-stretch/);
   assert.match(palette, /suppressNextClick/);
   assert.equal((transport.match(/normalizeApiProblem\(undefined, 0\)/g) ?? []).length, 4);

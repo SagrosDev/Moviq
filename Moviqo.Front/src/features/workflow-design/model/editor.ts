@@ -941,7 +941,10 @@ export const saveWorkflowDraft = async (
     );
 
     if (!response.response.ok) {
-      return { ok: false, error: await readApiProblem(response.response) };
+      return {
+        ok: false,
+        error: normalizeApiProblem(response.error, response.response.status)
+      };
     }
 
     return {

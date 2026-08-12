@@ -12,7 +12,11 @@ import type {
 } from "../model/types";
 import { useWorkflowDraftEditor } from "../model/useWorkflowDraftEditor";
 import { WorkflowCanvas } from "./WorkflowCanvas";
-import { WorkflowEditorActionBar, WorkflowSaveStatus } from "./WorkflowEditorActions";
+import {
+  WorkflowCompactSaveStatus,
+  WorkflowEditorActionBar,
+  WorkflowSaveStatus
+} from "./WorkflowEditorActions";
 import { WorkflowElementPalette } from "./WorkflowElementPalette";
 import { WorkflowProperties } from "./WorkflowProperties";
 import { WorkflowPublicationChecklist } from "./WorkflowPublicationChecklist";
@@ -28,6 +32,7 @@ type WorkflowDraftEditorProps = {
   onDesignTaskForm?: (taskElementId: string) => void;
   onDirtyChange?: (isDirty: boolean) => void;
   saveRequestToken?: number;
+  workflowName: string;
 };
 
 export const WorkflowDraftEditor = ({
@@ -36,7 +41,8 @@ export const WorkflowDraftEditor = ({
   onAccepted,
   onDesignTaskForm,
   onDirtyChange,
-  saveRequestToken = 0
+  saveRequestToken = 0,
+  workflowName
 }: WorkflowDraftEditorProps) => {
   const { t } = useLanguage();
   const controller = useWorkflowDraftEditor({
@@ -215,6 +221,8 @@ export const WorkflowDraftEditor = ({
           pointerElementType={pointerElementType}
           selectedConnectionId={state.selectedConnectionId}
           selectedElementId={state.selectedElementId}
+          status={<WorkflowCompactSaveStatus state={state} />}
+          workflowName={workflowName}
           onAddAtPosition={addAtPosition}
           onConnect={controller.connect}
           onPointerElementHandled={() => setPointerElementType(null)}

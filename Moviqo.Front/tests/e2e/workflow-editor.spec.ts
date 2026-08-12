@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { mockCsrfBootstrap } from "./support/mockCsrf";
 
 const workflowId = "01987df4-ae8a-7000-8000-000000000210";
@@ -39,6 +39,43 @@ const createAcceptedWorkflow = (revision: string, draft: Record<string, unknown>
   revision,
   draft
 });
+
+const readEdgeMarkerVisual = async (
+  page: Page,
+  connectionId: string,
+  targetElementId: string
+) => page.locator(`.react-flow__edge[data-id="${connectionId}"] .react-flow__edge-path`)
+  .evaluate((path, targetId) => {
+    const markerEnd = path.getAttribute("marker-end") ?? "";
+    const markerUrl = markerEnd.startsWith("url(")
+      ? markerEnd.slice(4, -1).replace(/^['"]|['"]$/g, "")
+      : "";
+    const markerId = markerUrl.includes("#")
+      ? markerUrl.slice(markerUrl.lastIndexOf("#") + 1)
+      : "";
+    const marker = markerId ? document.getElementById(markerId) : null;
+    const arrow = marker?.querySelector(".arrowclosed") ?? null;
+    const svgPath = path as SVGPathElement;
+    const matrix = svgPath.getScreenCTM();
+    const end = svgPath.getPointAtLength(svgPath.getTotalLength());
+    const screenEnd = matrix ? end.matrixTransform(matrix) : end;
+    const targetHandle = document.querySelector(
+      `#workflow-element-${CSS.escape(targetId)} .moviqo-workflow-handle.react-flow__handle-left`
+    );
+    const targetRect = targetHandle?.getBoundingClientRect() ?? null;
+    return {
+      markerEnd,
+      markerFound: marker !== null && arrow !== null,
+      markerFill: arrow ? getComputedStyle(arrow).fill : "",
+      pathStroke: getComputedStyle(path).stroke,
+      endpointDistance: targetRect
+        ? Math.hypot(
+            screenEnd.x - targetRect.x,
+            screenEnd.y - (targetRect.y + targetRect.height / 2)
+          )
+        : Number.POSITIVE_INFINITY
+    };
+  }, targetElementId);
 
 test("workflow editor saves optionally and publishes the current design directly", async ({ page }) => {
   page.on("pageerror", (error) => {
@@ -100,10 +137,17 @@ test("workflow editor saves optionally and publishes the current design directly
   });
 
   await page.goto(`/workflows/${workflowId}/design`);
-  await expect(page.getByRole("heading", { level: 1, name: /Inicio, Tarea y Fin/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Diseña tu flujo de trabajo" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Ruta de aprobacion" })).toBeVisible();
+  await expect(page.getByText("Primer camino ejecutable", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Lienzo del flujo", { exact: true })).toHaveCount(0);
+  const compactSaveStatus = page.locator('[data-workflow-save-status="compact"]');
+  await expect(compactSaveStatus).toContainText("Cambios guardados · Revisión 1");
+  await expect(page.getByRole("heading", { name: "Estado del borrador" })).toHaveCount(0);
 
   await expect(page.getByRole("button", { name: "Agregar Inicio" })).toHaveCount(0);
   await page.getByRole("button", { name: "Agregar Tarea" }).click();
+  await expect(compactSaveStatus).toContainText("Cambios sin guardar");
   await page.getByLabel("Nombre de la tarea").fill("   ");
   await expect(page.getByText("Escribe un nombre para la tarea antes de guardar.", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeDisabled();
@@ -241,6 +285,17 @@ test("workflow editor saves optionally and publishes the current design directly
   }
   expect(canvasShellBox?.height).toBe(editorColumnBox?.height);
   await expect(page.locator(".react-flow__arrowhead")).toHaveCount(1);
+  const normalEdgeVisuals = await Promise.all([
+    readEdgeMarkerVisual(page, "connection-1", "task-1"),
+    readEdgeMarkerVisual(page, "connection-2", "end-1")
+  ]);
+  for (const visual of normalEdgeVisuals) {
+    expect(visual.markerEnd).toMatch(/^url\(.+\)$/);
+    expect(visual.markerFound).toBe(true);
+    expect(visual.markerFill).toBe(visual.pathStroke);
+    expect(visual.markerFill).toBe("rgb(71, 85, 105)");
+    expect(visual.endpointDistance).toBeLessThanOrEqual(4);
+  }
   await expect(page.getByText("Conexión de secuencia", { exact: true })).toHaveCount(0);
   await taskNode.focus();
   await page.keyboard.press("Enter");
@@ -299,6 +354,13 @@ test("workflow editor saves optionally and publishes the current design directly
   expect((labelBox?.y ?? 0) + (labelBox?.height ?? 0)).toBeLessThan(edgeGeometry.middle.y);
   await labeledEdge.focus();
   await page.keyboard.press("Enter");
+  const selectedEdgeVisual = await readEdgeMarkerVisual(page, "connection-2", "end-1");
+  const remainingNormalEdgeVisual = await readEdgeMarkerVisual(page, "connection-1", "task-1");
+  expect(selectedEdgeVisual.markerFill).toBe(selectedEdgeVisual.pathStroke);
+  expect(selectedEdgeVisual.markerFill).toBe("rgb(37, 99, 235)");
+  expect(selectedEdgeVisual.endpointDistance).toBeLessThanOrEqual(4);
+  expect(remainingNormalEdgeVisual.markerFill).toBe(remainingNormalEdgeVisual.pathStroke);
+  expect(remainingNormalEdgeVisual.markerFill).toBe("rgb(71, 85, 105)");
   await expect(page.getByLabel("Etiqueta de la conexión")).toHaveValue("Solicitud revisada");
   await page.getByLabel("Etiqueta de la conexión").fill("Solicitud lista para publicar");
   await expect(page.getByRole("button", { name: /Validar publicaci/ })).toHaveCount(0);
@@ -309,15 +371,99 @@ test("workflow editor saves optionally and publishes the current design directly
     .toBe("Solicitud lista para publicar");
 });
 
+test("revision conflict expands focused recovery and reapplies local work after reload", async ({ page }) => {
+  const conflictWorkflowId = "01987df4-ae8a-7000-8000-000000000240";
+  const initialDraft = {
+    schemaVersion: 7,
+    draftId: "01987df4-ae8a-7000-8000-000000000241",
+    workflowId: conflictWorkflowId,
+    name: "Ruta compartida",
+    status: "draft",
+    elements: [{ id: "start-1", type: "start", label: "Start" }],
+    connections: [],
+    processFields: [],
+    formBindings: [],
+    layout: { positions: { "start-1": { x: 80, y: 120 } } }
+  };
+  const latestDraft = {
+    ...initialDraft,
+    layout: { positions: { "start-1": { x: 140, y: 160 } } }
+  };
+  let draftReadCount = 0;
+
+  await mockCsrfBootstrap(page);
+  await page.route("**/api/v1/auth/session/", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(authenticatedSession)
+    });
+  });
+  await page.route(`**/api/v1/workflow-design/workflows/${conflictWorkflowId}/draft/`, async (route) => {
+    if (route.request().method() === "PUT") {
+      await route.fulfill({
+        status: 409,
+        contentType: "application/problem+json",
+        body: JSON.stringify({
+          type: "https://api.moviqo.local/problems/workflow-draft-revision-conflict",
+          title: "Revision conflict",
+          status: 409,
+          code: "workflow_draft_revision_conflict",
+          correlationId: "workflow-conflict-test"
+        })
+      });
+      return;
+    }
+    draftReadCount += 1;
+    const latest = draftReadCount > 1;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...createAcceptedWorkflow(latest ? "2" : "1", latest ? latestDraft : initialDraft),
+        workflowId: conflictWorkflowId,
+        name: initialDraft.name
+      })
+    });
+  });
+
+  await page.goto(`/workflows/${conflictWorkflowId}/design`);
+  await page.getByRole("button", { name: "Agregar Tarea" }).click();
+  await expect(page.getByRole("group", { name: "Tarea: Tarea" })).toBeVisible();
+  await page.getByRole("button", { name: "Guardar borrador" }).click();
+
+  const recoveryRegion = page.getByRole("region", { name: "Estado del borrador" });
+  const conflictSummary = page.locator("#workflow-conflict-summary");
+  const reloadLatest = page.getByRole("button", { name: "Cargar última versión" });
+  const reapplyChanges = page.getByRole("button", { name: "Reaplicar mis cambios" });
+  await expect(recoveryRegion).toBeVisible();
+  await expect(conflictSummary).toBeFocused();
+  await expect(page.getByText("Hay una versión más reciente del flujo", { exact: true }).first()).toBeVisible();
+  await expect(reloadLatest).toBeEnabled();
+  await expect(reapplyChanges).toBeDisabled();
+
+  await reloadLatest.click();
+  await expect(page.getByRole("group", { name: "Tarea: Tarea" })).toHaveCount(0);
+  await expect(reapplyChanges).toBeEnabled();
+  await reapplyChanges.click();
+
+  await expect(recoveryRegion).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Tarea: Tarea" })).toBeVisible();
+  await expect(page.locator('[data-workflow-save-status="compact"]'))
+    .toContainText("Cambios sin guardar");
+  await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeEnabled();
+});
+
 test("edge labels avoid top clipping and vertical path overlap when wrapping", async ({ page }) => {
   const labelWorkflowId = "01987df4-ae8a-7000-8000-000000000250";
+  const longWorkflowName = "Aprobación de solicitudes internas con revisión administrativa regional";
   const topLabel = "Resultado superior con explicación extensa";
   const verticalLabel = "Continuación vertical con contexto completo";
   const draft = {
     schemaVersion: 7,
     draftId: "01987df4-ae8a-7000-8000-000000000251",
     workflowId: labelWorkflowId,
-    name: "Etiquetas geométricas",
+    name: longWorkflowName,
     status: "draft",
     elements: [
       { id: "start-1", type: "start", label: "Start" },
@@ -380,6 +526,9 @@ test("edge labels avoid top clipping and vertical path overlap when wrapping", a
   });
 
   await page.goto(`/workflows/${labelWorkflowId}/design`);
+  const workflowHeading = page.getByRole("heading", { level: 2, name: longWorkflowName });
+  await expect(workflowHeading).toBeVisible();
+  expect(await workflowHeading.evaluate((heading) => heading.scrollWidth <= heading.clientWidth)).toBe(true);
   const canvas = page.locator(".react-flow");
   await expect(canvas).toBeVisible();
   const topLabelElement = page.locator('[data-workflow-edge-label="connection-top"]');

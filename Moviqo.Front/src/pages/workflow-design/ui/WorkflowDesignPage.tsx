@@ -101,7 +101,7 @@ export const WorkflowDesignPage = () => {
   const hasAcceptedWorkflow = Boolean(draftState && acceptedSnapshot);
 
   return (
-    <div className="grid gap-moviqo-6">
+    <div className="grid gap-moviqo-4">
       <Breadcrumbs
         items={[
           { href: "/workflows", label: t("workflowCatalog.title") },
@@ -120,8 +120,6 @@ export const WorkflowDesignPage = () => {
             {t("workflowDesign.route.back")}
           </Button>
         )}
-        description={acceptedSnapshot?.name}
-        eyebrow={t("workflowDesign.editor.eyebrow")}
         title={t("workflowDesign.editor.title")}
       />
       {blocker.state === "blocked" ? (
@@ -168,6 +166,7 @@ export const WorkflowDesignPage = () => {
         <WorkflowDraftEditor
           configurationDirectory={acceptedSnapshot.configurationDirectory}
           draftState={draftState}
+          workflowName={acceptedSnapshot.name}
           onAccepted={acceptSavedDraft}
           onDirtyChange={setIsDirty}
           onDesignTaskForm={(taskElementId) => {

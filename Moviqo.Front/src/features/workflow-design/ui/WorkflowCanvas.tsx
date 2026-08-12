@@ -5,7 +5,8 @@ import {
   useState,
   type DragEvent,
   type KeyboardEvent,
-  type PointerEvent
+  type PointerEvent,
+  type ReactNode
 } from "react";
 import {
   Background,
@@ -13,6 +14,7 @@ import {
   Controls,
   EdgeLabelRenderer,
   Handle,
+  MarkerType,
   Position,
   ReactFlow,
   getSmoothStepPath,
@@ -40,6 +42,8 @@ type WorkflowCanvasProps = {
   selectedElementId: string | null;
   selectedConnectionId: string | null;
   pointerElementType: WorkflowElementType | null;
+  status: ReactNode;
+  workflowName: string;
   onPointerElementHandled: () => void;
   onAddAtPosition: (elementType: WorkflowElementType, position: XYPosition) => void;
   onConnect: (sourceId: string, targetId: string) => void;
@@ -169,6 +173,8 @@ export const WorkflowCanvas = ({
   selectedElementId,
   selectedConnectionId,
   pointerElementType,
+  status,
+  workflowName,
   onPointerElementHandled,
   onAddAtPosition,
   onConnect,
@@ -232,6 +238,12 @@ export const WorkflowCanvas = ({
       return {
         ...edge,
         ariaLabel: `${displayLabel(source)}; ${connectionLabel}; ${t("workflowDesign.editor.connectionTo")} ${displayLabel(target)}`,
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: edge.id === selectedConnectionId
+            ? "var(--color-moviqo-focus)"
+            : "var(--color-moviqo-ink-secondary)"
+        },
         selected: edge.id === selectedConnectionId
       };
     }),
@@ -298,13 +310,16 @@ export const WorkflowCanvas = ({
   return (
     <div className="workflow-canvas-shell grid min-h-moviqo-workspace">
     <Card labelledBy="workflow-canvas-title">
-      <div className="grid gap-moviqo-1">
-        <h2 className="m-0 text-moviqo-heading font-semibold" id="workflow-canvas-title" tabIndex={-1}>
-          {t("workflowDesign.editor.canvasTitle")}
-        </h2>
-        <p className="m-0 text-sm text-moviqo-ink-secondary">
-          {t("workflowDesign.editor.canvasBody")}
-        </p>
+      <div className="grid min-w-0 gap-moviqo-2 tablet:grid-cols-[minmax(0,1fr)_auto] tablet:items-start">
+        <div className="grid min-w-0 gap-moviqo-1">
+          <h2 className="m-0 break-words text-moviqo-heading font-semibold" id="workflow-canvas-title" tabIndex={-1}>
+            {workflowName}
+          </h2>
+          <p className="m-0 text-sm text-moviqo-ink-secondary">
+            {t("workflowDesign.editor.canvasBody")}
+          </p>
+        </div>
+        {status}
       </div>
       <div
         aria-describedby="workflow-graph-summary"

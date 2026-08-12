@@ -253,14 +253,12 @@ export type MessageKey =
   | "workflowDesign.draft.revision"
   | "workflowDesign.draft.schemaVersion"
   | "workflowDesign.draft.save"
-  | "workflowDesign.editor.eyebrow"
   | "workflowDesign.editor.title"
   | "workflowDesign.editor.body"
   | "workflowDesign.editor.paletteTitle"
   | "workflowDesign.editor.paletteBody"
   | "workflowDesign.editor.addAccepted"
   | "workflowDesign.editor.addRejected"
-  | "workflowDesign.editor.canvasTitle"
   | "workflowDesign.editor.canvasBody"
   | "workflowDesign.editor.incomingHandle"
   | "workflowDesign.editor.outgoingHandle"
@@ -797,8 +795,7 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.draft.revision": "Revisión",
   "workflowDesign.draft.schemaVersion": "Versión del esquema",
   "workflowDesign.draft.save": "Guardar borrador",
-  "workflowDesign.editor.eyebrow": "Primer camino ejecutable",
-  "workflowDesign.editor.title": "Diseña Inicio, Tarea y Fin",
+  "workflowDesign.editor.title": "Diseña tu flujo de trabajo",
   "workflowDesign.editor.body":
     "Agrega cada paso, conecta el recorrido y guarda los cambios para continuar.",
   "workflowDesign.editor.paletteTitle": "Elementos",
@@ -807,7 +804,6 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.addAccepted": "El elemento se agregó y está seleccionado.",
   "workflowDesign.editor.addRejected":
     "Este borrador ya tiene ese elemento. Inicio y Fin se agregan una sola vez.",
-  "workflowDesign.editor.canvasTitle": "Lienzo del flujo",
   "workflowDesign.editor.canvasBody":
     "Mueve los pasos o arrastra desde el conector visible de salida hasta el conector de entrada. Con el teclado, activa primero la salida y luego la entrada.",
   "workflowDesign.editor.incomingHandle": "Conexión de secuencia entrante",
@@ -870,7 +866,7 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.retrying": "Reintentando guardado",
   "workflowDesign.editor.retrySave": "Reintentar guardado",
   "workflowDesign.editor.saveNow": "Guardar ahora",
-  "workflowDesign.editor.saveSuccess": "El flujo se guardó correctamente.",
+  "workflowDesign.editor.saveSuccess": "Cambios guardados",
   "workflowDesign.editor.saveError": "No pudimos guardar este borrador. Corrige el camino e intenta de nuevo.",
   "workflowDesign.editor.saveInvalidTarget": "Revisa esta parte del borrador y vuelve a guardar.",
   "workflowDesign.editor.saveTargetCanvas": "Camino del flujo",
@@ -1379,8 +1375,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.draft.revision": "Revision",
   "workflowDesign.draft.schemaVersion": "Schema version",
   "workflowDesign.draft.save": "Save draft",
-  "workflowDesign.editor.eyebrow": "First executable path",
-  "workflowDesign.editor.title": "Design Start, Task, and End",
+  "workflowDesign.editor.title": "Design your workflow",
   "workflowDesign.editor.body":
     "Add each step with visible controls, connect the path, and save only when the server accepts the revision.",
   "workflowDesign.editor.paletteTitle": "Elements",
@@ -1389,7 +1384,6 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.addAccepted": "The element was added and selected.",
   "workflowDesign.editor.addRejected":
     "This draft already has that element. Start and End can each be added once.",
-  "workflowDesign.editor.canvasTitle": "Workflow canvas",
   "workflowDesign.editor.canvasBody":
     "Move steps or drag from the visible outgoing connector to an incoming connector. With the keyboard, activate the output and then the input.",
   "workflowDesign.editor.incomingHandle": "Incoming sequence connection",
@@ -1452,7 +1446,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.retrying": "Retrying save",
   "workflowDesign.editor.retrySave": "Retry save",
   "workflowDesign.editor.saveNow": "Save now",
-  "workflowDesign.editor.saveSuccess": "The server saved the authorized path.",
+  "workflowDesign.editor.saveSuccess": "Changes saved",
   "workflowDesign.editor.saveError": "We could not save this draft. Correct the path and try again.",
   "workflowDesign.editor.saveInvalidTarget": "Review this part of the draft and save again.",
   "workflowDesign.editor.saveTargetCanvas": "Workflow path",

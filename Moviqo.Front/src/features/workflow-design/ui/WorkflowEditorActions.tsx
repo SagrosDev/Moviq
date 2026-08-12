@@ -22,16 +22,8 @@ export const WorkflowSaveStatus = ({
   onInvalidTarget
 }: WorkflowSaveStatusProps) => {
   const { t } = useLanguage();
+  const conflictSummaryRef = useRef<HTMLDivElement>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
-  const statusLabel = state.saveStatus === "saving"
-    ? t("workflowDesign.editor.saving")
-    : state.saveStatus === "retrying"
-      ? t("workflowDesign.editor.retrying")
-      : state.saveStatus === "conflict"
-        ? t("workflowDesign.editor.conflictTitle")
-      : state.hasLocalChanges
-        ? t("workflowDesign.editor.unsaved")
-        : t("workflowDesign.editor.saveSuccess");
   const errorTargetLabel = (target: string) => target.startsWith("elements.")
     || target.startsWith("connections.")
     ? t("workflowDesign.editor.saveTargetCanvas")
@@ -66,21 +58,27 @@ export const WorkflowSaveStatus = ({
     });
   }, [state.saveStatus]);
 
+  useEffect(() => {
+    if (state.saveStatus !== "conflict" && !state.revisionRecoveryRequired) return;
+    window.requestAnimationFrame(() => {
+      conflictSummaryRef.current?.scrollIntoView({ block: "center", behavior: "auto" });
+      conflictSummaryRef.current?.focus();
+    });
+  }, [state.revisionRecoveryRequired, state.saveStatus]);
+
+  const hasRecoveryFeedback = state.saveStatus === "error"
+    || state.saveStatus === "conflict"
+    || state.revisionRecoveryRequired
+    || state.publishStatus === "error"
+    || state.publishStatus === "success";
+
+  if (!hasRecoveryFeedback) return null;
+
   return (
     <Card labelledBy="workflow-save-status-title">
-      <div className="flex flex-wrap items-center justify-between gap-moviqo-3" aria-live="polite">
-        <div className="grid gap-moviqo-1">
-          <h2 className="m-0 text-base font-semibold" id="workflow-save-status-title">
-            {t("workflowDesign.editor.saveStatusTitle")}
-          </h2>
-          <span className="text-sm text-moviqo-ink-secondary">{statusLabel}</span>
-        </div>
-        <Badge tone={state.hasLocalChanges ? "warning" : "success"}>
-          {state.hasLocalChanges
-            ? t("workflowDesign.editor.unsaved")
-            : `${t("workflowDesign.draft.revision")} ${state.lastAcknowledgedRevision}`}
-        </Badge>
-      </div>
+      <h2 className="sr-only" id="workflow-save-status-title">
+        {t("workflowDesign.editor.saveStatusTitle")}
+      </h2>
       {state.saveStatus === "error" ? (
         <ErrorSummary
           errors={saveErrors}
@@ -93,31 +91,35 @@ export const WorkflowSaveStatus = ({
         />
       ) : null}
       {state.saveStatus === "conflict" ? (
-        <Alert announcement="assertive" title={t("workflowDesign.editor.conflictTitle")} tone="warning">
-          <p className="m-0">{t("workflowDesign.editor.conflictMessage")}</p>
-          <ActionBar align="start">
-            <Button variant="secondary" onClick={onReloadLatest}>
-              {t("workflowDesign.editor.reloadLatest")}
-            </Button>
-            <Button
-              disabled={!state.conflictLatestLoaded}
-              variant="secondary"
-              onClick={onReapplyChanges}
-            >
-              {t("workflowDesign.editor.reapplyChanges")}
-            </Button>
-          </ActionBar>
-        </Alert>
+        <div id="workflow-conflict-summary" ref={conflictSummaryRef} tabIndex={-1}>
+          <Alert announcement="assertive" title={t("workflowDesign.editor.conflictTitle")} tone="warning">
+            <p className="m-0">{t("workflowDesign.editor.conflictMessage")}</p>
+            <ActionBar align="start">
+              <Button variant="secondary" onClick={onReloadLatest}>
+                {t("workflowDesign.editor.reloadLatest")}
+              </Button>
+              <Button
+                disabled={!state.conflictLatestLoaded}
+                variant="secondary"
+                onClick={onReapplyChanges}
+              >
+                {t("workflowDesign.editor.reapplyChanges")}
+              </Button>
+            </ActionBar>
+          </Alert>
+        </div>
       ) : null}
       {state.revisionRecoveryRequired && state.saveStatus !== "conflict" ? (
-        <Alert announcement="assertive" title={t("workflowDesign.editor.conflictTitle")} tone="warning">
-          <p className="m-0">{t("workflowDesign.editor.revisionRecoveryMessage")}</p>
-          <ActionBar align="start">
-            <Button variant="secondary" onClick={onReloadLatest}>
-              {t("workflowDesign.editor.reloadLatest")}
-            </Button>
-          </ActionBar>
-        </Alert>
+        <div ref={conflictSummaryRef} tabIndex={-1}>
+          <Alert announcement="assertive" title={t("workflowDesign.editor.conflictTitle")} tone="warning">
+            <p className="m-0">{t("workflowDesign.editor.revisionRecoveryMessage")}</p>
+            <ActionBar align="start">
+              <Button variant="secondary" onClick={onReloadLatest}>
+                {t("workflowDesign.editor.reloadLatest")}
+              </Button>
+            </ActionBar>
+          </Alert>
+        </div>
       ) : null}
       {state.publishStatus === "error" ? (
         <div id="workflow-publish-error-summary" tabIndex={-1}>
@@ -132,6 +134,38 @@ export const WorkflowSaveStatus = ({
         </Alert>
       ) : null}
     </Card>
+  );
+};
+
+type WorkflowCompactSaveStatusProps = {
+  state: WorkflowDraftEditorState;
+};
+
+export const WorkflowCompactSaveStatus = ({ state }: WorkflowCompactSaveStatusProps) => {
+  const { t } = useLanguage();
+  const statusLabel = state.saveStatus === "saving"
+    ? t("workflowDesign.editor.saving")
+    : state.saveStatus === "retrying"
+      ? t("workflowDesign.editor.retrying")
+      : state.saveStatus === "conflict" || state.revisionRecoveryRequired
+        ? t("workflowDesign.editor.conflictTitle")
+        : state.saveStatus === "error"
+          ? t("workflowDesign.editor.errorTitle")
+          : state.hasLocalChanges
+            ? t("workflowDesign.editor.unsaved")
+            : `${t("workflowDesign.editor.saveSuccess")} · ${t("workflowDesign.draft.revision")} ${state.lastAcknowledgedRevision}`;
+  const tone = state.saveStatus === "error"
+    ? "error" as const
+    : state.saveStatus === "conflict" || state.revisionRecoveryRequired || state.hasLocalChanges
+      ? "warning" as const
+      : state.saveStatus === "saving" || state.saveStatus === "retrying"
+        ? "info" as const
+        : "success" as const;
+
+  return (
+    <span aria-atomic="true" aria-live="polite" data-workflow-save-status="compact">
+      <Badge tone={tone}>{statusLabel}</Badge>
+    </span>
   );
 };
 

@@ -107,7 +107,8 @@ test("workflow creation, dirty navigation, form launch, and deep-link reload sta
   await page.getByRole("button", { name: "Crear flujo" }).click();
 
   await expect(page).toHaveURL(new RegExp(`/workflows/${workflowId}/design$`));
-  await expect(page.getByRole("heading", { level: 1, name: "Diseña Inicio, Tarea y Fin" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Diseña tu flujo de trabajo" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: acceptedWorkflow.name })).toBeVisible();
   await expect(page.getByLabel("Nombre del flujo")).toHaveCount(0);
 
   await page.getByRole("group", { name: /Tarea: Revisar solicitud/ }).click();

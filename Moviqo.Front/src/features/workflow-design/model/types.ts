@@ -14,6 +14,7 @@ export type WorkflowDraftConnection = {
   type: WorkflowConnectionType;
   sourceId: string;
   targetId: string;
+  label?: string | null;
 };
 
 export type WorkflowProcessField = {

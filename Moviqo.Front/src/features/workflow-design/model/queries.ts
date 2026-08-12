@@ -62,7 +62,8 @@ const normalizeGeneratedDraft = (
     id: connection.id,
     type: contractValue<WorkflowConnectionType>(connection.type, ["sequence"]),
     sourceId: connection.sourceId,
-    targetId: connection.targetId
+    targetId: connection.targetId,
+    label: connection.label?.trim() || null
   })),
   processFields: (draft.processFields ?? []).map((field) => ({
     id: requiredContractString(field.id),

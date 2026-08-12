@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from uuid import UUID
 
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
@@ -105,6 +106,7 @@ class WorkflowDraftDocumentSerializer(serializers.Serializer):
         type = serializers.CharField()
         sourceId = serializers.CharField(allow_blank=True)
         targetId = serializers.CharField(allow_blank=True)
+        label = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class WorkflowProcessFieldSerializer(serializers.Serializer):
         id = serializers.CharField(required=False, allow_blank=True)
@@ -138,12 +140,10 @@ class WorkflowDraftSaveRequestSerializer(serializers.Serializer):
 
 class WorkflowPublicationValidationRequestSerializer(serializers.Serializer):
     expectedRevision = serializers.CharField()
-    draft = WorkflowDraftDocumentSerializer()
 
 
 class WorkflowPublishRequestSerializer(serializers.Serializer):
     expectedRevision = serializers.CharField()
-    draft = WorkflowDraftDocumentSerializer()
 
 
 class WorkflowCreateResponseSerializer(serializers.Serializer):
@@ -352,6 +352,14 @@ class WorkflowDraftDetailView(APIView):
         },
     )
     def put(self, request, workflow_id: UUID) -> Response:
+        unexpected_response = _reject_unexpected_request_fields(
+            request,
+            allowed_fields={"expectedRevision", "draft"},
+            title="Workflow draft save failed",
+            reason="Remove this field; the draft endpoint owns integrity validation.",
+        )
+        if unexpected_response is not None:
+            return unexpected_response
         serializer = WorkflowDraftSaveRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return problem_response(
@@ -447,6 +455,12 @@ class WorkflowPublicationValidationView(APIView):
         },
     )
     def post(self, request, workflow_id: UUID) -> Response:
+        candidate_response = _reject_publication_candidate(
+            request,
+            title="Workflow publication validation failed",
+        )
+        if candidate_response is not None:
+            return candidate_response
         serializer = WorkflowPublicationValidationRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return problem_response(
@@ -487,7 +501,6 @@ class WorkflowPublicationValidationView(APIView):
                 tenant_context=tenant_context,
                 workflow_id=workflow_id,
                 expected_revision=serializer.validated_data["expectedRevision"],
-                draft=serializer.validated_data["draft"],
                 idempotency_key=idempotency_key,
                 request_hash=_workflow_request_hash(serializer.validated_data),
             )
@@ -546,6 +559,12 @@ class WorkflowPublishView(APIView):
         },
     )
     def post(self, request, workflow_id: UUID) -> Response:
+        candidate_response = _reject_publication_candidate(
+            request,
+            title="Workflow publish failed",
+        )
+        if candidate_response is not None:
+            return candidate_response
         serializer = WorkflowPublishRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return problem_response(
@@ -586,7 +605,6 @@ class WorkflowPublishView(APIView):
                 tenant_context=tenant_context,
                 workflow_id=workflow_id,
                 expected_revision=serializer.validated_data["expectedRevision"],
-                draft=serializer.validated_data["draft"],
                 idempotency_key=idempotency_key,
                 request_hash=_workflow_request_hash(serializer.validated_data),
             )
@@ -652,6 +670,51 @@ def _workflow_design_forbidden_response(request) -> Response:
 def _workflow_request_hash(payload: dict[str, object]) -> str:
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _reject_publication_candidate(request, *, title: str) -> Response | None:
+    return _reject_unexpected_request_fields(
+        request,
+        allowed_fields={"expectedRevision"},
+        title=title,
+        reason="Remove this field and validate the saved revision.",
+    )
+
+
+def _reject_unexpected_request_fields(
+    request,
+    *,
+    allowed_fields: set[str],
+    title: str,
+    reason: str,
+) -> Response | None:
+    if not isinstance(request.data, Mapping):
+        return problem_response(
+            request,
+            ProblemTemplate(400, "workflow_draft_invalid", title),
+            invalid_params=[
+                {
+                    "name": "nonFieldErrors",
+                    "code": "invalid_request",
+                    "reason": "Send a JSON object and try again.",
+                }
+            ],
+        )
+    unexpected_fields = sorted(set(request.data) - allowed_fields)
+    if not unexpected_fields:
+        return None
+    field_name = unexpected_fields[0]
+    return problem_response(
+        request,
+        ProblemTemplate(400, "workflow_draft_invalid", title),
+        invalid_params=[
+            {
+                "name": field_name,
+                "code": "unexpected",
+                "reason": reason,
+            }
+        ],
+    )
 
 
 def _workflow_create_invalid_params(errors) -> list[dict[str, str]]:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Any
 
-CURRENT_DRAFT_SCHEMA_VERSION = 4
+CURRENT_DRAFT_SCHEMA_VERSION = 5
 CURRENT_DRAFT_FIELDS = frozenset(
     {
         "schemaVersion",
@@ -19,7 +19,7 @@ CURRENT_DRAFT_FIELDS = frozenset(
     }
 )
 CURRENT_ELEMENT_FIELDS = frozenset({"id", "type", "label"})
-CURRENT_CONNECTION_FIELDS = frozenset({"id", "type", "sourceId", "targetId"})
+CURRENT_CONNECTION_FIELDS = frozenset({"id", "type", "sourceId", "targetId", "label"})
 CURRENT_PROCESS_FIELD_FIELDS = frozenset(
     {
         "id",
@@ -41,6 +41,7 @@ SUPPORTED_PROCESS_FIELD_KINDS = frozenset({"shortText"})
 LEGACY_DRAFT_SCHEMA_VERSION = 1
 GRAPH_DRAFT_SCHEMA_VERSION = 2
 PUBLICATION_DRAFT_SCHEMA_VERSION = 3
+CONFIGURATION_DRAFT_SCHEMA_VERSION = 4
 SHORT_TEXT_MAXIMUM_LENGTH = 255
 STARTER_MODES = frozenset(
     {
@@ -93,6 +94,10 @@ def load_draft_document(payload: dict[str, Any]) -> dict[str, Any]:
 
     if schema_version == PUBLICATION_DRAFT_SCHEMA_VERSION:
         payload = _upcast_v3_to_v4(payload)
+        schema_version = payload["schemaVersion"]
+
+    if schema_version == CONFIGURATION_DRAFT_SCHEMA_VERSION:
+        payload = _upcast_v4_to_v5(payload)
     elif schema_version != CURRENT_DRAFT_SCHEMA_VERSION:
         raise UnsupportedDraftSchemaVersionError(
             f"Unsupported draft schema version: {schema_version}"
@@ -163,7 +168,7 @@ def new_workflow_draft_document(*, draft_id: str, workflow_id: str, name: str) -
             "workflowId": workflow_id,
             "name": name,
             "status": "draft",
-            "elements": [],
+            "elements": [{"id": "start-1", "type": "start", "label": "Start"}],
             "connections": [],
             "processFields": [],
             "formBindings": [],
@@ -219,7 +224,7 @@ def _upcast_v3_to_v4(payload: dict[str, Any]) -> dict[str, Any]:
     legacy_assignment = legacy_publication.get("assignment", {})
 
     return {
-        "schemaVersion": CURRENT_DRAFT_SCHEMA_VERSION,
+        "schemaVersion": CONFIGURATION_DRAFT_SCHEMA_VERSION,
         "draftId": payload["draftId"],
         "workflowId": payload["workflowId"],
         "name": payload["name"],
@@ -247,6 +252,17 @@ def _upcast_v3_to_v4(payload: dict[str, Any]) -> dict[str, Any]:
                 "membershipId": None,
             },
         },
+    }
+
+
+def _upcast_v4_to_v5(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **payload,
+        "schemaVersion": CURRENT_DRAFT_SCHEMA_VERSION,
+        "connections": [
+            {**connection, "label": connection.get("label")}
+            for connection in payload.get("connections", [])
+        ],
     }
 
 
@@ -293,7 +309,7 @@ def _normalize_publication(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def validate_workflow_graph_document(payload: dict[str, Any]) -> dict[str, Any]:
+def validate_workflow_draft_integrity(payload: dict[str, Any]) -> dict[str, Any]:
     document = dump_current_draft(payload)
     issues: list[dict[str, str]] = []
     elements = document["elements"]
@@ -386,34 +402,24 @@ def validate_workflow_graph_document(payload: dict[str, Any]) -> dict[str, Any]:
             incoming[target_id].append(connection)
 
     starts = [element for element in elements if element["type"] == "start"]
-    tasks = [element for element in elements if element["type"] == "task"]
     ends = [element for element in elements if element["type"] == "end"]
 
-    if len(starts) != 1:
+    if len(starts) > 1:
         issues.append(
             {
                 "field": "elements",
                 "code": "start_count_invalid",
-                "reason": "Add exactly one Start step before saving the workflow.",
+                "reason": "Keep at most one Start step in the workflow draft.",
             }
         )
-    if len(ends) != 1:
+    if len(ends) > 1:
         issues.append(
             {
                 "field": "elements",
                 "code": "end_count_invalid",
-                "reason": "Add exactly one End step before saving the workflow.",
+                "reason": "Keep at most one End step in the workflow draft.",
             }
         )
-    if len(tasks) < 1:
-        issues.append(
-            {
-                "field": "elements",
-                "code": "task_required",
-                "reason": "Add at least one Task step before saving the workflow.",
-            }
-        )
-
     for element in elements:
         incoming_count = len(incoming.get(element["id"], []))
         outgoing_connections = outgoing.get(element["id"], [])
@@ -430,16 +436,19 @@ def validate_workflow_graph_document(payload: dict[str, Any]) -> dict[str, Any]:
                         "reason": "Start cannot receive incoming work.",
                     }
                 )
-            if outgoing_count != 1:
+            if outgoing_count > 1:
                 issues.append(
                     {
                         "field": f"elements.{element['id']}",
                         "code": "start_outgoing_invalid",
                         "elementId": element["id"],
-                        "reason": "Connect Start to exactly one Task step.",
+                        "reason": "Start can connect to at most one Task step.",
                     }
                 )
-            elif element_by_id[outgoing_connections[0]["targetId"]]["type"] != "task":
+            elif outgoing_count == 1 and (
+                outgoing_connections[0]["targetId"] in element_by_id
+                and element_by_id[outgoing_connections[0]["targetId"]]["type"] != "task"
+            ):
                 issues.append(
                     {
                         "field": f"connections.{outgoing_connections[0]['id']}",
@@ -449,26 +458,29 @@ def validate_workflow_graph_document(payload: dict[str, Any]) -> dict[str, Any]:
                     }
                 )
         elif element_type == "task":
-            if incoming_count < 1:
+            if incoming_count > 1:
                 issues.append(
                     {
                         "field": f"elements.{element['id']}",
-                        "code": "task_incoming_required",
+                        "code": "task_incoming_invalid",
                         "elementId": element["id"],
-                        "reason": "Connect this Task from Start or another Task.",
+                        "reason": "Task can receive work from at most one previous step.",
                     }
                 )
-            if outgoing_count != 1:
+            if outgoing_count > 1:
                 issues.append(
                     {
                         "field": f"elements.{element['id']}",
                         "code": "task_outgoing_invalid",
                         "elementId": element["id"],
-                        "reason": "Connect this Task to one next step before saving.",
+                        "reason": "Task can connect to at most one next step.",
                     }
                 )
             for connection in outgoing_connections:
-                target_type = element_by_id[connection["targetId"]]["type"]
+                target = element_by_id.get(connection["targetId"])
+                if target is None:
+                    continue
+                target_type = target["type"]
                 if target_type not in {"task", "end"}:
                     issues.append(
                         {
@@ -479,13 +491,13 @@ def validate_workflow_graph_document(payload: dict[str, Any]) -> dict[str, Any]:
                         }
                     )
         elif element_type == "end":
-            if incoming_count < 1:
+            if incoming_count > 1:
                 issues.append(
                     {
                         "field": f"elements.{element['id']}",
-                        "code": "end_incoming_required",
+                        "code": "end_incoming_invalid",
                         "elementId": element["id"],
-                        "reason": "Connect at least one Task to End before saving.",
+                        "reason": "End can receive work from at most one Task step.",
                     }
                 )
             if outgoing_count != 0:
@@ -498,38 +510,14 @@ def validate_workflow_graph_document(payload: dict[str, Any]) -> dict[str, Any]:
                     }
                 )
 
-    if len(starts) == 1 and len(ends) == 1:
-        reachable_from_start = _reachable_ids(starts[0]["id"], outgoing)
-        for element in elements:
-            if element["id"] not in reachable_from_start:
-                issues.append(
-                    {
-                        "field": f"elements.{element['id']}",
-                        "code": "element_disconnected",
-                        "elementId": element["id"],
-                        "reason": "Connect this step into the Start to End path.",
-                    }
-                )
-        reverse_graph: dict[str, list[dict[str, str]]] = defaultdict(list)
-        for target_id, incoming_connections in incoming.items():
-            reverse_graph[target_id] = incoming_connections
-        reaches_end = _reachable_ids(ends[0]["id"], reverse_graph, reverse=True)
-        for element in elements:
-            if element["type"] != "end" and element["id"] not in reaches_end:
-                issues.append(
-                    {
-                        "field": f"elements.{element['id']}",
-                        "code": "path_to_end_required",
-                        "elementId": element["id"],
-                        "reason": "Connect this step so the workflow reaches End.",
-                    }
-                )
-
-    first_task_id = _first_task_id(
-        elements=elements,
-        outgoing=outgoing,
-        element_by_id=element_by_id,
-    )
+    if _has_sequence_cycle(element_by_id, outgoing):
+        issues.append(
+            {
+                "field": "connections",
+                "code": "cycle_forbidden",
+                "reason": "Sequence loops are not available in this workflow version.",
+            }
+        )
 
     for binding in form_bindings:
         task_element = element_by_id.get(binding["taskElementId"])
@@ -549,15 +537,6 @@ def validate_workflow_graph_document(payload: dict[str, Any]) -> dict[str, Any]:
                     "reason": "Place reusable fields only on a Task step.",
                 }
             )
-        elif first_task_id is not None and binding["taskElementId"] != first_task_id:
-            issues.append(
-                {
-                    "field": f"formBindings.{binding['id']}.taskElementId",
-                    "code": "binding_not_first_task",
-                    "reason": "Add this field only to the first Task step in this story.",
-                }
-            )
-
         if binding["fieldId"] not in process_field_by_id:
             issues.append(
                 {
@@ -573,11 +552,47 @@ def validate_workflow_graph_document(payload: dict[str, Any]) -> dict[str, Any]:
     return document
 
 
+def validate_workflow_graph_document(payload: dict[str, Any]) -> dict[str, Any]:
+    """Compatibility alias for callers migrating to the explicit integrity name."""
+    return validate_workflow_draft_integrity(payload)
+
+
 def _require_type(payload: dict[str, Any], field_name: str, expected_type: type) -> None:
     if not isinstance(payload.get(field_name), expected_type):
         raise WorkflowDraftSchemaError(
             f"Workflow draft field '{field_name}' must be {expected_type.__name__}."
         )
+
+
+def _has_sequence_cycle(
+    element_by_id: dict[str, dict[str, Any]],
+    outgoing: dict[str, list[dict[str, str]]],
+) -> bool:
+    visited: set[str] = set()
+    for start_id in element_by_id:
+        if start_id in visited:
+            continue
+        visiting: set[str] = set()
+        stack: list[tuple[str, bool]] = [(start_id, False)]
+        while stack:
+            element_id, exiting = stack.pop()
+            if exiting:
+                visiting.discard(element_id)
+                visited.add(element_id)
+                continue
+            if element_id in visiting:
+                return True
+            if element_id in visited:
+                continue
+            visiting.add(element_id)
+            stack.append((element_id, True))
+            for connection in reversed(outgoing.get(element_id, [])):
+                target_id = connection["targetId"]
+                if target_id in visiting:
+                    return True
+                if target_id in element_by_id and target_id not in visited:
+                    stack.append((target_id, False))
+    return False
 
 
 def _require_non_blank_string(payload: dict[str, Any], field_name: str) -> str:
@@ -666,7 +681,7 @@ def _normalize_element(payload: Any) -> dict[str, str]:
     }
 
 
-def _normalize_connection(payload: Any) -> dict[str, str]:
+def _normalize_connection(payload: Any) -> dict[str, str | None]:
     if not isinstance(payload, dict):
         raise WorkflowDraftSchemaError("Workflow draft connections must be objects.")
 
@@ -694,6 +709,7 @@ def _normalize_connection(payload: Any) -> dict[str, str]:
         "type": payload["type"],
         "sourceId": source_id,
         "targetId": target_id,
+        "label": _normalize_optional_nullable_string(payload, "label"),
     }
 
 

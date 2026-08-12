@@ -198,16 +198,19 @@ test("deployed first workflow journey covers registration through completed time
     ).toBeVisible();
     await journeyExpect(page).toHaveURL(/\/workflows\/[^/]+\/design$/);
 
-    await page.getByRole("button", { name: copy("workflowDesign.editor.addStart") }).click();
     await page.getByRole("button", { name: copy("workflowDesign.editor.addTask") }).click();
     await page.getByRole("button", { name: copy("workflowDesign.editor.addEnd") }).click();
-    await page.getByRole("button", { name: copy("workflowDesign.editor.connectStartTask") }).click();
-    await page.getByRole("button", { name: copy("workflowDesign.editor.connectTaskEnd") }).click();
+    await page.getByLabel(copy("workflowDesign.editor.connectionSource")).selectOption("start-1");
+    await page.getByLabel(copy("workflowDesign.editor.connectionTarget")).selectOption("task-1");
+    await page.getByRole("button", { name: copy("workflowDesign.editor.connectLabel") }).click();
+    await page.getByLabel(copy("workflowDesign.editor.connectionSource")).selectOption("task-1");
+    await page.getByLabel(copy("workflowDesign.editor.connectionTarget")).selectOption("end-1");
+    await page.getByRole("button", { name: copy("workflowDesign.editor.connectLabel") }).click();
     await performApiAction(
       page,
-      "PATCH",
+      "PUT",
       /\/api\/v1\/workflow-design\/workflows\/[^/]+\/draft\/$/,
-      () => page.getByRole("button", { name: copy("workflowDesign.editor.saveNow") }).click()
+      () => page.getByRole("button", { name: copy("workflowDesign.draft.save") }).click()
     );
       await assertNoAccessibilityViolations(page, axePath);
     });
@@ -234,9 +237,9 @@ test("deployed first workflow journey covers registration through completed time
     await page.getByRole("button", { name: copy("workflowDesign.editor.addToFirstTask") }).click();
     await performApiAction(
       page,
-      "PATCH",
+      "PUT",
       /\/api\/v1\/workflow-design\/workflows\/[^/]+\/draft\/$/,
-      () => page.getByRole("button", { name: copy("workflowDesign.editor.saveNow") }).click()
+      () => page.getByRole("button", { name: copy("workflowDesign.draft.save") }).click()
     );
     await performApiAction(
       page,

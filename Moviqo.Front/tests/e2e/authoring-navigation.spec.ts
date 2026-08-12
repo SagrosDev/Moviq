@@ -24,7 +24,7 @@ const acceptedWorkflow = {
   name: "Aprobaciones",
   revision: "1",
   draft: {
-    schemaVersion: 4,
+    schemaVersion: 5,
     draftId: "01987df4-ae8a-7000-8000-000000000111",
     workflowId,
     name: "Aprobaciones",
@@ -110,6 +110,7 @@ test("workflow creation, dirty navigation, form launch, and deep-link reload sta
   await expect(page.getByRole("heading", { level: 1, name: "Diseña Inicio, Tarea y Fin" })).toBeVisible();
   await expect(page.getByLabel("Nombre del flujo")).toHaveCount(0);
 
+  await page.getByRole("group", { name: /Tarea: Revisar solicitud/ }).click();
   await page.getByRole("button", { name: "Diseñar formulario" }).click();
   await expect(page).toHaveURL(
     new RegExp(`/workflows/${workflowId}/tasks/${taskElementId}/form$`)
@@ -117,7 +118,14 @@ test("workflow creation, dirty navigation, form launch, and deep-link reload sta
   await page.getByRole("link", { name: acceptedWorkflow.name }).click();
   await expect(page).toHaveURL(new RegExp(`/workflows/${workflowId}/design$`));
 
-  await page.getByRole("radio", { name: "Todas las personas activas" }).check();
+  await page.getByLabel("Quién puede iniciar").selectOption("allActiveMembers");
+  await page.getByRole("group", { name: /Tarea: Revisar solicitud/ }).click();
+  await page.getByRole("button", { name: "Diseñar formulario" }).click();
+  await expect(page.getByText("Hay cambios sin guardar")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Guardar y diseñar formulario" })).toBeVisible();
+  await page.getByRole("button", { name: "Permanecer" }).click();
+  await expect(page).toHaveURL(new RegExp(`/workflows/${workflowId}/design$`));
+
   await page.getByRole("link", { name: "Formularios", exact: true }).click();
   await expect(page.getByText("Hay cambios sin guardar")).toBeVisible();
   await page.getByRole("button", { name: "Permanecer" }).click();
@@ -127,7 +135,7 @@ test("workflow creation, dirty navigation, form launch, and deep-link reload sta
   await page.getByRole("button", { name: "Descartar y salir" }).click();
   await expect(page).toHaveURL(/\/forms$/);
 
-  await page.getByLabel("Flujo").selectOption(workflowId);
+  await page.getByLabel("Flujo", { exact: true }).selectOption(workflowId);
   await page.getByLabel("Tarea").selectOption(taskElementId);
   await page.getByRole("button", { name: "Diseñar formulario" }).click();
   await expect(page).toHaveURL(

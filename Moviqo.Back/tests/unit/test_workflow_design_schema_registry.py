@@ -9,10 +9,89 @@ from moviqo.modules.workflow_design.application.schema import (
     UnknownDraftFieldError,
     dump_current_draft,
     load_draft_document,
+    new_workflow_draft_document,
+    validate_workflow_draft_integrity,
     validate_workflow_graph_document,
 )
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "workflow_design"
+
+
+def test_new_workflow_draft_seeds_one_start_step() -> None:
+    draft = new_workflow_draft_document(
+        draft_id="draft-1",
+        workflow_id="workflow-1",
+        name="Workflow intake",
+    )
+
+    assert draft["schemaVersion"] == 5
+    assert draft["elements"] == [
+        {"id": "start-1", "type": "start", "label": "Start"}
+    ]
+
+
+def test_schema_registry_upcasts_v4_connections_with_optional_labels() -> None:
+    loaded = load_draft_document(
+        {
+            "schemaVersion": 4,
+            "draftId": "draft-1",
+            "workflowId": "workflow-1",
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": [
+                {"id": "start-1", "type": "start", "label": "Start"},
+                {"id": "task-1", "type": "task", "label": "Review request"},
+            ],
+            "connections": [
+                {
+                    "id": "connection-1",
+                    "type": "sequence",
+                    "sourceId": "start-1",
+                    "targetId": "task-1",
+                }
+            ],
+            "processFields": [],
+            "formBindings": [],
+            "publication": {},
+        }
+    )
+
+    assert loaded["schemaVersion"] == 5
+    assert loaded["connections"][0]["label"] is None
+
+
+def test_draft_integrity_handles_a_long_linear_graph_without_recursion() -> None:
+    task_count = 1_200
+    elements = [
+        {"id": f"task-{index}", "type": "task", "label": f"Task {index}"}
+        for index in range(task_count)
+    ]
+    connections = [
+        {
+            "id": f"connection-{index}",
+            "type": "sequence",
+            "sourceId": f"task-{index}",
+            "targetId": f"task-{index + 1}",
+        }
+        for index in range(task_count - 1)
+    ]
+
+    validated = validate_workflow_draft_integrity(
+        {
+            "schemaVersion": 4,
+            "draftId": "01987df4-ae8a-7000-8000-000000000111",
+            "workflowId": "01987df4-ae8a-7000-8000-000000000110",
+            "name": "Long workflow",
+            "status": "draft",
+            "elements": elements,
+            "connections": connections,
+            "processFields": [],
+            "formBindings": [],
+            "publication": {},
+        }
+    )
+
+    assert len(validated["elements"]) == task_count
 
 
 def test_schema_registry_reads_supported_historical_fixture() -> None:
@@ -21,7 +100,7 @@ def test_schema_registry_reads_supported_historical_fixture() -> None:
     loaded = load_draft_document(payload)
 
     assert loaded == {
-        "schemaVersion": 4,
+        "schemaVersion": 5,
         "draftId": "01987df4-ae8a-7000-8000-000000000111",
         "workflowId": "01987df4-ae8a-7000-8000-000000000110",
         "name": "Workflow intake",
@@ -99,6 +178,64 @@ def test_schema_registry_accepts_minimum_start_task_end_graph() -> None:
     assert len(loaded["connections"]) == 2
 
 
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [],
+        [{"id": "start-1", "type": "start", "label": "Start"}],
+        [{"id": "task-1", "type": "task", "label": "Task"}],
+    ],
+)
+def test_draft_integrity_accepts_incomplete_authoring_states(elements) -> None:
+    loaded = validate_workflow_draft_integrity(
+        {
+            "schemaVersion": 4,
+            "draftId": "draft-1",
+            "workflowId": "workflow-1",
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": elements,
+            "connections": [],
+            "processFields": [],
+            "formBindings": [],
+        }
+    )
+
+    assert loaded["elements"] == elements
+
+
+def test_draft_integrity_rejects_impossible_cardinality_and_dangling_references() -> None:
+    with pytest.raises(ValueError) as exc_info:
+        validate_workflow_draft_integrity(
+            {
+                "schemaVersion": 4,
+                "draftId": "draft-1",
+                "workflowId": "workflow-1",
+                "name": "Workflow intake",
+                "status": "draft",
+                "elements": [
+                    {"id": "start-1", "type": "start", "label": "Start"},
+                    {"id": "start-2", "type": "start", "label": "Start again"},
+                ],
+                "connections": [
+                    {
+                        "id": "connection-1",
+                        "type": "sequence",
+                        "sourceId": "start-1",
+                        "targetId": "missing-task",
+                    }
+                ],
+                "processFields": [],
+                "formBindings": [],
+            }
+        )
+
+    assert {issue["code"] for issue in exc_info.value.issues} == {
+        "missing_target",
+        "start_count_invalid",
+    }
+
+
 def test_schema_registry_upcasts_story_1_22_graph_fixture() -> None:
     loaded = load_draft_document(
         {
@@ -112,7 +249,7 @@ def test_schema_registry_upcasts_story_1_22_graph_fixture() -> None:
         }
     )
 
-    assert loaded["schemaVersion"] == 4
+    assert loaded["schemaVersion"] == 5
     assert loaded["processFields"] == []
     assert loaded["formBindings"] == []
     assert loaded["publication"] == {
@@ -322,9 +459,8 @@ def test_schema_registry_rejects_invalid_short_text_fields(
     ]
 
 
-def test_schema_registry_rejects_binding_to_non_first_task() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        validate_workflow_graph_document(
+def test_schema_registry_accepts_binding_to_any_existing_task() -> None:
+    loaded = validate_workflow_graph_document(
             {
                 "schemaVersion": 3,
                 "draftId": "draft-1",
@@ -374,11 +510,5 @@ def test_schema_registry_rejects_binding_to_non_first_task() -> None:
             }
         )
 
-    assert exc_info.value.issues == [
-        {
-            "field": "formBindings.binding-1.taskElementId",
-            "code": "binding_not_first_task",
-            "reason": "Add this field only to the first Task step in this story.",
-        }
-    ]
+    assert loaded["formBindings"][0]["taskElementId"] == "task-2"
 

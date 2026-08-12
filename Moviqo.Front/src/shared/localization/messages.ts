@@ -62,6 +62,7 @@ export type MessageKey =
   | "workflowDesign.leave.title"
   | "workflowDesign.leave.body"
   | "workflowDesign.leave.save"
+  | "workflowDesign.leave.saveAndDesignForm"
   | "workflowDesign.leave.discard"
   | "workflowDesign.leave.stay"
   | "app.language.label"
@@ -255,6 +256,38 @@ export type MessageKey =
   | "workflowDesign.editor.eyebrow"
   | "workflowDesign.editor.title"
   | "workflowDesign.editor.body"
+  | "workflowDesign.editor.paletteTitle"
+  | "workflowDesign.editor.paletteBody"
+  | "workflowDesign.editor.addAccepted"
+  | "workflowDesign.editor.addRejected"
+  | "workflowDesign.editor.canvasTitle"
+  | "workflowDesign.editor.canvasBody"
+  | "workflowDesign.editor.incomingHandle"
+  | "workflowDesign.editor.outgoingHandle"
+  | "workflowDesign.editor.outlineTitle"
+  | "workflowDesign.editor.outlineBody"
+  | "workflowDesign.editor.propertiesTitle"
+  | "workflowDesign.editor.propertiesBody"
+  | "workflowDesign.editor.taskName"
+  | "workflowDesign.editor.taskNameHelp"
+  | "workflowDesign.editor.taskNameRequired"
+  | "workflowDesign.editor.taskNameRequiredTitle"
+  | "workflowDesign.editor.reviewTaskName"
+  | "workflowDesign.editor.unnamedTask"
+  | "workflowDesign.editor.noSelection"
+  | "workflowDesign.editor.formReady"
+  | "workflowDesign.editor.formMissing"
+  | "workflowDesign.editor.connectionTitle"
+  | "workflowDesign.editor.connectionSource"
+  | "workflowDesign.editor.connectionTarget"
+  | "workflowDesign.editor.connectionEmpty"
+  | "workflowDesign.editor.connectionLabel"
+  | "workflowDesign.editor.connectionLabelHelp"
+  | "workflowDesign.editor.connectAccepted"
+  | "workflowDesign.editor.connectRejected"
+  | "workflowDesign.editor.checklistReady"
+  | "workflowDesign.editor.saveStatusTitle"
+  | "workflowDesign.editor.keyboardSaveHint"
   | "workflowDesign.editor.guidanceTitle"
   | "workflowDesign.editor.guidanceStart"
   | "workflowDesign.editor.guidanceTask"
@@ -263,6 +296,7 @@ export type MessageKey =
   | "workflowDesign.editor.guidanceConnectTaskEnd"
   | "workflowDesign.editor.guidanceSave"
   | "workflowDesign.editor.addStart"
+  | "workflowDesign.editor.addStartRecovery"
   | "workflowDesign.editor.addTask"
   | "workflowDesign.editor.addEnd"
   | "workflowDesign.editor.connectStartTask"
@@ -274,12 +308,19 @@ export type MessageKey =
   | "workflowDesign.editor.saveNow"
   | "workflowDesign.editor.saveSuccess"
   | "workflowDesign.editor.saveError"
+  | "workflowDesign.editor.saveInvalidTarget"
+  | "workflowDesign.editor.saveTargetCanvas"
+  | "workflowDesign.editor.saveTargetStarter"
+  | "workflowDesign.editor.saveTargetAssignment"
+  | "workflowDesign.editor.saveTargetForm"
+  | "workflowDesign.editor.saveTargetDraft"
   | "workflowDesign.editor.reloadError"
   | "workflowDesign.editor.errorTitle"
   | "workflowDesign.editor.conflictTitle"
   | "workflowDesign.editor.conflictMessage"
   | "workflowDesign.editor.reloadLatest"
   | "workflowDesign.editor.reapplyChanges"
+  | "workflowDesign.editor.revisionRecoveryMessage"
   | "workflowDesign.editor.validatePublication"
   | "workflowDesign.editor.validatingPublication"
   | "workflowDesign.editor.publishWorkflow"
@@ -309,7 +350,9 @@ export type MessageKey =
   | "workflowDesign.editor.starterEmpty"
   | "workflowDesign.editor.assignmentEmpty"
   | "workflowDesign.editor.issue.starterMissing"
+  | "workflowDesign.editor.issue.starterInvalid"
   | "workflowDesign.editor.issue.assignmentMissing"
+  | "workflowDesign.editor.issue.assignmentInvalid"
   | "workflowDesign.editor.issue.startStepInvalid"
   | "workflowDesign.editor.issue.firstTaskMissing"
   | "workflowDesign.editor.issue.endStepInvalid"
@@ -323,6 +366,18 @@ export type MessageKey =
   | "workflowDesign.editor.issueAction.configureAssignment"
   | "workflowDesign.editor.issueAction.reviewWorkflowPath"
   | "workflowDesign.editor.issueAction.openFirstTaskForm"
+  | "workflowDesign.editor.flowNodeDescription"
+  | "workflowDesign.editor.flowNodeKeyboardDisabled"
+  | "workflowDesign.editor.flowNodeMoved"
+  | "workflowDesign.editor.flowEdgeDescription"
+  | "workflowDesign.editor.flowControls"
+  | "workflowDesign.editor.flowZoomIn"
+  | "workflowDesign.editor.flowZoomOut"
+  | "workflowDesign.editor.flowFitView"
+  | "workflowDesign.editor.flowInteractive"
+  | "workflowDesign.editor.flowHandle"
+  | "workflowDesign.editor.graphSummaryConnection"
+  | "workflowDesign.editor.connectionTo"
   | "workflowDesign.editor.issueAction.openReusableField"
   | "workflowDesign.editor.previewTitle"
   | "workflowDesign.editor.previewBody"
@@ -511,6 +566,7 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.leave.title": "Hay cambios sin guardar",
   "workflowDesign.leave.body": "Guarda el borrador, descarta los cambios o quédate en el diseñador.",
   "workflowDesign.leave.save": "Guardar borrador y salir",
+  "workflowDesign.leave.saveAndDesignForm": "Guardar y diseñar formulario",
   "workflowDesign.leave.discard": "Descartar y salir",
   "workflowDesign.leave.stay": "Permanecer",
   "app.language.label": "Idioma",
@@ -733,6 +789,46 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.title": "Diseña Inicio, Tarea y Fin",
   "workflowDesign.editor.body":
     "Agrega cada paso, conecta el recorrido y guarda los cambios para continuar.",
+  "workflowDesign.editor.paletteTitle": "Elementos",
+  "workflowDesign.editor.paletteBody":
+    "Agrega con un clic o el teclado, o arrastra el elemento al lienzo.",
+  "workflowDesign.editor.addAccepted": "El elemento se agregó y está seleccionado.",
+  "workflowDesign.editor.addRejected":
+    "Este borrador ya tiene ese elemento. Inicio y Fin se agregan una sola vez.",
+  "workflowDesign.editor.canvasTitle": "Lienzo del flujo",
+  "workflowDesign.editor.canvasBody":
+    "Mueve los pasos o arrastra desde el conector visible de salida hasta el conector de entrada. También puedes conectar desde Propiedades.",
+  "workflowDesign.editor.incomingHandle": "Conexión de secuencia entrante",
+  "workflowDesign.editor.outgoingHandle": "Conexión de secuencia saliente",
+  "workflowDesign.editor.outlineTitle": "Esquema accesible",
+  "workflowDesign.editor.outlineBody":
+    "Selecciona cualquier elemento sin usar gestos de arrastre.",
+  "workflowDesign.editor.propertiesTitle": "Propiedades",
+  "workflowDesign.editor.propertiesBody":
+    "Revisa el elemento seleccionado y crea conexiones explícitas.",
+  "workflowDesign.editor.taskName": "Nombre de la tarea",
+  "workflowDesign.editor.taskNameHelp":
+    "Este nombre aparecerá en el trabajo pendiente y los procesos nuevos publicados.",
+  "workflowDesign.editor.taskNameRequired": "Escribe un nombre para la tarea antes de guardar.",
+  "workflowDesign.editor.taskNameRequiredTitle": "Falta el nombre de una tarea",
+  "workflowDesign.editor.reviewTaskName": "Revisar nombre de la tarea",
+  "workflowDesign.editor.unnamedTask": "Tarea sin nombre",
+  "workflowDesign.editor.noSelection": "Selecciona un paso o una conexión en el lienzo.",
+  "workflowDesign.editor.formReady": "Formulario configurado",
+  "workflowDesign.editor.formMissing": "Formulario pendiente",
+  "workflowDesign.editor.connectionTitle": "Conexión de secuencia",
+  "workflowDesign.editor.connectionSource": "Origen",
+  "workflowDesign.editor.connectionTarget": "Destino",
+  "workflowDesign.editor.connectionEmpty": "Selecciona un elemento",
+  "workflowDesign.editor.connectionLabel": "Etiqueta de la conexión",
+  "workflowDesign.editor.connectionLabelHelp":
+    "Opcional. Explica por qué el flujo continúa por esta conexión.",
+  "workflowDesign.editor.connectAccepted": "La conexión se agregó al borrador.",
+  "workflowDesign.editor.connectRejected":
+    "Esa conexión no cumple el orden o la cantidad permitida para este flujo.",
+  "workflowDesign.editor.checklistReady": "El borrador guardado está listo para publicar.",
+  "workflowDesign.editor.saveStatusTitle": "Estado del borrador",
+  "workflowDesign.editor.keyboardSaveHint": "Atajo: Ctrl o Cmd + S",
   "workflowDesign.editor.guidanceTitle": "Siguiente acción",
   "workflowDesign.editor.guidanceStart": "Agrega Inicio para abrir el flujo.",
   "workflowDesign.editor.guidanceTask": "Agrega Tarea para definir el trabajo mínimo.",
@@ -741,6 +837,7 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.guidanceConnectTaskEnd": "Conecta Tarea con Fin para completar el camino.",
   "workflowDesign.editor.guidanceSave": "Guarda el borrador para confirmar el recorrido Inicio → Tarea → Fin.",
   "workflowDesign.editor.addStart": "Agregar Inicio",
+  "workflowDesign.editor.addStartRecovery": "Restaurar Inicio faltante",
   "workflowDesign.editor.addTask": "Agregar Tarea",
   "workflowDesign.editor.addEnd": "Agregar Fin",
   "workflowDesign.editor.connectStartTask": "Conectar Inicio con Tarea",
@@ -752,6 +849,12 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.saveNow": "Guardar ahora",
   "workflowDesign.editor.saveSuccess": "El flujo se guardó correctamente.",
   "workflowDesign.editor.saveError": "No pudimos guardar este borrador. Corrige el camino e intenta de nuevo.",
+  "workflowDesign.editor.saveInvalidTarget": "Revisa esta parte del borrador y vuelve a guardar.",
+  "workflowDesign.editor.saveTargetCanvas": "Camino del flujo",
+  "workflowDesign.editor.saveTargetStarter": "Quién puede iniciar",
+  "workflowDesign.editor.saveTargetAssignment": "Asignación de la primera tarea",
+  "workflowDesign.editor.saveTargetForm": "Formulario de la tarea",
+  "workflowDesign.editor.saveTargetDraft": "Borrador del flujo",
   "workflowDesign.editor.reloadError": "No pudimos cargar la última versión guardada. Inténtalo de nuevo.",
   "workflowDesign.editor.errorTitle": "Corrige este borrador antes de guardar",
   "workflowDesign.editor.conflictTitle": "Hay una versión más reciente del flujo",
@@ -759,6 +862,8 @@ export const spanishMessages: MessageDictionary = {
     "Otra persona guardó primero. Carga la versión más reciente y vuelve a aplicar tus cambios.",
   "workflowDesign.editor.reloadLatest": "Cargar última versión",
   "workflowDesign.editor.reapplyChanges": "Reaplicar mis cambios",
+  "workflowDesign.editor.revisionRecoveryMessage":
+    "El borrador guardado cambió. Carga la última versión antes de validar o publicar otra vez.",
   "workflowDesign.editor.validatePublication": "Validar publicación",
   "workflowDesign.editor.validatingPublication": "Validando publicación",
   "workflowDesign.editor.publishWorkflow": "Publicar versión",
@@ -793,8 +898,12 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.assignmentEmpty": "Selecciona una opción de asignación.",
   "workflowDesign.editor.issue.starterMissing":
     "Falta un detalle antes de publicar: define quién puede iniciar este flujo.",
+  "workflowDesign.editor.issue.starterInvalid":
+    "La persona o el equipo elegido para iniciar ya no está disponible. Actualiza la selección.",
   "workflowDesign.editor.issue.assignmentMissing":
     "Falta un detalle antes de publicar: define quién recibe la primera tarea.",
+  "workflowDesign.editor.issue.assignmentInvalid":
+    "La persona elegida para la primera tarea ya no está disponible. Actualiza la asignación.",
   "workflowDesign.editor.issue.startStepInvalid":
     "Agrega exactamente un paso Inicio antes de publicar este flujo.",
   "workflowDesign.editor.issue.firstTaskMissing":
@@ -817,6 +926,19 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.issueAction.configureAssignment": "Configurar asignación",
   "workflowDesign.editor.issueAction.reviewWorkflowPath": "Revisar camino",
   "workflowDesign.editor.issueAction.openFirstTaskForm": "Abrir formulario",
+  "workflowDesign.editor.flowNodeDescription":
+    "Presiona Entrar o Espacio para seleccionar un paso. Usa las flechas para moverlo.",
+  "workflowDesign.editor.flowNodeKeyboardDisabled": "Selecciona este paso para revisar sus propiedades.",
+  "workflowDesign.editor.flowNodeMoved": "Paso movido en el lienzo.",
+  "workflowDesign.editor.flowEdgeDescription": "Conexión de secuencia entre pasos del flujo.",
+  "workflowDesign.editor.flowControls": "Controles del lienzo del flujo",
+  "workflowDesign.editor.flowZoomIn": "Acercar lienzo",
+  "workflowDesign.editor.flowZoomOut": "Alejar lienzo",
+  "workflowDesign.editor.flowFitView": "Ajustar flujo a la vista",
+  "workflowDesign.editor.flowInteractive": "Cambiar interacción del lienzo",
+  "workflowDesign.editor.flowHandle": "Punto de conexión del flujo",
+  "workflowDesign.editor.graphSummaryConnection": "conexión de secuencia",
+  "workflowDesign.editor.connectionTo": "hacia",
   "workflowDesign.editor.issueAction.openReusableField": "Abrir campo reutilizable",
   "workflowDesign.editor.previewTitle": "Vista previa del camino",
   "workflowDesign.editor.previewBody": "Esta vista muestra el orden actual del borrador local.",
@@ -1007,6 +1129,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.leave.title": "There are unsaved changes",
   "workflowDesign.leave.body": "Save the draft, discard the changes, or stay in the designer.",
   "workflowDesign.leave.save": "Save draft and leave",
+  "workflowDesign.leave.saveAndDesignForm": "Save and design form",
   "workflowDesign.leave.discard": "Discard and leave",
   "workflowDesign.leave.stay": "Stay",
   "app.language.label": "Language",
@@ -1230,6 +1353,46 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.title": "Design Start, Task, and End",
   "workflowDesign.editor.body":
     "Add each step with visible controls, connect the path, and save only when the server accepts the revision.",
+  "workflowDesign.editor.paletteTitle": "Elements",
+  "workflowDesign.editor.paletteBody":
+    "Add with a click or the keyboard, or drag the element onto the canvas.",
+  "workflowDesign.editor.addAccepted": "The element was added and selected.",
+  "workflowDesign.editor.addRejected":
+    "This draft already has that element. Start and End can each be added once.",
+  "workflowDesign.editor.canvasTitle": "Workflow canvas",
+  "workflowDesign.editor.canvasBody":
+    "Move steps or drag from the visible outgoing connector to an incoming connector. You can also connect from Properties.",
+  "workflowDesign.editor.incomingHandle": "Incoming sequence connection",
+  "workflowDesign.editor.outgoingHandle": "Outgoing sequence connection",
+  "workflowDesign.editor.outlineTitle": "Accessible outline",
+  "workflowDesign.editor.outlineBody":
+    "Select any element without using drag gestures.",
+  "workflowDesign.editor.propertiesTitle": "Properties",
+  "workflowDesign.editor.propertiesBody":
+    "Review the selected element and create explicit connections.",
+  "workflowDesign.editor.taskName": "Task name",
+  "workflowDesign.editor.taskNameHelp":
+    "This name appears in pending work and newly published processes.",
+  "workflowDesign.editor.taskNameRequired": "Enter a task name before saving.",
+  "workflowDesign.editor.taskNameRequiredTitle": "A Task name is missing",
+  "workflowDesign.editor.reviewTaskName": "Review Task name",
+  "workflowDesign.editor.unnamedTask": "Unnamed Task",
+  "workflowDesign.editor.noSelection": "Select a step or connection on the canvas.",
+  "workflowDesign.editor.formReady": "Form configured",
+  "workflowDesign.editor.formMissing": "Form pending",
+  "workflowDesign.editor.connectionTitle": "Sequence connection",
+  "workflowDesign.editor.connectionSource": "Source",
+  "workflowDesign.editor.connectionTarget": "Target",
+  "workflowDesign.editor.connectionEmpty": "Select an element",
+  "workflowDesign.editor.connectionLabel": "Connection label",
+  "workflowDesign.editor.connectionLabelHelp":
+    "Optional. Explain why the workflow continues through this connection.",
+  "workflowDesign.editor.connectAccepted": "The connection was added to the draft.",
+  "workflowDesign.editor.connectRejected":
+    "That connection does not meet the allowed order or cardinality for this workflow.",
+  "workflowDesign.editor.checklistReady": "The saved draft is ready to publish.",
+  "workflowDesign.editor.saveStatusTitle": "Draft status",
+  "workflowDesign.editor.keyboardSaveHint": "Shortcut: Ctrl or Cmd + S",
   "workflowDesign.editor.guidanceTitle": "Next action",
   "workflowDesign.editor.guidanceStart": "Add Start to open the workflow.",
   "workflowDesign.editor.guidanceTask": "Add Task to define the minimum work.",
@@ -1238,6 +1401,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.guidanceConnectTaskEnd": "Connect Task to End to complete the path.",
   "workflowDesign.editor.guidanceSave": "Save the draft to confirm the Start -> Task -> End path.",
   "workflowDesign.editor.addStart": "Add Start",
+  "workflowDesign.editor.addStartRecovery": "Restore missing Start",
   "workflowDesign.editor.addTask": "Add Task",
   "workflowDesign.editor.addEnd": "Add End",
   "workflowDesign.editor.connectStartTask": "Connect Start to Task",
@@ -1249,6 +1413,12 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.saveNow": "Save now",
   "workflowDesign.editor.saveSuccess": "The server saved the authorized path.",
   "workflowDesign.editor.saveError": "We could not save this draft. Correct the path and try again.",
+  "workflowDesign.editor.saveInvalidTarget": "Review this part of the draft and save again.",
+  "workflowDesign.editor.saveTargetCanvas": "Workflow path",
+  "workflowDesign.editor.saveTargetStarter": "Who can start",
+  "workflowDesign.editor.saveTargetAssignment": "First-task assignment",
+  "workflowDesign.editor.saveTargetForm": "Task form",
+  "workflowDesign.editor.saveTargetDraft": "Workflow draft",
   "workflowDesign.editor.reloadError":
     "We could not reload the latest authorized draft. Try again.",
   "workflowDesign.editor.errorTitle": "Correct this draft before saving",
@@ -1257,6 +1427,8 @@ export const englishMessages: Partial<MessageDictionary> = {
     "Another person saved first. Reload the latest draft and reapply your change.",
   "workflowDesign.editor.reloadLatest": "Reload latest draft",
   "workflowDesign.editor.reapplyChanges": "Reapply my changes",
+  "workflowDesign.editor.revisionRecoveryMessage":
+    "The saved draft changed. Reload the latest revision before validating or publishing again.",
   "workflowDesign.editor.validatePublication": "Validate publication",
   "workflowDesign.editor.validatingPublication": "Validating publication",
   "workflowDesign.editor.publishWorkflow": "Publish version",
@@ -1291,8 +1463,12 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.assignmentEmpty": "Choose one assignment option.",
   "workflowDesign.editor.issue.starterMissing":
     "We need one more detail before publishing: choose who can start this workflow.",
+  "workflowDesign.editor.issue.starterInvalid":
+    "A selected starter or team is no longer available. Update the starter selection.",
   "workflowDesign.editor.issue.assignmentMissing":
     "We need one more detail before publishing: choose who receives the first task.",
+  "workflowDesign.editor.issue.assignmentInvalid":
+    "The selected first-task assignee is no longer available. Update the assignment.",
   "workflowDesign.editor.issue.startStepInvalid":
     "Add exactly one Start step before publishing this workflow.",
   "workflowDesign.editor.issue.firstTaskMissing":
@@ -1315,6 +1491,19 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.issueAction.configureAssignment": "Configure assignment",
   "workflowDesign.editor.issueAction.reviewWorkflowPath": "Review workflow path",
   "workflowDesign.editor.issueAction.openFirstTaskForm": "Open first task form",
+  "workflowDesign.editor.flowNodeDescription":
+    "Press Enter or Space to select a step. Use the arrow keys to move it.",
+  "workflowDesign.editor.flowNodeKeyboardDisabled": "Select this step to review its properties.",
+  "workflowDesign.editor.flowNodeMoved": "Step moved on the canvas.",
+  "workflowDesign.editor.flowEdgeDescription": "Sequence connection between workflow steps.",
+  "workflowDesign.editor.flowControls": "Workflow canvas controls",
+  "workflowDesign.editor.flowZoomIn": "Zoom in",
+  "workflowDesign.editor.flowZoomOut": "Zoom out",
+  "workflowDesign.editor.flowFitView": "Fit workflow to view",
+  "workflowDesign.editor.flowInteractive": "Toggle canvas interaction",
+  "workflowDesign.editor.flowHandle": "Workflow connection point",
+  "workflowDesign.editor.graphSummaryConnection": "sequence connection",
+  "workflowDesign.editor.connectionTo": "to",
   "workflowDesign.editor.issueAction.openReusableField": "Open reusable field",
   "workflowDesign.editor.previewTitle": "Path preview",
   "workflowDesign.editor.previewBody": "This view shows the current order of the local draft.",

@@ -5,6 +5,7 @@ import {
 } from "../../../shared/drafts";
 import {
   createApiClient,
+  normalizeApiProblem,
   readApiProblem,
   type NormalizedApiProblem
 } from "../../../shared/api";
@@ -23,9 +24,30 @@ import type {
   WorkflowStarterMode,
   WorkflowElementType
 } from "./types";
+import type { XYPosition } from "@xyflow/react";
+import { addWorkflowElementCommand, adaptFlowConnection } from "./flow";
 
 const workflowDesignClient = createApiClient({ baseUrl: "/api/v1" });
-export const MAX_AUTOSAVE_RETRIES = 3;
+export type WorkflowSaveCommand = {
+  requestKey: string;
+  expectedRevision: DraftRevision;
+  draft: WorkflowDraftDocument;
+};
+
+export type WorkflowEditorOperation =
+  | { kind: "add"; status: "accepted"; elementId: string }
+  | { kind: "add"; status: "rejected"; reason: "cardinality" }
+  | { kind: "connect"; status: "accepted"; connectionId: string }
+  | {
+      kind: "connect";
+      status: "rejected";
+      reason:
+        | "missing-endpoint"
+        | "invalid-direction"
+        | "duplicate"
+        | "cycle"
+        | "maximum-cardinality";
+    };
 
 export type WorkflowDraftEditorState = {
   localDraft: WorkflowDraftDocument;
@@ -35,8 +57,10 @@ export type WorkflowDraftEditorState = {
   errorMessages: string[];
   invalidFieldNames: string[];
   lastAcknowledgedRevision: DraftRevision;
-  pendingAutosaveRequestKey: string | null;
+  pendingSaveCommand: WorkflowSaveCommand | null;
   conflictSnapshot: WorkflowDraftDocument | null;
+  conflictLatestLoaded: boolean;
+  revisionRecoveryRequired: boolean;
   retryCount: number;
   publicationStatus: "idle" | "validating" | "error" | "success";
   publicationErrorCode: string | null;
@@ -48,6 +72,13 @@ export type WorkflowDraftEditorState = {
   activePublishRequestKey: string | null;
   publishedVersion: WorkflowPublishedVersion | null;
   focusedChecklistSection: "starter" | "assignment" | "canvas" | "field" | null;
+  selectedElementId: string | null;
+  selectedConnectionId: string | null;
+  presentationPositions: Record<string, XYPosition>;
+  lastOperation: WorkflowEditorOperation | null;
+  operationSequence: number;
+  lastValidatedRevision: DraftRevision | null;
+  validatedRevisionPublishable: boolean;
 };
 
 export type WorkflowElementLabels = {
@@ -71,8 +102,10 @@ export const createWorkflowDraftEditorState = (
   localDraft: structuredClone(draftState.value),
   hasLocalChanges: false,
   lastAcknowledgedRevision: draftState.revision,
-  pendingAutosaveRequestKey: null,
+  pendingSaveCommand: null,
   conflictSnapshot: null,
+  conflictLatestLoaded: false,
+  revisionRecoveryRequired: false,
   retryCount: 0,
   saveStatus: "idle",
   errorCode: null,
@@ -87,7 +120,14 @@ export const createWorkflowDraftEditorState = (
   publishErrorMessage: null,
   activePublishRequestKey: null,
   publishedVersion: null,
-  focusedChecklistSection: null
+  focusedChecklistSection: null,
+  selectedElementId: null,
+  selectedConnectionId: null,
+  presentationPositions: {},
+  lastOperation: null,
+  operationSequence: 0,
+  lastValidatedRevision: null,
+  validatedRevisionPublishable: false
 });
 
 const clearPublicationState = (
@@ -102,6 +142,9 @@ const clearPublicationState = (
     | "publishErrorMessage"
     | "activePublishRequestKey"
     | "publishedVersion"
+    | "lastValidatedRevision"
+    | "validatedRevisionPublishable"
+    | "revisionRecoveryRequired"
   >
 ): WorkflowDraftEditorState => ({
   ...state,
@@ -113,7 +156,10 @@ const clearPublicationState = (
   publishErrorCode: null,
   publishErrorMessage: null,
   activePublishRequestKey: null,
-  publishedVersion: null
+  publishedVersion: null,
+  lastValidatedRevision: null,
+  validatedRevisionPublishable: false,
+  revisionRecoveryRequired: false
 });
 
 export const syncWorkflowDraftEditorState = (
@@ -133,14 +179,20 @@ export const syncWorkflowDraftEditorState = (
         localDraft: structuredClone(draftState.value),
         hasLocalChanges: false,
         lastAcknowledgedRevision: draftState.revision,
-        pendingAutosaveRequestKey: null,
+        pendingSaveCommand: null,
         conflictSnapshot: null,
+        conflictLatestLoaded: false,
         retryCount: 0,
         saveStatus: force ? "saved" : "idle",
         errorCode: null,
         errorMessages: [],
         invalidFieldNames: [],
-        focusedChecklistSection: state.focusedChecklistSection
+        focusedChecklistSection: state.focusedChecklistSection,
+        selectedElementId: state.selectedElementId,
+        selectedConnectionId: state.selectedConnectionId,
+        presentationPositions: state.presentationPositions,
+        lastOperation: state.lastOperation,
+        operationSequence: state.operationSequence
       });
 
 export const addGuidedWorkflowElement = (
@@ -149,9 +201,6 @@ export const addGuidedWorkflowElement = (
   labels: WorkflowElementLabels
 ): WorkflowDraftDocument => {
   if (type !== "task" && draft.elements.some((element) => element.type === type)) {
-    return draft;
-  }
-  if (type === "task" && draft.elements.some((element) => element.type === "task")) {
     return draft;
   }
 
@@ -184,7 +233,8 @@ export const connectWorkflowElements = (
     id: createConnectionId(draft),
     type: "sequence",
     sourceId,
-    targetId
+    targetId,
+    label: null
   };
 
   return {
@@ -380,7 +430,19 @@ export const reduceWorkflowDraftEditorState = (
     | { type: "start-added"; labels: WorkflowElementLabels }
     | { type: "task-added"; labels: WorkflowElementLabels }
     | { type: "end-added"; labels: WorkflowElementLabels }
+    | {
+        type: "element-added";
+        elementType: WorkflowElementType;
+        labels: WorkflowElementLabels;
+        position?: XYPosition;
+      }
     | { type: "connected"; sourceId: string; targetId: string }
+    | { type: "flow-connected"; sourceId: string; targetId: string }
+    | { type: "element-selected"; elementId: string | null }
+    | { type: "connection-selected"; connectionId: string | null }
+    | { type: "task-label-changed"; elementId: string; label: string }
+    | { type: "connection-label-changed"; connectionId: string; label: string }
+    | { type: "element-positioned"; elementId: string; position: XYPosition }
     | { type: "short-text-configured"; field: ShortTextFieldDraft }
     | { type: "first-task-binding-toggled"; enabled: boolean }
     | { type: "starter-mode-selected"; mode: WorkflowStarterMode }
@@ -388,7 +450,7 @@ export const reduceWorkflowDraftEditorState = (
     | { type: "starter-membership-toggled"; membershipId: string }
     | { type: "assignment-mode-selected"; mode: WorkflowAssignmentMode }
     | { type: "assignment-membership-selected"; membershipId: string }
-    | { type: "save-requested"; requestKey: string; retry: boolean }
+    | { type: "save-requested"; command: WorkflowSaveCommand; retry: boolean }
     | {
         type: "save-failed";
         errorCode: string;
@@ -433,10 +495,7 @@ export const reduceWorkflowDraftEditorState = (
       ...state,
       localDraft: draft,
       hasLocalChanges: true,
-      pendingAutosaveRequestKey:
-        state.hasLocalChanges && state.saveStatus === "unsaved"
-          ? state.pendingAutosaveRequestKey ?? createSaveIdempotencyKey(draft.workflowId)
-          : createSaveIdempotencyKey(draft.workflowId),
+      pendingSaveCommand: null,
       conflictSnapshot: state.saveStatus === "conflict" ? state.conflictSnapshot : null,
       retryCount: 0,
       saveStatus: "unsaved",
@@ -446,21 +505,145 @@ export const reduceWorkflowDraftEditorState = (
     });
 
   if (action.type === "start-added") {
-    return markDirty(addGuidedWorkflowElement(state.localDraft, "start", action.labels));
+    return reduceWorkflowDraftEditorState(state, {
+      type: "element-added",
+      elementType: "start",
+      labels: action.labels
+    });
   }
 
   if (action.type === "task-added") {
-    return markDirty(addGuidedWorkflowElement(state.localDraft, "task", action.labels));
+    return reduceWorkflowDraftEditorState(state, {
+      type: "element-added",
+      elementType: "task",
+      labels: action.labels
+    });
   }
 
   if (action.type === "end-added") {
-    return markDirty(addGuidedWorkflowElement(state.localDraft, "end", action.labels));
+    return reduceWorkflowDraftEditorState(state, {
+      type: "element-added",
+      elementType: "end",
+      labels: action.labels
+    });
+  }
+
+  if (action.type === "element-added") {
+    const result = addWorkflowElementCommand(
+      state.localDraft,
+      action.elementType,
+      action.labels
+    );
+    if (!result.accepted) {
+      return {
+        ...state,
+        lastOperation: { kind: "add", status: "rejected", reason: result.reason },
+        operationSequence: state.operationSequence + 1
+      };
+    }
+    return {
+      ...markDirty(result.draft),
+      selectedElementId: result.elementId,
+      selectedConnectionId: null,
+      presentationPositions: action.position
+        ? { ...state.presentationPositions, [result.elementId]: action.position }
+        : state.presentationPositions,
+      lastOperation: { kind: "add", status: "accepted", elementId: result.elementId },
+      operationSequence: state.operationSequence + 1
+    };
   }
 
   if (action.type === "connected") {
-    return markDirty(
-      connectWorkflowElements(state.localDraft, action.sourceId, action.targetId)
+    return reduceWorkflowDraftEditorState(state, {
+      type: "flow-connected",
+      sourceId: action.sourceId,
+      targetId: action.targetId
+    });
+  }
+
+  if (action.type === "flow-connected") {
+    const result = adaptFlowConnection(state.localDraft, {
+      source: action.sourceId,
+      target: action.targetId,
+      sourceHandle: null,
+      targetHandle: null
+    });
+    if (!result.accepted) {
+      return {
+        ...state,
+        lastOperation: { kind: "connect", status: "rejected", reason: result.reason },
+        operationSequence: state.operationSequence + 1
+      };
+    }
+    return {
+      ...markDirty(result.draft),
+      selectedElementId: null,
+      selectedConnectionId: result.connectionId,
+      lastOperation: {
+        kind: "connect",
+        status: "accepted",
+        connectionId: result.connectionId
+      },
+      operationSequence: state.operationSequence + 1
+    };
+  }
+
+  if (action.type === "element-selected") {
+    return {
+      ...state,
+      selectedElementId: action.elementId,
+      selectedConnectionId: null
+    };
+  }
+
+  if (action.type === "connection-selected") {
+    return {
+      ...state,
+      selectedElementId: null,
+      selectedConnectionId: action.connectionId
+    };
+  }
+
+  if (action.type === "task-label-changed") {
+    const element = state.localDraft.elements.find(
+      (candidate) => candidate.id === action.elementId
     );
+    if (!element || element.type !== "task" || element.label === action.label) return state;
+    return markDirty({
+      ...state.localDraft,
+      elements: state.localDraft.elements.map((candidate) =>
+        candidate.id === action.elementId
+          ? { ...candidate, label: action.label }
+          : candidate
+      )
+    });
+  }
+
+  if (action.type === "connection-label-changed") {
+    const connection = state.localDraft.connections.find(
+      (candidate) => candidate.id === action.connectionId
+    );
+    if (!connection) return state;
+    const label = action.label.trim() ? action.label : null;
+    if (connection.label === label) return state;
+    return markDirty({
+      ...state.localDraft,
+      connections: state.localDraft.connections.map((candidate) =>
+        candidate.id === action.connectionId
+          ? { ...candidate, label }
+          : candidate
+      )
+    });
+  }
+
+  if (action.type === "element-positioned") {
+    return {
+      ...state,
+      presentationPositions: {
+        ...state.presentationPositions,
+        [action.elementId]: action.position
+      }
+    };
   }
 
   if (action.type === "short-text-configured") {
@@ -495,7 +678,7 @@ export const reduceWorkflowDraftEditorState = (
     return {
       ...state,
       saveStatus: action.retry ? "retrying" : "saving",
-      pendingAutosaveRequestKey: action.requestKey,
+      pendingSaveCommand: action.command,
       errorCode: null,
       errorMessages: [],
       invalidFieldNames: []
@@ -508,11 +691,10 @@ export const reduceWorkflowDraftEditorState = (
     return {
       ...state,
       hasLocalChanges: true,
-      pendingAutosaveRequestKey:
-        action.errorCode === "idempotency_key_reused"
-          ? createSaveIdempotencyKey(state.localDraft.workflowId)
-          : state.pendingAutosaveRequestKey,
+      pendingSaveCommand: action.retryable ? state.pendingSaveCommand : null,
       conflictSnapshot: action.conflict ? structuredClone(state.localDraft) : state.conflictSnapshot,
+      conflictLatestLoaded: action.conflict ? false : state.conflictLatestLoaded,
+      revisionRecoveryRequired: action.conflict || state.revisionRecoveryRequired,
       retryCount: action.conflict ? 0 : nextRetryCount,
       saveStatus: nextStatus,
       errorCode: action.errorCode,
@@ -534,12 +716,18 @@ export const reduceWorkflowDraftEditorState = (
     if (state.activePublicationRequestKey !== action.requestKey) {
       return state;
     }
+    const revisionConflict = action.errorCode === "workflow_draft_revision_conflict";
     return {
       ...state,
       publicationStatus: "error",
       publicationErrorCode: action.errorCode,
       publicationIssues: [],
-      activePublicationRequestKey: null
+      activePublicationRequestKey: null,
+      lastValidatedRevision: revisionConflict ? null : state.lastValidatedRevision,
+      validatedRevisionPublishable: revisionConflict
+        ? false
+        : state.validatedRevisionPublishable,
+      revisionRecoveryRequired: revisionConflict || state.revisionRecoveryRequired
     };
   }
 
@@ -552,7 +740,13 @@ export const reduceWorkflowDraftEditorState = (
       publicationStatus: "success",
       publicationErrorCode: null,
       publicationIssues: action.validation.issues,
-      activePublicationRequestKey: null
+      activePublicationRequestKey: null,
+      lastValidatedRevision:
+        action.validation.publishable
+        && action.validation.revision === state.lastAcknowledgedRevision
+          ? (action.validation.revision as DraftRevision)
+          : null,
+      validatedRevisionPublishable: action.validation.publishable
     };
   }
 
@@ -570,13 +764,17 @@ export const reduceWorkflowDraftEditorState = (
     if (state.activePublishRequestKey !== action.requestKey) {
       return state;
     }
+    const revisionConflict = action.errorCode === "workflow_draft_revision_conflict";
     return {
       ...state,
       publishStatus: "error",
       publishErrorCode: action.errorCode,
       publishErrorMessage: action.errorMessage,
       publicationIssues: action.issues,
-      activePublishRequestKey: null
+      activePublishRequestKey: null,
+      lastValidatedRevision: null,
+      validatedRevisionPublishable: false,
+      revisionRecoveryRequired: revisionConflict || state.revisionRecoveryRequired
     };
   }
 
@@ -593,7 +791,7 @@ export const reduceWorkflowDraftEditorState = (
       errorMessages: [],
       invalidFieldNames: [],
       lastAcknowledgedRevision: action.accepted.revision as DraftRevision,
-      pendingAutosaveRequestKey: null,
+      pendingSaveCommand: null,
       conflictSnapshot: null,
       retryCount: 0,
       publicationStatus: "idle",
@@ -604,7 +802,9 @@ export const reduceWorkflowDraftEditorState = (
       publishErrorCode: null,
       publishErrorMessage: null,
       activePublishRequestKey: null,
-      publishedVersion: action.accepted.publishedVersion
+      publishedVersion: action.accepted.publishedVersion,
+      lastValidatedRevision: null,
+      validatedRevisionPublishable: false
     };
   }
 
@@ -616,12 +816,12 @@ export const reduceWorkflowDraftEditorState = (
   }
 
   if (action.type === "reload-latest-succeeded") {
-    return clearPublicationState({
+    const reloaded = clearPublicationState({
       ...state,
       localDraft: structuredClone(action.draftState.value),
       hasLocalChanges: false,
       lastAcknowledgedRevision: action.draftState.revision,
-      pendingAutosaveRequestKey: null,
+      pendingSaveCommand: null,
       retryCount: 0,
       saveStatus: "idle",
       errorCode: null,
@@ -629,17 +829,27 @@ export const reduceWorkflowDraftEditorState = (
       invalidFieldNames: [],
       focusedChecklistSection: state.focusedChecklistSection
     });
+    return state.conflictSnapshot
+      ? {
+          ...reloaded,
+          conflictSnapshot: state.conflictSnapshot,
+          conflictLatestLoaded: true,
+          saveStatus: "conflict"
+        }
+      : reloaded;
   }
 
   if (action.type === "reapply-conflict-draft") {
-    if (!state.conflictSnapshot) {
+    if (!state.conflictSnapshot || !state.conflictLatestLoaded) {
       return state;
     }
     return clearPublicationState({
       ...state,
       localDraft: structuredClone(state.conflictSnapshot),
       hasLocalChanges: true,
-      pendingAutosaveRequestKey: createSaveIdempotencyKey(state.conflictSnapshot.workflowId),
+      pendingSaveCommand: null,
+      conflictSnapshot: null,
+      conflictLatestLoaded: false,
       retryCount: 0,
       saveStatus: "unsaved",
       errorCode: null,
@@ -647,6 +857,14 @@ export const reduceWorkflowDraftEditorState = (
       invalidFieldNames: [],
       focusedChecklistSection: state.focusedChecklistSection
     });
+  }
+
+  if (
+    action.type === "server-synced"
+    && !state.hasLocalChanges
+    && action.draftState.revision === state.lastAcknowledgedRevision
+  ) {
+    return state;
   }
 
   if (action.type === "save-succeeded" || action.type === "server-synced") {
@@ -680,102 +898,102 @@ export const saveWorkflowDraft = async (
   | { ok: true; data: WorkflowDraftSaveAccepted }
   | { ok: false; error: NormalizedApiProblem }
 > => {
-  const response = await (
-    workflowDesignClient as {
-      PUT(
-        path: string,
-        init?: object
-      ): Promise<{ data?: unknown; response: Response }>;
+  try {
+    const response = await workflowDesignClient.PUT(
+      "/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+      {
+        params: {
+          path: { workflow_id: localDraft.workflowId },
+          header: { "Idempotency-Key": requestKey }
+        },
+        body: {
+          expectedRevision,
+          draft: localDraft
+        }
+      }
+    );
+
+    if (!response.response.ok) {
+      return { ok: false, error: await readApiProblem(response.response) };
     }
-  ).PUT(`/api/v1/workflow-design/workflows/${localDraft.workflowId}/draft/`, {
-    body: {
-      expectedRevision,
-      draft: localDraft
-    },
-    headers: { "Idempotency-Key": requestKey }
-  });
 
-  if (!response.response.ok) {
-    return { ok: false, error: await readApiProblem(response.response) };
+    return {
+      ok: true,
+      data: response.data as WorkflowDraftSaveAccepted
+    };
+  } catch {
+    return { ok: false, error: normalizeApiProblem(undefined, 0) };
   }
-
-  return {
-    ok: true,
-    data: response.data as WorkflowDraftSaveAccepted
-  };
 };
 
 export const validateWorkflowPublication = async (
-  draftState: DraftState<WorkflowDraftDocument>,
-  localDraft: WorkflowDraftDocument,
+  workflowId: string,
+  expectedRevision: DraftRevision,
   requestKey: string
 ): Promise<
   | { ok: true; data: WorkflowPublicationValidationAccepted }
   | { ok: false; error: NormalizedApiProblem }
 > => {
-  const response = await (
-    workflowDesignClient as {
-      POST(
-        path: string,
-        init?: object
-      ): Promise<{ data?: unknown; response: Response }>;
-    }
-  ).POST(
-    `/api/v1/workflow-design/workflows/${localDraft.workflowId}/publication-validation/`,
-    {
-      body: {
-        expectedRevision: draftState.revision,
-        draft: localDraft
-      },
-      headers: {
-        "Idempotency-Key": requestKey
+  try {
+    const response = await workflowDesignClient.POST(
+      "/api/v1/workflow-design/workflows/{workflow_id}/publication-validation/",
+      {
+        params: {
+          path: { workflow_id: workflowId },
+          header: { "Idempotency-Key": requestKey }
+        },
+        body: {
+          expectedRevision
+        }
       }
+    );
+
+    if (!response.response.ok) {
+      return { ok: false, error: await readApiProblem(response.response) };
     }
-  );
 
-  if (!response.response.ok) {
-    return { ok: false, error: await readApiProblem(response.response) };
+    return {
+      ok: true,
+      data: response.data as WorkflowPublicationValidationAccepted
+    };
+  } catch {
+    return { ok: false, error: normalizeApiProblem(undefined, 0) };
   }
-
-  return {
-    ok: true,
-    data: response.data as WorkflowPublicationValidationAccepted
-  };
 };
 
 export const publishWorkflow = async (
+  workflowId: string,
   expectedRevision: DraftRevision,
-  localDraft: WorkflowDraftDocument,
   requestKey: string
 ): Promise<
   | { ok: true; data: WorkflowPublishAccepted }
   | { ok: false; error: NormalizedApiProblem }
 > => {
-  const response = await (
-    workflowDesignClient as {
-      POST(
-        path: string,
-        init?: object
-      ): Promise<{ data?: unknown; response: Response }>;
-    }
-  ).POST(`/api/v1/workflow-design/workflows/${localDraft.workflowId}/publish/`, {
-    body: {
-      expectedRevision,
-      draft: localDraft
-    },
-    headers: {
-      "Idempotency-Key": requestKey
-    }
-  });
+  try {
+    const response = await workflowDesignClient.POST(
+      "/api/v1/workflow-design/workflows/{workflow_id}/publish/",
+      {
+        params: {
+          path: { workflow_id: workflowId },
+          header: { "Idempotency-Key": requestKey }
+        },
+        body: {
+          expectedRevision
+        }
+      }
+    );
 
-  if (!response.response.ok) {
-    return { ok: false, error: await readApiProblem(response.response) };
+    if (!response.response.ok) {
+      return { ok: false, error: await readApiProblem(response.response) };
+    }
+
+    return {
+      ok: true,
+      data: response.data as WorkflowPublishAccepted
+    };
+  } catch {
+    return { ok: false, error: normalizeApiProblem(undefined, 0) };
   }
-
-  return {
-    ok: true,
-    data: response.data as WorkflowPublishAccepted
-  };
 };
 
 export const publicationIssuesFromInvalidParams = (
@@ -800,42 +1018,39 @@ export const readWorkflowDraft = async (
   | { ok: true; data: WorkflowDraftSaveAccepted }
   | { ok: false; error: NormalizedApiProblem }
 > => {
-  const response = await (
-    workflowDesignClient as {
-      GET(path: string, init?: object): Promise<{ data?: unknown; response: Response }>;
+  try {
+    const response = await workflowDesignClient.GET(
+      "/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+      { params: { path: { workflow_id: workflowId } } }
+    );
+
+    if (!response.response.ok) {
+      return { ok: false, error: await readApiProblem(response.response) };
     }
-  ).GET(`/api/v1/workflow-design/workflows/${workflowId}/draft/`);
 
-  if (!response.response.ok) {
-    return { ok: false, error: await readApiProblem(response.response) };
+    return {
+      ok: true,
+      data: response.data as WorkflowDraftSaveAccepted
+    };
+  } catch {
+    return { ok: false, error: normalizeApiProblem(undefined, 0) };
   }
-
-  return {
-    ok: true,
-    data: response.data as WorkflowDraftSaveAccepted
-  };
 };
-
-export const shouldScheduleAutosave = (state: WorkflowDraftEditorState) =>
-  state.hasLocalChanges &&
-  state.pendingAutosaveRequestKey !== null &&
-  (state.saveStatus === "unsaved" || state.saveStatus === "retrying");
 
 export const canPublishWorkflow = (state: WorkflowDraftEditorState) =>
   !state.hasLocalChanges &&
+  !state.revisionRecoveryRequired &&
   (state.saveStatus === "idle" || state.saveStatus === "saved") &&
+  state.validatedRevisionPublishable &&
+  state.lastValidatedRevision === state.lastAcknowledgedRevision &&
   state.publicationStatus !== "validating" &&
-  state.publishStatus !== "publishing";
+  state.publishStatus !== "publishing" &&
+  state.publishStatus !== "error";
 
-export const autosaveDelayMs = (state: WorkflowDraftEditorState) => {
-  if (state.saveStatus === "unsaved") {
-    return 800;
-  }
-  if (state.saveStatus !== "retrying") {
-    return null;
-  }
-  return 2000 * 2 ** Math.max(0, state.retryCount - 1);
-};
+export const hasInvalidWorkflowTaskLabels = (draft: WorkflowDraftDocument) =>
+  draft.elements.some(
+    (element) => element.type === "task" && element.label.trim().length === 0
+  );
 
 export const workflowPathPreview = (
   draft: WorkflowDraftDocument
@@ -846,23 +1061,24 @@ export const workflowPathPreview = (
     return draft.elements;
   }
 
-  const pushPath = (elementId: string) => {
-    const element = draft.elements.find((candidate) => candidate.id === elementId);
+  const visited = new Set<string>();
+  let currentElementId: string | null = start.id;
+  while (currentElementId && !visited.has(currentElementId)) {
+    visited.add(currentElementId);
+    const element = draft.elements.find((candidate) => candidate.id === currentElementId);
     if (!element) {
-      return;
+      break;
     }
     orderedItems.push(element);
     const nextConnection = draft.connections.find(
-      (connection) => connection.sourceId === elementId
+      (connection) => connection.sourceId === currentElementId
     );
     if (!nextConnection) {
-      return;
+      break;
     }
     orderedItems.push(nextConnection);
-    pushPath(nextConnection.targetId);
-  };
-
-  pushPath(start.id);
+    currentElementId = nextConnection.targetId;
+  }
   return orderedItems.length > 0 ? orderedItems : draft.elements;
 };
 
@@ -870,13 +1086,22 @@ const createElementId = (
   draft: WorkflowDraftDocument,
   type: WorkflowElementType
 ) => {
-  const nextOrdinal =
-    draft.elements.filter((element) => element.type === type).length + 1;
+  let nextOrdinal = 1;
+  while (draft.elements.some((element) => element.id === `${type}-${nextOrdinal}`)) {
+    nextOrdinal += 1;
+  }
   return `${type}-${nextOrdinal}`;
 };
 
-const createConnectionId = (draft: WorkflowDraftDocument) =>
-  `connection-${draft.connections.length + 1}`;
+const createConnectionId = (draft: WorkflowDraftDocument) => {
+  let nextOrdinal = 1;
+  while (draft.connections.some(
+    (connection) => connection.id === `connection-${nextOrdinal}`
+  )) {
+    nextOrdinal += 1;
+  }
+  return `connection-${nextOrdinal}`;
+};
 
 export const focusChecklistTarget = (target: string) => {
   if (target === "configuration.starter") {

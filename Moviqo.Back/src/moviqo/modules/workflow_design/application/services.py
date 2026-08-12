@@ -25,7 +25,7 @@ from moviqo.modules.workflow_design.application.schema import (
     dump_current_draft,
     load_draft_document,
     new_workflow_draft_document,
-    validate_workflow_graph_document,
+    validate_workflow_draft_integrity,
 )
 from moviqo.modules.workflow_design.models import (
     WorkflowDefinition,
@@ -320,7 +320,6 @@ def validate_workflow_publication(
     tenant_context: TenantContext,
     workflow_id,
     expected_revision: str,
-    draft: dict[str, Any],
     idempotency_key: str,
     request_hash: str,
 ) -> dict[str, Any] | None:
@@ -342,7 +341,6 @@ def validate_workflow_publication(
             command_context=command_context,
             workflow_id=workflow_id,
             expected_revision=expected_revision,
-            draft=draft,
         ),
     )
 
@@ -362,7 +360,6 @@ def publish_workflow_version(
     tenant_context: TenantContext,
     workflow_id,
     expected_revision: str,
-    draft: dict[str, Any],
     idempotency_key: str,
     request_hash: str,
 ) -> dict[str, Any] | None:
@@ -384,7 +381,6 @@ def publish_workflow_version(
             command_context=command_context,
             workflow_id=workflow_id,
             expected_revision=expected_revision,
-            draft=draft,
         ),
     )
 
@@ -478,7 +474,7 @@ def _save_workflow_draft_side_effects(
 
     previous_document = load_draft_document(workflow_draft.document)
     candidate_document = {
-        "schemaVersion": draft.get("schemaVersion", CURRENT_DRAFT_SCHEMA_VERSION),
+        "schemaVersion": CURRENT_DRAFT_SCHEMA_VERSION,
         "draftId": previous_document["draftId"],
         "workflowId": str(workflow.id),
         "name": workflow.name,
@@ -499,7 +495,27 @@ def _save_workflow_draft_side_effects(
         ),
     }
     try:
-        validated_document = validate_workflow_graph_document(candidate_document)
+        previous_start_ids = {
+            element["id"]
+            for element in previous_document["elements"]
+            if element["type"] == "start"
+        }
+        candidate_start_ids = {
+            element.get("id")
+            for element in candidate_document["elements"]
+            if isinstance(element, dict) and element.get("type") == "start"
+        }
+        if previous_start_ids and not previous_start_ids.issubset(candidate_start_ids):
+            raise WorkflowDraftValidationError(
+                [
+                    {
+                        "field": "elements",
+                        "code": "start_required",
+                        "reason": "The existing Start element cannot be removed.",
+                    }
+                ]
+            )
+        validated_document = validate_workflow_draft_integrity(candidate_document)
         publication_issues = validate_publication_configuration(
             tenant_context=tenant_context,
             publication=validated_document["publication"],
@@ -592,7 +608,6 @@ def _validate_workflow_publication_side_effects(
     command_context,
     workflow_id,
     expected_revision: str,
-    draft: dict[str, Any],
 ) -> dict[str, Any]:
     workflow_draft = (
         WorkflowDraft.objects.select_related("workflow")
@@ -613,30 +628,9 @@ def _validate_workflow_publication_side_effects(
             ],
         )
 
-    previous_document = load_draft_document(workflow_draft.document)
-    candidate_document = {
-        "schemaVersion": draft.get("schemaVersion", CURRENT_DRAFT_SCHEMA_VERSION),
-        "draftId": previous_document["draftId"],
-        "workflowId": str(workflow.id),
-        "name": workflow.name,
-        "status": previous_document["status"],
-        "elements": draft.get("elements", previous_document["elements"]),
-        "connections": draft.get("connections", previous_document["connections"]),
-        "processFields": _merge_process_fields(
-            previous_document=previous_document,
-            draft=draft,
-        ),
-        "formBindings": _merge_form_bindings(
-            previous_document=previous_document,
-            draft=draft,
-        ),
-        "publication": _merge_publication(
-            previous_document=previous_document,
-            draft=draft,
-        ),
-    }
+    authoritative_document = load_draft_document(workflow_draft.document)
     try:
-        normalized_document = validate_workflow_graph_document(candidate_document)
+        normalized_document = validate_workflow_draft_integrity(authoritative_document)
     except WorkflowDraftValidationError as exc:
         return _rejected_save_outcome(
             code=WorkflowDraftValidationAPIError.default_code,
@@ -691,7 +685,6 @@ def _publish_workflow_version_side_effects(
     command_context,
     workflow_id,
     expected_revision: str,
-    draft: dict[str, Any],
 ) -> dict[str, Any]:
     workflow_draft = (
         WorkflowDraft.objects.select_related("workflow")
@@ -727,7 +720,7 @@ def _publish_workflow_version_side_effects(
         )
 
     try:
-        normalized_document = validate_workflow_graph_document(authoritative_draft)
+        normalized_document = validate_workflow_draft_integrity(authoritative_draft)
     except WorkflowDraftValidationError as exc:
         invalid_params = _build_graph_invalid_params(exc.issues)
         _append_publication_rejection_audit(
@@ -869,7 +862,7 @@ def _normalize_candidate_document(
     draft: dict[str, Any],
 ) -> dict[str, Any]:
     candidate_document = {
-        "schemaVersion": draft.get("schemaVersion", CURRENT_DRAFT_SCHEMA_VERSION),
+        "schemaVersion": CURRENT_DRAFT_SCHEMA_VERSION,
         "draftId": previous_document["draftId"],
         "workflowId": str(workflow.id),
         "name": workflow.name,
@@ -889,7 +882,7 @@ def _normalize_candidate_document(
             draft=draft,
         ),
     }
-    return validate_workflow_graph_document(candidate_document)
+    return validate_workflow_draft_integrity(candidate_document)
 
 
 def _published_workflow_version_record(
@@ -1091,6 +1084,7 @@ def _collect_graph_audit_events(
                         "connectionType": connection["type"],
                         "sourceId": connection["sourceId"],
                         "targetId": connection["targetId"],
+                        "label": connection["label"],
                     },
                 )
             )
@@ -1107,8 +1101,10 @@ def _collect_graph_audit_events(
                         "connectionType": connection["type"],
                         "previousSourceId": previous_connections[connection_id]["sourceId"],
                         "previousTargetId": previous_connections[connection_id]["targetId"],
+                        "previousLabel": previous_connections[connection_id]["label"],
                         "sourceId": connection["sourceId"],
                         "targetId": connection["targetId"],
+                        "label": connection["label"],
                     },
                 )
             )
@@ -1127,6 +1123,7 @@ def _collect_graph_audit_events(
                         "connectionType": connection["type"],
                         "sourceId": connection["sourceId"],
                         "targetId": connection["targetId"],
+                        "label": connection["label"],
                     },
                 )
             )

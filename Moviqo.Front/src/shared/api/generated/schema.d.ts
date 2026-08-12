@@ -689,6 +689,7 @@ export interface components {
             type: string;
             sourceId: string;
             targetId: string;
+            label?: string | null;
         };
         WorkflowCreateRequest: {
             name: string;
@@ -773,7 +774,6 @@ export interface components {
         };
         WorkflowPublicationValidationRequest: {
             expectedRevision: string;
-            draft: components["schemas"]["WorkflowDraftDocument"];
         };
         WorkflowPublicationValidationResponse: {
             /** Format: uuid */
@@ -784,7 +784,6 @@ export interface components {
         };
         WorkflowPublishRequest: {
             expectedRevision: string;
-            draft: components["schemas"]["WorkflowDraftDocument"];
         };
         WorkflowPublishResponse: {
             /** Format: uuid */

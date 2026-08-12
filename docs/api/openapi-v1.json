@@ -2821,6 +2821,10 @@
                     },
                     "targetId": {
                         "type": "string"
+                    },
+                    "label": {
+                        "type": "string",
+                        "nullable": true
                     }
                 },
                 "required": [
@@ -3141,13 +3145,9 @@
                 "properties": {
                     "expectedRevision": {
                         "type": "string"
-                    },
-                    "draft": {
-                        "$ref": "#/components/schemas/WorkflowDraftDocument"
                     }
                 },
                 "required": [
-                    "draft",
                     "expectedRevision"
                 ]
             },
@@ -3183,13 +3183,9 @@
                 "properties": {
                     "expectedRevision": {
                         "type": "string"
-                    },
-                    "draft": {
-                        "$ref": "#/components/schemas/WorkflowDraftDocument"
                     }
                 },
                 "required": [
-                    "draft",
                     "expectedRevision"
                 ]
             },

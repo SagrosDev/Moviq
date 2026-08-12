@@ -1,6 +1,5 @@
 export { canCreateWorkflow } from "./model/access";
 export {
-  autosaveDelayMs,
   addGuidedWorkflowElement,
   applyWorkflowDraftSave,
   canPublishWorkflow,
@@ -9,15 +8,20 @@ export {
   createWorkflowPublishRequestKey,
   createWorkflowDraftEditorState,
   focusChecklistTarget,
-  MAX_AUTOSAVE_RETRIES,
+  hasInvalidWorkflowTaskLabels,
   publishWorkflow,
   reduceWorkflowDraftEditorState,
   saveWorkflowDraft,
   setFirstTaskFieldBinding,
-  shouldScheduleAutosave,
   upsertShortTextProcessField,
   validateWorkflowPublication
 } from "./model/editor";
+export {
+  adaptFlowConnection,
+  addWorkflowElementCommand,
+  deriveWorkflowFlowElements,
+  workflowTopologyOrder
+} from "./model/flow";
 export { createWorkflowDraftState } from "./model/draft";
 export {
   createWorkflow,

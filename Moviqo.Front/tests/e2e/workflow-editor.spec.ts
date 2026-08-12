@@ -26,12 +26,12 @@ const createAcceptedWorkflow = (revision: string, draft: Record<string, unknown>
   draft
 });
 
-test("workflow editor adds with pointer and keyboard, explicitly saves, reloads, validates, and publishes", async ({ page }) => {
+test("workflow editor saves optionally and publishes the current design directly", async ({ page }) => {
   page.on("pageerror", (error) => {
     throw error;
   });
   let savedDraft: Record<string, unknown> = {
-    schemaVersion: 6,
+    schemaVersion: 7,
     draftId: "01987df4-ae8a-7000-8000-000000000211",
     workflowId,
     name: "Ruta de aprobacion",
@@ -44,7 +44,6 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
   };
   let revision = "1";
   let saveBody: Record<string, unknown> | null = null;
-  let validationBody: Record<string, unknown> | null = null;
   let publishBody: Record<string, unknown> | null = null;
 
   await mockCsrfBootstrap(page);
@@ -67,19 +66,10 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
       body: JSON.stringify(createAcceptedWorkflow(revision, savedDraft))
     });
   });
-  await page.route(
-    `**/api/v1/workflow-design/workflows/${workflowId}/publication-validation/`,
-    async (route) => {
-      validationBody = route.request().postDataJSON() as Record<string, unknown>;
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ workflowId, revision, publishable: true, issues: [] })
-      });
-    }
-  );
   await page.route(`**/api/v1/workflow-design/workflows/${workflowId}/publish/`, async (route) => {
     publishBody = route.request().postDataJSON() as Record<string, unknown>;
+    savedDraft = publishBody.draft as Record<string, unknown>;
+    revision = String(Number(revision) + 1);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -89,7 +79,7 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
           versionNumber: 1,
           publishedAt: "2026-08-11T12:00:00Z",
           sourceRevision: revision,
-          schemaVersion: 6
+          schemaVersion: 7
         }
       })
     });
@@ -105,6 +95,8 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
   await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeDisabled();
   expect(saveBody).toBeNull();
   await page.getByLabel("Nombre de la tarea").fill("Revisar solicitud");
+  await page.getByLabel("Quién recibe esta tarea").selectOption("workflowInitiator");
+  await page.getByLabel("Quién puede iniciar").selectOption("allActiveMembers");
   await page.getByRole("button", { name: "Agregar Fin" }).dragTo(page.locator(".react-flow"), {
     targetPosition: { x: 120, y: 260 }
   });
@@ -113,13 +105,31 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
   await expect(page.getByRole("group", { name: "Tarea: Revisar solicitud" })).toBeVisible();
   await expect(page.getByRole("group", { name: "Fin: Fin" })).toBeVisible();
 
-  await page.getByLabel("Origen").selectOption("start-1");
-  await page.getByLabel("Destino").selectOption("task-1");
-  await page.getByRole("button", { name: "Conectar", exact: true }).click();
-  await page.locator("#workflow-element-task-1 .react-flow__handle-right").dragTo(
-    page.locator("#workflow-element-end-1 .react-flow__handle-left")
+  await page.locator("#workflow-element-start-1 .react-flow__handle-right").focus();
+  await page.keyboard.press("Enter");
+  await page.locator("#workflow-element-task-1 .react-flow__handle-left").focus();
+  await page.keyboard.press("Enter");
+  const pointerSource = page.locator("#workflow-element-task-1 .react-flow__handle-right");
+  const pointerTarget = page.locator("#workflow-element-end-1 .react-flow__handle-left");
+  const pointerSourceBox = await pointerSource.boundingBox();
+  const pointerTargetBox = await pointerTarget.boundingBox();
+  if (!pointerSourceBox || !pointerTargetBox) {
+    throw new Error("Workflow connection handles were not measurable.");
+  }
+  await page.mouse.move(
+    pointerSourceBox.x + pointerSourceBox.width / 2,
+    pointerSourceBox.y + pointerSourceBox.height / 2
   );
-  await page.getByLabel("Etiqueta de la conexión").fill("Solicitud revisada");
+  await page.mouse.down();
+  await page.mouse.move(
+    pointerTargetBox.x + pointerTargetBox.width / 2,
+    pointerTargetBox.y + pointerTargetBox.height / 2,
+    { steps: 10 }
+  );
+  await page.mouse.up();
+  const connectionLabel = page.getByLabel("Etiqueta de la conexión");
+  await expect(connectionLabel).toBeVisible();
+  await connectionLabel.fill("Solicitud revisada");
 
   const taskNodeBeforeSave = page.getByRole("group", { name: "Tarea: Revisar solicitud" });
   const taskBox = await taskNodeBeforeSave.boundingBox();
@@ -187,7 +197,10 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
   const handle = page.locator("#workflow-element-task-1 .react-flow__handle-right");
   await expect(handle).toHaveCSS("width", "44px");
   await expect(handle).toHaveCSS("height", "44px");
-  expect(await handle.evaluate((node) => getComputedStyle(node, "::before").width)).toBe("12px");
+  expect(await handle.evaluate((node) => getComputedStyle(node, "::before").width)).toBe("8px");
+  await expect(page.locator(".react-flow").locator("..")).toHaveCSS("height", "640px");
+  await expect(page.locator(".react-flow__arrowhead")).toHaveCount(1);
+  await expect(page.getByText("Conexión de secuencia", { exact: true })).toHaveCount(0);
   await taskNode.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Nombre de la tarea")).toHaveValue("Revisar solicitud");
@@ -205,11 +218,11 @@ test("workflow editor adds with pointer and keyboard, explicitly saves, reloads,
   await labeledEdge.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Etiqueta de la conexión")).toHaveValue("Solicitud revisada");
-  await page.getByRole("button", { name: /Validar publicaci/ }).click();
-  await expect(page.getByText(/listo para publicar/)).toBeVisible();
-  expect(validationBody).toEqual({ expectedRevision: "3" });
-
+  await page.getByLabel("Etiqueta de la conexión").fill("Solicitud lista para publicar");
+  await expect(page.getByRole("button", { name: /Validar publicaci/ })).toHaveCount(0);
   await page.getByRole("button", { name: /Publicar versi/ }).click();
   await expect(page.getByText(/versi.n publicada.*Versi.n 1/i)).toBeVisible();
-  expect(publishBody).toEqual({ expectedRevision: "3" });
+  expect(publishBody).toMatchObject({ expectedRevision: "3" });
+  expect((publishBody?.draft as { connections: Array<{ label?: string }> }).connections[1]?.label)
+    .toBe("Solicitud lista para publicar");
 });

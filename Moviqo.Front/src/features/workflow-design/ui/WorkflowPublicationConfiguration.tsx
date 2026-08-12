@@ -7,7 +7,6 @@ import {
   SelectField
 } from "../../../shared/ui";
 import type {
-  WorkflowAssignmentMode,
   WorkflowConfigurationDirectory,
   WorkflowDraftDocument,
   WorkflowStarterMode
@@ -17,8 +16,6 @@ type WorkflowPublicationConfigurationProps = {
   configurationDirectory: WorkflowConfigurationDirectory;
   disabled: boolean;
   draft: WorkflowDraftDocument;
-  onAssignmentMembership: (membershipId: string) => void;
-  onAssignmentMode: (mode: WorkflowAssignmentMode) => void;
   onStarterMembership: (membershipId: string) => void;
   onStarterMode: (mode: WorkflowStarterMode) => void;
   onStarterTeam: (teamId: string) => void;
@@ -28,8 +25,6 @@ export const WorkflowPublicationConfiguration = ({
   configurationDirectory,
   disabled,
   draft,
-  onAssignmentMembership,
-  onAssignmentMode,
   onStarterMembership,
   onStarterMode,
   onStarterTeam
@@ -39,10 +34,6 @@ export const WorkflowPublicationConfiguration = ({
     mode: "unconfigured" as const,
     teamIds: [],
     membershipIds: []
-  };
-  const assignment = draft.publication?.assignment ?? {
-    mode: "unconfigured" as const,
-    membershipId: null
   };
 
   return (
@@ -56,11 +47,12 @@ export const WorkflowPublicationConfiguration = ({
         </p>
       </div>
       <FormGrid>
-        <FormGridItem span="half">
+        <FormGridItem span="full">
           <div className="grid gap-moviqo-3">
             <SelectField
               disabled={disabled}
               id="workflow-starter-mode"
+              helpText={t("workflowDesign.editor.starterHelp")}
               label={t("workflowDesign.editor.starterSectionTitle")}
               options={[
                 { value: "unconfigured", label: t("workflowDesign.editor.starterEmpty") },
@@ -91,38 +83,6 @@ export const WorkflowPublicationConfiguration = ({
                 onChange={() => onStarterMembership(membership.membershipId)}
               />
             )) : null}
-          </div>
-        </FormGridItem>
-        <FormGridItem span="half">
-          <div className="grid gap-moviqo-3">
-            <SelectField
-              disabled={disabled}
-              id="workflow-assignment-mode"
-              label={t("workflowDesign.editor.assignmentSectionTitle")}
-              options={[
-                { value: "unconfigured", label: t("workflowDesign.editor.assignmentEmpty") },
-                { value: "workflowInitiator", label: t("workflowDesign.editor.assignmentWorkflowInitiator") },
-                { value: "specificMember", label: t("workflowDesign.editor.assignmentSpecificMember") }
-              ]}
-              value={assignment.mode}
-              onChange={(event) => onAssignmentMode(event.target.value as WorkflowAssignmentMode)}
-            />
-            {assignment.mode === "specificMember" ? (
-              <SelectField
-                disabled={disabled}
-                id="workflow-assignment-membership"
-                label={t("workflowDesign.editor.assignmentSpecificMember")}
-                options={[
-                  { value: "", label: t("workflowDesign.editor.assignmentEmpty") },
-                  ...configurationDirectory.memberships.map((membership) => ({
-                    value: membership.membershipId,
-                    label: membership.displayName
-                  }))
-                ]}
-                value={assignment.membershipId ?? ""}
-                onChange={(event) => onAssignmentMembership(event.target.value)}
-              />
-            ) : null}
           </div>
         </FormGridItem>
       </FormGrid>

@@ -740,6 +740,7 @@ export interface components {
             id: string;
             type: string;
             label: string;
+            assignment?: components["schemas"]["WorkflowAssignmentConfiguration"];
         };
         WorkflowFormBinding: {
             id?: string;
@@ -772,7 +773,6 @@ export interface components {
         };
         WorkflowPublication: {
             starter?: components["schemas"]["WorkflowStarterConfiguration"];
-            assignment?: components["schemas"]["WorkflowAssignmentConfiguration"];
         };
         WorkflowPublicationIssue: {
             code: string;
@@ -796,6 +796,7 @@ export interface components {
         };
         WorkflowPublishRequest: {
             expectedRevision: string;
+            draft: components["schemas"]["WorkflowDraftDocument"];
         };
         WorkflowPublishResponse: {
             /** Format: uuid */

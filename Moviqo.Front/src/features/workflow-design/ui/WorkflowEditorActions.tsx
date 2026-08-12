@@ -3,6 +3,7 @@ import { useLanguage } from "../../../shared/localization";
 import { ActionBar, Alert, Badge, Button, Card, ErrorSummary } from "../../../shared/ui";
 import {
   canPublishWorkflow,
+  canSaveWorkflow,
   hasInvalidWorkflowTaskLabels,
   type WorkflowDraftEditorState
 } from "../model/editor";
@@ -119,9 +120,11 @@ export const WorkflowSaveStatus = ({
         </Alert>
       ) : null}
       {state.publishStatus === "error" ? (
-        <Alert announcement="assertive" title={t("workflowDesign.editor.publishErrorTitle")} tone="error">
-          {state.publishErrorMessage ?? t("workflowDesign.editor.publishError")}
-        </Alert>
+        <div id="workflow-publish-error-summary" tabIndex={-1}>
+          <Alert announcement="assertive" title={t("workflowDesign.editor.publishErrorTitle")} tone="error">
+            {state.publishErrorMessage ?? t("workflowDesign.editor.publishError")}
+          </Alert>
+        </div>
       ) : null}
       {state.publishStatus === "success" && state.publishedVersion ? (
         <Alert announcement="polite" tone="success">
@@ -137,15 +140,13 @@ type WorkflowEditorActionBarProps = {
   onPublish: () => void;
   onRetrySave: () => void;
   onSave: () => void;
-  onValidate: () => void;
 };
 
 export const WorkflowEditorActionBar = ({
   state,
   onPublish,
   onRetrySave,
-  onSave,
-  onValidate
+  onSave
 }: WorkflowEditorActionBarProps) => {
   const { t } = useLanguage();
   const busy = state.saveStatus === "saving"
@@ -166,19 +167,14 @@ export const WorkflowEditorActionBar = ({
               {t("workflowDesign.editor.retrySave")}
             </Button>
           ) : null}
-          <Button disabled={busy || invalidTaskLabel || !state.hasLocalChanges} onClick={onSave}>
+          <Button
+            disabled={!canSaveWorkflow(state)}
+            variant="secondary"
+            onClick={onSave}
+          >
             {state.saveStatus === "saving"
               ? t("workflowDesign.editor.saving")
               : t("workflowDesign.draft.save")}
-          </Button>
-          <Button
-            disabled={busy || state.hasLocalChanges || state.revisionRecoveryRequired}
-            variant="secondary"
-            onClick={onValidate}
-          >
-            {state.publicationStatus === "validating"
-              ? t("workflowDesign.editor.validatingPublication")
-              : t("workflowDesign.editor.validatePublication")}
           </Button>
           <Button disabled={busy || !canPublishWorkflow(state)} onClick={onPublish}>
             {state.publishStatus === "publishing"

@@ -9,7 +9,6 @@ from moviqo.modules.organizations.application import (
     ActiveMembershipRecord,
     list_active_team_ids,
     read_active_membership,
-    read_active_membership_by_id,
 )
 from moviqo.modules.workflow_design.application import (
     PublishedWorkflowVersionRecord,
@@ -19,6 +18,9 @@ from moviqo.modules.workflow_design.application import (
 from moviqo.modules.workflow_design.application.publication_configuration import (
     WorkflowStarterAuthorizationDecision,
     evaluate_workflow_starter_authorization,
+)
+from moviqo.modules.workflow_runtime.application.task_assignment import (
+    resolve_task_assignee,
 )
 from moviqo.modules.workflow_runtime.models import ProcessInstance, TaskOccurrence
 
@@ -122,9 +124,10 @@ def _start_process_side_effects(
     if first_task_element_id is None:
         return {"outcome": "denied"}
 
-    assignee_membership = _resolve_first_task_assignee(
+    assignee_membership = resolve_task_assignee(
         organization_id=membership.organization_id,
-        workflow_version=version,
+        snapshot=snapshot,
+        task_element_id=first_task_element_id,
         initiator_membership=membership,
     )
     if assignee_membership is None:
@@ -233,32 +236,10 @@ def _first_task_element_id(*, snapshot: dict[str, Any]) -> str | None:
     first_task = elements.get(first_task_id)
     if first_task is None or first_task.get("type") != "task":
         return None
-    if not any(
+    if snapshot.get("schemaVersion", 0) < 7 and not any(
         connection.get("sourceId") == first_task_id
         and elements.get(connection.get("targetId"), {}).get("type") == "end"
         for connection in connections
     ):
         return None
     return first_task_id
-
-
-def _resolve_first_task_assignee(
-    *,
-    organization_id,
-    workflow_version: PublishedWorkflowVersionRecord,
-    initiator_membership: ActiveMembershipRecord,
-) -> ActiveMembershipRecord | None:
-    assignment = workflow_version.snapshot.get("publication", {}).get("assignment", {})
-    assignment_mode = assignment.get("mode")
-    if assignment_mode == "workflowInitiator":
-        return initiator_membership
-    if assignment_mode != "specificMember":
-        return None
-
-    membership_id = assignment.get("membershipId")
-    if not membership_id:
-        return None
-    return read_active_membership_by_id(
-        organization_id=organization_id,
-        membership_id=membership_id,
-    )

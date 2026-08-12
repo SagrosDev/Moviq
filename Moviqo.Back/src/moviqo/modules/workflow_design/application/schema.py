@@ -4,7 +4,7 @@ from collections import defaultdict, deque
 from math import isfinite
 from typing import Any
 
-CURRENT_DRAFT_SCHEMA_VERSION = 6
+CURRENT_DRAFT_SCHEMA_VERSION = 7
 CURRENT_DRAFT_FIELDS = frozenset(
     {
         "schemaVersion",
@@ -20,7 +20,7 @@ CURRENT_DRAFT_FIELDS = frozenset(
         "layout",
     }
 )
-CURRENT_ELEMENT_FIELDS = frozenset({"id", "type", "label"})
+CURRENT_ELEMENT_FIELDS = frozenset({"id", "type", "label", "assignment"})
 CURRENT_CONNECTION_FIELDS = frozenset({"id", "type", "sourceId", "targetId", "label"})
 CURRENT_PROCESS_FIELD_FIELDS = frozenset(
     {
@@ -45,6 +45,7 @@ GRAPH_DRAFT_SCHEMA_VERSION = 2
 PUBLICATION_DRAFT_SCHEMA_VERSION = 3
 CONFIGURATION_DRAFT_SCHEMA_VERSION = 4
 CONNECTION_LABEL_DRAFT_SCHEMA_VERSION = 5
+LAYOUT_DRAFT_SCHEMA_VERSION = 6
 MAXIMUM_LAYOUT_COORDINATE = 100_000
 SHORT_TEXT_MAXIMUM_LENGTH = 255
 STARTER_MODES = frozenset(
@@ -106,6 +107,10 @@ def load_draft_document(payload: dict[str, Any]) -> dict[str, Any]:
 
     if schema_version == CONNECTION_LABEL_DRAFT_SCHEMA_VERSION:
         payload = _upcast_v5_to_v6(payload)
+        schema_version = payload["schemaVersion"]
+
+    if schema_version == LAYOUT_DRAFT_SCHEMA_VERSION:
+        payload = _upcast_v6_to_v7(payload)
     elif schema_version != CURRENT_DRAFT_SCHEMA_VERSION:
         raise UnsupportedDraftSchemaVersionError(
             f"Unsupported draft schema version: {schema_version}"
@@ -284,8 +289,29 @@ def _upcast_v4_to_v5(payload: dict[str, Any]) -> dict[str, Any]:
 def _upcast_v5_to_v6(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         **payload,
-        "schemaVersion": CURRENT_DRAFT_SCHEMA_VERSION,
+        "schemaVersion": LAYOUT_DRAFT_SCHEMA_VERSION,
         "layout": {"positions": {}},
+    }
+
+
+def _upcast_v6_to_v7(payload: dict[str, Any]) -> dict[str, Any]:
+    elements = [dict(element) for element in payload.get("elements", [])]
+    first_task_id = _first_task_id_from_document(payload)
+    legacy_assignment = payload.get("publication", {}).get("assignment", {})
+    for element in elements:
+        if element.get("type") == "task":
+            element["assignment"] = (
+                legacy_assignment
+                if element.get("id") == first_task_id
+                else {"mode": "unconfigured", "membershipId": None}
+            )
+    publication = dict(payload.get("publication", {}))
+    publication.pop("assignment", None)
+    return {
+        **payload,
+        "schemaVersion": CURRENT_DRAFT_SCHEMA_VERSION,
+        "elements": elements,
+        "publication": publication,
     }
 
 
@@ -339,43 +365,26 @@ def _normalize_layout(
 
 def _normalize_publication(payload: dict[str, Any]) -> dict[str, Any]:
     starter = payload.get("starter", {})
-    assignment = payload.get("assignment", {})
+    unknown_fields = sorted(set(payload) - {"starter"})
+    if unknown_fields:
+        raise UnknownDraftFieldError(
+            "Unknown workflow publication fields: " + ", ".join(unknown_fields)
+        )
     if not isinstance(starter, dict):
         raise WorkflowDraftSchemaError("Workflow draft publication starter must be an object.")
-    if not isinstance(assignment, dict):
-        raise WorkflowDraftSchemaError(
-            "Workflow draft publication assignment must be an object."
-        )
 
     starter_mode = starter.get("mode") or (
         "allActiveMembers" if bool(starter.get("isConfigured", False)) else "unconfigured"
-    )
-    assignment_mode = assignment.get("mode") or (
-        "workflowInitiator"
-        if bool(assignment.get("isConfigured", False))
-        else "unconfigured"
     )
     if starter_mode not in STARTER_MODES:
         raise WorkflowDraftSchemaError(
             f"Unsupported workflow draft starter mode: {starter_mode}"
         )
-    if assignment_mode not in ASSIGNMENT_MODES:
-        raise WorkflowDraftSchemaError(
-            f"Unsupported workflow draft assignment mode: {assignment_mode}"
-        )
-
     return {
         "starter": {
             "mode": starter_mode,
             "teamIds": _normalize_identifier_list(starter, "teamIds"),
             "membershipIds": _normalize_identifier_list(starter, "membershipIds"),
-        },
-        "assignment": {
-            "mode": assignment_mode,
-            "membershipId": _normalize_optional_nullable_string(
-                assignment,
-                "membershipId",
-            ),
         },
     }
 
@@ -724,7 +733,7 @@ def _normalize_identifier_list(payload: dict[str, Any], field_name: str) -> list
     return normalized
 
 
-def _normalize_element(payload: Any) -> dict[str, str]:
+def _normalize_element(payload: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise WorkflowDraftSchemaError("Workflow draft elements must be objects.")
 
@@ -745,10 +754,38 @@ def _normalize_element(payload: Any) -> dict[str, str]:
             f"Unsupported workflow element type: {payload['type']}"
         )
 
-    return {
+    normalized: dict[str, Any] = {
         "id": element_id,
         "type": payload["type"],
         "label": label,
+    }
+    if payload["type"] == "task":
+        normalized["assignment"] = _normalize_assignment(
+            payload.get("assignment", {})
+        )
+    elif "assignment" in payload:
+        raise WorkflowDraftSchemaError(
+            "Only Task elements can define workflow assignment."
+        )
+    return normalized
+
+
+def _normalize_assignment(payload: Any) -> dict[str, str | None]:
+    if not isinstance(payload, dict):
+        raise WorkflowDraftSchemaError("Workflow Task assignment must be an object.")
+    unknown_fields = sorted(set(payload) - {"mode", "membershipId"})
+    if unknown_fields:
+        raise UnknownDraftFieldError(
+            "Unknown workflow Task assignment fields: " + ", ".join(unknown_fields)
+        )
+    mode = payload.get("mode", "unconfigured")
+    if mode not in ASSIGNMENT_MODES:
+        raise WorkflowDraftSchemaError(
+            f"Unsupported workflow Task assignment mode: {mode}"
+        )
+    return {
+        "mode": mode,
+        "membershipId": _normalize_optional_nullable_string(payload, "membershipId"),
     }
 
 
@@ -976,6 +1013,31 @@ def _first_task_id(
     if first_task is None or first_task["type"] != "task":
         return None
     return first_task_id
+
+
+def _first_task_id_from_document(payload: dict[str, Any]) -> str | None:
+    elements = {
+        element.get("id"): element
+        for element in payload.get("elements", [])
+        if isinstance(element, dict) and isinstance(element.get("id"), str)
+    }
+    start_ids = [
+        element_id
+        for element_id, element in elements.items()
+        if element.get("type") == "start"
+    ]
+    if len(start_ids) != 1:
+        return None
+    target_ids = [
+        connection.get("targetId")
+        for connection in payload.get("connections", [])
+        if isinstance(connection, dict)
+        and connection.get("sourceId") == start_ids[0]
+    ]
+    if len(target_ids) != 1:
+        return None
+    target = elements.get(target_ids[0])
+    return target_ids[0] if target and target.get("type") == "task" else None
 
 
 def _issue_path_identifier(payload: dict[str, Any], *, fallback: str) -> str:

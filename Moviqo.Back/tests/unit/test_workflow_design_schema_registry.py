@@ -13,8 +13,68 @@ from moviqo.modules.workflow_design.application.schema import (
     validate_workflow_draft_integrity,
     validate_workflow_graph_document,
 )
+from moviqo.modules.workflow_design.application.services import (
+    _build_publication_invalid_params,
+    _merge_elements,
+)
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "workflow_design"
+
+
+def test_v7_element_merge_preserves_existing_assignment_when_omitted() -> None:
+    previous_document = {
+        "elements": [
+            {
+                "id": "task-1",
+                "type": "task",
+                "label": "Review",
+                "assignment": {
+                    "mode": "specificMember",
+                    "membershipId": "membership-1",
+                },
+            }
+        ],
+        "connections": [],
+    }
+
+    merged = _merge_elements(
+        previous_document=previous_document,
+        draft={
+            "schemaVersion": 7,
+            "elements": [{"id": "task-1", "type": "task", "label": "Review"}],
+            "publication": {
+                "assignment": {
+                    "mode": "workflowInitiator",
+                    "membershipId": None,
+                }
+            },
+        },
+    )
+
+    assert merged[0]["assignment"] == previous_document["elements"][0]["assignment"]
+
+
+def test_publication_invalid_param_name_preserves_all_issue_identifiers() -> None:
+    invalid_params = _build_publication_invalid_params(
+        [
+            {
+                "target": "processFields.field-1",
+                "code": "task_form_decorative",
+                "message": "Correct this field.",
+                "elementId": "task-2",
+                "fieldId": "field-1",
+                "bindingId": "binding-2",
+            }
+        ]
+    )
+
+    assert invalid_params == [
+        {
+            "name": "elements.task-2.processFields.field-1.formBindings.binding-2",
+            "code": "task_form_decorative",
+            "reason": "Correct this field.",
+        }
+    ]
 
 
 def test_new_workflow_draft_seeds_one_start_step() -> None:
@@ -24,7 +84,7 @@ def test_new_workflow_draft_seeds_one_start_step() -> None:
         name="Workflow intake",
     )
 
-    assert draft["schemaVersion"] == 6
+    assert draft["schemaVersion"] == 7
     assert draft["elements"] == [
         {"id": "start-1", "type": "start", "label": "Start"}
     ]
@@ -59,7 +119,7 @@ def test_schema_registry_upcasts_v4_connections_with_optional_labels() -> None:
         }
     )
 
-    assert loaded["schemaVersion"] == 6
+    assert loaded["schemaVersion"] == 7
     assert loaded["connections"][0]["label"] is None
     assert loaded["layout"] == {"positions": {}}
 
@@ -80,7 +140,7 @@ def test_schema_registry_upcasts_v5_with_an_empty_layout() -> None:
         }
     )
 
-    assert loaded["schemaVersion"] == 6
+    assert loaded["schemaVersion"] == 7
     assert loaded["layout"] == {"positions": {}}
 
 
@@ -157,7 +217,7 @@ def test_schema_registry_reads_supported_historical_fixture() -> None:
     loaded = load_draft_document(payload)
 
     assert loaded == {
-        "schemaVersion": 6,
+        "schemaVersion": 7,
         "draftId": "01987df4-ae8a-7000-8000-000000000111",
         "workflowId": "01987df4-ae8a-7000-8000-000000000110",
         "name": "Workflow intake",
@@ -171,10 +231,6 @@ def test_schema_registry_reads_supported_historical_fixture() -> None:
                 "mode": "unconfigured",
                 "teamIds": [],
                 "membershipIds": [],
-            },
-            "assignment": {
-                "mode": "unconfigured",
-                "membershipId": None,
             },
         },
         "layout": {"positions": {}},
@@ -259,7 +315,10 @@ def test_draft_integrity_accepts_incomplete_authoring_states(elements) -> None:
         }
     )
 
-    assert loaded["elements"] == elements
+    assert [
+        {key: value for key, value in element.items() if key != "assignment"}
+        for element in loaded["elements"]
+    ] == elements
 
 
 def test_draft_integrity_rejects_impossible_cardinality_and_dangling_references() -> None:
@@ -307,7 +366,7 @@ def test_schema_registry_upcasts_story_1_22_graph_fixture() -> None:
         }
     )
 
-    assert loaded["schemaVersion"] == 6
+    assert loaded["schemaVersion"] == 7
     assert loaded["processFields"] == []
     assert loaded["formBindings"] == []
     assert loaded["publication"] == {
@@ -316,10 +375,63 @@ def test_schema_registry_upcasts_story_1_22_graph_fixture() -> None:
             "teamIds": [],
             "membershipIds": [],
         },
-        "assignment": {
-            "mode": "unconfigured",
-            "membershipId": None,
-        },
+    }
+
+
+def test_schema_registry_upcasts_v6_assignment_to_first_connected_task() -> None:
+    loaded = load_draft_document(
+        {
+            "schemaVersion": 6,
+            "draftId": "draft-1",
+            "workflowId": "workflow-1",
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": [
+                {"id": "start-1", "type": "start", "label": "Start"},
+                {"id": "task-2", "type": "task", "label": "Second"},
+                {"id": "task-1", "type": "task", "label": "First"},
+            ],
+            "connections": [
+                {
+                    "id": "connection-1",
+                    "type": "sequence",
+                    "sourceId": "start-1",
+                    "targetId": "task-1",
+                }
+            ],
+            "processFields": [],
+            "formBindings": [],
+            "publication": {
+                "starter": {
+                    "mode": "allActiveMembers",
+                    "teamIds": [],
+                    "membershipIds": [],
+                },
+                "assignment": {
+                    "mode": "workflowInitiator",
+                    "membershipId": None,
+                },
+            },
+            "layout": {"positions": {}},
+        }
+    )
+
+    assignments = {
+        element["id"]: element["assignment"]
+        for element in loaded["elements"]
+        if element["type"] == "task"
+    }
+    assert loaded["schemaVersion"] == 7
+    assert loaded["publication"] == {
+        "starter": {
+            "mode": "allActiveMembers",
+            "teamIds": [],
+            "membershipIds": [],
+        }
+    }
+    assert assignments == {
+        "task-1": {"mode": "workflowInitiator", "membershipId": None},
+        "task-2": {"mode": "unconfigured", "membershipId": None},
     }
 
 

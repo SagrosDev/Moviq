@@ -105,5 +105,8 @@ test("workflow draft reads default omitted publication children", async () => {
   assert.equal(result.ok, true);
   if (!result.ok) assert.fail("expected workflow draft read to succeed");
   assert.equal(result.data.draft.publication?.starter.mode, "unconfigured");
-  assert.equal(result.data.draft.publication?.assignment.mode, "unconfigured");
+  assert.equal(
+    result.data.draft.elements.find((element) => element.id === "task-1")?.assignment?.mode,
+    "unconfigured"
+  );
 });

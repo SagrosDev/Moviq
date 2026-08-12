@@ -75,7 +75,9 @@ export const WorkflowDraftEditor = ({
     const targetId = state.focusedChecklistSection === "starter"
       ? "workflow-starter-mode"
       : state.focusedChecklistSection === "assignment"
-        ? "workflow-assignment-mode"
+        ? state.selectedElementId
+          ? `workflow-task-assignment-${state.selectedElementId}`
+          : "workflow-canvas-title"
         : state.focusedChecklistSection === "canvas" && !state.selectedElementId
           ? "workflow-canvas-title"
           : null;
@@ -87,6 +89,19 @@ export const WorkflowDraftEditor = ({
       target.focus();
     });
   }, [state.focusedChecklistSection, state.selectedElementId]);
+
+  useEffect(() => {
+    if (state.publishStatus !== "error") return;
+    window.requestAnimationFrame(() => {
+      const targetId = state.publicationIssues.length > 0
+        ? "workflow-checklist-title"
+        : "workflow-publish-error-summary";
+      const target = document.getElementById(targetId);
+      if (!(target instanceof HTMLElement)) return;
+      target.scrollIntoView({ block: "center", behavior: "auto" });
+      target.focus();
+    });
+  }, [state.publicationIssues.length, state.publishStatus]);
 
   const addAtPosition = (elementType: WorkflowElementType, position?: XYPosition) => {
     controller.addElement(elementType, position);
@@ -117,6 +132,8 @@ export const WorkflowDraftEditor = ({
   const handleIssue = (issue: WorkflowPublicationIssue) => {
     const isFormIssue = issue.target.startsWith("processFields.")
       || issue.target.startsWith("formBindings.")
+      || issue.code.startsWith("task_form_")
+      || issue.code.startsWith("task_binding_")
       || issue.code.startsWith("first_task_form_")
       || issue.code.startsWith("first_task_binding_");
     const taskElementId = isFormIssue ? taskIdForIssue(issue) : null;
@@ -180,14 +197,14 @@ export const WorkflowDraftEditor = ({
           />
           <WorkflowProperties
             configurationDirectory={configurationDirectory}
-            connectionRejected={state.lastOperation?.kind === "connect"
-              && state.lastOperation.status === "rejected"}
             disabled={editingDisabled}
             draft={state.localDraft}
             selectedConnection={selectedConnection}
             selectedElement={selectedElement}
-            onConnect={controller.connect}
+            onAssignmentMembership={controller.selectAssignmentMembership}
+            onAssignmentMode={controller.selectAssignmentMode}
             onDesignTaskForm={onDesignTaskForm}
+            onRemoveElement={controller.removeElement}
             onRenameConnection={controller.renameConnection}
             onRenameTask={controller.renameTask}
           />
@@ -211,8 +228,6 @@ export const WorkflowDraftEditor = ({
           configurationDirectory={configurationDirectory}
           disabled={editingDisabled}
           draft={state.localDraft}
-          onAssignmentMembership={controller.selectAssignmentMembership}
-          onAssignmentMode={controller.selectAssignmentMode}
           onStarterMembership={controller.toggleStarterMembership}
           onStarterMode={controller.selectStarterMode}
           onStarterTeam={controller.toggleStarterTeam}
@@ -229,7 +244,6 @@ export const WorkflowDraftEditor = ({
         onPublish={() => void controller.publish()}
         onRetrySave={() => void controller.saveDraft(true)}
         onSave={() => void controller.saveDraft(false)}
-        onValidate={() => void controller.validatePublication()}
       />
     </section>
   );

@@ -208,7 +208,10 @@ export const addGuidedWorkflowElement = (
   const nextElement: WorkflowDraftElement = {
     id: createElementId(draft, type),
     type,
-    label: nextElementLabel(draft, type, labels)
+    label: nextElementLabel(draft, type, labels),
+    ...(type === "task"
+      ? { assignment: { mode: "unconfigured" as const, membershipId: null } }
+      : {})
   };
 
   return {
@@ -324,10 +327,6 @@ export const setStarterMode = (
       membershipIds: isScopedStarterMode(mode)
         ? draft.publication?.starter.membershipIds ?? []
         : []
-    },
-    assignment: draft.publication?.assignment ?? {
-      mode: "unconfigured",
-      membershipId: null
     }
   }
 });
@@ -351,10 +350,6 @@ export const toggleStarterTeam = (
           : "selectedTeams",
         teamIds: Array.from(teamIds),
         membershipIds: draft.publication?.starter.membershipIds ?? []
-      },
-      assignment: draft.publication?.assignment ?? {
-        mode: "unconfigured",
-        membershipId: null
       }
     }
   };
@@ -379,10 +374,6 @@ export const toggleStarterMembership = (
           : "selectedMembers",
         teamIds: draft.publication?.starter.teamIds ?? [],
         membershipIds: Array.from(membershipIds)
-      },
-      assignment: draft.publication?.assignment ?? {
-        mode: "unconfigured",
-        membershipId: null
       }
     }
   };
@@ -390,39 +381,32 @@ export const toggleStarterMembership = (
 
 export const setAssignmentMode = (
   draft: WorkflowDraftDocument,
+  elementId: string,
   mode: WorkflowAssignmentMode
 ): WorkflowDraftDocument => ({
   ...draft,
-  publication: {
-    starter: draft.publication?.starter ?? {
-      mode: "unconfigured",
-      teamIds: [],
-      membershipIds: []
-    },
-    assignment: {
-      mode,
-      membershipId:
-        mode === "specificMember" ? draft.publication?.assignment.membershipId ?? null : null
-    }
-  }
+  elements: draft.elements.map((element) => element.id === elementId && element.type === "task"
+    ? {
+        ...element,
+        assignment: {
+          mode,
+          membershipId: mode === "specificMember"
+            ? element.assignment?.membershipId ?? null
+            : null
+        }
+      }
+    : element)
 });
 
 export const setAssignmentMembership = (
   draft: WorkflowDraftDocument,
+  elementId: string,
   membershipId: string
 ): WorkflowDraftDocument => ({
   ...draft,
-  publication: {
-    starter: draft.publication?.starter ?? {
-      mode: "unconfigured",
-      teamIds: [],
-      membershipIds: []
-    },
-    assignment: {
-      mode: "specificMember",
-      membershipId
-    }
-  }
+  elements: draft.elements.map((element) => element.id === elementId && element.type === "task"
+    ? { ...element, assignment: { mode: "specificMember", membershipId } }
+    : element)
 });
 
 export const reduceWorkflowDraftEditorState = (
@@ -444,13 +428,14 @@ export const reduceWorkflowDraftEditorState = (
     | { type: "task-label-changed"; elementId: string; label: string }
     | { type: "connection-label-changed"; connectionId: string; label: string }
     | { type: "element-positioned"; elementId: string; position: XYPosition }
+    | { type: "element-removed"; elementId: string }
     | { type: "short-text-configured"; field: ShortTextFieldDraft }
     | { type: "first-task-binding-toggled"; enabled: boolean }
     | { type: "starter-mode-selected"; mode: WorkflowStarterMode }
     | { type: "starter-team-toggled"; teamId: string }
     | { type: "starter-membership-toggled"; membershipId: string }
-    | { type: "assignment-mode-selected"; mode: WorkflowAssignmentMode }
-    | { type: "assignment-membership-selected"; membershipId: string }
+    | { type: "assignment-mode-selected"; elementId: string; mode: WorkflowAssignmentMode }
+    | { type: "assignment-membership-selected"; elementId: string; membershipId: string }
     | { type: "save-requested"; command: WorkflowSaveCommand; retry: boolean }
     | {
         type: "save-failed";
@@ -657,6 +642,33 @@ export const reduceWorkflowDraftEditorState = (
     ));
   }
 
+  if (action.type === "element-removed") {
+    const element = state.localDraft.elements.find(
+      (candidate) => candidate.id === action.elementId
+    );
+    if (!element || element.type === "start") return state;
+    const { [action.elementId]: _removedPosition, ...positions } =
+      state.localDraft.layout.positions;
+    return {
+      ...markDirty({
+        ...state.localDraft,
+        elements: state.localDraft.elements.filter(
+          (candidate) => candidate.id !== action.elementId
+        ),
+        connections: state.localDraft.connections.filter(
+          (connection) => connection.sourceId !== action.elementId
+            && connection.targetId !== action.elementId
+        ),
+        formBindings: state.localDraft.formBindings.filter(
+          (binding) => binding.taskElementId !== action.elementId
+        ),
+        layout: { positions }
+      }),
+      selectedElementId: null,
+      selectedConnectionId: null
+    };
+  }
+
   if (action.type === "short-text-configured") {
     return markDirty(upsertShortTextProcessField(state.localDraft, action.field));
   }
@@ -678,11 +690,15 @@ export const reduceWorkflowDraftEditorState = (
   }
 
   if (action.type === "assignment-mode-selected") {
-    return markDirty(setAssignmentMode(state.localDraft, action.mode));
+    return markDirty(setAssignmentMode(state.localDraft, action.elementId, action.mode));
   }
 
   if (action.type === "assignment-membership-selected") {
-    return markDirty(setAssignmentMembership(state.localDraft, action.membershipId));
+    return markDirty(setAssignmentMembership(
+      state.localDraft,
+      action.elementId,
+      action.membershipId
+    ));
   }
 
   if (action.type === "save-requested") {
@@ -987,8 +1003,8 @@ export const validateWorkflowPublication = async (
 };
 
 export const publishWorkflow = async (
-  workflowId: string,
   expectedRevision: DraftRevision,
+  localDraft: WorkflowDraftDocument,
   requestKey: string
 ): Promise<
   | { ok: true; data: WorkflowPublishAccepted }
@@ -999,11 +1015,12 @@ export const publishWorkflow = async (
       "/api/v1/workflow-design/workflows/{workflow_id}/publish/",
       {
         params: {
-          path: { workflow_id: workflowId },
+          path: { workflow_id: localDraft.workflowId },
           header: { "Idempotency-Key": requestKey }
         },
         body: {
-          expectedRevision
+          expectedRevision,
+          draft: localDraft
         }
       }
     );
@@ -1021,6 +1038,12 @@ export const publishWorkflow = async (
   }
 };
 
+const referenceIdFromTarget = (target: string, collection: string) => {
+  const segments = target.split(".");
+  const collectionIndex = segments.indexOf(collection);
+  return collectionIndex >= 0 ? segments[collectionIndex + 1] ?? null : null;
+};
+
 export const publicationIssuesFromInvalidParams = (
   invalidParams: Array<Record<string, string>> | undefined
 ): WorkflowPublicationIssue[] =>
@@ -1030,9 +1053,12 @@ export const publicationIssuesFromInvalidParams = (
       code: entry.code ?? "invalid",
       severity: "blocking",
       target: entry.name,
-      elementId: null,
-      fieldId: null,
-      bindingId: null,
+      elementId: entry.elementId
+        ?? referenceIdFromTarget(entry.name, "elements"),
+      fieldId: entry.fieldId
+        ?? referenceIdFromTarget(entry.name, "processFields"),
+      bindingId: entry.bindingId
+        ?? referenceIdFromTarget(entry.name, "formBindings"),
       message: entry.reason,
       actionLabel: "Review issue"
     }));
@@ -1063,14 +1089,20 @@ export const readWorkflowDraft = async (
 };
 
 export const canPublishWorkflow = (state: WorkflowDraftEditorState) =>
-  !state.hasLocalChanges &&
   !state.revisionRecoveryRequired &&
-  (state.saveStatus === "idle" || state.saveStatus === "saved") &&
-  state.validatedRevisionPublishable &&
-  state.lastValidatedRevision === state.lastAcknowledgedRevision &&
+  state.saveStatus !== "saving" &&
+  state.saveStatus !== "retrying" &&
+  state.publishStatus !== "publishing" &&
+  !hasInvalidWorkflowTaskLabels(state.localDraft);
+
+export const canSaveWorkflow = (state: WorkflowDraftEditorState) =>
+  state.hasLocalChanges &&
+  !state.revisionRecoveryRequired &&
+  state.saveStatus !== "saving" &&
+  state.saveStatus !== "retrying" &&
   state.publicationStatus !== "validating" &&
   state.publishStatus !== "publishing" &&
-  state.publishStatus !== "error";
+  !hasInvalidWorkflowTaskLabels(state.localDraft);
 
 export const hasInvalidWorkflowTaskLabels = (draft: WorkflowDraftDocument) =>
   draft.elements.some(
@@ -1132,7 +1164,7 @@ export const focusChecklistTarget = (target: string) => {
   if (target === "configuration.starter") {
     return "starter" as const;
   }
-  if (target === "configuration.assignment") {
+  if (target === "configuration.assignment" || target.endsWith(".assignment")) {
     return "assignment" as const;
   }
   if (target.startsWith("processFields.") || target.startsWith("formBindings.")) {

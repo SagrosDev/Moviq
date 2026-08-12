@@ -3,12 +3,14 @@ export {
   addGuidedWorkflowElement,
   applyWorkflowDraftSave,
   canPublishWorkflow,
+  canSaveWorkflow,
   clearPublicationChecklist,
   connectWorkflowElements,
   createWorkflowPublishRequestKey,
   createWorkflowDraftEditorState,
   focusChecklistTarget,
   hasInvalidWorkflowTaskLabels,
+  publicationIssuesFromInvalidParams,
   publishWorkflow,
   reduceWorkflowDraftEditorState,
   saveWorkflowDraft,
@@ -19,6 +21,7 @@ export {
 export {
   adaptFlowConnection,
   addWorkflowElementCommand,
+  canConnectWorkflowByKeyboard,
   deriveWorkflowFlowElements,
   workflowTopologyOrder
 } from "./model/flow";

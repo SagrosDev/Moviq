@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from moviqo.modules.workflow_design.application.publication_validation import (
-    ASSIGNMENT_TARGET,
     STARTER_TARGET,
     validate_workflow_for_publication,
 )
@@ -57,8 +56,8 @@ def test_publication_validation_returns_stable_blockers_in_deterministic_order()
     assert result["publishable"] is False
     assert [(issue["code"], issue["target"]) for issue in result["issues"]] == [
         ("starter_missing", STARTER_TARGET),
-        ("assignment_missing", ASSIGNMENT_TARGET),
-        ("first_task_form_missing", "elements.task-1"),
+        ("assignment_missing", "elements.task-1.assignment"),
+        ("task_form_missing", "elements.task-1"),
     ]
 
 
@@ -109,7 +108,7 @@ def test_publication_validation_rejects_decorative_only_first_task_form() -> Non
         )
     )
 
-    assert any(issue["code"] == "first_task_form_decorative" for issue in result["issues"])
+    assert any(issue["code"] == "task_form_decorative" for issue in result["issues"])
 
 
 def test_publication_validation_passes_minimum_story_1_24_shape_with_checklist_warnings_only(
@@ -172,7 +171,15 @@ def test_publication_validation_accepts_a_fully_configured_minimum_workflow() ->
         _draft(
             elements=[
                 {"id": "start-1", "type": "start", "label": "Start"},
-                {"id": "task-1", "type": "task", "label": "Task"},
+                {
+                    "id": "task-1",
+                    "type": "task",
+                    "label": "Task",
+                    "assignment": {
+                        "mode": "workflowInitiator",
+                        "membershipId": None,
+                    },
+                },
                 {"id": "end-1", "type": "end", "label": "End"},
             ],
             connections=[
@@ -211,10 +218,7 @@ def test_publication_validation_accepts_a_fully_configured_minimum_workflow() ->
                     "label": None,
                 }
             ],
-            publication={
-                "starter": {"isConfigured": True},
-                "assignment": {"isConfigured": True},
-            },
+            publication={"starter": {"isConfigured": True}},
         )
     )
 

@@ -268,6 +268,14 @@ export type MessageKey =
   | "workflowDesign.editor.outlineBody"
   | "workflowDesign.editor.propertiesTitle"
   | "workflowDesign.editor.propertiesBody"
+  | "workflowDesign.editor.starterHelp"
+  | "workflowDesign.editor.taskAssignmentTitle"
+  | "workflowDesign.editor.taskAssignmentHelp"
+  | "workflowDesign.editor.deleteElement"
+  | "workflowDesign.editor.deleteElementTitle"
+  | "workflowDesign.editor.deleteElementBody"
+  | "workflowDesign.editor.deleteElementConfirm"
+  | "workflowDesign.editor.deleteElementCancel"
   | "workflowDesign.editor.taskName"
   | "workflowDesign.editor.taskNameHelp"
   | "workflowDesign.editor.taskNameRequired"
@@ -362,10 +370,14 @@ export type MessageKey =
   | "workflowDesign.editor.issue.firstTaskFormMissing"
   | "workflowDesign.editor.issue.firstTaskBindingMissingField"
   | "workflowDesign.editor.issue.firstTaskFormDecorative"
+  | "workflowDesign.editor.issue.taskFormMissing"
+  | "workflowDesign.editor.issue.taskBindingMissingField"
+  | "workflowDesign.editor.issue.taskFormDecorative"
   | "workflowDesign.editor.issueAction.configureStarter"
   | "workflowDesign.editor.issueAction.configureAssignment"
   | "workflowDesign.editor.issueAction.reviewWorkflowPath"
   | "workflowDesign.editor.issueAction.openFirstTaskForm"
+  | "workflowDesign.editor.issueAction.openTaskForm"
   | "workflowDesign.editor.flowNodeDescription"
   | "workflowDesign.editor.flowNodeKeyboardDisabled"
   | "workflowDesign.editor.flowNodeMoved"
@@ -797,7 +809,7 @@ export const spanishMessages: MessageDictionary = {
     "Este borrador ya tiene ese elemento. Inicio y Fin se agregan una sola vez.",
   "workflowDesign.editor.canvasTitle": "Lienzo del flujo",
   "workflowDesign.editor.canvasBody":
-    "Mueve los pasos o arrastra desde el conector visible de salida hasta el conector de entrada. También puedes conectar desde Propiedades.",
+    "Mueve los pasos o arrastra desde el conector visible de salida hasta el conector de entrada. Con el teclado, activa primero la salida y luego la entrada.",
   "workflowDesign.editor.incomingHandle": "Conexión de secuencia entrante",
   "workflowDesign.editor.outgoingHandle": "Conexión de secuencia saliente",
   "workflowDesign.editor.outlineTitle": "Esquema accesible",
@@ -805,7 +817,18 @@ export const spanishMessages: MessageDictionary = {
     "Selecciona cualquier elemento sin usar gestos de arrastre.",
   "workflowDesign.editor.propertiesTitle": "Propiedades",
   "workflowDesign.editor.propertiesBody":
-    "Revisa el elemento seleccionado y crea conexiones explícitas.",
+    "Revisa y configura el elemento seleccionado.",
+  "workflowDesign.editor.starterHelp":
+    "Define quién tiene permiso para iniciar un proceso nuevo con este flujo. No asigna ninguna tarea.",
+  "workflowDesign.editor.taskAssignmentTitle": "Quién recibe esta tarea",
+  "workflowDesign.editor.taskAssignmentHelp":
+    "Define la persona responsable cuando el proceso llegue a esta tarea.",
+  "workflowDesign.editor.deleteElement": "Eliminar elemento",
+  "workflowDesign.editor.deleteElementTitle": "¿Eliminar este elemento?",
+  "workflowDesign.editor.deleteElementBody":
+    "También se eliminarán sus conexiones, su posición y los campos colocados en esta tarea. Los campos reutilizables se conservarán.",
+  "workflowDesign.editor.deleteElementConfirm": "Sí, eliminar elemento",
+  "workflowDesign.editor.deleteElementCancel": "Cancelar",
   "workflowDesign.editor.taskName": "Nombre de la tarea",
   "workflowDesign.editor.taskNameHelp":
     "Este nombre aparecerá en el trabajo pendiente y los procesos nuevos publicados.",
@@ -852,7 +875,7 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.saveInvalidTarget": "Revisa esta parte del borrador y vuelve a guardar.",
   "workflowDesign.editor.saveTargetCanvas": "Camino del flujo",
   "workflowDesign.editor.saveTargetStarter": "Quién puede iniciar",
-  "workflowDesign.editor.saveTargetAssignment": "Asignación de la primera tarea",
+  "workflowDesign.editor.saveTargetAssignment": "Asignación de la tarea",
   "workflowDesign.editor.saveTargetForm": "Formulario de la tarea",
   "workflowDesign.editor.saveTargetDraft": "Borrador del flujo",
   "workflowDesign.editor.reloadError": "No pudimos cargar la última versión guardada. Inténtalo de nuevo.",
@@ -875,12 +898,12 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.checklistBody":
     "Revisa el borrador antes de publicarlo. La lista muestra lo que debes corregir.",
   "workflowDesign.editor.checklistEmpty":
-    "Valida el borrador para ver qué debes corregir antes de publicarlo.",
+    "Al publicar, se validará el diseño actual y aquí aparecerá cualquier corrección necesaria.",
   "workflowDesign.editor.checklistError":
     "No pudimos validar este borrador. Inténtalo de nuevo.",
   "workflowDesign.editor.publicationSetupTitle": "Preparación para publicar",
   "workflowDesign.editor.publicationSetupBody":
-    "Define quién puede iniciar el flujo y quién recibe la primera tarea.",
+    "Define quién puede iniciar el flujo. La persona responsable se configura en cada tarea.",
   "workflowDesign.editor.configureStarter": "Configurar inicio",
   "workflowDesign.editor.starterConfigured": "Inicio listo",
   "workflowDesign.editor.configureAssignment": "Configurar asignación",
@@ -901,9 +924,9 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.issue.starterInvalid":
     "La persona o el equipo elegido para iniciar ya no está disponible. Actualiza la selección.",
   "workflowDesign.editor.issue.assignmentMissing":
-    "Falta un detalle antes de publicar: define quién recibe la primera tarea.",
+    "Falta un detalle antes de publicar: define quién recibe esta tarea.",
   "workflowDesign.editor.issue.assignmentInvalid":
-    "La persona elegida para la primera tarea ya no está disponible. Actualiza la asignación.",
+    "La persona elegida para esta tarea ya no está disponible. Actualiza la asignación.",
   "workflowDesign.editor.issue.startStepInvalid":
     "Agrega exactamente un paso Inicio antes de publicar este flujo.",
   "workflowDesign.editor.issue.firstTaskMissing":
@@ -922,10 +945,17 @@ export const spanishMessages: MessageDictionary = {
     "Reconecta este campo de la tarea con un campo reutilizable existente antes de publicar.",
   "workflowDesign.editor.issue.firstTaskFormDecorative":
     "Reemplaza el contenido decorativo por una etiqueta de campo visible antes de publicar.",
+  "workflowDesign.editor.issue.taskFormMissing":
+    "Agrega un campo visible al formulario de esta tarea antes de publicar.",
+  "workflowDesign.editor.issue.taskBindingMissingField":
+    "Reconecta este campo de la tarea con un campo reutilizable existente antes de publicar.",
+  "workflowDesign.editor.issue.taskFormDecorative":
+    "Reemplaza el contenido decorativo de esta tarea por una etiqueta de campo visible antes de publicar.",
   "workflowDesign.editor.issueAction.configureStarter": "Configurar inicio",
   "workflowDesign.editor.issueAction.configureAssignment": "Configurar asignación",
   "workflowDesign.editor.issueAction.reviewWorkflowPath": "Revisar camino",
   "workflowDesign.editor.issueAction.openFirstTaskForm": "Abrir formulario",
+  "workflowDesign.editor.issueAction.openTaskForm": "Abrir formulario de la tarea",
   "workflowDesign.editor.flowNodeDescription":
     "Presiona Entrar o Espacio para seleccionar un paso. Usa las flechas para moverlo.",
   "workflowDesign.editor.flowNodeKeyboardDisabled": "Selecciona este paso para revisar sus propiedades.",
@@ -1361,7 +1391,7 @@ export const englishMessages: Partial<MessageDictionary> = {
     "This draft already has that element. Start and End can each be added once.",
   "workflowDesign.editor.canvasTitle": "Workflow canvas",
   "workflowDesign.editor.canvasBody":
-    "Move steps or drag from the visible outgoing connector to an incoming connector. You can also connect from Properties.",
+    "Move steps or drag from the visible outgoing connector to an incoming connector. With the keyboard, activate the output and then the input.",
   "workflowDesign.editor.incomingHandle": "Incoming sequence connection",
   "workflowDesign.editor.outgoingHandle": "Outgoing sequence connection",
   "workflowDesign.editor.outlineTitle": "Accessible outline",
@@ -1369,7 +1399,18 @@ export const englishMessages: Partial<MessageDictionary> = {
     "Select any element without using drag gestures.",
   "workflowDesign.editor.propertiesTitle": "Properties",
   "workflowDesign.editor.propertiesBody":
-    "Review the selected element and create explicit connections.",
+    "Review and configure the selected element.",
+  "workflowDesign.editor.starterHelp":
+    "Controls who may start a new process with this workflow. It does not assign any Task.",
+  "workflowDesign.editor.taskAssignmentTitle": "Who receives this Task",
+  "workflowDesign.editor.taskAssignmentHelp":
+    "Controls who becomes responsible when the process reaches this Task.",
+  "workflowDesign.editor.deleteElement": "Delete element",
+  "workflowDesign.editor.deleteElementTitle": "Delete this element?",
+  "workflowDesign.editor.deleteElementBody":
+    "Its connections, position, and fields placed on this Task will also be removed. Reusable fields will be kept.",
+  "workflowDesign.editor.deleteElementConfirm": "Yes, delete element",
+  "workflowDesign.editor.deleteElementCancel": "Cancel",
   "workflowDesign.editor.taskName": "Task name",
   "workflowDesign.editor.taskNameHelp":
     "This name appears in pending work and newly published processes.",
@@ -1416,7 +1457,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.saveInvalidTarget": "Review this part of the draft and save again.",
   "workflowDesign.editor.saveTargetCanvas": "Workflow path",
   "workflowDesign.editor.saveTargetStarter": "Who can start",
-  "workflowDesign.editor.saveTargetAssignment": "First-task assignment",
+  "workflowDesign.editor.saveTargetAssignment": "Task assignment",
   "workflowDesign.editor.saveTargetForm": "Task form",
   "workflowDesign.editor.saveTargetDraft": "Workflow draft",
   "workflowDesign.editor.reloadError":
@@ -1440,12 +1481,12 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.checklistBody":
     "Validate the current draft without publishing it. Blocking rows stay stable and actionable.",
   "workflowDesign.editor.checklistEmpty":
-    "Run validation to see this draft's publication blockers.",
+    "Publishing validates the current design; any required corrections will appear here.",
   "workflowDesign.editor.checklistError":
     "We could not validate this draft for publication. Try again.",
   "workflowDesign.editor.publicationSetupTitle": "Publication setup",
   "workflowDesign.editor.publicationSetupBody":
-    "Mark when this draft already has a valid decision for who can start the workflow and who receives the first task.",
+    "Choose who can start the workflow. Configure responsibility separately on each Task.",
   "workflowDesign.editor.configureStarter": "Configure starter",
   "workflowDesign.editor.starterConfigured": "Starter ready",
   "workflowDesign.editor.configureAssignment": "Configure assignment",
@@ -1466,9 +1507,9 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.issue.starterInvalid":
     "A selected starter or team is no longer available. Update the starter selection.",
   "workflowDesign.editor.issue.assignmentMissing":
-    "We need one more detail before publishing: choose who receives the first task.",
+    "We need one more detail before publishing: choose who receives this Task.",
   "workflowDesign.editor.issue.assignmentInvalid":
-    "The selected first-task assignee is no longer available. Update the assignment.",
+    "The selected Task assignee is no longer available. Update the assignment.",
   "workflowDesign.editor.issue.startStepInvalid":
     "Add exactly one Start step before publishing this workflow.",
   "workflowDesign.editor.issue.firstTaskMissing":
@@ -1487,10 +1528,17 @@ export const englishMessages: Partial<MessageDictionary> = {
     "Reconnect this Task field to an existing reusable field before publishing.",
   "workflowDesign.editor.issue.firstTaskFormDecorative":
     "Replace decorative-only form content with a visible field label before publishing.",
+  "workflowDesign.editor.issue.taskFormMissing":
+    "Add one visible field to this Task form before publishing.",
+  "workflowDesign.editor.issue.taskBindingMissingField":
+    "Reconnect this Task field to an existing reusable field before publishing.",
+  "workflowDesign.editor.issue.taskFormDecorative":
+    "Replace decorative-only content in this Task with a visible field label before publishing.",
   "workflowDesign.editor.issueAction.configureStarter": "Configure starter",
   "workflowDesign.editor.issueAction.configureAssignment": "Configure assignment",
   "workflowDesign.editor.issueAction.reviewWorkflowPath": "Review workflow path",
   "workflowDesign.editor.issueAction.openFirstTaskForm": "Open first task form",
+  "workflowDesign.editor.issueAction.openTaskForm": "Open Task form",
   "workflowDesign.editor.flowNodeDescription":
     "Press Enter or Space to select a step. Use the arrow keys to move it.",
   "workflowDesign.editor.flowNodeKeyboardDisabled": "Select this step to review its properties.",

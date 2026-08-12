@@ -41,7 +41,7 @@ const createAccepted = (
   name: "Workflow intake",
   revision,
   draft: {
-    schemaVersion: 6,
+    schemaVersion: 7,
     draftId: "01987df4-ae8a-7000-8000-000000000111",
     workflowId: "01987df4-ae8a-7000-8000-000000000110",
     name: "Workflow intake",
@@ -515,7 +515,7 @@ test("publication validation failure keeps the checklist retry state explicit", 
   assert.deepEqual(state.publicationIssues, []);
 });
 
-test("publish is blocked while local draft work is still pending", () => {
+test("publish accepts the current unsaved design without a prior save", () => {
   const accepted = createAccepted({}, "2");
   const edited = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
@@ -525,10 +525,10 @@ test("publish is blocked while local draft work is still pending", () => {
     }
   );
 
-  assert.equal(canPublishWorkflow(edited), false);
+  assert.equal(canPublishWorkflow(edited), true);
 });
 
-test("publish is blocked while publication validation is in flight", () => {
+test("publish does not depend on the removed standalone validation action", () => {
   const accepted = createAccepted({}, "2");
   const validating = reduceWorkflowDraftEditorState(
     createWorkflowDraftEditorState(createWorkflowDraftState(accepted)),
@@ -538,7 +538,7 @@ test("publish is blocked while publication validation is in flight", () => {
     }
   );
 
-  assert.equal(canPublishWorkflow(validating), false);
+  assert.equal(canPublishWorkflow(validating), true);
 });
 
 test("publish success appears only after the authoritative response arrives", () => {
@@ -633,6 +633,7 @@ test("invalid publish failure keeps checklist blockers actionable", () => {
 test("checklist target focus maps to stable editor sections", () => {
   assert.equal(focusChecklistTarget("configuration.starter"), "starter");
   assert.equal(focusChecklistTarget("configuration.assignment"), "assignment");
+  assert.equal(focusChecklistTarget("elements.task-1.assignment"), "assignment");
   assert.equal(focusChecklistTarget("elements.task-1"), "canvas");
   assert.equal(focusChecklistTarget("processFields.field-1"), "field");
 });

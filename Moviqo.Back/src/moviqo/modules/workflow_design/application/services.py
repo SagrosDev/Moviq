@@ -278,9 +278,9 @@ def save_workflow_draft(
     tenant_context: TenantContext,
     workflow_id,
     expected_revision: str,
-    draft: dict[str, Any],
     idempotency_key: str,
     request_hash: str,
+    draft: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     workflow = (
         WorkflowDefinition.objects.select_related("draft")
@@ -362,6 +362,7 @@ def publish_workflow_version(
     expected_revision: str,
     idempotency_key: str,
     request_hash: str,
+    draft: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     workflow = (
         WorkflowDefinition.objects.select_related("draft")
@@ -381,6 +382,7 @@ def publish_workflow_version(
             command_context=command_context,
             workflow_id=workflow_id,
             expected_revision=expected_revision,
+            draft=draft,
         ),
     )
 
@@ -479,7 +481,10 @@ def _save_workflow_draft_side_effects(
         "workflowId": str(workflow.id),
         "name": workflow.name,
         "status": previous_document["status"],
-        "elements": draft.get("elements", previous_document["elements"]),
+        "elements": _merge_elements(
+            previous_document=previous_document,
+            draft=draft,
+        ),
         "connections": draft.get("connections", previous_document["connections"]),
         "processFields": _merge_process_fields(
             previous_document=previous_document,
@@ -516,23 +521,6 @@ def _save_workflow_draft_side_effects(
                         "reason": "The existing Start element cannot be removed.",
                     }
                 ]
-            )
-        publication_issues = validate_publication_configuration(
-            tenant_context=tenant_context,
-            publication=validated_document["publication"],
-        )
-        blocking_configuration_issues = [
-            {
-                "field": issue["target"],
-                "code": issue["code"],
-                "reason": issue["message"],
-            }
-            for issue in publication_issues
-            if issue["code"] not in {"starter_missing", "assignment_missing"}
-        ]
-        if blocking_configuration_issues:
-            raise WorkflowDraftValidationError(
-                blocking_configuration_issues
             )
     except WorkflowDraftValidationError as exc:
         command_context.append_audit(
@@ -651,7 +639,7 @@ def _validate_workflow_publication_side_effects(
 
     publication_issues = validate_publication_configuration(
         tenant_context=tenant_context,
-        publication=normalized_document["publication"],
+        document=normalized_document,
     )
     validation = validate_workflow_for_publication(
         normalized_document,
@@ -686,6 +674,7 @@ def _publish_workflow_version_side_effects(
     command_context,
     workflow_id,
     expected_revision: str,
+    draft: dict[str, Any] | None,
 ) -> dict[str, Any]:
     workflow_draft = (
         WorkflowDraft.objects.select_related("workflow")
@@ -721,7 +710,31 @@ def _publish_workflow_version_side_effects(
         )
 
     try:
-        normalized_document = validate_workflow_draft_integrity(authoritative_draft)
+        normalized_document = _normalize_candidate_document(
+            workflow=workflow,
+            previous_document=authoritative_draft,
+            draft=draft or authoritative_draft,
+        )
+        previous_start_ids = {
+            element["id"]
+            for element in authoritative_draft["elements"]
+            if element["type"] == "start"
+        }
+        candidate_start_ids = {
+            element["id"]
+            for element in normalized_document["elements"]
+            if element["type"] == "start"
+        }
+        if previous_start_ids and not previous_start_ids.issubset(candidate_start_ids):
+            raise WorkflowDraftValidationError(
+                [
+                    {
+                        "field": "elements",
+                        "code": "start_required",
+                        "reason": "The existing Start element cannot be removed.",
+                    }
+                ]
+            )
     except WorkflowDraftValidationError as exc:
         invalid_params = _build_graph_invalid_params(exc.issues)
         _append_publication_rejection_audit(
@@ -757,7 +770,7 @@ def _publish_workflow_version_side_effects(
 
     publication_issues = validate_publication_configuration(
         tenant_context=tenant_context,
-        publication=normalized_document["publication"],
+        document=normalized_document,
     )
     validation = validate_workflow_for_publication(
         normalized_document,
@@ -777,6 +790,24 @@ def _publish_workflow_version_side_effects(
             invalid_params=invalid_params,
         )
 
+    source_revision = workflow_draft.revision
+    if normalized_document != authoritative_draft:
+        source_revision = str(int(workflow_draft.revision) + 1)
+        workflow_draft.document = normalized_document
+        workflow_draft.revision = source_revision
+        workflow_draft.save(update_fields=["document", "revision", "updated_at"])
+        workflow.draft_schema_version = CURRENT_DRAFT_SCHEMA_VERSION
+        workflow.save(update_fields=["draft_schema_version", "updated_at"])
+        for event_type, payload in _collect_graph_audit_events(
+            previous_document=authoritative_draft,
+            current_document=normalized_document,
+            workflow_id=str(workflow.id),
+            draft_id=normalized_document["draftId"],
+            previous_revision=expected_revision,
+            next_revision=source_revision,
+        ):
+            command_context.append_audit(event_type=event_type, payload=payload)
+
     latest_version_number = (
         WorkflowVersion.objects.filter(
             workflow_id=workflow_id,
@@ -789,7 +820,7 @@ def _publish_workflow_version_side_effects(
         organization_id=tenant_context.organization_id,
         workflow=workflow,
         version_number=next_version_number,
-        source_draft_revision=workflow_draft.revision,
+        source_draft_revision=source_revision,
         snapshot_schema_version=CURRENT_DRAFT_SCHEMA_VERSION,
         snapshot=dump_current_draft(normalized_document),
         published_by_membership_id=tenant_context.membership_id,
@@ -801,7 +832,7 @@ def _publish_workflow_version_side_effects(
             "workflowId": str(workflow.id),
             "draftId": normalized_document["draftId"],
             "versionNumber": published_version.version_number,
-            "sourceDraftRevision": workflow_draft.revision,
+            "sourceDraftRevision": source_revision,
             "schemaVersion": published_version.snapshot_schema_version,
             "publishable": True,
         },
@@ -812,7 +843,7 @@ def _publish_workflow_version_side_effects(
             "workflowId": str(workflow.id),
             "workflowVersionId": str(published_version.id),
             "versionNumber": published_version.version_number,
-            "sourceDraftRevision": workflow_draft.revision,
+            "sourceDraftRevision": source_revision,
         },
     )
     return {
@@ -820,7 +851,7 @@ def _publish_workflow_version_side_effects(
         "payload": _build_workflow_payload(
             tenant_context=tenant_context,
             workflow=workflow,
-            revision=workflow_draft.revision,
+            revision=source_revision,
             draft=normalized_document,
             published_version=published_version,
         ),
@@ -868,7 +899,10 @@ def _normalize_candidate_document(
         "workflowId": str(workflow.id),
         "name": workflow.name,
         "status": previous_document["status"],
-        "elements": draft.get("elements", previous_document["elements"]),
+        "elements": _merge_elements(
+            previous_document=previous_document,
+            draft=draft,
+        ),
         "connections": draft.get("connections", previous_document["connections"]),
         "processFields": _merge_process_fields(
             previous_document=previous_document,
@@ -882,6 +916,7 @@ def _normalize_candidate_document(
             previous_document=previous_document,
             draft=draft,
         ),
+        "layout": draft.get("layout", previous_document["layout"]),
     }
     return validate_workflow_draft_integrity(candidate_document)
 
@@ -946,7 +981,7 @@ def _build_publication_invalid_params(
 ) -> list[dict[str, str]]:
     return [
         {
-            "name": issue.get("target", "draft"),
+            "name": _publication_issue_param_name(issue),
             "code": issue.get("code", "invalid"),
             "reason": issue.get(
                 "message", "Correct the workflow draft and try again."
@@ -954,6 +989,21 @@ def _build_publication_invalid_params(
         }
         for issue in issues
     ]
+
+
+def _publication_issue_param_name(issue: dict[str, Any]) -> str:
+    identifiers = [
+        ("elements", issue.get("elementId")),
+        ("processFields", issue.get("fieldId")),
+        ("formBindings", issue.get("bindingId")),
+    ]
+    path = [
+        segment
+        for collection, identifier in identifiers
+        if identifier
+        for segment in (collection, str(identifier))
+    ]
+    return ".".join(path) if path else issue.get("target", "draft")
 
 
 def _rejected_save_outcome(
@@ -1236,6 +1286,59 @@ def _collect_graph_audit_events(
     return events
 
 
+def _merge_elements(
+    *,
+    previous_document: dict[str, Any],
+    draft: dict[str, Any],
+) -> list[dict[str, Any]]:
+    submitted_elements = draft.get("elements")
+    if submitted_elements is None:
+        return previous_document["elements"]
+
+    elements = [dict(element) for element in submitted_elements]
+    previous_by_id = {
+        element["id"]: element for element in previous_document["elements"]
+    }
+    submitted_schema_version = draft.get("schemaVersion")
+    legacy_assignment = draft.get("publication", {}).get("assignment")
+    uses_legacy_assignment = (
+        isinstance(submitted_schema_version, int)
+        and submitted_schema_version < CURRENT_DRAFT_SCHEMA_VERSION
+        and isinstance(legacy_assignment, dict)
+    )
+    connections = draft.get("connections", previous_document["connections"])
+    start_ids = [
+        element["id"] for element in elements if element.get("type") == "start"
+    ]
+    first_task_id = None
+    if len(start_ids) == 1:
+        targets = [
+            connection.get("targetId")
+            for connection in connections
+            if connection.get("sourceId") == start_ids[0]
+        ]
+        if len(targets) == 1:
+            first_task_id = targets[0]
+    for element in elements:
+        if element.get("type") == "task" and "assignment" not in element:
+            if uses_legacy_assignment:
+                element["assignment"] = (
+                    legacy_assignment
+                    if element.get("id") == first_task_id
+                    else {"mode": "unconfigured", "membershipId": None}
+                )
+                continue
+            previous_assignment = previous_by_id.get(element.get("id"), {}).get(
+                "assignment"
+            )
+            element["assignment"] = (
+                dict(previous_assignment)
+                if isinstance(previous_assignment, dict)
+                else {"mode": "unconfigured", "membershipId": None}
+            )
+    return elements
+
+
 def _merge_process_fields(
     *,
     previous_document: dict[str, Any],
@@ -1302,15 +1405,10 @@ def _merge_publication(
 
     previous_publication = previous_document["publication"]
     starter = submitted_publication.get("starter")
-    assignment = submitted_publication.get("assignment")
-
     return {
         "starter": dict(starter)
         if isinstance(starter, dict)
         else dict(previous_publication["starter"]),
-        "assignment": dict(assignment)
-        if isinstance(assignment, dict)
-        else dict(previous_publication["assignment"]),
     }
 
 

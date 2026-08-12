@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from django.test import Client
 
@@ -722,6 +724,89 @@ def test_completed_task_is_hidden_from_open_form_contract_after_completion(
 
     assert read_response.status_code == 404
     assert save_response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_completing_a_task_assigns_the_next_linear_task_from_its_own_assignment(
+    assigned_task_member,
+) -> None:
+    user, _organization, membership, _workflow, task = assigned_task_member
+    version = task.workflow_version
+    snapshot = dict(version.snapshot)
+    snapshot["schemaVersion"] = 7
+    snapshot["elements"] = [
+        {"id": "start-1", "type": "start", "label": "Start"},
+        {
+            "id": "task-1",
+            "type": "task",
+            "label": "Review request",
+            "assignment": {"mode": "workflowInitiator", "membershipId": None},
+        },
+        {
+            "id": "task-2",
+            "type": "task",
+            "label": "Archive request",
+            "assignment": {
+                "mode": "specificMember",
+                "membershipId": str(membership.id),
+            },
+        },
+        {"id": "end-1", "type": "end", "label": "End"},
+    ]
+    snapshot["connections"] = [
+        {"id": "connection-1", "type": "sequence", "sourceId": "start-1", "targetId": "task-1"},
+        {"id": "connection-2", "type": "sequence", "sourceId": "task-1", "targetId": "task-2"},
+        {"id": "connection-3", "type": "sequence", "sourceId": "task-2", "targetId": "end-1"},
+    ]
+    snapshot["formBindings"] = [
+        *snapshot["formBindings"],
+        {
+            "id": "binding-2",
+            "taskElementId": "task-2",
+            "fieldId": "field-1",
+            "position": 0,
+            "width": "full",
+            "label": None,
+        },
+    ]
+    WorkflowVersion.objects.filter(id=version.id).update(
+        snapshot=snapshot,
+        snapshot_schema_version=7,
+    )
+    task.process.initiator_membership_id = uuid.uuid4()
+    task.process.save(update_fields=["initiator_membership_id"])
+    client = Client()
+    client.force_login(user)
+
+    response = client.post(
+        f"/api/v1/my-work/tasks/{task.id}/complete/",
+        data={
+            "expectedTaskRevision": "1",
+            "controls": [
+                {
+                    "controlId": "binding-1",
+                    "fieldId": "field-1",
+                    "value": "Ana Perez",
+                }
+            ],
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "task-form-complete-next-task"},
+    )
+
+    assert response.status_code == 200
+    task.process.refresh_from_db()
+    next_task = TaskOccurrence.objects.get(
+        process=task.process,
+        task_element_id="task-2",
+    )
+    assert task.process.status == "active"
+    assert next_task.status == "assigned"
+    assert next_task.assignee_membership_id == membership.id
+    assert TaskProcessFieldValue.objects.get(
+        task=next_task,
+        field_id="field-1",
+    ).value_text == "Ana Perez"
 
 
 @pytest.mark.django_db

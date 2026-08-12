@@ -23,7 +23,10 @@ const issueMessageKey = (issue: WorkflowPublicationIssue) => {
     path_to_end_missing: "workflowDesign.editor.issue.pathToEndMissing",
     first_task_form_missing: "workflowDesign.editor.issue.firstTaskFormMissing",
     first_task_binding_missing_field: "workflowDesign.editor.issue.firstTaskBindingMissingField",
-    first_task_form_decorative: "workflowDesign.editor.issue.firstTaskFormDecorative"
+    first_task_form_decorative: "workflowDesign.editor.issue.firstTaskFormDecorative",
+    task_form_missing: "workflowDesign.editor.issue.taskFormMissing",
+    task_binding_missing_field: "workflowDesign.editor.issue.taskBindingMissingField",
+    task_form_decorative: "workflowDesign.editor.issue.taskFormDecorative"
   };
   return keys[issue.code];
 };
@@ -35,8 +38,14 @@ const issueActionKey = (issue: WorkflowPublicationIssue) => {
   if (issue.code.startsWith("assignment_")) {
     return "workflowDesign.editor.issueAction.configureAssignment" as const;
   }
+  if (issue.code === "task_form_missing") {
+    return "workflowDesign.editor.issueAction.openTaskForm" as const;
+  }
   if (issue.code === "first_task_form_missing") {
     return "workflowDesign.editor.issueAction.openFirstTaskForm" as const;
+  }
+  if (issue.code.startsWith("task_binding_") || issue.code === "task_form_decorative") {
+    return "workflowDesign.editor.issueAction.openTaskForm" as const;
   }
   if (issue.code.startsWith("first_task_binding_") || issue.code === "first_task_form_decorative") {
     return "workflowDesign.editor.issueAction.openReusableField" as const;

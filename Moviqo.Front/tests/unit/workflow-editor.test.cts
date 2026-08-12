@@ -6,16 +6,18 @@ import { test } from "node:test";
 import {
   adaptFlowConnection,
   addWorkflowElementCommand,
+  canConnectWorkflowByKeyboard,
   canPublishWorkflow,
+  canSaveWorkflow,
   createWorkflowDraftEditorState,
   createWorkflowDraftState,
   deriveWorkflowFlowElements,
   hasInvalidWorkflowTaskLabels,
+  publicationIssuesFromInvalidParams,
   reduceWorkflowDraftEditorState,
   workflowTopologyOrder,
   type WorkflowCreationAccepted,
-  type WorkflowDraftDocument,
-  type WorkflowPublicationValidationAccepted
+  type WorkflowDraftDocument
 } from "../../src/features/workflow-design";
 
 const createAccepted = (
@@ -29,7 +31,7 @@ const createAccepted = (
   name: "Approvals",
   revision,
   draft: {
-    schemaVersion: 6,
+    schemaVersion: 7,
     draftId: "draft-1",
     workflowId: "workflow-1",
     name: "Approvals",
@@ -144,6 +146,69 @@ test("stale position callbacks cannot add layout entries for missing elements", 
 
   assert.equal(unchanged, initial);
   assert.equal(unchanged.localDraft.layout.positions["removed-task"], undefined);
+});
+
+test("deleting a Task cascades its graph references but preserves reusable fields", () => {
+  const draft = completeDraft();
+  draft.processFields = [{
+    id: "field-1",
+    kind: "shortText",
+    label: "Decision",
+    helpText: "",
+    placeholder: "",
+    defaultValue: null,
+    minimumLength: 0,
+    maximumLength: 255
+  }];
+  draft.formBindings = [{
+    id: "binding-1",
+    taskElementId: "task-1",
+    fieldId: "field-1",
+    position: 0,
+    width: "full",
+    label: null
+  }];
+  draft.layout.positions["task-1"] = { x: 300, y: 100 };
+  const initial = createWorkflowDraftEditorState(
+    createWorkflowDraftState(createAccepted(draft, "3"))
+  );
+  const removed = reduceWorkflowDraftEditorState(initial, {
+    type: "element-removed",
+    elementId: "task-1"
+  });
+  const startProtected = reduceWorkflowDraftEditorState(removed, {
+    type: "element-removed",
+    elementId: "start-1"
+  });
+
+  assert.equal(removed.hasLocalChanges, true);
+  assert.deepEqual(removed.localDraft.elements.map((element) => element.id), [
+    "start-1",
+    "end-1"
+  ]);
+  assert.deepEqual(removed.localDraft.connections, []);
+  assert.deepEqual(removed.localDraft.formBindings, []);
+  assert.equal(removed.localDraft.processFields[0]?.id, "field-1");
+  assert.equal(removed.localDraft.layout.positions["task-1"], undefined);
+  assert.equal(startProtected, removed);
+});
+
+test("each Task owns its independent assignment", () => {
+  const draft = completeDraft();
+  const initial = createWorkflowDraftEditorState(
+    createWorkflowDraftState(createAccepted(draft, "3"))
+  );
+  const assigned = reduceWorkflowDraftEditorState(initial, {
+    type: "assignment-mode-selected",
+    elementId: "task-1",
+    mode: "workflowInitiator"
+  });
+
+  assert.deepEqual(
+    assigned.localDraft.elements.find((element) => element.id === "task-1")?.assignment,
+    { mode: "workflowInitiator", membershipId: null }
+  );
+  assert.equal(assigned.localDraft.publication?.starter.mode, "unconfigured");
 });
 
 test("add-at-position stores the new element coordinate in the draft", () => {
@@ -366,42 +431,50 @@ test("accepted add commands select every new Task while singleton rejection stay
   });
 });
 
-test("publish requires a successful explicit validation of the unchanged saved revision", () => {
+test("publish is independent and accepts the current valid local design", () => {
   const accepted = createAccepted(completeDraft(), "3");
   const initial = createWorkflowDraftEditorState(createWorkflowDraftState(accepted));
-  assert.equal(canPublishWorkflow(initial), false);
+  assert.equal(canPublishWorkflow(initial), true);
 
-  const validation: WorkflowPublicationValidationAccepted = {
-    workflowId: accepted.workflowId,
-    revision: "3",
-    publishable: true,
-    issues: []
-  };
-  const validating = reduceWorkflowDraftEditorState(initial, {
-    type: "publication-validation-requested",
-    requestKey: "validate-1"
-  });
-  const validated = reduceWorkflowDraftEditorState(validating, {
-    type: "publication-validation-succeeded",
-    requestKey: "validate-1",
-    validation
-  });
-  assert.equal(validated.lastValidatedRevision, "3");
-  assert.equal(canPublishWorkflow(validated), true);
-
-  const edited = reduceWorkflowDraftEditorState(validated, {
-    type: "element-selected",
-    elementId: "task-1"
-  });
-  assert.equal(edited.lastValidatedRevision, "3");
-  assert.equal(canPublishWorkflow(edited), true);
-
-  const changed = reduceWorkflowDraftEditorState(validated, {
+  const changed = reduceWorkflowDraftEditorState(initial, {
     type: "starter-mode-selected",
     mode: "allActiveMembers"
   });
   assert.equal(changed.lastValidatedRevision, null);
-  assert.equal(canPublishWorkflow(changed), false);
+  assert.equal(canPublishWorkflow(changed), true);
+});
+
+test("Save availability closes during Publish and revision recovery", () => {
+  const dirty = reduceWorkflowDraftEditorState(
+    createWorkflowDraftEditorState(createWorkflowDraftState(createAccepted(completeDraft(), "3"))),
+    { type: "starter-mode-selected", mode: "allActiveMembers" }
+  );
+
+  assert.equal(canSaveWorkflow(dirty), true);
+  assert.equal(canSaveWorkflow({ ...dirty, publishStatus: "publishing" }), false);
+  assert.equal(canSaveWorkflow({ ...dirty, revisionRecoveryRequired: true }), false);
+  assert.equal(canSaveWorkflow({ ...dirty, saveStatus: "retrying" }), false);
+});
+
+test("keyboard connections and publication references preserve guarded recovery context", () => {
+  assert.equal(canConnectWorkflowByKeyboard(false, "task-1"), true);
+  assert.equal(canConnectWorkflowByKeyboard(true, "task-1"), false);
+  assert.equal(canConnectWorkflowByKeyboard(false, null), false);
+
+  assert.deepEqual(publicationIssuesFromInvalidParams([{
+    name: "elements.task-2.processFields.field-1.formBindings.binding-2",
+    reason: "Reconnect this field.",
+    code: "first_task_binding_missing_field"
+  }]), [{
+    code: "first_task_binding_missing_field",
+    severity: "blocking",
+    target: "elements.task-2.processFields.field-1.formBindings.binding-2",
+    elementId: "task-2",
+    fieldId: "field-1",
+    bindingId: "binding-2",
+    message: "Reconnect this field.",
+    actionLabel: "Review issue"
+  }]);
 });
 
 test("the Workflow editor composes focused regions and does not embed Form field editing", async () => {
@@ -423,7 +496,7 @@ test("the Workflow editor composes focused regions and does not embed Form field
   assert.doesNotMatch(editor, /<WorkflowOutline/);
   assert.match(editor, /desktop:grid-cols-\[20rem_minmax\(0,1fr\)\]/);
   assert.match(controller, /useReducer\s*\(/);
-  assert.match(controller, /state\.saveStatus !== "retrying"/);
+  assert.match(controller, /canSaveWorkflow\(state\)/);
   assert.match(editor, /focusedChecklistSection/);
   assert.match(editor, /onInvalidTarget/);
   assert.doesNotMatch(editor, /short-text-configured|fieldMinimumLength|fieldMaximumLength/);
@@ -438,6 +511,8 @@ test("editor gestures never create background save requests or a second graph pa
   const canvas = await readFile(join(featureRoot, "ui", "WorkflowCanvas.tsx"), "utf8");
   const palette = await readFile(join(featureRoot, "ui", "WorkflowElementPalette.tsx"), "utf8");
   const transport = await readFile(join(featureRoot, "model", "editor.ts"), "utf8");
+  const actions = await readFile(join(featureRoot, "ui", "WorkflowEditorActions.tsx"), "utf8");
+  const workspace = await readFile(join(featureRoot, "ui", "WorkflowDraftEditor.tsx"), "utf8");
 
   assert.doesNotMatch(controller, /setTimeout|setInterval|autosave/i);
   assert.doesNotMatch(canvas, /saveWorkflowDraft|saveDraft/);
@@ -446,10 +521,23 @@ test("editor gestures never create background save requests or a second graph pa
   assert.match(canvas, /workflow-graph-summary/);
   assert.match(canvas, /moviqo-workflow-handle/);
   assert.match(canvas, /if \(disabled\) return/);
+  assert.match(canvas, /onKeyboardSource:\s*disabled\s*\? undefined/);
+  assert.match(canvas, /canConnectWorkflowByKeyboard\(disabled, keyboardSourceId\)/);
+  assert.match(controller, /if \(!canSaveWorkflow\(state\)\) return false/);
+  assert.match(controller, /if \(canSaveWorkflow\(state\)\)/);
+  assert.match(actions, /workflow-publish-error-summary/);
+  assert.match(workspace, /workflow-checklist-title/);
+  const checklist = await readFile(join(featureRoot, "ui", "WorkflowPublicationChecklist.tsx"), "utf8");
+  assert.match(checklist, /task_form_missing:\s*"workflowDesign\.editor\.issue\.taskFormMissing"/);
+  assert.match(checklist, /task_binding_missing_field:\s*"workflowDesign\.editor\.issue\.taskBindingMissingField"/);
+  assert.match(checklist, /task_form_decorative:\s*"workflowDesign\.editor\.issue\.taskFormDecorative"/);
+  const properties = await readFile(join(featureRoot, "ui", "WorkflowProperties.tsx"), "utf8");
+  assert.match(properties, /workflow-delete-element-confirm/);
+  assert.match(properties, /restoreDeleteTriggerRef/);
   assert.match(palette, /suppressNextClick/);
   assert.equal((transport.match(/normalizeApiProblem\(undefined, 0\)/g) ?? []).length, 4);
   assert.match(canvas, /onNodeDragStop={[\s\S]*onPosition/);
-  assert.match(transport, /publication-validation[\s\S]*body:\s*{\s*expectedRevision\s*}/);
-  assert.match(transport, /\/publish\/[\s\S]*body:\s*{\s*expectedRevision\s*}/);
+  assert.match(transport, /\/publish\/[\s\S]*body:\s*{\s*expectedRevision,\s*draft:\s*localDraft/);
+  assert.doesNotMatch(actions, /validatePublication|validatingPublication|onValidate/);
   assert.doesNotMatch(transport, /ReactFlow|WorkflowFlowNode/);
 });

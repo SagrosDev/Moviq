@@ -45,3 +45,6 @@ These items are not outstanding work for the active Story 1.34. Compatibility, r
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-36-persist-compact-canvas-layout.md`
   summary: Rebase conflict snapshots onto the latest Workflow draft instead of replacing it wholesale.
   evidence: Existing reload/reapply restores the entire stale local document, so concurrent graph or configuration changes can be overwritten; persisted canvas layout now shares that pre-existing recovery behavior.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-36-streamline-workflow-authoring.md`
+  summary: Complete the routed Form Designer so every selected Task can create and maintain its own form bindings.
+  evidence: Workflow Properties already routes a selected Task ID to the Form Designer, but the destination page remains the pre-existing reserved placeholder. Publication readiness can identify Task-specific missing forms, while authoring those forms remains owned by the unfinished Form Designer capability.

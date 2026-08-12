@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, type DragEvent, type PointerEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type KeyboardEvent,
+  type PointerEvent
+} from "react";
 import {
   Background,
   BaseEdge,
@@ -18,6 +26,7 @@ import {
 import { useLanguage } from "../../../shared/localization";
 import { Card } from "../../../shared/ui";
 import {
+  canConnectWorkflowByKeyboard,
   deriveWorkflowFlowElements,
   workflowTopologyOrder,
   type WorkflowFlowEdge,
@@ -54,6 +63,15 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowFlowNode>) => {
     end: t("workflowDesign.editor.endLabel")
   };
   const visibleLabel = element.type === "task" ? element.label : typeLabels[element.type];
+  const activateHandle = (
+    event: KeyboardEvent,
+    activate: (() => void) | undefined
+  ) => {
+    if (!["Enter", " "].includes(event.key) || !activate) return;
+    event.preventDefault();
+    event.stopPropagation();
+    activate();
+  };
   return (
     <div
       className={`grid place-content-center border-2 text-center text-moviqo-ink-primary shadow-sm focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-moviqo-focus ${nodeClasses[element.type]} ${selected ? "outline-3 outline-offset-3 outline-moviqo-focus" : ""}`}
@@ -62,9 +80,18 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowFlowNode>) => {
       {element.type !== "start" ? (
         <Handle
           aria-label={t("workflowDesign.editor.incomingHandle")}
+          aria-disabled={data.disabled}
           className="moviqo-workflow-handle"
           position={Position.Left}
+          role="button"
+          tabIndex={data.disabled ? -1 : 0}
           type="target"
+          onKeyDown={(event) => activateHandle(
+            event,
+            data.keyboardSourceId
+              ? () => data.onKeyboardTarget?.(element.id)
+              : undefined
+          )}
         />
       ) : null}
       <strong className="line-clamp-3 max-w-moviqo-node-task-width break-words leading-tight">{visibleLabel}</strong>
@@ -72,9 +99,16 @@ const WorkflowNode = ({ data, selected }: NodeProps<WorkflowFlowNode>) => {
       {element.type !== "end" ? (
         <Handle
           aria-label={t("workflowDesign.editor.outgoingHandle")}
+          aria-disabled={data.disabled}
           className="moviqo-workflow-handle"
           position={Position.Right}
+          role="button"
+          tabIndex={data.disabled ? -1 : 0}
           type="source"
+          onKeyDown={(event) => activateHandle(
+            event,
+            () => data.onKeyboardSource?.(element.id)
+          )}
         />
       ) : null}
     </div>
@@ -130,6 +164,7 @@ export const WorkflowCanvas = ({
   onSelectConnection
 }: WorkflowCanvasProps) => {
   const { t } = useLanguage();
+  const [keyboardSourceId, setKeyboardSourceId] = useState<string | null>(null);
   const instanceRef = useRef<ReactFlowInstance<WorkflowFlowNode, WorkflowFlowEdge> | null>(null);
   const flow = useMemo(
     () => deriveWorkflowFlowElements(draft),
@@ -143,12 +178,33 @@ export const WorkflowCanvas = ({
         : typeLabel;
       return {
         ...node,
+        data: {
+          ...node.data,
+          disabled,
+          keyboardSourceId,
+          onKeyboardSource: disabled
+            ? undefined
+            : (elementId: string) => setKeyboardSourceId(elementId),
+          onKeyboardTarget: disabled
+            ? undefined
+            : (elementId: string) => {
+                if (canConnectWorkflowByKeyboard(disabled, keyboardSourceId)) {
+                  onConnect(keyboardSourceId, elementId);
+                }
+                setKeyboardSourceId(null);
+              }
+        },
         ariaLabel: `${typeLabel}: ${visibleLabel}`,
         selected: node.id === selectedElementId
       };
     }),
-    [flow.nodes, selectedElementId, t]
+    [disabled, flow.nodes, keyboardSourceId, onConnect, selectedElementId, t]
   );
+
+  useEffect(() => {
+    if (disabled) setKeyboardSourceId(null);
+  }, [disabled]);
+
   const edges = useMemo(
     () => flow.edges.map((edge) => {
       const source = draft.elements.find((element) => element.id === edge.source);

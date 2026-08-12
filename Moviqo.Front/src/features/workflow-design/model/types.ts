@@ -7,6 +7,7 @@ export type WorkflowDraftElement = {
   id: string;
   type: WorkflowElementType;
   label: string;
+  assignment?: WorkflowAssignmentConfiguration;
 };
 
 export type WorkflowDraftConnection = {
@@ -70,7 +71,6 @@ export type WorkflowAssignmentConfiguration = {
 
 export type WorkflowPublicationConfiguration = {
   starter: WorkflowStarterConfiguration;
-  assignment: WorkflowAssignmentConfiguration;
 };
 
 export type WorkflowConfigurationDirectoryMembership = {

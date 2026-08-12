@@ -1,4 +1,4 @@
-import type { Connection, Edge, Node, XYPosition } from "@xyflow/react";
+import { MarkerType, type Connection, type Edge, type Node, type XYPosition } from "@xyflow/react";
 import type {
   WorkflowDraftDocument,
   WorkflowDraftConnection,
@@ -9,7 +9,16 @@ import type { WorkflowElementLabels } from "./editor";
 
 export type WorkflowFlowNodeData = Record<string, unknown> & {
   element: WorkflowDraftElement;
+  disabled?: boolean;
+  keyboardSourceId?: string | null;
+  onKeyboardSource?: (elementId: string) => void;
+  onKeyboardTarget?: (elementId: string) => void;
 };
+
+export const canConnectWorkflowByKeyboard = (
+  disabled: boolean,
+  sourceId: string | null
+): sourceId is string => !disabled && sourceId !== null;
 
 export type WorkflowFlowNode = Node<WorkflowFlowNodeData, WorkflowElementType>;
 export type WorkflowFlowEdgeData = Record<string, unknown> & {
@@ -112,7 +121,8 @@ export const deriveWorkflowFlowElements = (
       source: connection.sourceId,
       target: connection.targetId,
       data: { connection },
-      interactionWidth: 44
+      interactionWidth: 44,
+      markerEnd: { type: MarkerType.ArrowClosed }
     }))
   };
 };
@@ -135,7 +145,10 @@ export const addWorkflowElementCommand = (
     type: elementType,
     label: elementType === "task" && taskCount > 0
       ? `${labels.task} ${taskCount + 1}`
-      : labels[elementType]
+      : labels[elementType],
+    ...(elementType === "task"
+      ? { assignment: { mode: "unconfigured" as const, membershipId: null } }
+      : {})
   };
   return {
     accepted: true,

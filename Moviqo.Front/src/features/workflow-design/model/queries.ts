@@ -56,7 +56,16 @@ const normalizeGeneratedDraft = (
   elements: (draft.elements ?? []).map((element) => ({
     id: element.id,
     type: contractValue<WorkflowElementType>(element.type, ["start", "task", "end"]),
-    label: element.label
+    label: element.label,
+    ...(element.type === "task" ? {
+      assignment: {
+        mode: contractValue<WorkflowAssignmentMode>(
+          element.assignment?.mode ?? "unconfigured",
+          ["unconfigured", "workflowInitiator", "specificMember"]
+        ),
+        membershipId: element.assignment?.membershipId ?? null
+      }
+    } : {})
   })),
   connections: (draft.connections ?? []).map((connection) => ({
     id: connection.id,
@@ -105,17 +114,6 @@ const normalizeGeneratedDraft = (
         ),
         teamIds: draft.publication.starter?.teamIds ?? [],
         membershipIds: draft.publication.starter?.membershipIds ?? []
-      },
-      assignment: {
-        mode: contractValue<WorkflowAssignmentMode>(
-          draft.publication.assignment?.mode ?? "unconfigured",
-          [
-          "unconfigured",
-          "workflowInitiator",
-          "specificMember"
-          ]
-        ),
-        membershipId: draft.publication.assignment?.membershipId ?? null
       }
     }
   } : {})

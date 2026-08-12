@@ -69,7 +69,6 @@ class WorkflowAssignmentConfigurationSerializer(serializers.Serializer):
 
 class WorkflowPublicationSerializer(serializers.Serializer):
     starter = WorkflowStarterConfigurationSerializer(required=False)
-    assignment = WorkflowAssignmentConfigurationSerializer(required=False)
 
 
 class WorkflowDirectoryMembershipSerializer(serializers.Serializer):
@@ -119,6 +118,7 @@ class WorkflowDraftDocumentSerializer(serializers.Serializer):
         id = serializers.CharField(allow_blank=True)
         type = serializers.CharField()
         label = serializers.CharField()
+        assignment = WorkflowAssignmentConfigurationSerializer(required=False)
 
     class WorkflowConnectionSerializer(serializers.Serializer):
         id = serializers.CharField(allow_blank=True)
@@ -164,6 +164,7 @@ class WorkflowPublicationValidationRequestSerializer(serializers.Serializer):
 
 class WorkflowPublishRequestSerializer(serializers.Serializer):
     expectedRevision = serializers.CharField()
+    draft = WorkflowDraftDocumentSerializer()
 
 
 class WorkflowCreateResponseSerializer(serializers.Serializer):
@@ -579,9 +580,11 @@ class WorkflowPublishView(APIView):
         },
     )
     def post(self, request, workflow_id: UUID) -> Response:
-        candidate_response = _reject_publication_candidate(
+        candidate_response = _reject_unexpected_request_fields(
             request,
+            allowed_fields={"expectedRevision", "draft"},
             title="Workflow publish failed",
+            reason="Remove this field and submit the current Workflow draft.",
         )
         if candidate_response is not None:
             return candidate_response
@@ -625,6 +628,7 @@ class WorkflowPublishView(APIView):
                 tenant_context=tenant_context,
                 workflow_id=workflow_id,
                 expected_revision=serializer.validated_data["expectedRevision"],
+                draft=serializer.validated_data["draft"],
                 idempotency_key=idempotency_key,
                 request_hash=_workflow_request_hash(serializer.validated_data),
             )
@@ -692,15 +696,6 @@ def _workflow_request_hash(payload: dict[str, object]) -> str:
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
-def _reject_publication_candidate(request, *, title: str) -> Response | None:
-    return _reject_unexpected_request_fields(
-        request,
-        allowed_fields={"expectedRevision"},
-        title=title,
-        reason="Remove this field and validate the saved revision.",
-    )
-
-
 def _reject_unexpected_request_fields(
     request,
     *,
@@ -734,6 +729,15 @@ def _reject_unexpected_request_fields(
                 "reason": reason,
             }
         ],
+    )
+
+
+def _reject_publication_candidate(request, *, title: str) -> Response | None:
+    return _reject_unexpected_request_fields(
+        request,
+        allowed_fields={"expectedRevision"},
+        title=title,
+        reason="Remove this field and validate the saved revision.",
     )
 
 

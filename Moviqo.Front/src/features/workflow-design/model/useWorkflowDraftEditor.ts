@@ -6,7 +6,7 @@ import { createWorkflowDraftState } from "./draft";
 import {
   applyWorkflowDraftSave,
   canPublishWorkflow,
-  createPublicationValidationRequestKey,
+  canSaveWorkflow,
   createSaveIdempotencyKey,
   createWorkflowDraftEditorState,
   createWorkflowPublishRequestKey,
@@ -16,7 +16,6 @@ import {
   readWorkflowDraft,
   reduceWorkflowDraftEditorState,
   saveWorkflowDraft,
-  validateWorkflowPublication,
   type WorkflowSaveCommand
 } from "./editor";
 import { addWorkflowElementCommand } from "./flow";
@@ -77,8 +76,7 @@ export const useWorkflowDraftEditor = ({
   }, [state.hasLocalChanges]);
 
   const saveDraft = useCallback(async (retry = false) => {
-    if (state.saveStatus === "saving" || state.saveStatus === "retrying") return false;
-    if (hasInvalidWorkflowTaskLabels(state.localDraft)) return false;
+    if (!canSaveWorkflow(state)) return false;
     const command: WorkflowSaveCommand | null = retry
       ? state.pendingSaveCommand
       : {
@@ -86,7 +84,7 @@ export const useWorkflowDraftEditor = ({
           expectedRevision: state.lastAcknowledgedRevision,
           draft: structuredClone(state.localDraft)
         };
-    if (!command || (!retry && !state.hasLocalChanges)) return false;
+    if (!command) return false;
 
     dispatch({ type: "save-requested", command, retry });
     const result = await saveWorkflowDraft(
@@ -132,12 +130,7 @@ export const useWorkflowDraftEditor = ({
     const saveWithKeyboard = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s") return;
       event.preventDefault();
-      if (
-        state.hasLocalChanges
-        && !hasInvalidWorkflowTaskLabels(state.localDraft)
-        && state.saveStatus !== "saving"
-        && state.saveStatus !== "retrying"
-      ) {
+      if (canSaveWorkflow(state)) {
         void saveDraft(false);
       }
     };
@@ -158,43 +151,13 @@ export const useWorkflowDraftEditor = ({
     dispatch({ type: "flow-connected", sourceId, targetId });
   }, []);
 
-  const validatePublication = useCallback(async () => {
-    if (
-      state.hasLocalChanges
-      || state.saveStatus === "saving"
-      || state.saveStatus === "retrying"
-      || state.revisionRecoveryRequired
-    ) return;
-    const requestKey = createPublicationValidationRequestKey(state.localDraft.workflowId);
-    dispatch({ type: "publication-validation-requested", requestKey });
-    const result = await validateWorkflowPublication(
-      state.localDraft.workflowId,
-      state.lastAcknowledgedRevision,
-      requestKey
-    );
-    if (!result.ok) {
-      dispatch({
-        type: "publication-validation-failed",
-        requestKey,
-        errorCode: result.error.code,
-        errorMessage: t("workflowDesign.editor.checklistError")
-      });
-      return;
-    }
-    dispatch({
-      type: "publication-validation-succeeded",
-      requestKey,
-      validation: result.data
-    });
-  }, [state, t]);
-
   const publish = useCallback(async () => {
     if (!canPublishWorkflow(state)) return;
     const requestKey = createWorkflowPublishRequestKey(state.localDraft.workflowId);
     dispatch({ type: "publish-requested", requestKey });
     const result = await publishWorkflow(
-      state.localDraft.workflowId,
       state.lastAcknowledgedRevision,
+      structuredClone(state.localDraft),
       requestKey
     );
     if (!result.ok) {
@@ -242,7 +205,6 @@ export const useWorkflowDraftEditor = ({
     addElement,
     connect,
     saveDraft,
-    validatePublication,
     publish,
     reloadLatest,
     reapplyChanges: () => dispatch({ type: "reapply-conflict-draft" }),
@@ -262,10 +224,12 @@ export const useWorkflowDraftEditor = ({
       dispatch({ type: "starter-team-toggled", teamId }),
     toggleStarterMembership: (membershipId: string) =>
       dispatch({ type: "starter-membership-toggled", membershipId }),
-    selectAssignmentMode: (mode: WorkflowAssignmentMode) =>
-      dispatch({ type: "assignment-mode-selected", mode }),
-    selectAssignmentMembership: (membershipId: string) =>
-      dispatch({ type: "assignment-membership-selected", membershipId }),
+    selectAssignmentMode: (elementId: string, mode: WorkflowAssignmentMode) =>
+      dispatch({ type: "assignment-mode-selected", elementId, mode }),
+    selectAssignmentMembership: (elementId: string, membershipId: string) =>
+      dispatch({ type: "assignment-membership-selected", elementId, membershipId }),
+    removeElement: (elementId: string) =>
+      dispatch({ type: "element-removed", elementId }),
     focusIssue
   };
 };

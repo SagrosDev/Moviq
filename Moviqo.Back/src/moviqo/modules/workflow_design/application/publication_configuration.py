@@ -7,7 +7,6 @@ from moviqo.building_blocks.tenancy.runtime import TenantContext
 from moviqo.modules.organizations.application import workflow_design_directory
 
 STARTER_TARGET = "configuration.starter"
-ASSIGNMENT_TARGET = "configuration.assignment"
 SCOPED_STARTER_MODES = frozenset({"selectedTeams", "selectedMembers"})
 
 
@@ -20,21 +19,15 @@ class WorkflowStarterAuthorizationDecision:
 def validate_publication_configuration(
     *,
     tenant_context: TenantContext,
-    publication: dict[str, Any],
+    document: dict[str, Any],
 ) -> list[dict[str, Any]]:
     directory = workflow_design_directory(tenant_context=tenant_context)
     membership_ids = {option.membership_id for option in directory.memberships}
     teams = {option.team_id: option for option in directory.teams}
 
-    starter = publication.get("starter", {})
-    assignment = publication.get("assignment", {})
+    starter = document.get("publication", {}).get("starter", {})
     starter_mode = starter.get("mode") or (
         "allActiveMembers" if starter.get("isConfigured", False) else "unconfigured"
-    )
-    assignment_mode = assignment.get("mode") or (
-        "workflowInitiator"
-        if assignment.get("isConfigured", False)
-        else "unconfigured"
     )
     issues: list[dict[str, Any]] = []
     selected_team_ids = starter.get("teamIds", [])
@@ -115,52 +108,60 @@ def validate_publication_configuration(
             )
         )
 
-    if assignment_mode == "unconfigured":
-        issues.append(
-            _issue(
-                code="assignment_missing",
-                target=ASSIGNMENT_TARGET,
-                message=(
-                    "We need one more detail before publishing: "
-                    "choose who receives the first task."
-                ),
-                action_label="Configure assignment",
-            )
-        )
-    elif assignment_mode == "workflowInitiator":
-        pass
-    elif assignment_mode == "specificMember":
-        membership_id = assignment.get("membershipId")
-        if not membership_id:
+    for task in (
+        element for element in document.get("elements", [])
+        if element.get("type") == "task"
+    ):
+        assignment = task.get("assignment", {})
+        assignment_mode = assignment.get("mode", "unconfigured")
+        target = f"elements.{task['id']}.assignment"
+        if assignment_mode == "unconfigured":
             issues.append(
                 _issue(
                     code="assignment_missing",
-                    target=ASSIGNMENT_TARGET,
-                    message="Choose one active member for the first task.",
-                    action_label="Configure assignment",
+                    target=target,
+                    element_id=task["id"],
+                    message=f"Choose who receives the Task '{task['label']}'.",
+                    action_label="Configure Task assignment",
                 )
             )
-        elif membership_id not in membership_ids:
+        elif assignment_mode == "workflowInitiator":
+            continue
+        elif assignment_mode == "specificMember":
+            membership_id = assignment.get("membershipId")
+            if not membership_id:
+                issues.append(
+                    _issue(
+                        code="assignment_missing",
+                        target=target,
+                        element_id=task["id"],
+                        message=f"Choose one active member for the Task '{task['label']}'.",
+                        action_label="Configure Task assignment",
+                    )
+                )
+            elif membership_id not in membership_ids:
+                issues.append(
+                    _issue(
+                        code="assignment_invalid",
+                        target=target,
+                        element_id=task["id"],
+                        message=(
+                            f"The assignee for the Task '{task['label']}' is inactive "
+                            "or outside this organization."
+                        ),
+                        action_label="Review Task assignment",
+                    )
+                )
+        else:
             issues.append(
                 _issue(
                     code="assignment_invalid",
-                    target=ASSIGNMENT_TARGET,
-                    message=(
-                        "The selected first-task assignee is inactive or outside "
-                        "this organization."
-                    ),
-                    action_label="Review assignment",
+                    target=target,
+                    element_id=task["id"],
+                    message="This Task assignment mode is not supported.",
+                    action_label="Review Task assignment",
                 )
             )
-    else:
-        issues.append(
-            _issue(
-                code="assignment_invalid",
-                target=ASSIGNMENT_TARGET,
-                message="This first-task assignment mode is not supported in this story.",
-                action_label="Review assignment",
-            )
-        )
 
     return issues
 
@@ -208,12 +209,13 @@ def _issue(
     target: str,
     message: str,
     action_label: str,
+    element_id: str | None = None,
 ) -> dict[str, Any]:
     return {
         "code": code,
         "severity": "blocking",
         "target": target,
-        "elementId": None,
+        "elementId": element_id,
         "fieldId": None,
         "bindingId": None,
         "message": message,

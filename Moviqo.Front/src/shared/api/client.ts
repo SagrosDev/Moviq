@@ -10,6 +10,7 @@ import {
 const API_PATH_PREFIX = "/api/v1";
 const SAFE_CODE = /^[a-z][a-z0-9_]{0,63}$/;
 const SAFE_CORRELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
+const SAFE_REFERENCE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
 const boundedString = (value: unknown, maxLength: number): string | undefined => {
   if (typeof value !== "string" || value.length > maxLength || /[\r\n]/.test(value)) {
@@ -21,6 +22,11 @@ const boundedString = (value: unknown, maxLength: number): string | undefined =>
 const safeCorrelationId = (value: unknown): string => {
   const candidate = boundedString(value, 128);
   return candidate && SAFE_CORRELATION_ID.test(candidate) ? candidate : "";
+};
+
+const safeReferenceId = (value: unknown): string | undefined => {
+  const candidate = boundedString(value, 128);
+  return candidate && SAFE_REFERENCE_ID.test(candidate) ? candidate : undefined;
 };
 
 export type ApiProblemDetails = components["schemas"]["ProblemDetails"];
@@ -54,7 +60,17 @@ export const normalizeApiProblem = (
           ? item.reason.trim()
           : "Invalid value.";
         const code = boundedString(item.code, 64);
-        return [{ name, reason, ...(code && SAFE_CODE.test(code) ? { code } : {}) }];
+        const elementId = safeReferenceId(item.elementId);
+        const fieldId = safeReferenceId(item.fieldId);
+        const bindingId = safeReferenceId(item.bindingId);
+        return [{
+          name,
+          reason,
+          ...(code && SAFE_CODE.test(code) ? { code } : {}),
+          ...(elementId ? { elementId } : {}),
+          ...(fieldId ? { fieldId } : {}),
+          ...(bindingId ? { bindingId } : {})
+        }];
       })
     : [];
 

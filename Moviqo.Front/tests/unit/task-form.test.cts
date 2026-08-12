@@ -197,7 +197,7 @@ test("task form panel exposes separate retry-save and reload-latest actions on e
   );
 
   assert.match(markup, /Retry|Reintentar/);
-  assert.match(markup, /Reload latest|Recargar lo ultimo/);
+  assert.match(markup, /Reload latest|Cargar última versión/);
 });
 
 test("task form completion failures retain local values and invalid field targets", () => {

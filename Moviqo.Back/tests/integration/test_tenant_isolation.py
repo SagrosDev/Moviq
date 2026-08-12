@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from importlib import import_module
 
 import pytest
 from django.conf import settings
@@ -19,7 +20,11 @@ from moviqo.building_blocks.tenancy import (
     TENANT_SETTING_NAME,
     runtime_role_name,
 )
-from moviqo.building_blocks.tenancy.runtime import TenantContext, tenant_atomic_context
+from moviqo.building_blocks.tenancy.runtime import (
+    TenantContext,
+    tenant_atomic_context,
+    tenant_bootstrap_context,
+)
 from moviqo.modules.governance.models import CommandResult, TransactionalAuditRecord
 from moviqo.modules.messaging.models import OutboxMessage
 from moviqo.modules.organizations.models import (
@@ -43,6 +48,9 @@ from moviqo.modules.workflow_runtime.models import (
     TaskProcessFieldValue,
 )
 
+membership_rls_repair_migration = import_module(
+    "moviqo.modules.organizations.migrations.0016_repair_membership_bootstrap_rls"
+)
 
 class ListHandler(logging.Handler):
     def __init__(self) -> None:
@@ -918,6 +926,165 @@ def test_protected_membership_endpoint_bootstraps_tenant_context_under_rls(
         assert all("[redacted-uuid]" in message for message in hidden_messages)
     finally:
         logger.removeHandler(log_capture)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_membership_rls_repair_upgrades_stale_policy_without_bootstrap_writes(
+    django_user_model,
+) -> None:
+    _integration_only()
+    user = django_user_model.objects.create_user(username="repair-owner-a")
+    other_user = django_user_model.objects.create_user(username="repair-owner-b")
+    new_user = django_user_model.objects.create_user(username="repair-member-a")
+    cross_tenant_user = django_user_model.objects.create_user(username="repair-member-b")
+    organization = Organization.objects.create(slug="repair-org-a", display_name="Repair Org A")
+    other_organization = Organization.objects.create(
+        slug="repair-org-b",
+        display_name="Repair Org B",
+    )
+    membership = Membership.objects.create(
+        organization=organization,
+        user=user,
+        role=MembershipRole.OWNER,
+    )
+    other_membership = Membership.objects.create(
+        organization=other_organization,
+        user=other_user,
+        role=MembershipRole.OWNER,
+    )
+    stale_tenant_expression = (
+        "NULLIF(current_setting('moviqo.current_organization_id', true), '')::uuid"
+    )
+    stale_policy_sql = f"""
+DROP POLICY IF EXISTS organizations_membership_tenant_isolation
+    ON organizations_membership;
+DROP POLICY IF EXISTS organizations_membership_tenant_insert
+    ON organizations_membership;
+DROP POLICY IF EXISTS organizations_membership_tenant_update
+    ON organizations_membership;
+DROP POLICY IF EXISTS organizations_membership_tenant_delete
+    ON organizations_membership;
+CREATE POLICY organizations_membership_tenant_isolation
+    ON organizations_membership
+    USING (organization_id = {stale_tenant_expression})
+    WITH CHECK (organization_id = {stale_tenant_expression});
+"""
+
+    with connection.cursor() as cursor:
+        cursor.execute(stale_policy_sql)
+
+    try:
+        with tenant_bootstrap_context(user_id=user.id):
+            assert not Membership.objects.filter(id=membership.id).exists()
+
+        with connection.schema_editor() as schema_editor:
+            membership_rls_repair_migration.apply_membership_bootstrap_policy(
+                None,
+                schema_editor,
+            )
+
+        with tenant_bootstrap_context(user_id=user.id):
+            assert Membership.objects.filter(id=membership.id).exists()
+            assert not Membership.objects.filter(id=other_membership.id).exists()
+            assert Membership.objects.filter(id=membership.id).update(
+                role=MembershipRole.ADMINISTRATOR,
+            ) == 0
+            assert Membership.objects.filter(id=membership.id).delete()[0] == 0
+            with pytest.raises(DatabaseError):
+                with transaction.atomic():
+                    Membership.objects.create(
+                        organization=organization,
+                        user=new_user,
+                        role=MembershipRole.MEMBER,
+                    )
+
+        with tenant_atomic_context(
+            TenantContext(
+                organization_id=organization.id,
+                membership_id=membership.id,
+                user_id=user.id,
+            )
+        ):
+            assert Membership.objects.filter(id=membership.id).update(
+                role=MembershipRole.ADMINISTRATOR,
+            ) == 1
+            created_membership = Membership.objects.create(
+                organization=organization,
+                user=new_user,
+                role=MembershipRole.MEMBER,
+            )
+            assert created_membership.organization_id == organization.id
+            assert Membership.objects.filter(id=other_membership.id).update(
+                role=MembershipRole.ADMINISTRATOR,
+            ) == 0
+            assert Membership.objects.filter(id=other_membership.id).delete()[0] == 0
+            with pytest.raises(DatabaseError):
+                with transaction.atomic():
+                    Membership.objects.filter(id=created_membership.id).update(
+                        organization=other_organization,
+                    )
+            with pytest.raises(DatabaseError):
+                with transaction.atomic():
+                    Membership.objects.create(
+                        organization=other_organization,
+                        user=cross_tenant_user,
+                        role=MembershipRole.MEMBER,
+                    )
+            assert Membership.objects.filter(id=created_membership.id).delete()[0] == 1
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT policyname, cmd, qual, with_check
+                FROM pg_policies
+                WHERE schemaname = 'public'
+                  AND tablename = 'organizations_membership'
+                """
+            )
+            policies = {
+                policy_name: (command.lower(), qualifier, write_check)
+                for policy_name, command, qualifier, write_check in cursor.fetchall()
+            }
+
+        select_command, select_qualifier, select_check = policies[
+            "organizations_membership_tenant_isolation"
+        ]
+        assert select_command == "select"
+        assert "moviqo.current_organization_id" in select_qualifier
+        assert "moviqo.authenticated_user_id" in select_qualifier
+        assert "user_id" in select_qualifier
+        assert select_check is None
+
+        insert_command, insert_qualifier, insert_check = policies[
+            "organizations_membership_tenant_insert"
+        ]
+        assert insert_command == "insert"
+        assert insert_qualifier is None
+        assert "moviqo.current_organization_id" in insert_check
+        assert "moviqo.authenticated_user_id" not in insert_check
+
+        update_command, update_qualifier, update_check = policies[
+            "organizations_membership_tenant_update"
+        ]
+        assert update_command == "update"
+        assert "moviqo.current_organization_id" in update_qualifier
+        assert "moviqo.authenticated_user_id" not in update_qualifier
+        assert "moviqo.current_organization_id" in update_check
+        assert "moviqo.authenticated_user_id" not in update_check
+
+        delete_command, delete_qualifier, delete_check = policies[
+            "organizations_membership_tenant_delete"
+        ]
+        assert delete_command == "delete"
+        assert "moviqo.current_organization_id" in delete_qualifier
+        assert "moviqo.authenticated_user_id" not in delete_qualifier
+        assert delete_check is None
+    finally:
+        with connection.schema_editor() as schema_editor:
+            membership_rls_repair_migration.apply_membership_bootstrap_policy(
+                None,
+                schema_editor,
+            )
 
 
 @pytest.mark.django_db(transaction=True)

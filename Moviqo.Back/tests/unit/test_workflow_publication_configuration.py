@@ -72,15 +72,13 @@ def test_publication_configuration_accepts_combined_team_and_member_starters(
 
     issues = validate_publication_configuration(
         tenant_context=tenant_context,
-        publication={
-            "starter": {
-                "mode": "selectedTeams",
-                "teamIds": [str(team.id)],
-                "membershipIds": [str(teammate_membership.id)],
-            },
-            "assignment": {
-                "mode": "workflowInitiator",
-                "membershipId": None,
+        document={
+            "publication": {
+                "starter": {
+                    "mode": "selectedTeams",
+                    "teamIds": [str(team.id)],
+                    "membershipIds": [str(teammate_membership.id)],
+                },
             },
         },
     )

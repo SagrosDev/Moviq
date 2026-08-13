@@ -337,7 +337,7 @@ def test_save_path_preserves_blank_form_presentation_and_publication_reports_it(
                 "fieldId": "field-1",
                 "position": 1,
                 "width": "full",
-                "label": None,
+                "label": "",
             },
         ],
     }
@@ -352,6 +352,12 @@ def test_save_path_preserves_blank_form_presentation_and_publication_reports_it(
     assert saved.status_code == 200
     assert saved.json()["draft"]["processFields"][0]["label"] == ""
     assert saved.json()["draft"]["formBindings"][0]["content"] == ""
+    assert saved.json()["draft"]["formBindings"][1]["label"] == ""
+    reopened = client.get(
+        f"/api/v1/workflow-design/workflows/{created['workflowId']}/draft/"
+    )
+    assert reopened.status_code == 200
+    assert reopened.json()["draft"]["formBindings"][1]["label"] == ""
     validation = client.post(
         f"/api/v1/workflow-design/workflows/{created['workflowId']}/publication-validation/",
         data={"expectedRevision": "2"},
@@ -361,6 +367,10 @@ def test_save_path_preserves_blank_form_presentation_and_publication_reports_it(
     assert validation.status_code == 200
     issues = {issue["code"]: issue for issue in validation.json()["issues"]}
     assert issues["task_form_decorative"]["target"] == "processFields.field-1"
+    assert issues["task_form_decorative"]["message"] == (
+        "Add a label to this Form item before publishing."
+    )
+    assert issues["task_form_decorative"]["actionLabel"] == "Open Task form"
     assert issues["form_item_content_missing"]["target"] == (
         "formBindings.heading-1.content"
     )
@@ -2099,11 +2109,13 @@ def test_workflow_publish_returns_authoritative_published_version_payload(
     workflow_id = created.json()["workflowId"]
     draft_id = created.json()["draft"]["draftId"]
 
+    draft = _publishable_workflow_payload(workflow_id, draft_id)
+    draft["formBindings"][0]["label"] = ""
     saved = client.put(
         f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
         data={
             "expectedRevision": "1",
-            "draft": _publishable_workflow_payload(workflow_id, draft_id),
+            "draft": draft,
         },
         content_type="application/json",
         headers={"Idempotency-Key": "workflow-save-1"},
@@ -2130,7 +2142,8 @@ def test_workflow_publish_returns_authoritative_published_version_payload(
         "sourceRevision": "2",
         "schemaVersion": 8,
     }
-    assert WorkflowVersion.objects.filter(workflow_id=workflow_id).count() == 1
+    version = WorkflowVersion.objects.get(workflow_id=workflow_id)
+    assert version.snapshot["formBindings"][0]["label"] == ""
 
 
 @pytest.mark.django_db

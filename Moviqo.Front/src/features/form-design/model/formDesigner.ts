@@ -6,6 +6,7 @@ import type {
   WorkflowTaskFormItem
 } from "../../../entities/workflow";
 import type { DraftRevision } from "../../../shared/drafts";
+import { hasMeaningfulText } from "../../../shared/text";
 import {
   createDefaultShortTextDefinition,
   createDefaultStructuralItem
@@ -307,7 +308,7 @@ export const reduceFormDesignerState = (
       ...state.localDraft,
       formBindings: state.localDraft.formBindings.map((candidate) => (
         candidate.id === item.id && candidate.kind === "field"
-          ? { ...candidate, label: action.label.trim() ? action.label : null }
+          ? { ...candidate, label: action.label }
           : candidate
       ))
     }, action.itemId, [`formBindings.${action.itemId}.label`]);
@@ -444,8 +445,10 @@ export const formDesignerValidationIssues = (state: FormDesignerState) => (
   formItemsForTask(state.localDraft, state.taskElementId).flatMap((item) => {
     if (item.kind === "field") {
       const field = state.localDraft.processFields.find((candidate) => candidate.id === item.fieldId);
-      const effectiveLabel = item.label ?? field?.label ?? "";
-      if (!effectiveLabel.trim()) {
+      const accessibleLabel = item.label !== null && hasMeaningfulText(item.label)
+        ? item.label
+        : field?.label ?? "";
+      if (!hasMeaningfulText(accessibleLabel)) {
         return [{ itemId: item.id, property: "label", code: "label_required" }];
       }
       if (field && field.minimumLength > field.maximumLength) {
@@ -532,12 +535,17 @@ export const formDesignerRuntimeItems = (
       width: item.width
     };
   }
+  const labelVisuallyHidden = item.label !== null && !hasMeaningfulText(item.label);
+  const label = item.label !== null && hasMeaningfulText(item.label)
+    ? item.label
+    : field.label;
   return {
     itemId: item.id,
     controlId: item.id,
     fieldId: field.id,
     kind: "shortText",
-    label: item.label ?? field.label,
+    label,
+    ...(labelVisuallyHidden ? { labelVisuallyHidden: true } : {}),
     helpText: field.helpText,
     placeholder: field.placeholder,
     required: field.minimumLength > 0,

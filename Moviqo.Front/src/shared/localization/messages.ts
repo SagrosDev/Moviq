@@ -1092,13 +1092,13 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.issue.firstTaskBindingMissingField":
     "Reconecta este campo de la tarea con un campo reutilizable existente antes de publicar.",
   "workflowDesign.editor.issue.firstTaskFormDecorative":
-    "Reemplaza el contenido decorativo por una etiqueta de campo visible antes de publicar.",
+    "Agrega una etiqueta a este elemento del formulario antes de publicar.",
   "workflowDesign.editor.issue.taskFormMissing":
     "Agrega un campo visible al formulario de esta tarea antes de publicar.",
   "workflowDesign.editor.issue.taskBindingMissingField":
     "Reconecta este campo de la tarea con un campo reutilizable existente antes de publicar.",
   "workflowDesign.editor.issue.taskFormDecorative":
-    "Reemplaza el contenido decorativo de esta tarea por una etiqueta de campo visible antes de publicar.",
+    "Agrega una etiqueta a este elemento del formulario antes de publicar.",
   "workflowDesign.editor.issue.formItemContentMissing":
     "Agrega contenido visible a este elemento del formulario antes de publicar.",
   "workflowDesign.editor.issue.unknown":
@@ -1753,13 +1753,13 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.issue.firstTaskBindingMissingField":
     "Reconnect this Task field to an existing reusable field before publishing.",
   "workflowDesign.editor.issue.firstTaskFormDecorative":
-    "Replace decorative-only form content with a visible field label before publishing.",
+    "Add a label to this Form item before publishing.",
   "workflowDesign.editor.issue.taskFormMissing":
     "Add one visible field to this Task form before publishing.",
   "workflowDesign.editor.issue.taskBindingMissingField":
     "Reconnect this Task field to an existing reusable field before publishing.",
   "workflowDesign.editor.issue.taskFormDecorative":
-    "Replace decorative-only content in this Task with a visible field label before publishing.",
+    "Add a label to this Form item before publishing.",
   "workflowDesign.editor.issue.formItemContentMissing":
     "Add visible content to this Form item before publishing.",
   "workflowDesign.editor.issue.unknown":

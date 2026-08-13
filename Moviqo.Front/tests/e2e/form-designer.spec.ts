@@ -38,11 +38,16 @@ const projectRuntimeForm = (draft: Record<string, unknown>) => {
     if (binding.kind !== "field" || !binding.fieldId) return [];
     const field = fieldsById.get(binding.fieldId);
     if (!field) return [];
+    const labelVisuallyHidden = binding.label !== null && binding.label !== undefined && !/[\p{L}\p{N}\p{P}\p{S}]/u.test(binding.label);
+    const label = binding.label !== null && binding.label !== undefined && /[\p{L}\p{N}\p{P}\p{S}]/u.test(binding.label)
+      ? binding.label
+      : field.label;
     return [{
       controlId: binding.id,
       fieldId: field.id,
       kind: field.kind,
-      label: binding.label || field.label,
+      label,
+      ...(labelVisuallyHidden ? { labelVisuallyHidden: true } : {}),
       helpText: field.helpText,
       placeholder: field.placeholder,
       width: binding.width,
@@ -182,6 +187,7 @@ test("Form Designer persists explicit pointer and keyboard composition with runt
   await expect(page.getByText("Solicitudes · Revisar solicitud")).toBeVisible();
 
   await page.getByRole("button", { name: "Texto corto" }).click();
+  await expect(page.getByLabel("Etiqueta")).toHaveValue("Texto corto");
   await page.getByLabel("Etiqueta").fill("Nombre de la persona solicitante");
   await page.getByLabel("Texto de ayuda").fill("Usa el nombre completo.");
   await page.getByLabel("Texto de ejemplo").fill("Ejemplo: Ana Pérez");
@@ -339,12 +345,34 @@ test("Form Designer persists explicit pointer and keyboard composition with runt
 
   await page.reload();
   await expect(page.getByText("Nombre de la persona solicitante", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", {
+    exact: true,
+    name: "Texto corto: Nombre de la persona solicitante"
+  }).click();
+  await page.getByLabel("Etiqueta").fill("");
+  await expect(page.getByLabel("Etiqueta")).toHaveValue("");
+  await expect(page.getByRole("button", { exact: true, name: "Texto corto" })).toBeVisible();
+  const previewLabel = page.locator('label[for="task-form-binding-1"]');
+  await expect(previewLabel.locator(".sr-only")).toHaveText("Texto corto");
+  await expect(previewLabel.locator('[aria-hidden="true"]')).toHaveText(" *");
+  await page.keyboard.press("Control+S");
+  await expect.poll(() => saveCount).toBe(2);
+  expect((savedDraft.formBindings as Array<{ id: string; label?: string | null }>).find(
+    (item) => item.id === "binding-1"
+  )?.label).toBe("");
+
+  await page.reload();
+  await page.getByRole("button", { exact: true, name: "Texto corto" }).click();
+  await expect(page.getByLabel("Etiqueta")).toHaveValue("");
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   await page.goto(`/my-work/tasks/${taskId}`);
   await expect(page.getByRole("heading", { level: 3, name: "Detalles de la solicitud" })).toBeVisible();
-  await expect(page.getByLabel("Nombre de la persona solicitante")).toHaveAttribute("required", "");
+  await expect(page.getByLabel("Texto corto")).toHaveAttribute("required", "");
+  const runtimeLabel = page.locator('label[for="task-form-binding-1"]');
+  await expect(runtimeLabel.locator(".sr-only")).toHaveText("Texto corto");
+  await expect(runtimeLabel.locator('[aria-hidden="true"]')).toHaveText(" *");
   await expect(page.getByText("Usa el nombre completo.")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

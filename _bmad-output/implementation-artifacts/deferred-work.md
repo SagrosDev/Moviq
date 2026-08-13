@@ -70,3 +70,6 @@ These items are not outstanding work for the active Story 1.34. Compatibility, r
 - source_spec: `_bmad-output/implementation-artifacts/spec-show-workflow-publish-blockers.md`
   summary: Preserve actionable API problem targets longer than 64 characters across the shared client normalizer.
   evidence: `normalizeApiProblem` currently replaces longer valid target names with `nonFieldErrors`; changing the shared API-client contract is explicitly outside this spec without user approval.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-37-allow-blank-short-text-label.md`
+  summary: Carry publication issue binding identity into the Form Designer and select/focus the exact affected item.
+  evidence: The existing publication checklist navigation passes only the Task element ID, so any Form issue on a later binding opens the Task form with its first item selected.

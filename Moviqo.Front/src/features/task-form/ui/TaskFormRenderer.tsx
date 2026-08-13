@@ -44,6 +44,7 @@ const ShortTextItem = ({
     helpText={item.helpText}
     id={`task-form-${item.controlId}`}
     label={item.label}
+    labelVisuallyHidden={item.labelVisuallyHidden ?? false}
     maxLength={item.maximumLength}
     minLength={item.minimumLength}
     placeholder={item.placeholder}

@@ -734,6 +734,19 @@ def _normalize_optional_nullable_string(
     return normalized if normalized else None
 
 
+def _normalize_optional_nullable_binding_label(
+    payload: dict[str, Any], field_name: str
+) -> str | None:
+    value = payload.get(field_name)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise WorkflowDraftSchemaError(
+            f"Workflow draft field '{field_name}' must be str."
+        )
+    return value.strip()
+
+
 def _normalize_identifier_list(payload: dict[str, Any], field_name: str) -> list[str]:
     value = payload.get(field_name, [])
     if value is None:
@@ -1015,7 +1028,7 @@ def _normalize_form_binding(payload: Any) -> dict[str, Any]:
                 code="required",
                 reason="Choose an existing reusable field before adding it to the task.",
             ),
-            "label": _normalize_optional_nullable_string(payload, "label"),
+            "label": _normalize_optional_nullable_binding_label(payload, "label"),
         }
     if kind == "divider":
         return normalized

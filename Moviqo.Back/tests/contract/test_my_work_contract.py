@@ -155,6 +155,7 @@ def _publish_workflow(
     starter_team_ids: list[str] | None = None,
     assignment_mode: str = "workflowInitiator",
     assignment_membership_id: str | None = None,
+    binding_label: str | None = None,
 ) -> str:
     created = create_workflow_definition(
         tenant_context=_tenant_context(membership),
@@ -188,7 +189,13 @@ def _publish_workflow(
             },
         ],
         "processFields": [{"kind": "shortText", "label": "Requester"}],
-        "formBindings": [{"taskElementId": "task-1", "fieldId": "field-1"}],
+        "formBindings": [
+            {
+                "taskElementId": "task-1",
+                "fieldId": "field-1",
+                "label": binding_label,
+            }
+        ],
         "publication": {
             "starter": {
                 "mode": starter_mode,
@@ -396,6 +403,46 @@ def test_start_workflow_creates_one_process_and_first_task(active_member) -> Non
     process = ProcessInstance.objects.get()
     assert task.process_id == process.id
     assert str(task.workflow_version_id) == str(process.workflow_version_id)
+
+
+@pytest.mark.django_db
+def test_explicit_blank_label_survives_publish_and_hides_runtime_label(
+    active_member,
+) -> None:
+    user, _organization, owner_membership = active_member
+    workflow_id = _publish_workflow(
+        membership=owner_membership,
+        name="Hidden label workflow",
+        starter_mode="allActiveMembers",
+        binding_label="",
+    )
+    saved_workflow = WorkflowDefinition.objects.select_related("draft").get(
+        id=workflow_id
+    )
+    published_version = WorkflowVersion.objects.get(workflow_id=workflow_id)
+    assert saved_workflow.draft.document["formBindings"][0]["label"] == ""
+    assert published_version.snapshot == saved_workflow.draft.document
+    assert published_version.snapshot["formBindings"][0]["label"] == ""
+    client = Client()
+    client.force_login(user)
+
+    started = client.post(
+        f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-start-hidden-label"},
+    )
+
+    assert started.status_code == 200
+    task_form = client.get(
+        f"/api/v1/my-work/tasks/{started.json()['taskId']}/form/"
+    )
+    assert task_form.status_code == 200
+    control = task_form.json()["form"]["controls"][0]
+    assert control["label"] == "Requester"
+    assert control["labelVisuallyHidden"] is True
+    item = task_form.json()["form"]["items"][0]
+    assert item["label"] == "Requester"
+    assert item["labelVisuallyHidden"] is True
 
 
 @pytest.mark.django_db

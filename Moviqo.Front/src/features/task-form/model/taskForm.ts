@@ -14,6 +14,7 @@ export type TaskFormControl = {
   fieldId: string;
   kind: "shortText";
   label: string;
+  labelVisuallyHidden?: boolean;
   helpText: string;
   placeholder: string;
   width: "full" | "half" | "third" | "quarter";

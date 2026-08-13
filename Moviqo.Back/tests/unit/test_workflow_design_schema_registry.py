@@ -726,6 +726,37 @@ def test_v7_form_bindings_upcast_to_discriminated_field_items() -> None:
     ]
 
 
+@pytest.mark.parametrize("label", ["", " \t\r\n"])
+def test_schema_registry_preserves_normalized_blank_field_binding_label(label) -> None:
+    loaded = dump_current_draft(
+        {
+            "schemaVersion": 8,
+            "draftId": "draft-1",
+            "workflowId": "workflow-1",
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": [],
+            "connections": [],
+            "processFields": [],
+            "formBindings": [
+                {
+                    "id": "binding-1",
+                    "kind": "field",
+                    "taskElementId": "task-1",
+                    "fieldId": "field-1",
+                    "position": 0,
+                    "width": "full",
+                    "label": label,
+                }
+            ],
+            "publication": {},
+            "layout": {"positions": {}},
+        }
+    )
+
+    assert loaded["formBindings"][0]["label"] == ""
+
+
 def test_schema_registry_round_trips_field_and_structural_form_items() -> None:
     loaded = validate_workflow_draft_integrity(
         {

@@ -13,6 +13,7 @@ from moviqo.modules.workflow_design.application import (
     read_published_workflow_version,
     read_workflow_draft_snapshot,
 )
+from moviqo.modules.workflow_design.application.text import has_meaningful_text
 from moviqo.modules.workflow_runtime.application.my_work import OPEN_TASK_STATUSES
 from moviqo.modules.workflow_runtime.models import TaskOccurrence, TaskProcessFieldValue
 
@@ -263,20 +264,31 @@ def build_task_form_projection(task: TaskOccurrence) -> TaskFormProjection | Non
         field = fields_by_id.get(binding["fieldId"])
         if field is None:
             continue
+        binding_label = binding.get("label")
+        label_visually_hidden = (
+            binding_label is not None and not has_meaningful_text(binding_label)
+        )
+        label = (
+            binding_label
+            if binding_label is not None and has_meaningful_text(binding_label)
+            else field["label"]
+        )
         control = {
-                "controlId": binding["id"],
-                "fieldId": field["id"],
-                "kind": field["kind"],
-                "label": binding.get("label") or field["label"],
-                "helpText": field["helpText"],
-                "placeholder": field["placeholder"],
-                "width": binding["width"],
-                "position": binding["position"],
-                "value": values_by_field_id.get(field["id"], field["defaultValue"] or ""),
-                "required": field["minimumLength"] > 0,
-                "minimumLength": field["minimumLength"],
-                "maximumLength": field["maximumLength"],
-            }
+            "controlId": binding["id"],
+            "fieldId": field["id"],
+            "kind": field["kind"],
+            "label": label,
+            "helpText": field["helpText"],
+            "placeholder": field["placeholder"],
+            "width": binding["width"],
+            "position": binding["position"],
+            "value": values_by_field_id.get(field["id"], field["defaultValue"] or ""),
+            "required": field["minimumLength"] > 0,
+            "minimumLength": field["minimumLength"],
+            "maximumLength": field["maximumLength"],
+        }
+        if label_visually_hidden:
+            control["labelVisuallyHidden"] = True
         controls.append(control)
         items.append({"itemId": binding["id"], **control})
     controls.sort(key=lambda control: (control["position"], control["controlId"]))

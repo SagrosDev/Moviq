@@ -6,6 +6,7 @@ from typing import Any
 from moviqo.modules.workflow_design.application.publication_configuration import (
     STARTER_TARGET,
 )
+from moviqo.modules.workflow_design.application.text import has_meaningful_text
 
 
 def validate_workflow_for_publication(
@@ -185,8 +186,14 @@ def validate_workflow_for_publication(
             )
             continue
 
-        label = (field.get("label") or binding.get("label") or "").strip()
-        if not label:
+        binding_label = binding.get("label")
+        field_label = field.get("label", "")
+        accessible_label = (
+            binding_label
+            if binding_label is not None and has_meaningful_text(binding_label)
+            else field_label
+        )
+        if not has_meaningful_text(accessible_label):
             issues.append(
                 _issue(
                     code="task_form_decorative",
@@ -194,11 +201,8 @@ def validate_workflow_for_publication(
                     element_id=binding["taskElementId"],
                     field_id=field["id"],
                     binding_id=binding["id"],
-                    message=(
-                        "Replace decorative-only form content with a visible field "
-                        "label before publishing."
-                    ),
-                    action_label="Open reusable field",
+                    message="Add a label to this Form item before publishing.",
+                    action_label="Open Task form",
                 )
             )
 

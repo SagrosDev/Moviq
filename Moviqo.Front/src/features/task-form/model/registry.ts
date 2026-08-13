@@ -5,6 +5,7 @@ import type {
   WorkflowTaskFieldBinding,
   WorkflowTaskStructuralItem
 } from "../../../entities/workflow";
+import { hasMeaningfulText } from "../../../shared/text";
 
 export type RuntimeShortTextItem = {
   itemId: string;
@@ -12,6 +13,7 @@ export type RuntimeShortTextItem = {
   fieldId: string;
   kind: "shortText";
   label: string;
+  labelVisuallyHidden?: boolean;
   helpText: string;
   placeholder: string;
   required?: boolean;
@@ -149,7 +151,8 @@ const unchangedRuntimeValue = (item: TaskFormRuntimeItem) => item;
 
 const shortTextPresentationIssues = (item: unknown) => {
   if (!isRecord(item) || !isRuntimeBase(item, "shortText")) return ["unsupported_item"];
-  return ownString(item, "label")?.trim() ? [] : ["label_required"];
+  const label = ownString(item, "label");
+  return label !== null && hasMeaningfulText(label) ? [] : ["label_required"];
 };
 
 const contentPresentationIssues = (item: unknown) => {
@@ -169,6 +172,7 @@ const shortTextRenderDescriptor = (
     || ownString(item, "placeholder") === null
     || ownString(item, "value") === null
     || !ownOptionalBoolean(item, "required")
+    || !ownOptionalBoolean(item, "labelVisuallyHidden")
     || !ownOptionalLength(item, "minimumLength")
     || !ownOptionalLength(item, "maximumLength")
   ) return null;

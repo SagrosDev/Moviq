@@ -262,6 +262,33 @@ def test_task_form_projection_preserves_structural_items_without_runtime_values(
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("binding_label", ["", "\u200b\u0301\u2028"])
+def test_task_form_projection_hides_nonmeaningful_binding_labels_with_accessible_fallback(
+    assigned_task_member,
+    binding_label,
+) -> None:
+    user, _organization, _membership, _workflow, task = assigned_task_member
+    version = task.workflow_version
+    snapshot = dict(version.snapshot)
+    snapshot["formBindings"] = [
+        {**snapshot["formBindings"][0], "label": binding_label}
+    ]
+    WorkflowVersion.objects.filter(pk=version.pk).update(snapshot=snapshot)
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(f"/api/v1/my-work/tasks/{task.id}/form/")
+
+    assert response.status_code == 200
+    control = response.json()["form"]["controls"][0]
+    assert control["label"] == "Requester name"
+    assert control["labelVisuallyHidden"] is True
+    item = response.json()["form"]["items"][0]
+    assert item["label"] == "Requester name"
+    assert item["labelVisuallyHidden"] is True
+
+
+@pytest.mark.django_db
 def test_task_form_save_persists_valid_short_text_without_completion(
     assigned_task_member,
 ) -> None:

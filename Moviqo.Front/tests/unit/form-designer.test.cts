@@ -246,6 +246,108 @@ test("Task binding labels and Short Text presentation edit without mutating shar
   });
 });
 
+test("an explicitly blank Task binding label survives reducer and conflict rebase", () => {
+  const configured = structuredClone(accepted);
+  configured.draft.processFields = [{
+    id: "field.shared",
+    kind: "shortText",
+    label: "Shared requester",
+    helpText: "",
+    placeholder: "",
+    defaultValue: null,
+    minimumLength: 0,
+    maximumLength: 255,
+  }];
+  configured.draft.formBindings = [{
+    id: "binding.task.1",
+    kind: "field",
+    taskElementId: "task-1",
+    fieldId: "field.shared",
+    position: 0,
+    width: "full",
+    label: null,
+  }];
+  const state = reduceFormDesignerState(
+    createFormDesignerState(configured, "task-1"),
+    {
+      type: "item-label-changed",
+      itemId: "binding.task.1",
+      label: "",
+    },
+  );
+
+  const binding = state.localDraft.formBindings[0];
+  assert.equal(binding?.kind === "field" ? binding.label : null, "");
+  assert.deepEqual(formDesignerValidationIssues(state), []);
+  assert.deepEqual(formDesignerRuntimeItems(state)[0], {
+    itemId: "binding.task.1",
+    controlId: "binding.task.1",
+    fieldId: "field.shared",
+    kind: "shortText",
+    label: "Shared requester",
+    labelVisuallyHidden: true,
+    helpText: "",
+    placeholder: "",
+    required: false,
+    position: 0,
+    width: "full",
+    value: "",
+  });
+
+  const latest = structuredClone(configured.draft);
+  latest.name = "Changed elsewhere";
+  const rebased = rebaseFormDesignerDraft(state, latest);
+  const rebasedBinding = rebased.formBindings[0];
+  assert.equal(rebasedBinding?.kind === "field" ? rebasedBinding.label : null, "");
+});
+
+test("Unicode-only invisible labels use the reusable accessible identity", () => {
+  const configured = structuredClone(accepted);
+  configured.draft.processFields = [{
+    id: "field.shared",
+    kind: "shortText",
+    label: "Shared requester",
+    helpText: "",
+    placeholder: "",
+    defaultValue: null,
+    minimumLength: 0,
+    maximumLength: 255,
+  }];
+  configured.draft.formBindings = [{
+    id: "binding.task.1",
+    kind: "field",
+    taskElementId: "task-1",
+    fieldId: "field.shared",
+    position: 0,
+    width: "full",
+    label: "\u200b\u0301\u2028",
+  }];
+  const state = createFormDesignerState(configured, "task-1");
+
+  assert.deepEqual(formDesignerValidationIssues(state), []);
+  assert.deepEqual(formDesignerRuntimeItems(state)[0], {
+    itemId: "binding.task.1",
+    controlId: "binding.task.1",
+    fieldId: "field.shared",
+    kind: "shortText",
+    label: "Shared requester",
+    labelVisuallyHidden: true,
+    helpText: "",
+    placeholder: "",
+    required: false,
+    position: 0,
+    width: "full",
+    value: "",
+  });
+
+  state.localDraft.processFields[0]!.label = "\u200b\u0301\u2028";
+  assert.deepEqual(formDesignerValidationIssues(state), [{
+    itemId: "binding.task.1",
+    property: "label",
+    code: "label_required",
+  }]);
+});
+
 test("Task-scoped Short Text configuration clones a field shared with another Task", () => {
   const shared = structuredClone(accepted);
   shared.draft.processFields = [{

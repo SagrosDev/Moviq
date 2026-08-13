@@ -706,6 +706,7 @@ export interface components {
             fieldId: string;
             kind: string;
             label: string;
+            labelVisuallyHidden?: boolean;
             helpText: string;
             placeholder: string;
             width: string;
@@ -737,6 +738,7 @@ export interface components {
             fieldId?: string;
             kind: string;
             label?: string;
+            labelVisuallyHidden?: boolean;
             helpText?: string;
             placeholder?: string;
             content?: string;

@@ -131,9 +131,26 @@ export const WorkflowDraftEditor = ({
     const binding = issue.bindingId
       ? state.localDraft.formBindings.find((candidate) => candidate.id === issue.bindingId)
       : null;
-    return binding?.taskElementId
-      ?? state.localDraft.elements.find((candidate) => candidate.type === "task")?.id
-      ?? null;
+    if (binding?.taskElementId) return binding.taskElementId;
+    if (issue.code.startsWith("first_task_")) {
+      return state.localDraft.elements.find((candidate) => candidate.type === "task")?.id ?? null;
+    }
+    if (!issue.fieldId) return null;
+    const taskIds = new Set(state.localDraft.formBindings.flatMap((candidate) => (
+      candidate.kind === "field" && candidate.fieldId === issue.fieldId
+        ? [candidate.taskElementId]
+        : []
+    )));
+    return taskIds.size === 1 ? [...taskIds][0] ?? null : null;
+  };
+
+  const taskNameForIssue = (issue: WorkflowPublicationIssue) => {
+    const taskId = taskIdForIssue(issue);
+    if (!taskId) return null;
+    const task = state.localDraft.elements.find((element) => (
+      element.id === taskId && element.type === "task"
+    ));
+    return task?.label.trim() || null;
   };
 
   const handleIssue = (issue: WorkflowPublicationIssue) => {
@@ -245,6 +262,7 @@ export const WorkflowDraftEditor = ({
           issues={state.publicationIssues}
           validated={state.publicationStatus === "success"}
           onIssue={handleIssue}
+          taskNameForIssue={taskNameForIssue}
         />
       </div>
       <WorkflowEditorActionBar

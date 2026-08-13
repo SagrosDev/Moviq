@@ -445,6 +445,9 @@ export type MessageKey =
   | "workflowDesign.editor.issue.taskFormMissing"
   | "workflowDesign.editor.issue.taskBindingMissingField"
   | "workflowDesign.editor.issue.taskFormDecorative"
+  | "workflowDesign.editor.issue.formItemContentMissing"
+  | "workflowDesign.editor.issue.unknown"
+  | "workflowDesign.editor.issue.taskContext"
   | "workflowDesign.editor.issueAction.configureStarter"
   | "workflowDesign.editor.issueAction.configureAssignment"
   | "workflowDesign.editor.issueAction.reviewWorkflowPath"
@@ -1096,6 +1099,11 @@ export const spanishMessages: MessageDictionary = {
     "Reconecta este campo de la tarea con un campo reutilizable existente antes de publicar.",
   "workflowDesign.editor.issue.taskFormDecorative":
     "Reemplaza el contenido decorativo de esta tarea por una etiqueta de campo visible antes de publicar.",
+  "workflowDesign.editor.issue.formItemContentMissing":
+    "Agrega contenido visible a este elemento del formulario antes de publicar.",
+  "workflowDesign.editor.issue.unknown":
+    "Revisa este requisito del flujo antes de publicar.",
+  "workflowDesign.editor.issue.taskContext": "Tarea afectada:",
   "workflowDesign.editor.issueAction.configureStarter": "Configurar inicio",
   "workflowDesign.editor.issueAction.configureAssignment": "Configurar asignación",
   "workflowDesign.editor.issueAction.reviewWorkflowPath": "Revisar camino",
@@ -1752,6 +1760,11 @@ export const englishMessages: Partial<MessageDictionary> = {
     "Reconnect this Task field to an existing reusable field before publishing.",
   "workflowDesign.editor.issue.taskFormDecorative":
     "Replace decorative-only content in this Task with a visible field label before publishing.",
+  "workflowDesign.editor.issue.formItemContentMissing":
+    "Add visible content to this Form item before publishing.",
+  "workflowDesign.editor.issue.unknown":
+    "Review this workflow requirement before publishing.",
+  "workflowDesign.editor.issue.taskContext": "Affected Task:",
   "workflowDesign.editor.issueAction.configureStarter": "Configure starter",
   "workflowDesign.editor.issueAction.configureAssignment": "Configure assignment",
   "workflowDesign.editor.issueAction.reviewWorkflowPath": "Review workflow path",

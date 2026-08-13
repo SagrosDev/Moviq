@@ -67,3 +67,6 @@ These items are not outstanding work for the active Story 1.34. Compatibility, r
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-37-fix-postgresql-form-authoring-lease-lock.md`
   summary: Define safe same-session multi-tab ownership and release semantics for Form authoring leases.
   evidence: Same-session acquisition intentionally returns the existing token, so two tabs can share authority and either tab's unmount release can revoke the still-open tab; resolving this requires a per-tab identity, reference-counting, or a changed release policy.
+- source_spec: `_bmad-output/implementation-artifacts/spec-show-workflow-publish-blockers.md`
+  summary: Preserve actionable API problem targets longer than 64 characters across the shared client normalizer.
+  evidence: `normalizeApiProblem` currently replaces longer valid target names with `nonFieldErrors`; changing the shared API-client contract is explicitly outside this spec without user approval.

@@ -16,6 +16,7 @@ import {
   hasInvalidWorkflowTaskLabels,
   publicationIssuesFromInvalidParams,
   reduceWorkflowDraftEditorState,
+  workflowApiProblemFromResponse,
   workflowTopologyOrder,
   type WorkflowCreationAccepted,
   type WorkflowDraftDocument
@@ -485,11 +486,17 @@ test("keyboard connections and publication references preserve guarded recovery 
   assert.equal(canConnectWorkflowByKeyboard(true, "task-1"), false);
   assert.equal(canConnectWorkflowByKeyboard(false, null), false);
 
-  assert.deepEqual(publicationIssuesFromInvalidParams([{
-    name: "elements.task-2.processFields.field-1.formBindings.binding-2",
-    reason: "Reconnect this field.",
-    code: "first_task_binding_missing_field"
-  }]), [{
+  assert.deepEqual(publicationIssuesFromInvalidParams([
+    {
+      name: "elements.task-2.processFields.field-1.formBindings.binding-2",
+      reason: "Reconnect this field.",
+      code: "first_task_binding_missing_field"
+    },
+    {
+      name: "nonFieldErrors",
+      reason: "Invalid value."
+    }
+  ]), [{
     code: "first_task_binding_missing_field",
     severity: "blocking",
     target: "elements.task-2.processFields.field-1.formBindings.binding-2",
@@ -499,6 +506,58 @@ test("keyboard connections and publication references preserve guarded recovery 
     message: "Reconnect this field.",
     actionLabel: "Review issue"
   }]);
+});
+
+test("publish transport retains parsed Problem Details and ordered blockers", () => {
+  const parsedProblem = {
+      type: "https://api.moviqo.local/problems/workflow-draft-invalid",
+      title: "Workflow publish failed",
+      status: 400,
+      code: "workflow_draft_invalid",
+      correlationId: "publish-problem-body-1234",
+      invalidParams: [
+        {
+          name: "configuration.starter",
+          reason: "Choose who can start this workflow.",
+          code: "starter_missing"
+        },
+        {
+          name: "elements.task-1",
+          reason: "Choose who receives the Task.",
+          code: "assignment_missing"
+        },
+        {
+          name: "elements.task-2",
+          reason: "Review this requirement.",
+          code: "future_publish_rule"
+        }
+      ]
+  };
+  const response = new Response(null, {
+      status: 400,
+      headers: { "X-Correlation-ID": "publish-problem-header-1234" }
+  });
+  const error = workflowApiProblemFromResponse(parsedProblem, response);
+
+  assert.equal(error.status, 400);
+  assert.equal(error.code, "workflow_draft_invalid");
+  assert.equal(error.correlationId, "publish-problem-body-1234");
+  assert.deepEqual(error.invalidParams.map(({ name, code }) => ({ name, code })), [
+      { name: "configuration.starter", code: "starter_missing" },
+      { name: "elements.task-1", code: "assignment_missing" },
+      { name: "elements.task-2", code: "future_publish_rule" }
+  ]);
+  assert.deepEqual(
+    publicationIssuesFromInvalidParams(error.invalidParams).map(({ target, code }) => ({
+        target,
+        code
+      })),
+      [
+        { target: "configuration.starter", code: "starter_missing" },
+        { target: "elements.task-1", code: "assignment_missing" },
+        { target: "elements.task-2", code: "future_publish_rule" }
+      ]
+  );
 });
 
 test("the Workflow editor composes focused regions and does not embed Form field editing", async () => {
@@ -560,6 +619,7 @@ test("editor gestures never create background save requests or a second graph pa
   assert.match(checklist, /task_form_missing:\s*"workflowDesign\.editor\.issue\.taskFormMissing"/);
   assert.match(checklist, /task_binding_missing_field:\s*"workflowDesign\.editor\.issue\.taskBindingMissingField"/);
   assert.match(checklist, /task_form_decorative:\s*"workflowDesign\.editor\.issue\.taskFormDecorative"/);
+  assert.match(checklist, /form_item_content_missing:\s*"workflowDesign\.editor\.issue\.formItemContentMissing"/);
   const properties = await readFile(join(featureRoot, "ui", "WorkflowProperties.tsx"), "utf8");
   assert.match(properties, /workflow-delete-element-confirm/);
   assert.match(properties, /restoreDeleteTriggerRef/);

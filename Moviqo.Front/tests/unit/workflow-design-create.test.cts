@@ -634,6 +634,12 @@ test("invalid publish failure keeps checklist blockers actionable", () => {
   assert.equal(failed.publishErrorCode, "workflow_draft_invalid");
   assert.equal(failed.publicationIssues.length, 1);
   assert.equal(failed.publicationIssues[0]?.target, "configuration.starter");
+  const retrying = reduceWorkflowDraftEditorState(failed, {
+    type: "publish-requested",
+    requestKey: "publish-2"
+  });
+  assert.equal(retrying.publishStatus, "publishing");
+  assert.deepEqual(retrying.publicationIssues, []);
 });
 
 test("checklist target focus maps to stable editor sections", () => {

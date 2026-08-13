@@ -788,6 +788,7 @@ export const reduceWorkflowDraftEditorState = (
       publishStatus: "publishing",
       publishErrorCode: null,
       publishErrorMessage: null,
+      publicationIssues: [],
       activePublishRequestKey: action.requestKey
     };
   }
@@ -998,7 +999,10 @@ export const validateWorkflowPublication = async (
     );
 
     if (!response.response.ok) {
-      return { ok: false, error: await readApiProblem(response.response) };
+      return {
+        ok: false,
+        error: workflowApiProblemFromResponse(response.error, response.response)
+      };
     }
 
     return {
@@ -1034,7 +1038,10 @@ export const publishWorkflow = async (
     );
 
     if (!response.response.ok) {
-      return { ok: false, error: await readApiProblem(response.response) };
+      return {
+        ok: false,
+        error: workflowApiProblemFromResponse(response.error, response.response)
+      };
     }
 
     return {
@@ -1046,6 +1053,15 @@ export const publishWorkflow = async (
   }
 };
 
+export const workflowApiProblemFromResponse = (
+  error: unknown,
+  response: Response
+) => normalizeApiProblem(
+  error,
+  response.status,
+  response.headers.get("X-Correlation-ID") ?? ""
+);
+
 const referenceIdFromTarget = (target: string, collection: string) => {
   const segments = target.split(".");
   const collectionIndex = segments.indexOf(collection);
@@ -1056,7 +1072,11 @@ export const publicationIssuesFromInvalidParams = (
   invalidParams: Array<Record<string, string>> | undefined
 ): WorkflowPublicationIssue[] =>
   (invalidParams ?? [])
-    .filter((entry) => Boolean(entry.name) && Boolean(entry.reason))
+    .filter((entry) => (
+      Boolean(entry.name)
+      && entry.name !== "nonFieldErrors"
+      && Boolean(entry.reason)
+    ))
     .map((entry) => ({
       code: entry.code ?? "invalid",
       severity: "blocking",

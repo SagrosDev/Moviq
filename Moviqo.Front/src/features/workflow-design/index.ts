@@ -18,7 +18,8 @@ export {
   saveWorkflowDraft,
   setFirstTaskFieldBinding,
   upsertShortTextProcessField,
-  validateWorkflowPublication
+  validateWorkflowPublication,
+  workflowApiProblemFromResponse
 } from "./model/editor";
 export {
   adaptFlowConnection,

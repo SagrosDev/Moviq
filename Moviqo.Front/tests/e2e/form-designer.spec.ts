@@ -190,29 +190,136 @@ test("Form Designer persists explicit pointer and keyboard composition with runt
   await page.getByRole("button", { name: "Encabezado" }).click();
   await page.getByLabel("Contenido").fill("Detalles de la solicitud");
   await page.getByRole("button", { name: "Separador" }).click();
-  await page.getByRole("button", { name: "Texto de instrucciones" }).dragTo(
-    page.getByRole("heading", { level: 2, name: "Lienzo del formulario" })
-  );
+  await page.getByRole("button", { name: "Texto de instrucciones" }).click();
   await expect(page.getByLabel("Contenido")).toHaveValue(
     "Agrega instrucciones para la persona que complete la tarea."
   );
   await page.getByRole("button", { name: "Sección" }).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Contenido")).toHaveValue("Nueva sección");
+  await page.getByLabel("Contenido").fill("Datos de la persona solicitante");
   expect(saveCount).toBe(0);
+
+  const canvasItems = page.locator("[data-form-designer-item-id]");
+  const canvasOrder = async () => canvasItems.evaluateAll((elements) => (
+    elements.map((element) => element.getAttribute("data-form-designer-item-id"))
+  ));
+  await expect(page.getByRole("button", {
+    exact: true,
+    name: "Texto corto: Nombre de la persona solicitante"
+  })).toBeVisible();
+  await expect(page.getByRole("button", {
+    exact: true,
+    name: "Encabezado: Detalles de la solicitud"
+  })).toBeVisible();
+  await expect(page.getByRole("button", {
+    exact: true,
+    name: "Sección: Datos de la persona solicitante"
+  })).toBeVisible();
+  await expect(page.locator('[data-form-designer-item-id="divider-3"]')).toContainText("Separador");
+  await expect(page.getByText("divider-3", { exact: true })).toHaveCount(0);
+  expect(await canvasOrder()).toEqual([
+    "binding-1",
+    "heading-2",
+    "divider-3",
+    "instruction-4",
+    "section-5"
+  ]);
 
   const dragHandles = page.getByRole("button", { name: "Arrastrar para reordenar" });
   await expect(dragHandles).toHaveCount(5);
+  await dragHandles.first().focus();
+  await expect(page.getByRole("tooltip", { name: "Arrastrar para reordenar" }).first()).toBeVisible();
   await dragHandles.nth(1).focus();
   await page.keyboard.press("Space");
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Space");
   await expect(page.locator("#form-designer-item-heading-2")).toBeVisible();
+  expect(await canvasOrder()).toEqual([
+    "heading-2",
+    "binding-1",
+    "divider-3",
+    "instruction-4",
+    "section-5"
+  ]);
+  await page.locator('[data-form-designer-item-id="binding-1"]')
+    .getByRole("button", { name: "Arrastrar para reordenar" })
+    .focus();
+  await page.keyboard.press("Space");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Escape");
+  expect(await canvasOrder()).toEqual([
+    "heading-2",
+    "binding-1",
+    "divider-3",
+    "instruction-4",
+    "section-5"
+  ]);
 
-  await dragHandles.nth(2).dragTo(dragHandles.nth(1));
+  const halfWidthCard = page.locator('[data-form-designer-item-id="binding-1"]');
+  const fullWidthTarget = page.locator('[data-form-designer-item-id="divider-3"]');
+  const halfWidthHandle = halfWidthCard.getByRole("button", { name: "Arrastrar para reordenar" });
+  await halfWidthCard.scrollIntoViewIfNeeded();
+  const sourceBox = await halfWidthCard.boundingBox();
+  const targetBox = await fullWidthTarget.boundingBox();
+  const handleBox = await halfWidthHandle.boundingBox();
+  expect(sourceBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+  expect(handleBox).not.toBeNull();
+  if (!sourceBox || !targetBox || !handleBox) throw new Error("Form Designer drag geometry was unavailable");
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2 + 12, { steps: 3 });
+
+  const dragOverlay = page.locator('[data-form-designer-drag-overlay="true"]');
+  await expect(halfWidthCard).toHaveAttribute("data-dragging", "true");
+  await expect(dragOverlay).toBeVisible();
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 24, { steps: 12 });
+
+  const overlayBox = await dragOverlay.boundingBox();
+  expect(overlayBox).not.toBeNull();
+  expect(Math.abs((overlayBox?.width ?? 0) - sourceBox.width)).toBeLessThan(2);
+  const dragScale = await page.locator('[data-form-designer-item-id="binding-1"], [data-form-designer-item-id="divider-3"]').evaluateAll(
+    (elements) => elements.map((element) => {
+      const transform = getComputedStyle(element).transform;
+      if (transform === "none") return { scaleX: 1, scaleY: 1 };
+      const matrix = new DOMMatrixReadOnly(transform);
+      return { scaleX: matrix.a, scaleY: matrix.d };
+    })
+  );
+  expect(dragScale).toEqual([
+    { scaleX: 1, scaleY: 1 },
+    { scaleX: 1, scaleY: 1 }
+  ]);
+  const stableTargetBox = await fullWidthTarget.boundingBox();
+  expect(stableTargetBox).not.toBeNull();
+  if (!stableTargetBox) throw new Error("Stable Form Designer drop target was unavailable");
+  expect(Math.abs(stableTargetBox.width - targetBox.width)).toBeLessThan(2);
+  const currentTargetBox = await fullWidthTarget.boundingBox();
+  expect(currentTargetBox).not.toBeNull();
+  if (!currentTargetBox) throw new Error("Current Form Designer drop target was unavailable");
+  await page.mouse.move(
+    currentTargetBox.x + currentTargetBox.width / 2,
+    currentTargetBox.y + currentTargetBox.height / 2,
+    { steps: 6 }
+  );
+  await expect(page.locator('[data-form-designer-drop-target-id]')).toHaveAttribute(
+    "data-form-designer-drop-target-id",
+    "divider-3"
+  );
+  await page.mouse.up();
+  expect(await canvasOrder()).toEqual([
+    "heading-2",
+    "divider-3",
+    "binding-1",
+    "instruction-4",
+    "section-5"
+  ]);
   expect(saveCount).toBe(0);
   await expect(page.getByRole("heading", { level: 3, name: "Detalles de la solicitud" })).toBeVisible();
-  await expect(page.getByLabel("Nombre de la persona solicitante")).toHaveAttribute("disabled", "");
+  await expect(page.getByRole("textbox", {
+    name: "Nombre de la persona solicitante"
+  })).toHaveAttribute("disabled", "");
 
   await page.keyboard.press("Control+S");
   await expect.poll(() => saveCount).toBe(1);
@@ -220,6 +327,15 @@ test("Form Designer persists explicit pointer and keyboard composition with runt
   expect((savedDraft.formBindings as Array<{ id: string; width: string }>).find(
     (item) => item.id === "binding-1"
   )?.width).toBe("half");
+  expect((savedDraft.formBindings as Array<{ id: string; position: number }>).sort(
+    (left, right) => left.position - right.position
+  ).map((item) => item.id)).toEqual([
+    "heading-2",
+    "divider-3",
+    "binding-1",
+    "instruction-4",
+    "section-5"
+  ]);
 
   await page.reload();
   await expect(page.getByText("Nombre de la persona solicitante", { exact: true }).first()).toBeVisible();

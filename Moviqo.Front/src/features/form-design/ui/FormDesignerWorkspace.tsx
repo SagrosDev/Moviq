@@ -2,12 +2,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   closestCenter,
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
   useSensor,
   useSensors,
   type Announcements,
+  type CollisionDetection,
+  type DragCancelEvent,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
   type ScreenReaderInstructions
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
@@ -27,6 +33,7 @@ import {
 import { useFormDesigner } from "../model/useFormDesigner";
 import {
   FormDesignerCanvas,
+  FormDesignerDragOverlay,
   formDesignerCanvasDropId
 } from "./FormDesignerCanvas";
 import {
@@ -56,6 +63,46 @@ const paletteKindFromDragId = (id: string): FormDesignerPaletteItemKind | null =
     : null;
 };
 
+export const formDesignerCollisionDetection: CollisionDetection = (args) => {
+  if (args.pointerCoordinates) {
+    const hitElement = document.elementFromPoint(
+      args.pointerCoordinates.x,
+      args.pointerCoordinates.y
+    );
+    const workspace = hitElement?.closest("[data-form-designer-workspace]");
+    const pointerTarget = workspace
+      ? hitElement?.closest<HTMLElement>("[data-form-designer-item-id]")
+      : null;
+    const pointerTargetId = pointerTarget?.dataset.formDesignerItemId;
+    const pointerContainer = pointerTargetId
+      ? args.droppableContainers.find(
+          (container) => String(container.id) === pointerTargetId
+        )
+      : undefined;
+    if (pointerContainer && pointerTargetId !== String(args.active.id)) {
+      return [{
+        id: pointerContainer.id,
+        data: { droppableContainer: pointerContainer, value: 1 }
+      }];
+    }
+  }
+  const pointerCollisions = pointerWithin(args);
+  const itemCollisions = pointerCollisions.filter(
+    (collision) => (
+      String(collision.id) !== formDesignerCanvasDropId
+      && String(collision.id) !== String(args.active.id)
+    )
+  );
+  return itemCollisions.length > 0 ? itemCollisions : pointerCollisions;
+};
+
+type ActiveCanvasDrag = {
+  height: number;
+  initialIndex: number;
+  itemId: string;
+  width: number;
+};
+
 export const FormDesignerWorkspace = ({
   accepted,
   taskElementId,
@@ -83,8 +130,15 @@ export const FormDesignerWorkspace = ({
     onSaveResult
   );
   const summaryRef = useRef<HTMLDivElement>(null);
+  const keyboardDropIndexRef = useRef<number | null>(null);
+  const pointerDragRef = useRef(false);
   const [confirmTakeover, setConfirmTakeover] = useState(false);
+  const [activeCanvasDrag, setActiveCanvasDrag] = useState<ActiveCanvasDrag | null>(null);
+  const [activeDropTargetId, setActiveDropTargetId] = useState<string | null>(null);
   const items = formItemsForTask(state.localDraft, taskElementId);
+  const activeCanvasDragItem = activeCanvasDrag
+    ? items.find((item) => item.id === activeCanvasDrag.itemId) ?? null
+    : null;
   const selectedItem = items.find((item) => item.id === state.selectedItemId) ?? null;
   const validationIssues = formDesignerValidationIssues(state);
   const saveErrors = formDesignerErrorSummary(state);
@@ -153,6 +207,13 @@ export const FormDesignerWorkspace = ({
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    const activeDrag = activeCanvasDrag;
+    const keyboardDropIndex = keyboardDropIndexRef.current;
+    const wasPointerDrag = pointerDragRef.current;
+    keyboardDropIndexRef.current = null;
+    pointerDragRef.current = false;
+    setActiveDropTargetId(null);
+    setActiveCanvasDrag(null);
     const activeId = String(event.active.id);
     const overId = event.over ? String(event.over.id) : null;
     const paletteKind = paletteKindFromDragId(activeId);
@@ -164,13 +225,62 @@ export const FormDesignerWorkspace = ({
       if (targetIndex >= 0) addPaletteItem(paletteKind, targetIndex);
       return;
     }
+    const resolvedTargetIndex = formDesignerDropIndex(
+      items.map((item) => item.id),
+      activeId,
+      overId
+    );
+    const targetIndex = !wasPointerDrag && activeDrag?.itemId === activeId
+      ? keyboardDropIndex ?? resolvedTargetIndex
+      : resolvedTargetIndex;
+    if (targetIndex !== null) dispatch({ type: "item-moved", itemId: activeId, toIndex: targetIndex });
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    pointerDragRef.current = event.activatorEvent.type !== "keydown";
+    keyboardDropIndexRef.current = null;
+    const activeId = String(event.active.id);
+    if (paletteKindFromDragId(activeId)) return;
+    const initialRect = event.active.rect.current.initial;
+    const activeElement = document.getElementById(`form-designer-item-${activeId}`)
+      ?.closest<HTMLElement>("[data-form-designer-item-id]");
+    const sourceRect = initialRect ?? activeElement?.getBoundingClientRect();
+    if (!sourceRect || !items.some((item) => item.id === activeId)) return;
+    setActiveCanvasDrag({
+      height: sourceRect.height,
+      initialIndex: items.findIndex((item) => item.id === activeId),
+      itemId: activeId,
+      width: sourceRect.width
+    });
+    if (!pointerDragRef.current) {
+      keyboardDropIndexRef.current = items.findIndex((item) => item.id === activeId);
+    }
+  };
+
+  const handleDragCancel = (_event: DragCancelEvent) => {
+    pointerDragRef.current = false;
+    keyboardDropIndexRef.current = null;
+    setActiveDropTargetId(null);
+    setActiveCanvasDrag(null);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setActiveDropTargetId(event.over ? String(event.over.id) : null);
+    if (pointerDragRef.current) return;
+    const activeId = String(event.active.id);
+    const overId = event.over ? String(event.over.id) : null;
+    if (paletteKindFromDragId(activeId)) return;
     const targetIndex = formDesignerDropIndex(
       items.map((item) => item.id),
       activeId,
       overId
     );
-    if (targetIndex !== null) dispatch({ type: "item-moved", itemId: activeId, toIndex: targetIndex });
+    if (targetIndex !== null) keyboardDropIndexRef.current = targetIndex;
   };
+
+  const detectCollisions: CollisionDetection = (args) => (
+    pointerDragRef.current ? formDesignerCollisionDetection(args) : closestCenter(args)
+  );
 
   useEffect(() => {
     onDirtyChange?.(state.hasLocalChanges);
@@ -190,7 +300,11 @@ export const FormDesignerWorkspace = ({
   }, [state.errorMessages]);
 
   return (
-    <div className="grid gap-moviqo-4">
+    <div
+      className="grid gap-moviqo-4"
+      data-form-designer-workspace="true"
+      data-form-designer-drop-target-id={activeDropTargetId ?? undefined}
+    >
       {leaseState.status === "acquiring" ? (
         <LoadingState>{t("formDesign.lease.acquiring")}</LoadingState>
       ) : leaseState.status !== "editable" ? (
@@ -304,9 +418,12 @@ export const FormDesignerWorkspace = ({
       ) : null}
       <DndContext
         accessibility={{ announcements, screenReaderInstructions }}
-        collisionDetection={closestCenter}
+        collisionDetection={detectCollisions}
         sensors={sensors}
+        onDragCancel={handleDragCancel}
         onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragStart={handleDragStart}
       >
         <div className="grid gap-moviqo-4 desktop:grid-cols-[16rem_minmax(0,1fr)_20rem]">
           <FormDesignerPalette
@@ -318,6 +435,9 @@ export const FormDesignerWorkspace = ({
             <FormDesignerCanvas
               disabled={disabled}
               draft={state.localDraft}
+              dropTargetItemId={items.some((item) => item.id === activeDropTargetId)
+                ? activeDropTargetId
+                : null}
               invalidItemIds={[
                 ...validationErrors.map((error) => error.itemId),
                 ...saveErrors.errors.map((error) => error.itemId)
@@ -356,6 +476,20 @@ export const FormDesignerWorkspace = ({
             onWidthChange={(itemId, width) => dispatch({ type: "item-width-changed", itemId, width })}
           />
         </div>
+        <DragOverlay
+          adjustScale={false}
+          dropAnimation={null}
+          style={{ pointerEvents: "none" }}
+        >
+          {activeCanvasDrag && activeCanvasDragItem ? (
+            <FormDesignerDragOverlay
+              draft={state.localDraft}
+              height={activeCanvasDrag.height}
+              item={activeCanvasDragItem}
+              width={activeCanvasDrag.width}
+            />
+          ) : null}
+        </DragOverlay>
       </DndContext>
     </div>
   );

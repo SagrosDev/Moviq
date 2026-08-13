@@ -163,10 +163,129 @@ def test_task_form_read_returns_authorized_projection(assigned_task_member) -> N
                     "width": "full",
                     "position": 0,
                     "value": "",
+                    "required": True,
+                }
+            ],
+            "items": [
+                {
+                    "itemId": "binding-1",
+                    "controlId": "binding-1",
+                    "fieldId": "field-1",
+                    "kind": "shortText",
+                    "label": "Requester name",
+                    "helpText": "Use the full name.",
+                    "placeholder": "Example: Ana Perez",
+                    "width": "full",
+                    "position": 0,
+                    "value": "",
+                    "required": True,
                 }
             ]
         },
     }
+
+
+@pytest.mark.django_db
+def test_task_form_projection_preserves_structural_items_without_runtime_values(
+    assigned_task_member,
+) -> None:
+    user, _organization, _membership, _workflow, task = assigned_task_member
+    version = task.workflow_version
+    snapshot = dict(version.snapshot)
+    snapshot["schemaVersion"] = 8
+    snapshot["formBindings"] = [
+        {
+            "id": "heading-1",
+            "kind": "heading",
+            "taskElementId": "task-1",
+            "position": 0,
+            "width": "full",
+            "content": "Request details",
+        },
+        {
+            "id": "binding-1",
+            "kind": "field",
+            "taskElementId": "task-1",
+            "fieldId": "field-1",
+            "position": 1,
+            "width": "half",
+            "label": None,
+        },
+        {
+            "id": "divider-1",
+            "kind": "divider",
+            "taskElementId": "task-1",
+            "position": 2,
+            "width": "quarter",
+        },
+    ]
+    WorkflowVersion.objects.filter(pk=version.pk).update(
+        snapshot=snapshot,
+        snapshot_schema_version=8,
+    )
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(f"/api/v1/my-work/tasks/{task.id}/form/")
+
+    assert response.status_code == 200
+    assert response.json()["form"]["items"] == [
+        {
+            "itemId": "heading-1",
+            "kind": "heading",
+            "content": "Request details",
+            "position": 0,
+            "width": "full",
+        },
+        {
+            "itemId": "binding-1",
+            "controlId": "binding-1",
+            "fieldId": "field-1",
+            "kind": "shortText",
+            "label": "Requester name",
+            "helpText": "Use the full name.",
+            "placeholder": "Example: Ana Perez",
+            "position": 1,
+            "width": "half",
+            "value": "",
+            "required": True,
+        },
+        {
+            "itemId": "divider-1",
+            "kind": "divider",
+            "position": 2,
+            "width": "quarter",
+        },
+    ]
+    assert "fieldId" not in response.json()["form"]["items"][0]
+    assert "value" not in response.json()["form"]["items"][0]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("binding_label", ["", "\u200b\u0301\u2028"])
+def test_task_form_projection_hides_nonmeaningful_binding_labels_with_accessible_fallback(
+    assigned_task_member,
+    binding_label,
+) -> None:
+    user, _organization, _membership, _workflow, task = assigned_task_member
+    version = task.workflow_version
+    snapshot = dict(version.snapshot)
+    snapshot["formBindings"] = [
+        {**snapshot["formBindings"][0], "label": binding_label}
+    ]
+    WorkflowVersion.objects.filter(pk=version.pk).update(snapshot=snapshot)
+    client = Client()
+    client.force_login(user)
+
+    response = client.get(f"/api/v1/my-work/tasks/{task.id}/form/")
+
+    assert response.status_code == 200
+    control = response.json()["form"]["controls"][0]
+    assert control["label"] == "Requester name"
+    assert control["labelVisuallyHidden"] is True
+    item = response.json()["form"]["items"][0]
+    assert item["label"] == "Requester name"
+    assert item["labelVisuallyHidden"] is True
 
 
 @pytest.mark.django_db

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
 from django.test import Client
+from django.utils import timezone
 
 from moviqo.modules.governance.models import TransactionalAuditRecord
 from moviqo.modules.organizations.models import (
@@ -14,7 +16,7 @@ from moviqo.modules.organizations.models import (
     Team,
     TeamMembership,
 )
-from moviqo.modules.workflow_design.models import WorkflowVersion
+from moviqo.modules.workflow_design.models import FormAuthoringLease, WorkflowVersion
 
 
 def _publishable_workflow_payload(
@@ -22,7 +24,7 @@ def _publishable_workflow_payload(
     draft_id: str,
 ) -> dict[str, object]:
     return {
-        "schemaVersion": 7,
+        "schemaVersion": 8,
         "draftId": draft_id,
         "workflowId": workflow_id,
         "name": "Workflow intake",
@@ -136,7 +138,7 @@ def test_workflow_creation_returns_authoritative_draft_payload(workflow_design_m
         "teams": [],
     }
     assert payload["draft"] == {
-        "schemaVersion": 7,
+        "schemaVersion": 8,
         "draftId": payload["draft"]["draftId"],
         "workflowId": payload["workflowId"],
         "name": "Workflow intake",
@@ -286,6 +288,234 @@ def test_incomplete_coherent_draft_saves_and_validation_uses_that_saved_revision
         "first_task_missing",
         "end_step_invalid",
     }
+
+
+@pytest.mark.django_db
+def test_save_path_preserves_blank_form_presentation_and_publication_reports_it(
+    workflow_design_member,
+) -> None:
+    user, _organization, _membership = workflow_design_member
+    client = Client()
+    client.force_login(user)
+    created = client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Incomplete Form"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-incomplete-form"},
+    ).json()
+    draft = {
+        **created["draft"],
+        "elements": [
+            {"id": "start-1", "type": "start", "label": "Start"},
+            {"id": "task-1", "type": "task", "label": "Review"},
+        ],
+        "processFields": [
+            {
+                "id": "field-1",
+                "kind": "shortText",
+                "label": "",
+                "helpText": "",
+                "placeholder": "",
+                "defaultValue": None,
+                "minimumLength": 0,
+                "maximumLength": 255,
+            }
+        ],
+        "formBindings": [
+            {
+                "id": "heading-1",
+                "kind": "heading",
+                "taskElementId": "task-1",
+                "position": 0,
+                "width": "full",
+                "content": "",
+            },
+            {
+                "id": "binding-1",
+                "kind": "field",
+                "taskElementId": "task-1",
+                "fieldId": "field-1",
+                "position": 1,
+                "width": "full",
+                "label": "",
+            },
+        ],
+    }
+
+    saved = client.put(
+        f"/api/v1/workflow-design/workflows/{created['workflowId']}/draft/",
+        data={"expectedRevision": "1", "draft": draft},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-save-incomplete-form"},
+    )
+
+    assert saved.status_code == 200
+    assert saved.json()["draft"]["processFields"][0]["label"] == ""
+    assert saved.json()["draft"]["formBindings"][0]["content"] == ""
+    assert saved.json()["draft"]["formBindings"][1]["label"] == ""
+    reopened = client.get(
+        f"/api/v1/workflow-design/workflows/{created['workflowId']}/draft/"
+    )
+    assert reopened.status_code == 200
+    assert reopened.json()["draft"]["formBindings"][1]["label"] == ""
+    validation = client.post(
+        f"/api/v1/workflow-design/workflows/{created['workflowId']}/publication-validation/",
+        data={"expectedRevision": "2"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-validate-incomplete-form"},
+    )
+    assert validation.status_code == 200
+    issues = {issue["code"]: issue for issue in validation.json()["issues"]}
+    assert issues["task_form_decorative"]["target"] == "processFields.field-1"
+    assert issues["task_form_decorative"]["message"] == (
+        "Add a label to this Form item before publishing."
+    )
+    assert issues["task_form_decorative"]["actionLabel"] == "Open Task form"
+    assert issues["form_item_content_missing"]["target"] == (
+        "formBindings.heading-1.content"
+    )
+
+
+@pytest.mark.django_db
+def test_form_authoring_lease_read_only_takeover_enforcement_and_logout_release(
+    workflow_design_member,
+    django_user_model,
+) -> None:
+    first_user, organization, first_membership = workflow_design_member
+    second_user = django_user_model.objects.create_user(
+        username="second-designer",
+        email="second-designer@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Second Designer",
+    )
+    second_membership = Membership.objects.create(
+        organization=organization,
+        user=second_user,
+        role=MembershipRole.DESIGNER,
+    )
+    first_client = Client()
+    second_client = Client()
+    first_client.force_login(first_user)
+    second_client.force_login(second_user)
+    created = first_client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "Leased Form"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-create-leased-form"},
+    ).json()
+    workflow_id = created["workflowId"]
+    prepared = first_client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                **created["draft"],
+                "elements": [
+                    {"id": "start-1", "type": "start", "label": "Start"},
+                    {"id": "task-1", "type": "task", "label": "Review"},
+                ],
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-prepare-leased-form"},
+    ).json()
+    lease_path = (
+        f"/api/v1/workflow-design/workflows/{workflow_id}/tasks/"
+        "task-1/form-authoring-lease/"
+    )
+    save_path = (
+        f"/api/v1/workflow-design/workflows/{workflow_id}/tasks/task-1/form-draft/"
+    )
+
+    first_lease = first_client.post(
+        lease_path,
+        data={"action": "acquire"},
+        content_type="application/json",
+    )
+    secondary = second_client.post(
+        lease_path,
+        data={"action": "acquire"},
+        content_type="application/json",
+    )
+    takeover = second_client.post(
+        lease_path,
+        data={"action": "takeover"},
+        content_type="application/json",
+    )
+
+    assert first_lease.status_code == 200
+    assert first_lease.json()["mode"] == "editable"
+    assert first_lease.json()["holder"] == {
+        "membershipId": str(first_membership.id),
+        "displayName": "Designer",
+    }
+    assert secondary.status_code == 200
+    assert secondary.json()["mode"] == "readOnly"
+    assert secondary.json()["leaseToken"] is None
+    assert takeover.status_code == 200
+    assert takeover.json()["mode"] == "editable"
+    assert takeover.json()["holder"]["membershipId"] == str(second_membership.id)
+
+    stale_save = first_client.put(
+        save_path,
+        data={
+            "expectedRevision": "2",
+            "draft": prepared["draft"],
+            "leaseToken": first_lease.json()["leaseToken"],
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-stale-form-save"},
+    )
+    authoritative_save = second_client.put(
+        save_path,
+        data={
+            "expectedRevision": "2",
+            "draft": prepared["draft"],
+            "leaseToken": takeover.json()["leaseToken"],
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "workflow-authoritative-form-save"},
+    )
+    heartbeat = second_client.post(
+        lease_path,
+        data={
+            "action": "heartbeat",
+            "leaseToken": takeover.json()["leaseToken"],
+        },
+        content_type="application/json",
+    )
+
+    assert stale_save.status_code == 409
+    assert stale_save.json()["code"] == "form_authoring_lease_lost"
+    assert authoritative_save.status_code == 200
+    assert authoritative_save.json()["revision"] == "3"
+    assert heartbeat.status_code == 200
+    assert heartbeat.json()["heartbeatAfterSeconds"] == 20
+
+    assert second_client.post("/api/v1/auth/sign-out/", data={}).status_code == 204
+    assert not FormAuthoringLease.objects.filter(workflow_id=workflow_id).exists()
+    reacquired = first_client.post(
+        lease_path,
+        data={"action": "acquire"},
+        content_type="application/json",
+    )
+    assert reacquired.status_code == 200
+    assert reacquired.json()["mode"] == "editable"
+    FormAuthoringLease.objects.filter(workflow_id=workflow_id).update(
+        session_expires_at=timezone.now() - timedelta(seconds=1)
+    )
+    second_client.force_login(second_user)
+    after_session_expiry = second_client.post(
+        lease_path,
+        data={"action": "acquire"},
+        content_type="application/json",
+    )
+    assert after_session_expiry.status_code == 200
+    assert after_session_expiry.json()["mode"] == "editable"
+    assert after_session_expiry.json()["holder"]["membershipId"] == str(
+        second_membership.id
+    )
 
 
 @pytest.mark.django_db
@@ -725,7 +955,7 @@ def test_workflow_catalog_lists_authorized_workflows(workflow_design_member) -> 
                 "workflowId": created.json()["workflowId"],
                 "name": "Workflow intake",
                 "revision": "1",
-                "schemaVersion": 7,
+                "schemaVersion": 8,
                 "updatedAt": response.json()["items"][0]["updatedAt"],
             }
         ]
@@ -771,7 +1001,7 @@ def test_workflow_draft_detail_returns_authoritative_server_payload(
         "name": "Workflow intake",
         "revision": "1",
         "draft": {
-            "schemaVersion": 7,
+            "schemaVersion": 8,
             "draftId": response.json()["draft"]["draftId"],
             "workflowId": workflow_id,
             "name": "Workflow intake",
@@ -876,7 +1106,7 @@ def test_workflow_draft_save_returns_authoritative_graph_payload(
         "name": "Workflow intake",
         "revision": "2",
         "draft": {
-            "schemaVersion": 7,
+            "schemaVersion": 8,
             "draftId": draft_id,
             "workflowId": workflow_id,
             "name": "Workflow intake",
@@ -922,10 +1152,11 @@ def test_workflow_draft_save_returns_authoritative_graph_payload(
                     "maximumLength": 255,
                 }
             ],
-            "formBindings": [
-                {
-                    "id": "binding-1",
-                    "taskElementId": "task-1",
+                "formBindings": [
+                    {
+                        "id": "binding-1",
+                        "kind": "field",
+                        "taskElementId": "task-1",
                     "fieldId": "field-1",
                     "position": 0,
                     "width": "full",
@@ -1878,11 +2109,13 @@ def test_workflow_publish_returns_authoritative_published_version_payload(
     workflow_id = created.json()["workflowId"]
     draft_id = created.json()["draft"]["draftId"]
 
+    draft = _publishable_workflow_payload(workflow_id, draft_id)
+    draft["formBindings"][0]["label"] = ""
     saved = client.put(
         f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
         data={
             "expectedRevision": "1",
-            "draft": _publishable_workflow_payload(workflow_id, draft_id),
+            "draft": draft,
         },
         content_type="application/json",
         headers={"Idempotency-Key": "workflow-save-1"},
@@ -1907,9 +2140,10 @@ def test_workflow_publish_returns_authoritative_published_version_payload(
         "versionNumber": 1,
         "publishedAt": payload["publishedVersion"]["publishedAt"],
         "sourceRevision": "2",
-        "schemaVersion": 7,
+        "schemaVersion": 8,
     }
-    assert WorkflowVersion.objects.filter(workflow_id=workflow_id).count() == 1
+    version = WorkflowVersion.objects.get(workflow_id=workflow_id)
+    assert version.snapshot["formBindings"][0]["label"] == ""
 
 
 @pytest.mark.django_db

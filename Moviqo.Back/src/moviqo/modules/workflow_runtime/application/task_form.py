@@ -13,6 +13,7 @@ from moviqo.modules.workflow_design.application import (
     read_published_workflow_version,
     read_workflow_draft_snapshot,
 )
+from moviqo.modules.workflow_design.application.text import has_meaningful_text
 from moviqo.modules.workflow_runtime.application.my_work import OPEN_TASK_STATUSES
 from moviqo.modules.workflow_runtime.models import TaskOccurrence, TaskProcessFieldValue
 
@@ -59,6 +60,7 @@ class TaskFormProjection:
     task_title: str
     process_id: str
     controls: list[dict[str, Any]]
+    items: list[dict[str, Any]]
     completion_available: bool
     workflow_version_id: str | None
 
@@ -244,34 +246,60 @@ def build_task_form_projection(task: TaskOccurrence) -> TaskFormProjection | Non
             break
 
     controls: list[dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     for binding in document["formBindings"]:
         if binding["taskElementId"] != task.task_element_id:
+            continue
+        if binding.get("kind", "field") != "field":
+            item = {
+                "itemId": binding["id"],
+                "kind": binding["kind"],
+                "width": binding["width"],
+                "position": binding["position"],
+            }
+            if "content" in binding:
+                item["content"] = binding["content"]
+            items.append(item)
             continue
         field = fields_by_id.get(binding["fieldId"])
         if field is None:
             continue
-        controls.append(
-            {
-                "controlId": binding["id"],
-                "fieldId": field["id"],
-                "kind": field["kind"],
-                "label": binding.get("label") or field["label"],
-                "helpText": field["helpText"],
-                "placeholder": field["placeholder"],
-                "width": binding["width"],
-                "position": binding["position"],
-                "value": values_by_field_id.get(field["id"], field["defaultValue"] or ""),
-                "minimumLength": field["minimumLength"],
-                "maximumLength": field["maximumLength"],
-            }
+        binding_label = binding.get("label")
+        label_visually_hidden = (
+            binding_label is not None and not has_meaningful_text(binding_label)
         )
+        label = (
+            binding_label
+            if binding_label is not None and has_meaningful_text(binding_label)
+            else field["label"]
+        )
+        control = {
+            "controlId": binding["id"],
+            "fieldId": field["id"],
+            "kind": field["kind"],
+            "label": label,
+            "helpText": field["helpText"],
+            "placeholder": field["placeholder"],
+            "width": binding["width"],
+            "position": binding["position"],
+            "value": values_by_field_id.get(field["id"], field["defaultValue"] or ""),
+            "required": field["minimumLength"] > 0,
+            "minimumLength": field["minimumLength"],
+            "maximumLength": field["maximumLength"],
+        }
+        if label_visually_hidden:
+            control["labelVisuallyHidden"] = True
+        controls.append(control)
+        items.append({"itemId": binding["id"], **control})
     controls.sort(key=lambda control: (control["position"], control["controlId"]))
+    items.sort(key=lambda item: (item["position"], item["itemId"]))
     return TaskFormProjection(
         task=task,
         workflow_name=_workflow_name_from_document(document=document, fallback=task.workflow.name),
         task_title=task_title,
         process_id=str(task.process_id),
         controls=controls,
+        items=items,
         completion_available=can_complete_task(task=task, document=document),
         workflow_version_id=(
             str(task.workflow_version_id) if task.workflow_version_id is not None else None
@@ -531,7 +559,15 @@ def build_task_form_response(*, projection: TaskFormProjection) -> dict[str, Any
                     if key not in {"minimumLength", "maximumLength"}
                 }
                 for control in projection.controls
-            ]
+            ],
+            "items": [
+                {
+                    key: value
+                    for key, value in item.items()
+                    if key not in {"minimumLength", "maximumLength"}
+                }
+                for item in projection.items
+            ],
         },
     }
 

@@ -1,5 +1,9 @@
+import { useEffect, useMemo, useRef } from "react";
 import { useLanguage } from "../../../shared/localization";
+import { Button, ErrorSummary } from "../../../shared/ui";
 import type { TaskFormEditorState } from "../model/taskForm";
+import { taskFormErrorSummary, taskFormRetryTarget } from "../model/taskForm";
+import { TaskFormRenderer } from "./TaskFormRenderer";
 
 type TaskFormPanelProps = {
   state: TaskFormEditorState;
@@ -34,6 +38,26 @@ export const TaskFormPanel = ({
 }: TaskFormPanelProps) => {
   const { t } = useLanguage();
   const inputsDisabled = state.saveStatus === "saving" || state.completionStatus === "completing";
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const summary = useMemo(() => taskFormErrorSummary(
+    state.invalidFieldNames,
+    state.errorMessages,
+    state.controls
+  ), [state.controls, state.errorMessages, state.invalidFieldNames]);
+  const retryTarget = taskFormRetryTarget(state);
+
+  useEffect(() => {
+    if (state.errorMessages.length === 0) return;
+    summaryRef.current?.focus();
+    const firstFieldId = summary.errors[0]?.fieldId;
+    if (!firstFieldId) return;
+    window.requestAnimationFrame(() => {
+      const field = document.getElementById(firstFieldId);
+      if (!(field instanceof HTMLElement)) return;
+      field.scrollIntoView({ block: "center", behavior: "auto" });
+      field.focus();
+    });
+  }, [state.errorMessages, summary.errors]);
 
   if (state.completionStatus === "success" && state.completionResult) {
     return <section className="task-form-shell" aria-labelledby="task-form-title">
@@ -70,42 +94,32 @@ export const TaskFormPanel = ({
         <span>{t("taskForm.status")} {statusLabelFor(state.status, t)}</span>
         <span>{t("taskForm.revision")} {state.taskRevision}</span>
       </div>
-      {state.errorMessages.length > 0 ? <div className="workflow-editor__errors" role="alert">
-        <strong>{t("taskForm.errorTitle")}</strong>
-        <ul>
-          {state.errorMessages.map((message) => <li key={message}>{message}</li>)}
-        </ul>
+      {state.errorMessages.length > 0 ? <div className="grid gap-moviqo-3">
+        <ErrorSummary
+          errors={summary.errors}
+          formMessage={summary.formMessage}
+          ref={summaryRef}
+          title={t("taskForm.errorTitle")}
+        />
         <div className="button-row">
-          <button className="button" data-variant="secondary" type="button" onClick={onRetrySave}>
+          <Button
+            variant="secondary"
+            onClick={retryTarget === "complete" ? onComplete : onRetrySave}
+          >
             {t("taskForm.retry")}
-          </button>
-          <button className="button" data-variant="secondary" type="button" onClick={onReloadLatest}>
+          </Button>
+          <Button variant="secondary" onClick={onReloadLatest}>
             {t("taskForm.reloadLatest")}
-          </button>
+          </Button>
         </div>
       </div> : null}
-      <div className="task-form-grid">
-        {state.controls.map((control) => {
-          const invalidMessage = fieldMessageFor(
-            state.invalidFieldNames,
-            state.errorMessages,
-            control.controlId
-          );
-          return <label key={control.controlId} className="task-form-field">
-            <span>{control.label}</span>
-            {control.helpText ? <small>{control.helpText}</small> : null}
-            <input
-              type="text"
-              value={control.value}
-              placeholder={control.placeholder}
-              disabled={inputsDisabled}
-              aria-invalid={Boolean(invalidMessage)}
-              onChange={(event) => onValueChange(control.controlId, event.target.value)}
-            />
-            {invalidMessage ? <p className="validation-message">{invalidMessage}</p> : null}
-          </label>;
-        })}
-      </div>
+      <TaskFormRenderer
+        disabled={inputsDisabled}
+        errorMessages={state.errorMessages}
+        invalidFieldNames={state.invalidFieldNames}
+        items={state.items}
+        onValueChange={onValueChange}
+      />
       <div className="task-form-actions">
         <button
           className="button"
@@ -139,15 +153,4 @@ export const TaskFormPanel = ({
       ) : null}
     </article>
   </section>;
-};
-
-const fieldMessageFor = (
-  invalidFieldNames: string[],
-  errorMessages: string[],
-  controlId: string
-) => {
-  const index = invalidFieldNames.findIndex(
-    (name) => name === `controls.${controlId}.value`
-  );
-  return index >= 0 ? errorMessages[index] : null;
 };

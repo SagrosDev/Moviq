@@ -8,11 +8,11 @@ import {
 import { MoviqoMark, MoviqoWordmark } from "../../shared/branding";
 import { LanguageSelector, useLanguage } from "../../shared/localization";
 import {
-  Alert,
   AppHeader,
   AppShell,
   Button,
   ButtonLink,
+  LoadingState,
   PageContainer,
   PageHeader
 } from "../../shared/ui";
@@ -54,7 +54,7 @@ export const AuthenticatedLayout = () => {
         <EnvironmentBanner />
         <main id="main-content">
           <PageContainer>
-            <Alert announcement="polite">{t("app.loading")}</Alert>
+            <LoadingState>{t("app.loading")}</LoadingState>
           </PageContainer>
         </main>
       </AppShell>
@@ -143,7 +143,7 @@ export const SignOutRoute = () => {
     });
   }, [signOutCurrentSession]);
 
-  return <Alert announcement="polite">{t("app.loading")}</Alert>;
+  return <LoadingState>{t("app.loading")}</LoadingState>;
 };
 
 export const PublicHomeRoute = ({ page }: { page: React.ReactNode }) => {

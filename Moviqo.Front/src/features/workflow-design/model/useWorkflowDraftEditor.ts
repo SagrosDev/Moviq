@@ -36,13 +36,15 @@ type UseWorkflowDraftEditorOptions = {
   ) => void;
   onDirtyChange?: (isDirty: boolean) => void;
   saveRequestToken?: number;
+  initialSelectedElementId?: string | null;
 };
 
 export const useWorkflowDraftEditor = ({
   draftState,
   onAccepted,
   onDirtyChange,
-  saveRequestToken = 0
+  saveRequestToken = 0,
+  initialSelectedElementId = null
 }: UseWorkflowDraftEditorOptions) => {
   const { t } = useLanguage();
   const [state, dispatch] = useReducer(
@@ -56,6 +58,14 @@ export const useWorkflowDraftEditor = ({
     task: t("workflowDesign.editor.taskLabel"),
     end: t("workflowDesign.editor.endLabel")
   }), [t]);
+
+  useEffect(() => {
+    if (!initialSelectedElementId) return;
+    if (!state.localDraft.elements.some((element) => (
+      element.id === initialSelectedElementId && element.type === "task"
+    ))) return;
+    dispatch({ type: "element-selected", elementId: initialSelectedElementId });
+  }, [initialSelectedElementId, state.localDraft.workflowId]);
 
   useEffect(() => {
     dispatch({ type: "server-synced", draftState });

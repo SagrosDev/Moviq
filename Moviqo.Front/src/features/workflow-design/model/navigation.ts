@@ -5,6 +5,9 @@ const pathIdentity = (identity: string) => encodeURIComponent(identity);
 export const workflowDesignPath = (workflowId: string) =>
   `/workflows/${pathIdentity(workflowId)}/design`;
 
+export const workflowTaskDesignPath = (workflowId: string, taskElementId: string) =>
+  `${workflowDesignPath(workflowId)}?task=${pathIdentity(taskElementId)}`;
+
 export const formDesignPath = (workflowId: string, taskElementId: string) =>
   `/workflows/${pathIdentity(workflowId)}/tasks/${pathIdentity(taskElementId)}/form`;
 

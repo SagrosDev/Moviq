@@ -15,9 +15,9 @@ import { canCreateWorkflow } from "../../../features/workflow-design";
 import { moviqoQueryKeys } from "../../../shared/api";
 import { useLanguage, type MessageKey } from "../../../shared/localization";
 import {
-  Alert,
   ButtonLink,
   isUnmodifiedPrimaryClick,
+  LoadingState,
   PageHeader
 } from "../../../shared/ui";
 
@@ -56,7 +56,7 @@ export const MyWorkPage = ({ module }: { module: MyWorkModule }) => {
   );
 
   if (state.status !== "authenticated") {
-    return <Alert announcement="polite">{t("app.loading")}</Alert>;
+    return <LoadingState>{t("app.loading")}</LoadingState>;
   }
 
   const selectedModule = module === "dashboard" ? "tasks" : module;

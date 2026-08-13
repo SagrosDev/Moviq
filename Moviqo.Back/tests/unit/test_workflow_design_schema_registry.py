@@ -84,7 +84,7 @@ def test_new_workflow_draft_seeds_one_start_step() -> None:
         name="Workflow intake",
     )
 
-    assert draft["schemaVersion"] == 7
+    assert draft["schemaVersion"] == 8
     assert draft["elements"] == [
         {"id": "start-1", "type": "start", "label": "Start"}
     ]
@@ -119,7 +119,7 @@ def test_schema_registry_upcasts_v4_connections_with_optional_labels() -> None:
         }
     )
 
-    assert loaded["schemaVersion"] == 7
+    assert loaded["schemaVersion"] == 8
     assert loaded["connections"][0]["label"] is None
     assert loaded["layout"] == {"positions": {}}
 
@@ -140,7 +140,7 @@ def test_schema_registry_upcasts_v5_with_an_empty_layout() -> None:
         }
     )
 
-    assert loaded["schemaVersion"] == 7
+    assert loaded["schemaVersion"] == 8
     assert loaded["layout"] == {"positions": {}}
 
 
@@ -217,7 +217,7 @@ def test_schema_registry_reads_supported_historical_fixture() -> None:
     loaded = load_draft_document(payload)
 
     assert loaded == {
-        "schemaVersion": 7,
+        "schemaVersion": 8,
         "draftId": "01987df4-ae8a-7000-8000-000000000111",
         "workflowId": "01987df4-ae8a-7000-8000-000000000110",
         "name": "Workflow intake",
@@ -366,7 +366,7 @@ def test_schema_registry_upcasts_story_1_22_graph_fixture() -> None:
         }
     )
 
-    assert loaded["schemaVersion"] == 7
+    assert loaded["schemaVersion"] == 8
     assert loaded["processFields"] == []
     assert loaded["formBindings"] == []
     assert loaded["publication"] == {
@@ -421,7 +421,7 @@ def test_schema_registry_upcasts_v6_assignment_to_first_connected_task() -> None
         for element in loaded["elements"]
         if element["type"] == "task"
     }
-    assert loaded["schemaVersion"] == 7
+    assert loaded["schemaVersion"] == 8
     assert loaded["publication"] == {
         "starter": {
             "mode": "allActiveMembers",
@@ -522,6 +522,7 @@ def test_schema_registry_round_trips_field_binding_document() -> None:
     assert loaded["formBindings"] == [
         {
             "id": "binding-1",
+            "kind": "field",
             "taskElementId": "task-1",
             "fieldId": "field-1",
             "position": 0,
@@ -555,6 +556,7 @@ def test_schema_registry_normalizes_task_form_control_defaults() -> None:
     assert loaded["formBindings"] == [
         {
             "id": "binding-1",
+            "kind": "field",
             "taskElementId": "task-1",
             "fieldId": "field-1",
             "position": 0,
@@ -681,4 +683,242 @@ def test_schema_registry_accepts_binding_to_any_existing_task() -> None:
         )
 
     assert loaded["formBindings"][0]["taskElementId"] == "task-2"
+
+
+def test_v7_form_bindings_upcast_to_discriminated_field_items() -> None:
+    loaded = load_draft_document(
+        {
+            "schemaVersion": 7,
+            "draftId": "draft-1",
+            "workflowId": "workflow-1",
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": [{"id": "task-1", "type": "task", "label": "Review"}],
+            "connections": [],
+            "processFields": [
+                {"id": "field-1", "kind": "shortText", "label": "Requester"}
+            ],
+            "formBindings": [
+                {
+                    "id": "binding-1",
+                    "taskElementId": "task-1",
+                    "fieldId": "field-1",
+                    "position": 0,
+                    "width": "full",
+                }
+            ],
+            "publication": {},
+            "layout": {"positions": {}},
+        }
+    )
+
+    assert loaded["schemaVersion"] == 8
+    assert loaded["formBindings"] == [
+        {
+            "id": "binding-1",
+            "kind": "field",
+            "taskElementId": "task-1",
+            "fieldId": "field-1",
+            "position": 0,
+            "width": "full",
+            "label": None,
+        }
+    ]
+
+
+@pytest.mark.parametrize("label", ["", " \t\r\n"])
+def test_schema_registry_preserves_normalized_blank_field_binding_label(label) -> None:
+    loaded = dump_current_draft(
+        {
+            "schemaVersion": 8,
+            "draftId": "draft-1",
+            "workflowId": "workflow-1",
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": [],
+            "connections": [],
+            "processFields": [],
+            "formBindings": [
+                {
+                    "id": "binding-1",
+                    "kind": "field",
+                    "taskElementId": "task-1",
+                    "fieldId": "field-1",
+                    "position": 0,
+                    "width": "full",
+                    "label": label,
+                }
+            ],
+            "publication": {},
+            "layout": {"positions": {}},
+        }
+    )
+
+    assert loaded["formBindings"][0]["label"] == ""
+
+
+def test_schema_registry_round_trips_field_and_structural_form_items() -> None:
+    loaded = validate_workflow_draft_integrity(
+        {
+            "schemaVersion": 8,
+            "draftId": "draft-1",
+            "workflowId": "workflow-1",
+            "name": "Workflow intake",
+            "status": "draft",
+            "elements": [{"id": "task-1", "type": "task", "label": "Review"}],
+            "connections": [],
+            "processFields": [
+                {"id": "field-1", "kind": "shortText", "label": "Requester"}
+            ],
+            "formBindings": [
+                {
+                    "id": "heading-1",
+                    "kind": "heading",
+                    "taskElementId": "task-1",
+                    "position": 0,
+                    "width": "full",
+                    "content": "Request details",
+                },
+                {
+                    "id": "binding-1",
+                    "kind": "field",
+                    "taskElementId": "task-1",
+                    "fieldId": "field-1",
+                    "position": 1,
+                    "width": "half",
+                    "label": "Requested by",
+                },
+                {
+                    "id": "divider-1",
+                    "kind": "divider",
+                    "taskElementId": "task-1",
+                    "position": 2,
+                    "width": "quarter",
+                },
+            ],
+            "publication": {},
+            "layout": {"positions": {}},
+        }
+    )
+
+    assert loaded["formBindings"] == [
+        {
+            "id": "heading-1",
+            "kind": "heading",
+            "taskElementId": "task-1",
+            "position": 0,
+            "width": "full",
+            "content": "Request details",
+        },
+        {
+            "id": "binding-1",
+            "kind": "field",
+            "taskElementId": "task-1",
+            "fieldId": "field-1",
+            "position": 1,
+            "width": "half",
+            "label": "Requested by",
+        },
+        {
+            "id": "divider-1",
+            "kind": "divider",
+            "taskElementId": "task-1",
+            "position": 2,
+            "width": "quarter",
+        },
+    ]
+
+
+@pytest.mark.parametrize("kind", ["section", "heading", "instruction"])
+def test_structural_form_items_preserve_blank_content_without_process_field_binding(
+    kind: str,
+) -> None:
+    payload = {
+        "schemaVersion": 8,
+        "draftId": "draft-1",
+        "workflowId": "workflow-1",
+        "name": "Workflow intake",
+        "status": "draft",
+        "elements": [{"id": "task-1", "type": "task", "label": "Review"}],
+        "connections": [],
+        "processFields": [],
+        "formBindings": [
+            {
+                "id": f"{kind}-1",
+                "kind": kind,
+                "taskElementId": "task-1",
+                "position": 0,
+                "width": "full",
+                "content": " ",
+            }
+        ],
+        "publication": {},
+        "layout": {"positions": {}},
+    }
+
+    loaded = dump_current_draft(payload)
+
+    assert loaded["formBindings"][0]["content"] == ""
+
+
+@pytest.mark.parametrize("width", ["full", "half", "third", "quarter"])
+def test_schema_registry_accepts_only_approved_form_item_spans(width: str) -> None:
+    payload = {
+        "schemaVersion": 8,
+        "draftId": "draft-1",
+        "workflowId": "workflow-1",
+        "name": "Workflow intake",
+        "status": "draft",
+        "elements": [{"id": "task-1", "type": "task", "label": "Review"}],
+        "connections": [],
+        "processFields": [],
+        "formBindings": [
+            {
+                "id": "divider-1",
+                "kind": "divider",
+                "taskElementId": "task-1",
+                "position": 0,
+                "width": width,
+            }
+        ],
+        "publication": {},
+        "layout": {"positions": {}},
+    }
+
+    assert dump_current_draft(payload)["formBindings"][0]["width"] == width
+
+
+def test_schema_registry_rejects_unknown_form_item_kinds() -> None:
+    payload = {
+        "schemaVersion": 8,
+        "draftId": "draft-1",
+        "workflowId": "workflow-1",
+        "name": "Workflow intake",
+        "status": "draft",
+        "elements": [{"id": "task-1", "type": "task", "label": "Review"}],
+        "connections": [],
+        "processFields": [],
+        "formBindings": [
+            {
+                "id": "mystery-1",
+                "kind": "mystery",
+                "taskElementId": "task-1",
+                "position": 0,
+                "width": "full",
+            }
+        ],
+        "publication": {},
+        "layout": {"positions": {}},
+    }
+
+    with pytest.raises(ValueError) as exc_info:
+        dump_current_draft(payload)
+
+    assert exc_info.value.issues == [
+        {
+            "field": "formBindings.mystery-1.kind",
+            "code": "unsupported_kind",
+            "reason": "Choose a supported Form item type.",
+        }
+    ]
 

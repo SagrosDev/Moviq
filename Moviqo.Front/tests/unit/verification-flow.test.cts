@@ -85,3 +85,23 @@ test("verification status panel localizes recovery and success states", () => {
   assert.match(englishMarkup, /ana@example.com/);
   assert.match(englishMarkup, /Return home/);
 });
+
+test("verification pending state uses the shared visual loading status", () => {
+  const markup = renderToStaticMarkup(
+    createElement(
+      LanguageProvider,
+      {
+        adapter: memoryLanguagePreferenceAdapter(),
+        browserLanguages: [],
+        children: createElement(VerificationStatusPanel, {
+          state: { kind: "loading" }
+        })
+      },
+    )
+  );
+
+  assert.match(markup, /role="status"/);
+  assert.match(markup, /animate-spin/);
+  assert.match(markup, /motion-reduce:animate-none/);
+  assert.match(markup, /Estamos validando este enlace seguro/);
+});

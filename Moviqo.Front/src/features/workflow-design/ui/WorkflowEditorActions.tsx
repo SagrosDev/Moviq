@@ -121,7 +121,7 @@ export const WorkflowSaveStatus = ({
           </Alert>
         </div>
       ) : null}
-      {state.publishStatus === "error" ? (
+      {state.publishStatus === "error" && state.publicationIssues.length === 0 ? (
         <div id="workflow-publish-error-summary" tabIndex={-1}>
           <Alert announcement="assertive" title={t("workflowDesign.editor.publishErrorTitle")} tone="error">
             {state.publishErrorMessage ?? t("workflowDesign.editor.publishError")}

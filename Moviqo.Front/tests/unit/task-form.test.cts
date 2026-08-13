@@ -6,13 +6,21 @@ import { QueryClient } from "@tanstack/react-query";
 import {
   createTaskFormCompletionIdempotencyKey,
   createTaskFormSaveIdempotencyKey,
+  createDefaultShortTextDefinition,
+  createDefaultStructuralItem,
+  resolveFormItemRegistryEntry,
+  resolveTaskFormRenderDescriptor,
+  TaskFormRenderer,
   TaskFormPanel,
   completeTaskFormDocument,
   createTaskFormEditorState,
   readTaskFormDocument,
   reduceTaskFormEditorState,
   saveTaskFormDocument,
+  taskFormErrorSummary,
+  taskFormRetryTarget,
   type TaskFormDocument,
+  type TaskFormRuntimeItem,
 } from "../../src/features/task-form";
 import {
   resolveTaskFormPageView,
@@ -63,6 +71,180 @@ test("task form editor keeps the current value in sync for controlled input stat
 
   assert.equal(updated.controls[0]?.value, "Ana Perez");
   assert.equal(updated.hasLocalChanges, true);
+});
+
+test("field and structural registries create stable discriminated definitions", () => {
+  const shortText = createDefaultShortTextDefinition("task-1", 2);
+  assert.deepEqual(shortText.processField, {
+    id: "field-2",
+    kind: "shortText",
+    label: "Short text",
+    helpText: "",
+    placeholder: "",
+    defaultValue: null,
+    minimumLength: 0,
+    maximumLength: 255,
+  });
+  assert.deepEqual(shortText.item, {
+    id: "binding-2",
+    kind: "field",
+    taskElementId: "task-1",
+    fieldId: "field-2",
+    position: 1,
+    width: "full",
+    label: null,
+  });
+  assert.deepEqual(createDefaultStructuralItem("divider", "task-1", 3), {
+    id: "divider-3",
+    kind: "divider",
+    taskElementId: "task-1",
+    position: 2,
+    width: "full",
+  });
+});
+
+test("registry resolution is exhaustive and unknown kinds fail visibly", () => {
+  assert.equal(resolveFormItemRegistryEntry("shortText").status, "supported");
+  assert.equal(resolveFormItemRegistryEntry("section").status, "supported");
+  assert.equal(resolveFormItemRegistryEntry("heading").status, "supported");
+  assert.equal(resolveFormItemRegistryEntry("instruction").status, "supported");
+  assert.equal(resolveFormItemRegistryEntry("divider").status, "supported");
+  assert.equal(resolveFormItemRegistryEntry("future-widget").status, "unsupported");
+  assert.equal(resolveFormItemRegistryEntry("__proto__").status, "unsupported");
+  assert.equal(resolveFormItemRegistryEntry("constructor").status, "unsupported");
+  assert.equal(resolveFormItemRegistryEntry("toString").status, "unsupported");
+  const shortTextEntry = resolveFormItemRegistryEntry("shortText");
+  assert.equal(shortTextEntry.status, "supported");
+  assert.deepEqual(shortTextEntry.status === "supported"
+    ? shortTextEntry.validatePresentation({
+        itemId: "binding-invisible",
+        kind: "shortText",
+        label: "\u200b\u0301\u2028",
+        position: 0,
+        width: "full",
+      })
+    : [], ["label_required"]);
+});
+
+test("TaskFormRenderer composes one-column reflow and every registry item", () => {
+  const markup = renderToStaticMarkup(
+    createElement(
+      LanguageProvider,
+      {
+        adapter: memoryLanguagePreferenceAdapter(),
+        browserLanguages: [],
+        children: createElement(TaskFormRenderer, {
+          disabled: false,
+          invalidFieldNames: [],
+          errorMessages: [],
+          items: [
+            { itemId: "section-1", kind: "section", content: "Identity", position: 0, width: "full" },
+            { itemId: "heading-1", kind: "heading", content: "Requester", position: 1, width: "half" },
+            { itemId: "instruction-1", kind: "instruction", content: "Use a legal name.", position: 2, width: "third" },
+            {
+              itemId: "binding-1",
+              controlId: "binding-1",
+              fieldId: "field-1",
+              kind: "shortText",
+              label: "Requester name",
+              helpText: "Use the full name.",
+              placeholder: "Example: Ana Perez",
+              required: true,
+              minimumLength: 2,
+              maximumLength: 80,
+              position: 3,
+              width: "quarter",
+              value: "",
+            },
+            { itemId: "divider-1", kind: "divider", position: 4, width: "full" },
+            { itemId: "future-1", kind: "future-widget", position: 5, width: "full" },
+          ],
+          onValueChange: () => undefined,
+        }),
+      },
+    ),
+  );
+
+  assert.match(markup, /Identity/);
+  assert.match(markup, /Requester/);
+  assert.match(markup, /Use a legal name/);
+  assert.match(markup, /Requester name/);
+  assert.match(markup, /required=""/);
+  assert.match(markup, /minLength="2"/);
+  assert.match(markup, /maxLength="80"/);
+  assert.match(markup, /data-layout-span="quarter"/);
+  assert.match(markup, /role="alert"/);
+});
+
+test("TaskFormRenderer hides an explicitly blank visual label but preserves its accessible name", () => {
+  const markup = renderToStaticMarkup(
+    createElement(
+      LanguageProvider,
+      {
+        adapter: memoryLanguagePreferenceAdapter(),
+        browserLanguages: [],
+        children: createElement(TaskFormRenderer, {
+          disabled: false,
+          invalidFieldNames: [],
+          errorMessages: [],
+          items: [{
+            itemId: "binding-blank",
+            controlId: "binding-blank",
+            fieldId: "field-blank",
+            kind: "shortText",
+            label: "Requester name",
+            labelVisuallyHidden: true,
+            helpText: "",
+            placeholder: "",
+            required: true,
+            position: 0,
+            width: "full",
+            value: "",
+          }],
+          onValueChange: () => undefined,
+        }),
+      },
+    ),
+  );
+
+  assert.match(
+    markup,
+    /<span class="sr-only">Requester name<\/span><span aria-hidden="true"> \*<\/span>/,
+  );
+  assert.match(markup, /id="task-form-binding-blank"/);
+});
+
+test("registry rendering fails visibly for malformed, inherited, and prototype-key kinds", () => {
+  const inheritedKind = Object.assign(Object.create({ kind: "divider" }), {
+    itemId: "inherited-divider",
+    position: 1,
+    width: "full",
+  });
+  const malformedItems = [
+    { itemId: "missing-content", kind: "heading", position: 0, width: "full" },
+    inheritedKind,
+    { itemId: "prototype-kind", kind: "__proto__", position: 2, width: "full" },
+  ] as unknown as TaskFormRuntimeItem[];
+  const markup = renderToStaticMarkup(
+    createElement(
+      LanguageProvider,
+      {
+        adapter: memoryLanguagePreferenceAdapter(),
+        browserLanguages: [],
+        children: createElement(TaskFormRenderer, {
+          disabled: false,
+          invalidFieldNames: [],
+          errorMessages: [],
+          items: malformedItems,
+          onValueChange: () => undefined,
+        }),
+      },
+    ),
+  );
+
+  assert.equal((markup.match(/role="alert"/g) ?? []).length, 3);
+  assert.doesNotMatch(markup, /<hr/);
+  assert.equal(resolveTaskFormRenderDescriptor(inheritedKind).kind, "unsupported");
 });
 
 test("task form query revisions are accepted only while the editor is clean", () => {
@@ -136,6 +318,81 @@ test("task form save failures retain field-level invalid targets and local work"
   assert.equal(retriable.saveRequestKey, "task-form-save-1");
 });
 
+test("runtime invalidParams map to actionable labels and retain non-field recovery", () => {
+  assert.deepEqual(taskFormErrorSummary(
+    ["controls.binding-1.value", "nonFieldErrors"],
+    ["Use at least 1 character.", "Try again later."],
+    taskFormDocument.form.controls,
+  ), {
+    errors: [
+      {
+        id: "controls.binding-1.value-0",
+        fieldId: "task-form-binding-1",
+        fieldLabel: "Requester name",
+        message: "Use at least 1 character.",
+      },
+    ],
+    formMessage: "Try again later.",
+  });
+});
+
+test("blank-label controls retain their accessible name in the error summary", () => {
+  const hiddenLabelControl = {
+    ...taskFormDocument.form.controls[0]!,
+    labelVisuallyHidden: true,
+  };
+
+  assert.deepEqual(taskFormErrorSummary(
+    ["controls.binding-1.value"],
+    ["Use at least 1 character."],
+    [hiddenLabelControl],
+  ).errors, [{
+    id: "controls.binding-1.value-0",
+    fieldId: "task-form-binding-1",
+    fieldLabel: "Requester name",
+    message: "Use at least 1 character.",
+  }]);
+});
+
+test("runtime invalidParams resolve known control IDs containing dots", () => {
+  const dottedControl = {
+    ...taskFormDocument.form.controls[0]!,
+    controlId: "binding.section.1",
+    label: "Dotted control",
+  };
+  assert.deepEqual(taskFormErrorSummary(
+    ["controls.binding.section.1.value"],
+    ["Correct this value."],
+    [dottedControl],
+  ).errors, [{
+    id: "controls.binding.section.1.value-0",
+    fieldId: "task-form-binding.section.1",
+    fieldLabel: "Dotted control",
+    message: "Correct this value.",
+  }]);
+
+  const markup = renderToStaticMarkup(
+    createElement(
+      LanguageProvider,
+      {
+        adapter: memoryLanguagePreferenceAdapter(),
+        browserLanguages: [],
+        children: createElement(TaskFormRenderer, {
+          disabled: false,
+          invalidFieldNames: ["controls.binding.section.1.value"],
+          errorMessages: ["Correct this value."],
+          items: [{ ...dottedControl, itemId: dottedControl.controlId }],
+          onValueChange: () => undefined,
+        }),
+      },
+    ),
+  );
+
+  assert.match(markup, /id="task-form-binding\.section\.1"/);
+  assert.match(markup, /aria-invalid="true"/);
+  assert.match(markup, /Correct this value\./);
+});
+
 test("task form panel renders label, help, input, save, and disabled complete affordance", () => {
   const markup = renderToStaticMarkup(
     createElement(
@@ -198,6 +455,7 @@ test("task form panel exposes separate retry-save and reload-latest actions on e
 
   assert.match(markup, /Retry|Reintentar/);
   assert.match(markup, /Reload latest|Cargar última versión/);
+  assert.match(markup, /role="alert"/);
 });
 
 test("task form completion failures retain local values and invalid field targets", () => {
@@ -223,6 +481,8 @@ test("task form completion failures retain local values and invalid field target
   assert.equal(failed.completionStatus, "error");
   assert.equal(failed.completionRequestKey, "task-form-complete-1");
   assert.deepEqual(failed.invalidFieldNames, ["controls.binding-1.value"]);
+  assert.equal(taskFormRetryTarget(failed), "complete");
+  assert.equal(taskFormRetryTarget(createTaskFormEditorState(taskFormDocument)), "save");
 });
 
 test("task form completion success disables follow-up editing and shows the handoff state", () => {

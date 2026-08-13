@@ -107,6 +107,13 @@ PROTECTED_TENANT_RESOURCES = (
         evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[workflow-draft]",
     ),
     TenantIsolationGateRegistration(
+        resource_name="form-authoring-lease",
+        table_name="workflow_design_form_authoring_lease",
+        policy_name="workflow_design_form_authoring_lease_tenant_isolation",
+        isolation_test_id="form_authoring_lease",
+        evidence_hint="tests/integration/test_tenant_isolation.py::test_registered_resource_classes_enforce_tenant_isolation[form-authoring-lease]",
+    ),
+    TenantIsolationGateRegistration(
         resource_name="workflow-version",
         table_name="workflow_design_workflow_version",
         policy_name="workflow_design_workflow_version_tenant_isolation",

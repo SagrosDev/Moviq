@@ -87,7 +87,7 @@ def test_publication_validation_rejects_decorative_only_first_task_form() -> Non
                 {
                     "id": "field-1",
                     "kind": "shortText",
-                    "label": "",
+                    "label": "\u200b\u0301\u2028",
                     "helpText": "Read only guidance",
                     "placeholder": "",
                     "defaultValue": None,
@@ -102,13 +102,98 @@ def test_publication_validation_rejects_decorative_only_first_task_form() -> Non
                     "fieldId": "field-1",
                     "position": 0,
                     "width": "full",
-                    "label": "",
+                    "label": "\u200b\u0301\u2028",
                 }
             ],
         )
     )
 
-    assert any(issue["code"] == "task_form_decorative" for issue in result["issues"])
+    issue = next(
+        issue for issue in result["issues"] if issue["code"] == "task_form_decorative"
+    )
+    assert issue["message"] == "Add a label to this Form item before publishing."
+    assert issue["actionLabel"] == "Open Task form"
+
+
+def test_publication_validation_treats_structural_only_form_as_incomplete() -> None:
+    result = validate_workflow_for_publication(
+        _draft(
+            elements=[
+                {"id": "start-1", "type": "start", "label": "Start"},
+                {"id": "task-1", "type": "task", "label": "Task"},
+                {"id": "end-1", "type": "end", "label": "End"},
+            ],
+            connections=[
+                {
+                    "id": "connection-1",
+                    "type": "sequence",
+                    "sourceId": "start-1",
+                    "targetId": "task-1",
+                },
+                {
+                    "id": "connection-2",
+                    "type": "sequence",
+                    "sourceId": "task-1",
+                    "targetId": "end-1",
+                },
+            ],
+            form_bindings=[
+                {
+                    "id": "heading-1",
+                    "kind": "heading",
+                    "taskElementId": "task-1",
+                    "position": 0,
+                    "width": "full",
+                    "content": "Read this first",
+                }
+            ],
+        )
+    )
+
+    assert any(issue["code"] == "task_form_missing" for issue in result["issues"])
+
+
+def test_publication_validation_rejects_blank_structural_item_content() -> None:
+    result = validate_workflow_for_publication(
+        _draft(
+            elements=[
+                {"id": "start-1", "type": "start", "label": "Start"},
+                {"id": "task-1", "type": "task", "label": "Task"},
+                {"id": "end-1", "type": "end", "label": "End"},
+            ],
+            connections=[
+                {
+                    "id": "connection-1",
+                    "type": "sequence",
+                    "sourceId": "start-1",
+                    "targetId": "task-1",
+                },
+                {
+                    "id": "connection-2",
+                    "type": "sequence",
+                    "sourceId": "task-1",
+                    "targetId": "end-1",
+                },
+            ],
+            form_bindings=[
+                {
+                    "id": "heading-1",
+                    "kind": "heading",
+                    "taskElementId": "task-1",
+                    "position": 0,
+                    "width": "full",
+                    "content": "",
+                }
+            ],
+        )
+    )
+
+    issue = next(
+        issue for issue in result["issues"] if issue["code"] == "form_item_content_missing"
+    )
+    assert issue["target"] == "formBindings.heading-1.content"
+    assert issue["elementId"] == "task-1"
+    assert issue["bindingId"] == "heading-1"
 
 
 def test_publication_validation_passes_minimum_story_1_24_shape_with_checklist_warnings_only(
@@ -216,6 +301,67 @@ def test_publication_validation_accepts_a_fully_configured_minimum_workflow() ->
                     "position": 0,
                     "width": "full",
                     "label": None,
+                }
+            ],
+            publication={"starter": {"isConfigured": True}},
+        )
+    )
+
+    assert result["publishable"] is True
+    assert result["issues"] == []
+
+
+def test_publication_validation_accepts_blank_visible_label_with_accessible_field_label(
+) -> None:
+    result = validate_workflow_for_publication(
+        _draft(
+            elements=[
+                {"id": "start-1", "type": "start", "label": "Start"},
+                {
+                    "id": "task-1",
+                    "type": "task",
+                    "label": "Task",
+                    "assignment": {
+                        "mode": "workflowInitiator",
+                        "membershipId": None,
+                    },
+                },
+                {"id": "end-1", "type": "end", "label": "End"},
+            ],
+            connections=[
+                {
+                    "id": "connection-1",
+                    "type": "sequence",
+                    "sourceId": "start-1",
+                    "targetId": "task-1",
+                },
+                {
+                    "id": "connection-2",
+                    "type": "sequence",
+                    "sourceId": "task-1",
+                    "targetId": "end-1",
+                },
+            ],
+            process_fields=[
+                {
+                    "id": "field-1",
+                    "kind": "shortText",
+                    "label": "Requester name",
+                    "helpText": "",
+                    "placeholder": "",
+                    "defaultValue": None,
+                    "minimumLength": 0,
+                    "maximumLength": 255,
+                }
+            ],
+            form_bindings=[
+                {
+                    "id": "binding-1",
+                    "taskElementId": "task-1",
+                    "fieldId": "field-1",
+                    "position": 0,
+                    "width": "full",
+                    "label": "",
                 }
             ],
             publication={"starter": {"isConfigured": True}},

@@ -643,6 +643,174 @@ test("revision conflict expands focused recovery and reapplies local work after 
   await expect(page.getByRole("button", { name: "Guardar borrador" })).toBeEnabled();
 });
 
+test("failed publication shows every actionable blocker and clears them after retry", async ({ page }) => {
+  const blockedWorkflowId = "01987df4-ae8a-7000-8000-000000000260";
+  const draft = {
+    schemaVersion: 7,
+    draftId: "01987df4-ae8a-7000-8000-000000000261",
+    workflowId: blockedWorkflowId,
+    name: "Aprobación Cartas",
+    status: "draft",
+    elements: [
+      { id: "start-1", type: "start", label: "Inicio" },
+      { id: "task-1", type: "task", label: "Tarea" },
+      { id: "task-2", type: "task", label: "Tarea 2" },
+      { id: "end-1", type: "end", label: "Fin" }
+    ],
+    connections: [
+      { id: "connection-1", type: "sequence", sourceId: "start-1", targetId: "task-1" },
+      { id: "connection-2", type: "sequence", sourceId: "task-1", targetId: "task-2" },
+      { id: "connection-3", type: "sequence", sourceId: "task-2", targetId: "end-1" }
+    ],
+    processFields: [{
+      id: "field-1",
+      kind: "shortText",
+      label: "Nombre",
+      helpText: "",
+      placeholder: "",
+      defaultValue: "",
+      minimumLength: 0,
+      maximumLength: 100
+    }],
+    formBindings: [{
+      id: "binding-1",
+      taskElementId: "task-1",
+      kind: "field",
+      fieldId: "field-1",
+      label: null,
+      position: 0,
+      width: "full"
+    }],
+    layout: { positions: {} }
+  };
+  let publishAttempts = 0;
+  let retryPublishBody: { expectedRevision: string; draft: Record<string, unknown> } | null = null;
+
+  await mockCsrfBootstrap(page);
+  await page.route("**/api/v1/auth/session/", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(authenticatedSession)
+    });
+  });
+  await page.route(`**/api/v1/workflow-design/workflows/${blockedWorkflowId}/draft/`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...createAcceptedWorkflow("1", draft),
+        workflowId: blockedWorkflowId,
+        name: draft.name
+      })
+    });
+  });
+  await page.route(`**/api/v1/workflow-design/workflows/${blockedWorkflowId}/publish/`, async (route) => {
+    publishAttempts += 1;
+    if (publishAttempts === 1) {
+      await route.fulfill({
+        status: 400,
+        contentType: "application/problem+json",
+        body: JSON.stringify({
+          type: "https://api.moviqo.local/problems/workflow-draft-invalid",
+          title: "Workflow publish failed",
+          status: 400,
+          code: "workflow_draft_invalid",
+          correlationId: "workflow-publish-blockers-1234",
+          invalidParams: [
+            {
+              name: "configuration.starter",
+              reason: "Choose who can start this workflow.",
+              code: "starter_missing"
+            },
+            {
+              name: "elements.task-1",
+              reason: "Choose who receives the Task 'Tarea'.",
+              code: "assignment_missing"
+            },
+            {
+              name: "elements.task-2",
+              reason: "Choose who receives the Task 'Tarea 2'.",
+              code: "assignment_missing"
+            },
+            {
+              name: "elements.task-2",
+              reason: "Add one visible field to the Task 'Tarea 2' before publishing.",
+              code: "task_form_missing"
+            }
+          ]
+        })
+      });
+      return;
+    }
+    const requestBody = route.request().postDataJSON() as {
+      expectedRevision: string;
+      draft: Record<string, unknown>;
+    };
+    retryPublishBody = requestBody;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...createAcceptedWorkflow("2", requestBody.draft),
+        workflowId: blockedWorkflowId,
+        name: draft.name,
+        publishedVersion: {
+          versionNumber: 1,
+          publishedAt: "2026-08-13T18:00:00Z",
+          sourceRevision: "2",
+          schemaVersion: 7
+        }
+      })
+    });
+  });
+
+  await page.goto(`/workflows/${blockedWorkflowId}/design`);
+  await page.getByRole("button", { name: "Publicar versión" }).click();
+
+  await expect(page.locator("#workflow-checklist-title")).toBeFocused();
+  await expect(page.getByText(
+    "Falta un detalle antes de publicar: define quién puede iniciar este flujo.",
+    { exact: true }
+  )).toBeVisible();
+  await expect(page.getByText(
+    "Falta un detalle antes de publicar: define quién recibe esta tarea.",
+    { exact: true }
+  )).toHaveCount(2);
+  await expect(page.getByText(
+    "Agrega un campo visible al formulario de esta tarea antes de publicar.",
+    { exact: true }
+  )).toBeVisible();
+  await expect(page.getByText("Tarea afectada: Tarea", { exact: true })).toBeVisible();
+  await expect(page.getByText("Tarea afectada: Tarea 2", { exact: true })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Configurar inicio" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Configurar asignación" })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Abrir formulario de la tarea" })).toBeVisible();
+  await expect(page.getByText("No pudimos publicar este flujo", { exact: true })).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp(`/workflows/${blockedWorkflowId}/design$`));
+  await expect(page.getByRole("group", { exact: true, name: "Tarea: Tarea" })).toBeVisible();
+  await expect(page.getByRole("group", { exact: true, name: "Tarea: Tarea 2" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Publicar versión" })).toBeEnabled();
+
+  await page.getByRole("button", { name: "Publicar versión" }).click();
+  await expect(page.getByText(/versión publicada.*Versión 1/i)).toBeVisible();
+  await expect(page.getByText("Tarea afectada: Tarea", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Tarea afectada: Tarea 2", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("No pudimos publicar este flujo", { exact: true })).toHaveCount(0);
+  expect(publishAttempts).toBe(2);
+  expect(retryPublishBody?.expectedRevision).toBe("1");
+  expect(retryPublishBody?.draft).toMatchObject({
+    workflowId: blockedWorkflowId,
+    name: draft.name,
+    connections: draft.connections,
+    processFields: draft.processFields,
+    formBindings: draft.formBindings
+  });
+  expect((retryPublishBody?.draft.elements as Array<{ id: string; label: string }>).map(
+    ({ id, label }) => ({ id, label })
+  )).toEqual(draft.elements.map(({ id, label }) => ({ id, label })));
+});
+
 test("edge labels avoid top clipping and vertical path overlap when wrapping", async ({ page }) => {
   const labelWorkflowId = "01987df4-ae8a-7000-8000-000000000250";
   const longWorkflowName = "AprobaciónRegionalAdministrativaSinOportunidadesDeSaltoEnElNombreDelFlujo";

@@ -22,6 +22,8 @@ from moviqo.modules.organizations.application import (
     SyntheticVerificationLinkView,
 )
 from moviqo.modules.workflow_design.application import (
+    FormAuthoringLeaseView,
+    FormDraftSaveView,
     WorkflowCollectionView,
     WorkflowDraftDetailView,
     WorkflowPublicationValidationView,
@@ -93,6 +95,18 @@ urlpatterns = [
         "api/v1/workflow-design/workflows/<uuid:workflow_id>/draft/",
         WorkflowDraftDetailView.as_view(),
         name="api-v1-workflow-design-draft-detail",
+    ),
+    path(
+        "api/v1/workflow-design/workflows/<uuid:workflow_id>/tasks/"
+        "<str:task_element_id>/form-authoring-lease/",
+        FormAuthoringLeaseView.as_view(),
+        name="api-v1-workflow-design-form-authoring-lease",
+    ),
+    path(
+        "api/v1/workflow-design/workflows/<uuid:workflow_id>/tasks/"
+        "<str:task_element_id>/form-draft/",
+        FormDraftSaveView.as_view(),
+        name="api-v1-workflow-design-form-draft-save",
     ),
     path(
         "api/v1/workflow-design/workflows/<uuid:workflow_id>/publication-validation/",

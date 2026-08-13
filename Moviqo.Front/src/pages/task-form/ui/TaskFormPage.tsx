@@ -24,7 +24,8 @@ import {
   Alert,
   Breadcrumbs,
   Button,
-  isUnmodifiedPrimaryClick
+  isUnmodifiedPrimaryClick,
+  LoadingState
 } from "../../../shared/ui";
 
 type TaskFormPageProps = {
@@ -209,7 +210,7 @@ export const TaskFormPage = ({ taskId }: TaskFormPageProps) => {
   const hasAcceptedDocument = initializedTaskId.current === taskId;
 
   if (state.status !== "authenticated") {
-    return <Alert announcement="polite">{t("taskForm.loading")}</Alert>;
+    return <LoadingState>{t("taskForm.loading")}</LoadingState>;
   }
 
   if (!hasAcceptedDocument && query.isError) {
@@ -221,7 +222,7 @@ export const TaskFormPage = ({ taskId }: TaskFormPageProps) => {
   }
 
   if (!hasAcceptedDocument) {
-    return <Alert announcement="polite">{t("taskForm.loading")}</Alert>;
+    return <LoadingState>{t("taskForm.loading")}</LoadingState>;
   }
 
   return (

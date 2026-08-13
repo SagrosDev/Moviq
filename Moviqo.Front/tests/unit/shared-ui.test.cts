@@ -333,6 +333,55 @@ test("LoadingState exposes one polite named status and a decorative visual spinn
   assert.equal((markup.match(/Loading assigned tasks\./g) ?? []).length, 1);
 });
 
+test("asynchronous application branches consistently compose LoadingState", () => {
+  const loadingSurfaces = [
+    "src/app/router/RoutePages.tsx",
+    "src/features/form-design/ui/FormDesignerWorkspace.tsx",
+    "src/features/my-work/ui/MyWorkShell.tsx",
+    "src/features/verification/ui/VerificationStatusPanel.tsx",
+    "src/pages/forms/ui/FormPages.tsx",
+    "src/pages/my-work/ui/MyWorkPage.tsx",
+    "src/pages/process-detail/ui/ProcessDetailPage.tsx",
+    "src/pages/task-form/ui/TaskFormPage.tsx",
+    "src/pages/workflow-catalog/ui/WorkflowCatalogPage.tsx",
+    "src/pages/workflow-create/ui/WorkflowCreatePage.tsx",
+    "src/pages/workflow-design/ui/WorkflowDesignPage.tsx"
+  ];
+
+  for (const path of loadingSurfaces) {
+    const source = readFileSync(path, "utf8");
+    assert.match(source, /LoadingState/, `${path} should use the shared spinner status`);
+  }
+
+  const formDesigner = readFileSync(
+    "src/features/form-design/ui/FormDesignerWorkspace.tsx",
+    "utf8"
+  );
+  assert.match(
+    formDesigner,
+    /leaseState\.status === "acquiring"[\s\S]*?<LoadingState>/
+  );
+  assert.match(
+    formDesigner,
+    /leaseState\.status !== "editable"/
+  );
+  assert.match(
+    formDesigner,
+    /leaseState\.status === "acquiring" \? null : <FormDesignerSaveStatus/
+  );
+
+  const formLauncher = readFileSync("src/pages/forms/ui/FormPages.tsx", "utf8");
+  assert.match(
+    formLauncher,
+    /catalogQuery\.isError \? \([\s\S]*?catalogQuery\.refetch/
+  );
+  assert.match(
+    formLauncher,
+    /workflowId && draftQuery\.isPending \? \([\s\S]*?<LoadingState>/
+  );
+  assert.match(formLauncher, /disabled=\{!canSave\}/);
+});
+
 test("ErrorSummary is focusable and links actionable errors to their controls", () => {
   const markup = renderToStaticMarkup(
     createElement(ErrorSummary, {

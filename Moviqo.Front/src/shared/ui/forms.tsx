@@ -26,6 +26,7 @@ type FormFieldProps = {
   id: string;
   label: string;
   labelEmphasis?: "standard" | "strong";
+  labelVisuallyHidden?: boolean;
   helpText?: string;
   errorMessage?: string;
   required?: boolean;
@@ -36,6 +37,7 @@ type TextInputProps = Omit<ComponentPropsWithRef<"input">, "className" | "id"> &
   id: string;
   label: string;
   labelEmphasis?: "standard" | "strong";
+  labelVisuallyHidden?: boolean;
   helpText?: string;
   errorMessage?: string;
 };
@@ -124,6 +126,7 @@ export const FormField = ({
   id,
   label,
   labelEmphasis = "standard",
+  labelVisuallyHidden = false,
   helpText,
   errorMessage,
   required,
@@ -137,7 +140,7 @@ export const FormField = ({
           : "text-moviqo-label font-semibold text-moviqo-ink-primary"}
         htmlFor={id}
       >
-        {label}
+        <span className={labelVisuallyHidden ? "sr-only" : undefined}>{label}</span>
         {required ? <span aria-hidden="true"> *</span> : null}
       </label>
       {helpText ? <p className="m-0 text-sm text-moviqo-ink-secondary" id={`${id}-help`}>{helpText}</p> : null}
@@ -156,6 +159,7 @@ export const TextInput = ({
   id,
   label,
   labelEmphasis,
+  labelVisuallyHidden,
   helpText,
   errorMessage,
   required,
@@ -165,7 +169,7 @@ export const TextInput = ({
   ...inputProps
 }: TextInputProps) => {
   return (
-    <FormField id={id} label={label} labelEmphasis={labelEmphasis} helpText={helpText} errorMessage={errorMessage} required={required}>
+    <FormField id={id} label={label} labelEmphasis={labelEmphasis} labelVisuallyHidden={labelVisuallyHidden} helpText={helpText} errorMessage={errorMessage} required={required}>
       <input
         {...inputProps}
         className={fieldControlClasses}

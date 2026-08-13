@@ -7,6 +7,7 @@ type WorkflowPublicationChecklistProps = {
   issues: WorkflowPublicationIssue[];
   validated: boolean;
   onIssue: (issue: WorkflowPublicationIssue) => void;
+  taskNameForIssue: (issue: WorkflowPublicationIssue) => string | null;
 };
 
 const issueMessageKey = (issue: WorkflowPublicationIssue) => {
@@ -26,7 +27,8 @@ const issueMessageKey = (issue: WorkflowPublicationIssue) => {
     first_task_form_decorative: "workflowDesign.editor.issue.firstTaskFormDecorative",
     task_form_missing: "workflowDesign.editor.issue.taskFormMissing",
     task_binding_missing_field: "workflowDesign.editor.issue.taskBindingMissingField",
-    task_form_decorative: "workflowDesign.editor.issue.taskFormDecorative"
+    task_form_decorative: "workflowDesign.editor.issue.taskFormDecorative",
+    form_item_content_missing: "workflowDesign.editor.issue.formItemContentMissing"
   };
   return keys[issue.code];
 };
@@ -48,7 +50,10 @@ const issueActionKey = (issue: WorkflowPublicationIssue) => {
     return "workflowDesign.editor.issueAction.openTaskForm" as const;
   }
   if (issue.code.startsWith("first_task_binding_") || issue.code === "first_task_form_decorative") {
-    return "workflowDesign.editor.issueAction.openReusableField" as const;
+    return "workflowDesign.editor.issueAction.openFirstTaskForm" as const;
+  }
+  if (issue.target.startsWith("processFields.") || issue.target.startsWith("formBindings.")) {
+    return "workflowDesign.editor.issueAction.openTaskForm" as const;
   }
   return "workflowDesign.editor.issueAction.reviewWorkflowPath" as const;
 };
@@ -57,7 +62,8 @@ export const WorkflowPublicationChecklist = ({
   error,
   issues,
   validated,
-  onIssue
+  onIssue,
+  taskNameForIssue
 }: WorkflowPublicationChecklistProps) => {
   const { t } = useLanguage();
 
@@ -78,16 +84,22 @@ export const WorkflowPublicationChecklist = ({
       ) : null}
       {issues.length > 0 ? (
         <ul className="m-0 grid gap-moviqo-3 pl-moviqo-5">
-          {issues.map((issue) => {
+          {issues.map((issue, index) => {
             const key = issueMessageKey(issue);
+            const taskName = taskNameForIssue(issue);
             return (
-              <li className="grid gap-moviqo-2" key={`${issue.code}:${issue.target}`}>
+              <li className="grid gap-moviqo-2" key={`${index}:${issue.code}:${issue.target}`}>
                 <Badge tone={issue.severity === "warning" ? "warning" : "error"}>
                   {issue.severity === "warning"
                     ? t("status.needsAttention")
                     : t("status.blocked")}
                 </Badge>
-                <span>{key ? t(key) : t("workflowDesign.editor.checklistError")}</span>
+                <span>{key ? t(key) : t("workflowDesign.editor.issue.unknown")}</span>
+                {taskName ? (
+                  <span className="text-sm text-moviqo-ink-secondary">
+                    {t("workflowDesign.editor.issue.taskContext")} {taskName}
+                  </span>
+                ) : null}
                 <Button variant="secondary" onClick={() => onIssue(issue)}>
                   {t(issueActionKey(issue))}
                 </Button>

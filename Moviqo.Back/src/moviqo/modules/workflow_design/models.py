@@ -52,6 +52,38 @@ class WorkflowDraft(models.Model):
         db_table = "workflow_design_workflow_draft"
 
 
+class FormAuthoringLease(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.PROTECT,
+        related_name="form_authoring_leases",
+    )
+    workflow = models.ForeignKey(
+        WorkflowDefinition,
+        on_delete=models.CASCADE,
+        related_name="form_authoring_leases",
+    )
+    task_element_id = models.CharField(max_length=255)
+    lease_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    holder_membership_id = models.UUIDField()
+    holder_user_id = models.BigIntegerField()
+    session_key = models.CharField(max_length=40)
+    session_expires_at = models.DateTimeField()
+    lease_expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "workflow_design_form_authoring_lease"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("workflow", "task_element_id"),
+                name="workflow_design_form_lease_task_unique",
+            )
+        ]
+
+
 class WorkflowVersion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey(

@@ -53,11 +53,84 @@ export type MessageKey =
   | "formLauncher.emptyStepForm"
   | "formLauncher.noTasks"
   | "formLauncher.unavailable"
+  | "formLauncher.catalogError"
   | "formDesign.eyebrow"
   | "formDesign.title"
   | "formDesign.reserved"
   | "formDesign.backToForms"
   | "formDesign.backToWorkflow"
+  | "formDesign.palette"
+  | "formDesign.fields"
+  | "formDesign.layout"
+  | "formDesign.shortText"
+  | "formDesign.section"
+  | "formDesign.heading"
+  | "formDesign.instruction"
+  | "formDesign.divider"
+  | "formDesign.canvas"
+  | "formDesign.empty"
+  | "formDesign.moveUp"
+  | "formDesign.moveDown"
+  | "formDesign.properties"
+  | "formDesign.selectItem"
+  | "formDesign.label"
+  | "formDesign.helpText"
+  | "formDesign.placeholder"
+  | "formDesign.defaultValue"
+  | "formDesign.required"
+  | "formDesign.minimumLength"
+  | "formDesign.maximumLength"
+  | "formDesign.content"
+  | "formDesign.width"
+  | "formDesign.width.full"
+  | "formDesign.width.half"
+  | "formDesign.width.third"
+  | "formDesign.width.quarter"
+  | "formDesign.remove"
+  | "formDesign.saving"
+  | "formDesign.saved"
+  | "formDesign.unsaved"
+  | "formDesign.saveError"
+  | "formDesign.save"
+  | "formDesign.saveAndReturn"
+  | "formDesign.validationTitle"
+  | "formDesign.validationBody"
+  | "formDesign.validation.labelRequired"
+  | "formDesign.validation.contentRequired"
+  | "formDesign.validation.minimumGreaterThanMaximum"
+  | "formDesign.error.invalidValue"
+  | "formDesign.error.unsupportedWidth"
+  | "formDesign.error.duplicateIdentifier"
+  | "formDesign.error.conflict"
+  | "formDesign.preview"
+  | "formDesign.default.section"
+  | "formDesign.default.heading"
+  | "formDesign.default.instruction"
+  | "formDesign.dragHandle"
+  | "formDesign.dragInstructions"
+  | "formDesign.dragStart"
+  | "formDesign.dragMove"
+  | "formDesign.dragDrop"
+  | "formDesign.dragCancel"
+  | "formDesign.retry"
+  | "formDesign.reloadAndReapply"
+  | "formDesign.reloadError"
+  | "formDesign.leave.title"
+  | "formDesign.leave.body"
+  | "formDesign.leave.save"
+  | "formDesign.leave.discard"
+  | "formDesign.leave.stay"
+  | "formDesign.lease.acquiring"
+  | "formDesign.lease.readOnly"
+  | "formDesign.lease.holder"
+  | "formDesign.lease.expires"
+  | "formDesign.lease.takeover"
+  | "formDesign.lease.takeoverWarning"
+  | "formDesign.lease.takeoverConfirm"
+  | "formDesign.lease.takeoverCancel"
+  | "formDesign.lease.takeoverFailed"
+  | "formDesign.lease.lost"
+  | "formDesign.lease.unavailable"
   | "workflowDesign.editor.designForm"
   | "workflowDesign.leave.title"
   | "workflowDesign.leave.body"
@@ -372,6 +445,9 @@ export type MessageKey =
   | "workflowDesign.editor.issue.taskFormMissing"
   | "workflowDesign.editor.issue.taskBindingMissingField"
   | "workflowDesign.editor.issue.taskFormDecorative"
+  | "workflowDesign.editor.issue.formItemContentMissing"
+  | "workflowDesign.editor.issue.unknown"
+  | "workflowDesign.editor.issue.taskContext"
   | "workflowDesign.editor.issueAction.configureStarter"
   | "workflowDesign.editor.issueAction.configureAssignment"
   | "workflowDesign.editor.issueAction.reviewWorkflowPath"
@@ -436,6 +512,7 @@ export type MessageKey =
   | "taskForm.back"
   | "taskForm.loading"
   | "taskForm.loadError"
+  | "taskForm.unsupportedItem"
   | "taskForm.leave.title"
   | "taskForm.leave.body"
   | "taskForm.leave.save"
@@ -568,11 +645,84 @@ export const spanishMessages: MessageDictionary = {
   "formLauncher.emptyStepForm": "Vuelve a Formularios para diseñar los campos de esa tarea.",
   "formLauncher.noTasks": "Este flujo aún no tiene tareas. Agrega una antes de diseñar su formulario.",
   "formLauncher.unavailable": "Aún no tienes formularios. Crea un flujo y agrega una tarea para diseñar el primero.",
+  "formLauncher.catalogError": "No pudimos cargar tus flujos. Actualiza para intentarlo de nuevo.",
   "formDesign.eyebrow": "Formulario de tarea",
   "formDesign.title": "Diseñador de formulario",
   "formDesign.reserved": "Aquí podrás diseñar el formulario de esta tarea. Por ahora, vuelve al flujo para continuar con la configuración.",
   "formDesign.backToForms": "Volver a formularios",
   "formDesign.backToWorkflow": "Volver al flujo",
+  "formDesign.palette": "Paleta del formulario",
+  "formDesign.fields": "Campos",
+  "formDesign.layout": "Diseño",
+  "formDesign.shortText": "Texto corto",
+  "formDesign.section": "Sección",
+  "formDesign.heading": "Encabezado",
+  "formDesign.instruction": "Texto de instrucciones",
+  "formDesign.divider": "Separador",
+  "formDesign.canvas": "Lienzo del formulario",
+  "formDesign.empty": "Agrega un campo o un elemento de diseño para comenzar.",
+  "formDesign.moveUp": "Mover arriba",
+  "formDesign.moveDown": "Mover abajo",
+  "formDesign.properties": "Propiedades",
+  "formDesign.selectItem": "Selecciona un elemento para editar sus propiedades.",
+  "formDesign.label": "Etiqueta",
+  "formDesign.helpText": "Texto de ayuda",
+  "formDesign.placeholder": "Texto de ejemplo",
+  "formDesign.defaultValue": "Valor predeterminado",
+  "formDesign.required": "Campo obligatorio",
+  "formDesign.minimumLength": "Longitud mínima",
+  "formDesign.maximumLength": "Longitud máxima",
+  "formDesign.content": "Contenido",
+  "formDesign.width": "Ancho",
+  "formDesign.width.full": "Completo",
+  "formDesign.width.half": "Mitad",
+  "formDesign.width.third": "Tercio",
+  "formDesign.width.quarter": "Cuarto",
+  "formDesign.remove": "Eliminar elemento",
+  "formDesign.saving": "Guardando borrador",
+  "formDesign.saved": "Borrador guardado",
+  "formDesign.unsaved": "Cambios sin guardar",
+  "formDesign.saveError": "No pudimos guardar el formulario. Conservamos tus cambios para que vuelvas a intentarlo.",
+  "formDesign.save": "Guardar borrador",
+  "formDesign.saveAndReturn": "Guardar y volver al flujo",
+  "formDesign.validationTitle": "El formulario necesita atención",
+  "formDesign.validationBody": "Puedes guardar este borrador incompleto, pero corrige los elementos indicados antes de publicar.",
+  "formDesign.validation.labelRequired": "Agrega una etiqueta visible para este campo.",
+  "formDesign.validation.contentRequired": "Agrega contenido visible para este elemento.",
+  "formDesign.validation.minimumGreaterThanMaximum": "La longitud mínima no puede superar la longitud máxima.",
+  "formDesign.error.invalidValue": "Revisa este valor antes de volver a guardar.",
+  "formDesign.error.unsupportedWidth": "Selecciona un ancho disponible para este elemento.",
+  "formDesign.error.duplicateIdentifier": "Recarga el formulario para resolver identificadores duplicados.",
+  "formDesign.error.conflict": "Otra persona guardó una versión más reciente de este flujo.",
+  "formDesign.preview": "Vista previa",
+  "formDesign.default.section": "Nueva sección",
+  "formDesign.default.heading": "Nuevo encabezado",
+  "formDesign.default.instruction": "Agrega instrucciones para la persona que complete la tarea.",
+  "formDesign.dragHandle": "Arrastrar para reordenar",
+  "formDesign.dragInstructions": "Presiona la barra espaciadora para tomar el elemento, usa las flechas para moverlo y vuelve a presionar la barra para soltarlo.",
+  "formDesign.dragStart": "Elemento tomado.",
+  "formDesign.dragMove": "Elemento movido.",
+  "formDesign.dragDrop": "Elemento colocado.",
+  "formDesign.dragCancel": "Movimiento cancelado.",
+  "formDesign.retry": "Reintentar guardado",
+  "formDesign.reloadAndReapply": "Cargar la última versión y reaplicar mis cambios",
+  "formDesign.reloadError": "No pudimos cargar la última versión. Tus cambios siguen disponibles.",
+  "formDesign.leave.title": "Hay cambios del formulario sin guardar",
+  "formDesign.leave.body": "Guarda el borrador, descarta los cambios o permanece en el Diseñador de formulario.",
+  "formDesign.leave.save": "Guardar y salir",
+  "formDesign.leave.discard": "Descartar y salir",
+  "formDesign.leave.stay": "Permanecer",
+  "formDesign.lease.acquiring": "Preparando una sesión segura de edición del formulario…",
+  "formDesign.lease.readOnly": "Este formulario está abierto en modo de solo lectura.",
+  "formDesign.lease.holder": "Editando actualmente:",
+  "formDesign.lease.expires": "La sesión de edición vence:",
+  "formDesign.lease.takeover": "Tomar control de la edición",
+  "formDesign.lease.takeoverWarning": "Tomar el control revocará el acceso de edición actual. Los cambios que esa persona no haya guardado podrían perderse.",
+  "formDesign.lease.takeoverConfirm": "Confirmar y tomar control",
+  "formDesign.lease.takeoverCancel": "Cancelar",
+  "formDesign.lease.takeoverFailed": "No pudimos transferir la sesión de edición. Inténtalo de nuevo.",
+  "formDesign.lease.lost": "Tu sesión de edición venció o fue transferida. Conservamos los cambios localmente en modo de solo lectura.",
+  "formDesign.lease.unavailable": "No pudimos confirmar una sesión de edición. El formulario permanece en modo de solo lectura.",
   "workflowDesign.editor.designForm": "Diseñar formulario",
   "workflowDesign.leave.title": "Hay cambios sin guardar",
   "workflowDesign.leave.body": "Guarda el borrador, descarta los cambios o quédate en el diseñador.",
@@ -942,13 +1092,18 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.issue.firstTaskBindingMissingField":
     "Reconecta este campo de la tarea con un campo reutilizable existente antes de publicar.",
   "workflowDesign.editor.issue.firstTaskFormDecorative":
-    "Reemplaza el contenido decorativo por una etiqueta de campo visible antes de publicar.",
+    "Agrega una etiqueta a este elemento del formulario antes de publicar.",
   "workflowDesign.editor.issue.taskFormMissing":
     "Agrega un campo visible al formulario de esta tarea antes de publicar.",
   "workflowDesign.editor.issue.taskBindingMissingField":
     "Reconecta este campo de la tarea con un campo reutilizable existente antes de publicar.",
   "workflowDesign.editor.issue.taskFormDecorative":
-    "Reemplaza el contenido decorativo de esta tarea por una etiqueta de campo visible antes de publicar.",
+    "Agrega una etiqueta a este elemento del formulario antes de publicar.",
+  "workflowDesign.editor.issue.formItemContentMissing":
+    "Agrega contenido visible a este elemento del formulario antes de publicar.",
+  "workflowDesign.editor.issue.unknown":
+    "Revisa este requisito del flujo antes de publicar.",
+  "workflowDesign.editor.issue.taskContext": "Tarea afectada:",
   "workflowDesign.editor.issueAction.configureStarter": "Configurar inicio",
   "workflowDesign.editor.issueAction.configureAssignment": "Configurar asignación",
   "workflowDesign.editor.issueAction.reviewWorkflowPath": "Revisar camino",
@@ -1015,6 +1170,7 @@ export const spanishMessages: MessageDictionary = {
   "taskForm.back": "Volver a Mi trabajo",
   "taskForm.loading": "Cargando la tarea.",
   "taskForm.loadError": "No pudimos cargar esta tarea. Selecciona Actualizar para volver a cargarla.",
+  "taskForm.unsupportedItem": "Este elemento del formulario no es compatible. Vuelve al diseñador y corrígelo.",
   "taskForm.leave.title": "Hay cambios sin guardar",
   "taskForm.leave.body": "Guarda el formulario, descarta los cambios o permanece en la tarea.",
   "taskForm.leave.save": "Guardar y salir",
@@ -1148,11 +1304,84 @@ export const englishMessages: Partial<MessageDictionary> = {
   "formLauncher.emptyStepForm": "Return to Forms to design the fields for that task.",
   "formLauncher.noTasks": "This workflow has no tasks available for design.",
   "formLauncher.unavailable": "You do not have any forms yet. Create a workflow and add a task to design the first one.",
+  "formLauncher.catalogError": "We could not load your workflows. Refresh to try again.",
   "formDesign.eyebrow": "Task form",
   "formDesign.title": "Form designer",
   "formDesign.reserved": "Form design will be available here. Return to the workflow to continue configuring its tasks.",
   "formDesign.backToForms": "Back to forms",
   "formDesign.backToWorkflow": "Back to workflow",
+  "formDesign.palette": "Form palette",
+  "formDesign.fields": "Fields",
+  "formDesign.layout": "Layout",
+  "formDesign.shortText": "Short text",
+  "formDesign.section": "Section",
+  "formDesign.heading": "Heading",
+  "formDesign.instruction": "Instruction text",
+  "formDesign.divider": "Divider",
+  "formDesign.canvas": "Form canvas",
+  "formDesign.empty": "Add a field or layout item to begin.",
+  "formDesign.moveUp": "Move up",
+  "formDesign.moveDown": "Move down",
+  "formDesign.properties": "Properties",
+  "formDesign.selectItem": "Select an item to edit its properties.",
+  "formDesign.label": "Label",
+  "formDesign.helpText": "Help text",
+  "formDesign.placeholder": "Placeholder",
+  "formDesign.defaultValue": "Default value",
+  "formDesign.required": "Required field",
+  "formDesign.minimumLength": "Minimum length",
+  "formDesign.maximumLength": "Maximum length",
+  "formDesign.content": "Content",
+  "formDesign.width": "Width",
+  "formDesign.width.full": "Full",
+  "formDesign.width.half": "Half",
+  "formDesign.width.third": "Third",
+  "formDesign.width.quarter": "Quarter",
+  "formDesign.remove": "Remove item",
+  "formDesign.saving": "Saving draft",
+  "formDesign.saved": "Draft saved",
+  "formDesign.unsaved": "Unsaved changes",
+  "formDesign.saveError": "We could not save the Form. Your changes are preserved so you can try again.",
+  "formDesign.save": "Save draft",
+  "formDesign.saveAndReturn": "Save and return to workflow",
+  "formDesign.validationTitle": "The Form needs attention",
+  "formDesign.validationBody": "You can save this incomplete draft, but correct the listed items before publication.",
+  "formDesign.validation.labelRequired": "Add a visible label for this field.",
+  "formDesign.validation.contentRequired": "Add visible content for this item.",
+  "formDesign.validation.minimumGreaterThanMaximum": "Minimum length cannot exceed maximum length.",
+  "formDesign.error.invalidValue": "Review this value before saving again.",
+  "formDesign.error.unsupportedWidth": "Select an available width for this item.",
+  "formDesign.error.duplicateIdentifier": "Reload the Form to resolve duplicate identifiers.",
+  "formDesign.error.conflict": "Someone else saved a newer version of this workflow.",
+  "formDesign.preview": "Preview",
+  "formDesign.default.section": "New section",
+  "formDesign.default.heading": "New heading",
+  "formDesign.default.instruction": "Add instructions for the person completing this task.",
+  "formDesign.dragHandle": "Drag to reorder",
+  "formDesign.dragInstructions": "Press Space to pick up the item, use the arrow keys to move it, and press Space again to drop it.",
+  "formDesign.dragStart": "Item picked up.",
+  "formDesign.dragMove": "Item moved.",
+  "formDesign.dragDrop": "Item dropped.",
+  "formDesign.dragCancel": "Move cancelled.",
+  "formDesign.retry": "Retry save",
+  "formDesign.reloadAndReapply": "Load latest and reapply my changes",
+  "formDesign.reloadError": "We could not load the latest version. Your changes are still available.",
+  "formDesign.leave.title": "There are unsaved Form changes",
+  "formDesign.leave.body": "Save the draft, discard your changes, or stay in the Form Designer.",
+  "formDesign.leave.save": "Save and leave",
+  "formDesign.leave.discard": "Discard and leave",
+  "formDesign.leave.stay": "Stay",
+  "formDesign.lease.acquiring": "Preparing a secure Form editing session…",
+  "formDesign.lease.readOnly": "This Form is open in read-only mode.",
+  "formDesign.lease.holder": "Currently editing:",
+  "formDesign.lease.expires": "The editing session expires:",
+  "formDesign.lease.takeover": "Take over editing",
+  "formDesign.lease.takeoverWarning": "Taking control will revoke the current editing access. That person's unsaved changes could be lost.",
+  "formDesign.lease.takeoverConfirm": "Confirm and take over",
+  "formDesign.lease.takeoverCancel": "Cancel",
+  "formDesign.lease.takeoverFailed": "We could not transfer the editing session. Try again.",
+  "formDesign.lease.lost": "Your editing session expired or was transferred. Local changes remain available in read-only mode.",
+  "formDesign.lease.unavailable": "We could not confirm an editing session. The Form remains read-only.",
   "workflowDesign.editor.designForm": "Design form",
   "workflowDesign.leave.title": "There are unsaved changes",
   "workflowDesign.leave.body": "Save the draft, discard the changes, or stay in the designer.",
@@ -1524,13 +1753,18 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.issue.firstTaskBindingMissingField":
     "Reconnect this Task field to an existing reusable field before publishing.",
   "workflowDesign.editor.issue.firstTaskFormDecorative":
-    "Replace decorative-only form content with a visible field label before publishing.",
+    "Add a label to this Form item before publishing.",
   "workflowDesign.editor.issue.taskFormMissing":
     "Add one visible field to this Task form before publishing.",
   "workflowDesign.editor.issue.taskBindingMissingField":
     "Reconnect this Task field to an existing reusable field before publishing.",
   "workflowDesign.editor.issue.taskFormDecorative":
-    "Replace decorative-only content in this Task with a visible field label before publishing.",
+    "Add a label to this Form item before publishing.",
+  "workflowDesign.editor.issue.formItemContentMissing":
+    "Add visible content to this Form item before publishing.",
+  "workflowDesign.editor.issue.unknown":
+    "Review this workflow requirement before publishing.",
+  "workflowDesign.editor.issue.taskContext": "Affected Task:",
   "workflowDesign.editor.issueAction.configureStarter": "Configure starter",
   "workflowDesign.editor.issueAction.configureAssignment": "Configure assignment",
   "workflowDesign.editor.issueAction.reviewWorkflowPath": "Review workflow path",
@@ -1597,6 +1831,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "taskForm.back": "Back to My work",
   "taskForm.loading": "Loading the authorized task.",
   "taskForm.loadError": "We could not load this authorized task. Try again.",
+  "taskForm.unsupportedItem": "This Form item is not supported. Return to the designer and correct it.",
   "taskForm.leave.title": "There are unsaved changes",
   "taskForm.leave.body": "Save the form, discard the changes, or stay on this task.",
   "taskForm.leave.save": "Save and leave",

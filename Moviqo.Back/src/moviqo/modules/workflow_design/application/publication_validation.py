@@ -6,6 +6,7 @@ from typing import Any
 from moviqo.modules.workflow_design.application.publication_configuration import (
     STARTER_TARGET,
 )
+from moviqo.modules.workflow_design.application.text import has_meaningful_text
 
 
 def validate_workflow_for_publication(
@@ -131,11 +132,26 @@ def validate_workflow_for_publication(
 
     process_field_by_id = {field["id"]: field for field in document["processFields"]}
     task_bindings: list[dict[str, Any]] = []
+    for item in document["formBindings"]:
+        if item.get("kind", "field") in {"section", "heading", "instruction"} and not (
+            item.get("content") or ""
+        ).strip():
+            issues.append(
+                _issue(
+                    code="form_item_content_missing",
+                    target=f"formBindings.{item['id']}.content",
+                    element_id=item["taskElementId"],
+                    binding_id=item["id"],
+                    message="Add visible content to this Form item before publishing.",
+                    action_label="Open Task form",
+                )
+            )
     for task in tasks:
         bindings = [
             binding
             for binding in document["formBindings"]
             if binding["taskElementId"] == task["id"]
+            and binding.get("kind", "field") == "field"
         ]
         task_bindings.extend(bindings)
         if not bindings:
@@ -170,8 +186,14 @@ def validate_workflow_for_publication(
             )
             continue
 
-        label = (field.get("label") or binding.get("label") or "").strip()
-        if not label:
+        binding_label = binding.get("label")
+        field_label = field.get("label", "")
+        accessible_label = (
+            binding_label
+            if binding_label is not None and has_meaningful_text(binding_label)
+            else field_label
+        )
+        if not has_meaningful_text(accessible_label):
             issues.append(
                 _issue(
                     code="task_form_decorative",
@@ -179,11 +201,8 @@ def validate_workflow_for_publication(
                     element_id=binding["taskElementId"],
                     field_id=field["id"],
                     binding_id=binding["id"],
-                    message=(
-                        "Replace decorative-only form content with a visible field "
-                        "label before publishing."
-                    ),
-                    action_label="Open reusable field",
+                    message="Add a label to this Form item before publishing.",
+                    action_label="Open Task form",
                 )
             )
 
@@ -270,6 +289,7 @@ def _deduplicate_and_sort(issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "task_form_missing": 10,
         "task_binding_missing_field": 11,
         "task_form_decorative": 12,
+        "form_item_content_missing": 13,
     }
     seen: set[tuple[Any, ...]] = set()
     deduplicated: list[dict[str, Any]] = []

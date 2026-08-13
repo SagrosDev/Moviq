@@ -8,7 +8,7 @@ import {
 } from "../../../features/workflow-design";
 import { moviqoQueryKeys } from "../../../shared/api";
 import { useLanguage } from "../../../shared/localization";
-import { Alert, PageHeader } from "../../../shared/ui";
+import { Alert, LoadingState, PageHeader } from "../../../shared/ui";
 
 export const WorkflowCreatePage = () => {
   const { t } = useLanguage();
@@ -17,7 +17,7 @@ export const WorkflowCreatePage = () => {
   const queryClient = useQueryClient();
 
   if (state.status !== "authenticated") {
-    return <Alert announcement="polite">{t("app.loading")}</Alert>;
+    return <LoadingState>{t("app.loading")}</LoadingState>;
   }
 
   const canAuthor = canCreateWorkflow(state.context.membership.role);

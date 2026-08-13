@@ -110,3 +110,32 @@ test("workflow draft reads default omitted publication children", async () => {
     "unconfigured"
   );
 });
+
+test("workflow draft reads preserve intentionally blank structural Form content", async () => {
+  const fetchImplementation = async () => new Response(JSON.stringify({
+    workflowId: "workflow-1",
+    organizationId: "organization-1",
+    createdByMembershipId: "membership-1",
+    configurationDirectory: { memberships: [], teams: [] },
+    name: "Approvals",
+    revision: "1",
+    draft: {
+      ...draft,
+      formBindings: [{
+        id: "heading-1",
+        taskElementId: "task-1",
+        kind: "heading",
+        content: "",
+        position: 0,
+        width: "full"
+      }]
+    }
+  }), { status: 200, headers: { "Content-Type": "application/json" } });
+
+  const result = await readWorkflowDraftSnapshot("workflow-1", fetchImplementation);
+  assert.equal(result.ok, true);
+  if (!result.ok) assert.fail("expected blank structural content to remain editable");
+  const item = result.data.draft.formBindings[0];
+  assert.equal(item?.kind, "heading");
+  assert.equal(item && "content" in item ? item.content : null, "");
+});

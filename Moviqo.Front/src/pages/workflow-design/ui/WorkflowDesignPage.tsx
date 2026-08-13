@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useBlocker, useNavigate, useParams } from "react-router";
+import { useBlocker, useNavigate, useParams, useSearchParams } from "react-router";
 import { useSession } from "../../../features/authentication";
 import {
   WorkflowDraftEditor,
@@ -18,6 +18,7 @@ import {
   Breadcrumbs,
   Button,
   isUnmodifiedPrimaryClick,
+  LoadingState,
   PageHeader
 } from "../../../shared/ui";
 
@@ -36,6 +37,8 @@ export const WorkflowDesignPage = () => {
   const { state } = useSession();
   const { workflowId = "" } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialSelectedElementId = searchParams.get("task");
   const queryClient = useQueryClient();
   const organizationId = state.status === "authenticated"
     ? state.context.membership.organizationId
@@ -162,10 +165,11 @@ export const WorkflowDesignPage = () => {
           {t("workflowDesign.route.error")}
         </Alert>
       ) : !hasAcceptedWorkflow || !draftState || !acceptedSnapshot ? (
-        <Alert announcement="polite">{t("workflowDesign.route.loading")}</Alert>
+        <LoadingState>{t("workflowDesign.route.loading")}</LoadingState>
       ) : (
         <WorkflowDraftEditor
           configurationDirectory={acceptedSnapshot.configurationDirectory}
+          initialSelectedElementId={initialSelectedElementId}
           draftState={draftState}
           onAccepted={acceptSavedDraft}
           onDirtyChange={setIsDirty}

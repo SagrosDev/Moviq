@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import timedelta
 from importlib import import_module
 
 import pytest
@@ -37,6 +38,7 @@ from moviqo.modules.organizations.models import (
     TeamMembership,
 )
 from moviqo.modules.workflow_design.models import (
+    FormAuthoringLease,
     WorkflowDefinition,
     WorkflowDraft,
     WorkflowVersion,
@@ -771,6 +773,62 @@ def _assert_workflow_version_isolation(seed: IsolationSeed) -> None:
 
     row_b.refresh_from_db()
     assert row_b.version_number == 1
+
+
+def _assert_form_authoring_lease_isolation(seed: IsolationSeed) -> None:
+    workflow_a = WorkflowDefinition.objects.create(
+        organization=seed.organization_a,
+        name="Workflow alpha",
+        normalized_name="workflow alpha",
+        draft_schema_version=8,
+        created_by_membership_id=seed.membership_a.id,
+        created_by_user_id=seed.user_a.id,
+    )
+    workflow_b = WorkflowDefinition.objects.create(
+        organization=seed.organization_b,
+        name="Workflow bravo",
+        normalized_name="workflow bravo",
+        draft_schema_version=8,
+        created_by_membership_id=seed.membership_b.id,
+        created_by_user_id=seed.user_b.id,
+    )
+    now = timezone.now()
+    FormAuthoringLease.objects.create(
+        organization=seed.organization_a,
+        workflow=workflow_a,
+        task_element_id="task-1",
+        holder_membership_id=seed.membership_a.id,
+        holder_user_id=seed.user_a.id,
+        session_key="session-a",
+        session_expires_at=now + timedelta(minutes=5),
+        lease_expires_at=now + timedelta(minutes=1),
+    )
+    row_b = FormAuthoringLease.objects.create(
+        organization=seed.organization_b,
+        workflow=workflow_b,
+        task_element_id="task-1",
+        holder_membership_id=seed.membership_b.id,
+        holder_user_id=seed.user_b.id,
+        session_key="session-b",
+        session_expires_at=now + timedelta(minutes=5),
+        lease_expires_at=now + timedelta(minutes=1),
+    )
+
+    with tenant_atomic_context(
+        TenantContext(
+            organization_id=seed.organization_a.id,
+            membership_id=seed.membership_a.id,
+            user_id=seed.user_a.id,
+        )
+    ):
+        assert FormAuthoringLease.objects.count() == 1
+        assert not FormAuthoringLease.objects.filter(id=row_b.id).exists()
+        assert FormAuthoringLease.objects.filter(id=row_b.id).update(
+            task_element_id="cross-tenant"
+        ) == 0
+
+    row_b.refresh_from_db()
+    assert row_b.task_element_id == "task-1"
 
 
 def _assertion_for_registration(

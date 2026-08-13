@@ -4,7 +4,7 @@ from collections import defaultdict, deque
 from math import isfinite
 from typing import Any
 
-CURRENT_DRAFT_SCHEMA_VERSION = 7
+CURRENT_DRAFT_SCHEMA_VERSION = 8
 CURRENT_DRAFT_FIELDS = frozenset(
     {
         "schemaVersion",
@@ -34,18 +34,26 @@ CURRENT_PROCESS_FIELD_FIELDS = frozenset(
         "maximumLength",
     }
 )
-CURRENT_FORM_BINDING_FIELDS = frozenset(
-    {"id", "taskElementId", "fieldId", "position", "width", "label"}
+FIELD_FORM_ITEM_FIELDS = frozenset(
+    {"id", "kind", "taskElementId", "fieldId", "position", "width", "label"}
+)
+STRUCTURAL_FORM_ITEM_FIELDS = frozenset(
+    {"id", "kind", "taskElementId", "position", "width", "content"}
 )
 SUPPORTED_ELEMENT_TYPES = frozenset({"start", "task", "end"})
 SUPPORTED_CONNECTION_TYPES = frozenset({"sequence"})
 SUPPORTED_PROCESS_FIELD_KINDS = frozenset({"shortText"})
+SUPPORTED_FORM_ITEM_KINDS = frozenset(
+    {"field", "section", "heading", "instruction", "divider"}
+)
+SUPPORTED_FORM_ITEM_WIDTHS = frozenset({"full", "half", "third", "quarter"})
 LEGACY_DRAFT_SCHEMA_VERSION = 1
 GRAPH_DRAFT_SCHEMA_VERSION = 2
 PUBLICATION_DRAFT_SCHEMA_VERSION = 3
 CONFIGURATION_DRAFT_SCHEMA_VERSION = 4
 CONNECTION_LABEL_DRAFT_SCHEMA_VERSION = 5
 LAYOUT_DRAFT_SCHEMA_VERSION = 6
+ASSIGNMENT_DRAFT_SCHEMA_VERSION = 7
 MAXIMUM_LAYOUT_COORDINATE = 100_000
 SHORT_TEXT_MAXIMUM_LENGTH = 255
 STARTER_MODES = frozenset(
@@ -111,6 +119,10 @@ def load_draft_document(payload: dict[str, Any]) -> dict[str, Any]:
 
     if schema_version == LAYOUT_DRAFT_SCHEMA_VERSION:
         payload = _upcast_v6_to_v7(payload)
+        schema_version = payload["schemaVersion"]
+
+    if schema_version == ASSIGNMENT_DRAFT_SCHEMA_VERSION:
+        payload = _upcast_v7_to_v8(payload)
     elif schema_version != CURRENT_DRAFT_SCHEMA_VERSION:
         raise UnsupportedDraftSchemaVersionError(
             f"Unsupported draft schema version: {schema_version}"
@@ -309,9 +321,20 @@ def _upcast_v6_to_v7(payload: dict[str, Any]) -> dict[str, Any]:
     publication.pop("assignment", None)
     return {
         **payload,
-        "schemaVersion": CURRENT_DRAFT_SCHEMA_VERSION,
+        "schemaVersion": ASSIGNMENT_DRAFT_SCHEMA_VERSION,
         "elements": elements,
         "publication": publication,
+    }
+
+
+def _upcast_v7_to_v8(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **payload,
+        "schemaVersion": CURRENT_DRAFT_SCHEMA_VERSION,
+        "formBindings": [
+            {"kind": "field", **binding}
+            for binding in payload.get("formBindings", [])
+        ],
     }
 
 
@@ -439,6 +462,8 @@ def validate_workflow_draft_integrity(payload: dict[str, Any]) -> dict[str, Any]
 
     seen_binding_pairs: set[tuple[str, str]] = set()
     for binding in form_bindings:
+        if binding["kind"] != "field":
+            continue
         pair = (binding["taskElementId"], binding["fieldId"])
         if pair in seen_binding_pairs:
             issues.append(
@@ -617,7 +642,7 @@ def validate_workflow_draft_integrity(payload: dict[str, Any]) -> dict[str, Any]
                     "reason": "Place reusable fields only on a Task step.",
                 }
             )
-        if binding["fieldId"] not in process_field_by_id:
+        if binding["kind"] == "field" and binding["fieldId"] not in process_field_by_id:
             issues.append(
                 {
                     "field": f"formBindings.{binding['id']}.fieldId",
@@ -846,13 +871,13 @@ def _normalize_process_field(payload: Any) -> dict[str, Any]:
         code="required",
         reason="Save this reusable field with a stable identifier.",
     )
-    label = _require_non_blank_string_issue(
+    label = _require_string_issue(
         payload,
         "label",
         field=f"{field_path}.label",
-        code="required",
-        reason="Complete this field to continue.",
-    )
+        code="invalid",
+        reason="Use text for this reusable field label.",
+    ).strip()
     kind = _require_string_issue(
         payload,
         "kind",
@@ -909,7 +934,25 @@ def _normalize_form_binding(payload: Any) -> dict[str, Any]:
         raise WorkflowDraftSchemaError("Workflow draft formBindings must be objects.")
 
     binding_path = f"formBindings.{_issue_path_identifier(payload, fallback='new-binding')}"
-    unknown_fields = sorted(set(payload) - CURRENT_FORM_BINDING_FIELDS)
+    kind_value = payload.get("kind", "field")
+    if not isinstance(kind_value, str):
+        _raise_validation_issue(
+            field=f"{binding_path}.kind",
+            code="invalid",
+            reason="Choose a supported Form item type.",
+        )
+    kind = kind_value.strip() or "field"
+    if kind not in SUPPORTED_FORM_ITEM_KINDS:
+        _raise_validation_issue(
+            field=f"{binding_path}.kind",
+            code="unsupported_kind",
+            reason="Choose a supported Form item type.",
+        )
+
+    allowed_fields = (
+        FIELD_FORM_ITEM_FIELDS if kind == "field" else STRUCTURAL_FORM_ITEM_FIELDS
+    )
+    unknown_fields = sorted(set(payload) - allowed_fields)
     if unknown_fields:
         issue_field = (
             f"{binding_path}.{unknown_fields[0]}"
@@ -919,7 +962,7 @@ def _normalize_form_binding(payload: Any) -> dict[str, Any]:
         _raise_validation_issue(
             field=issue_field,
             code="unknown_field",
-            reason="Remove unsupported placement data from this task field.",
+            reason="Remove unsupported data from this Form item.",
         )
 
     position = _normalize_length(
@@ -933,17 +976,17 @@ def _normalize_form_binding(payload: Any) -> dict[str, Any]:
         _raise_validation_issue(
             field=f"{binding_path}.width",
             code="invalid",
-            reason="Keep this task field at the default full width.",
+            reason="Choose an approved Form item width.",
         )
     width = width.strip() or "full"
-    if width != "full":
+    if width not in SUPPORTED_FORM_ITEM_WIDTHS:
         _raise_validation_issue(
             field=f"{binding_path}.width",
             code="unsupported_width",
-            reason="Keep this task field at the default full width.",
+            reason="Choose full, half, third, or quarter width.",
         )
 
-    return {
+    normalized = {
         "id": _require_non_blank_string_issue(
             payload,
             "id",
@@ -951,6 +994,7 @@ def _normalize_form_binding(payload: Any) -> dict[str, Any]:
             code="required",
             reason="Save this task field placement with a stable identifier.",
         ),
+        "kind": kind,
         "taskElementId": _require_non_blank_string_issue(
             payload,
             "taskElementId",
@@ -958,16 +1002,26 @@ def _normalize_form_binding(payload: Any) -> dict[str, Any]:
             code="required",
             reason="Place this field on the first Task step.",
         ),
-        "fieldId": _require_non_blank_string_issue(
-            payload,
-            "fieldId",
-            field=f"{binding_path}.fieldId",
-            code="required",
-            reason="Choose an existing reusable field before adding it to the task.",
-        ),
         "position": position,
         "width": width,
-        "label": _normalize_optional_nullable_string(payload, "label"),
+    }
+    if kind == "field":
+        return {
+            **normalized,
+            "fieldId": _require_non_blank_string_issue(
+                payload,
+                "fieldId",
+                field=f"{binding_path}.fieldId",
+                code="required",
+                reason="Choose an existing reusable field before adding it to the task.",
+            ),
+            "label": _normalize_optional_nullable_string(payload, "label"),
+        }
+    if kind == "divider":
+        return normalized
+    return {
+        **normalized,
+        "content": _normalize_optional_string(payload, "content"),
     }
 
 

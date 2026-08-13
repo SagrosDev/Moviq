@@ -285,7 +285,9 @@ export const setFirstTaskFieldBinding = (
       formBindings: draft.formBindings.filter(
         (binding) =>
           !(
-            binding.taskElementId === firstTask.id && binding.fieldId === firstField.id
+            binding.kind === "field"
+            && binding.taskElementId === firstTask.id
+            && binding.fieldId === firstField.id
           )
       )
     };
@@ -293,7 +295,9 @@ export const setFirstTaskFieldBinding = (
 
   const existingBinding = draft.formBindings.find(
     (binding) =>
-      binding.taskElementId === firstTask.id && binding.fieldId === firstField.id
+      binding.kind === "field"
+      && binding.taskElementId === firstTask.id
+      && binding.fieldId === firstField.id
   );
   if (existingBinding) {
     return draft;
@@ -305,6 +309,7 @@ export const setFirstTaskFieldBinding = (
       ...draft.formBindings,
       {
         id: `binding-${draft.formBindings.length + 1}`,
+        kind: "field",
         taskElementId: firstTask.id,
         fieldId: firstField.id,
         position: 0,

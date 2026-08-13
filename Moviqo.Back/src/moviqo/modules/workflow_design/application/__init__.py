@@ -17,6 +17,14 @@ _LAZY_EXPORTS = {
         "moviqo.modules.workflow_design.application.views",
         "WorkflowDraftDetailView",
     ),
+    "FormAuthoringLeaseView": (
+        "moviqo.modules.workflow_design.application.views",
+        "FormAuthoringLeaseView",
+    ),
+    "FormDraftSaveView": (
+        "moviqo.modules.workflow_design.application.views",
+        "FormDraftSaveView",
+    ),
     "WorkflowPublicationValidationView": (
         "moviqo.modules.workflow_design.application.views",
         "WorkflowPublicationValidationView",

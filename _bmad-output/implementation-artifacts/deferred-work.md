@@ -57,3 +57,13 @@ These items are not outstanding work for the active Story 1.34. Compatibility, r
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-36-compact-editor-header-visible-arrows.md`
   summary: Stabilize the existing Firefox Workflow pointer-drag connection journey.
   evidence: Firefox passed the new header and label geometry scenarios but intermittently created only one of two edges at the pre-existing manual pointer-drag step; the 44px Handle geometry is unchanged and Chromium passes the same gesture.
+
+## Deferred from: code review of `1-37-establish-the-dedicated-schema-driven-form-designer.md` (2026-08-13)
+
+- Distinguish a workflow-catalog request failure from an empty catalog. The launcher currently treats `catalogQuery.isError` as the no-workflows state and can show onboarding/create guidance after network or authorization failure; this behavior predates Story 1.37 and should be addressed in the catalog experience rather than folded into the Form Designer implementation.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-37-fix-postgresql-form-authoring-lease-lock.md`
+  summary: Define and enforce how active Form leases constrain generic Workflow draft saves and publication requests.
+  evidence: The dedicated Task Form save verifies a lease token, while the general draft and publish paths can persist caller-supplied `formBindings` and `processFields` without Form lease context; closing that bypass requires an intentional API and lease-policy decision beyond this approved lock/UX correction.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-37-fix-postgresql-form-authoring-lease-lock.md`
+  summary: Define safe same-session multi-tab ownership and release semantics for Form authoring leases.
+  evidence: Same-session acquisition intentionally returns the existing token, so two tabs can share authority and either tab's unmount release can revoke the still-open tab; resolving this requires a per-tab identity, reference-counting, or a changed release policy.

@@ -4,6 +4,10 @@ import {
   readApiProblem,
   type NormalizedApiProblem
 } from "../../../shared/api";
+import {
+  updateTaskFormRuntimeItemValue,
+  type TaskFormRuntimeItem
+} from "./registry";
 
 export type TaskFormControl = {
   controlId: string;
@@ -12,9 +16,12 @@ export type TaskFormControl = {
   label: string;
   helpText: string;
   placeholder: string;
-  width: "full";
+  width: "full" | "half" | "third" | "quarter";
   position: number;
   value: string;
+  required?: boolean;
+  minimumLength?: number;
+  maximumLength?: number;
 };
 
 export type TaskFormDocument = {
@@ -29,7 +36,7 @@ export type TaskFormDocument = {
   taskRevision: string;
   definitionRevision: string;
   actions: { saveDraft: boolean; complete: boolean };
-  form: { controls: TaskFormControl[] };
+  form: { controls: TaskFormControl[]; items?: TaskFormRuntimeItem[] };
 };
 
 export type TaskCompletionDocument = {
@@ -60,6 +67,7 @@ export type TaskFormEditorState = {
   taskRevision: string;
   definitionRevision: string;
   controls: TaskFormEditorControl[];
+  items: TaskFormRuntimeItem[];
   hasLocalChanges: boolean;
   saveStatus: "idle" | "saving" | "error" | "success";
   saveRequestKey: string | null;
@@ -82,9 +90,56 @@ export type TaskCompletionResult =
 
 const taskFormClient = createApiClient({ baseUrl: "/api/v1" });
 
+export const taskFormControlValuePath = (controlId: string) => (
+  `controls.${controlId}.value`
+);
+
+export const taskFormErrorSummary = (
+  invalidFieldNames: string[],
+  errorMessages: string[],
+  controls: TaskFormControl[]
+) => {
+  const controlByPath = new Map(controls.map((control) => [
+    taskFormControlValuePath(control.controlId),
+    control
+  ]));
+  const errors: Array<{
+    id: string;
+    fieldId: string;
+    fieldLabel: string;
+    message: string;
+  }> = [];
+  const formMessages: string[] = [];
+  invalidFieldNames.forEach((name, index) => {
+    const control = controlByPath.get(name);
+    const message = errorMessages[index] ?? errorMessages[0] ?? "";
+    if (control) {
+      errors.push({
+        id: `${name}-${index}`,
+        fieldId: `task-form-${control.controlId}`,
+        fieldLabel: control.label,
+        message
+      });
+    } else if (message) {
+      formMessages.push(message);
+    }
+  });
+  if (invalidFieldNames.length === 0) formMessages.push(...errorMessages);
+  return {
+    errors,
+    formMessage: formMessages.length > 0 ? [...new Set(formMessages)].join(" ") : undefined
+  };
+};
+
 export const createTaskFormEditorState = (
   document: TaskFormDocument
-): TaskFormEditorState => ({
+): TaskFormEditorState => {
+  const controls = structuredClone(document.form.controls);
+  const items = structuredClone(document.form.items ?? controls.map((control) => ({
+    ...control,
+    itemId: control.controlId
+  })));
+  return {
   taskId: document.taskId,
   processId: document.processId,
   workflowName: document.workflowName,
@@ -92,7 +147,8 @@ export const createTaskFormEditorState = (
   status: document.status,
   taskRevision: document.taskRevision,
   definitionRevision: document.definitionRevision,
-  controls: structuredClone(document.form.controls),
+  controls,
+  items,
   hasLocalChanges: false,
   saveStatus: "idle",
   saveRequestKey: null,
@@ -103,7 +159,8 @@ export const createTaskFormEditorState = (
   errorMessages: [],
   invalidFieldNames: [],
   actions: document.actions
-});
+  };
+};
 
 export const reduceTaskFormEditorState = (
   state: TaskFormEditorState,
@@ -135,6 +192,9 @@ export const reduceTaskFormEditorState = (
           ? { ...control, value: action.value }
           : control
       ),
+      items: state.items.map((item) => (
+        updateTaskFormRuntimeItemValue(item, action.controlId, action.value)
+      )),
       hasLocalChanges: true,
       saveStatus: "idle",
       saveRequestKey: null,
@@ -222,6 +282,12 @@ export const reduceTaskFormEditorState = (
 
   return state;
 };
+
+export const taskFormRetryTarget = (
+  state: Pick<TaskFormEditorState, "completionStatus">
+): "save" | "complete" => (
+  state.completionStatus === "error" ? "complete" : "save"
+);
 
 export const readTaskFormDocument = async (taskId: string): Promise<TaskFormResult> => {
   try {

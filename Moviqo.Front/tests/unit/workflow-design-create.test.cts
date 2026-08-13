@@ -286,7 +286,12 @@ test("rebinding keeps the same field identity instead of duplicating the definit
   assert.equal(rebound.processFields.length, 1);
   assert.equal(rebound.processFields[0]?.id, "field-1");
   assert.equal(rebound.formBindings.length, 1);
-  assert.equal(rebound.formBindings[0]?.fieldId, "field-1");
+  const reboundBinding = rebound.formBindings[0];
+  assert.equal(reboundBinding?.kind, "field");
+  assert.equal(
+    reboundBinding?.kind === "field" ? reboundBinding.fieldId : null,
+    "field-1"
+  );
 });
 
 test("save failures retain field-level invalid param targets for guided inputs", () => {

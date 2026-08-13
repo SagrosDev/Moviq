@@ -12,6 +12,10 @@ from rest_framework.exceptions import APIException
 from moviqo.building_blocks.commands import execute_atomic_command
 from moviqo.building_blocks.tenancy.runtime import TenantContext
 from moviqo.modules.organizations.application import workflow_design_directory
+from moviqo.modules.workflow_design.application.form_authoring_leases import (
+    FORM_AUTHORING_LEASE_LOST_CODE,
+    enforce_form_authoring_lease,
+)
 from moviqo.modules.workflow_design.application.publication_configuration import (
     validate_publication_configuration,
 )
@@ -19,6 +23,7 @@ from moviqo.modules.workflow_design.application.publication_validation import (
     validate_workflow_for_publication,
 )
 from moviqo.modules.workflow_design.application.schema import (
+    ASSIGNMENT_DRAFT_SCHEMA_VERSION,
     CURRENT_DRAFT_SCHEMA_VERSION,
     WorkflowDraftSchemaError,
     WorkflowDraftValidationError,
@@ -36,6 +41,7 @@ from moviqo.modules.workflow_design.models import (
 MAX_WORKFLOW_NAME_LENGTH = 120
 WORKFLOW_CREATE_COMMAND = "workflow-design.create"
 WORKFLOW_SAVE_COMMAND = "workflow-design.save-draft"
+FORM_DRAFT_SAVE_COMMAND = "workflow-design.save-form-draft"
 WORKFLOW_VALIDATE_COMMAND = "workflow-design.validate-publication"
 WORKFLOW_PUBLISH_COMMAND = "workflow-design.publish"
 SAVE_OUTCOME_ACCEPTED = "accepted"
@@ -76,6 +82,16 @@ class WorkflowDraftRevisionConflictError(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = "Workflow draft revision does not match the latest server state."
     default_code = "workflow_draft_revision_conflict"
+
+    def __init__(self, *, invalid_params: list[dict[str, str]]) -> None:
+        super().__init__(detail=self.default_detail, code=self.default_code)
+        self.invalid_params = invalid_params
+
+
+class FormAuthoringLeaseLostAPIError(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "Form authoring authority was lost."
+    default_code = FORM_AUTHORING_LEASE_LOST_CODE
 
     def __init__(self, *, invalid_params: list[dict[str, str]]) -> None:
         super().__init__(detail=self.default_detail, code=self.default_code)
@@ -315,6 +331,54 @@ def save_workflow_draft(
     raise WorkflowDraftValidationAPIError(invalid_params=error["invalidParams"])
 
 
+def save_form_workflow_draft(
+    *,
+    tenant_context: TenantContext,
+    workflow_id,
+    task_element_id: str,
+    session_key: str,
+    lease_token: uuid.UUID,
+    expected_revision: str,
+    idempotency_key: str,
+    request_hash: str,
+    draft: dict[str, Any],
+) -> dict[str, Any] | None:
+    workflow = (
+        WorkflowDefinition.objects.select_related("draft")
+        .filter(id=workflow_id, organization_id=tenant_context.organization_id)
+        .first()
+    )
+    if workflow is None:
+        return None
+
+    execution = execute_atomic_command(
+        tenant_context=tenant_context,
+        command_type=FORM_DRAFT_SAVE_COMMAND,
+        idempotency_key=idempotency_key,
+        request_hash=request_hash,
+        handler=lambda command_context: _save_workflow_draft_side_effects(
+            tenant_context=tenant_context,
+            command_context=command_context,
+            workflow_id=workflow_id,
+            expected_revision=expected_revision,
+            draft=draft,
+            form_task_element_id=task_element_id,
+            form_session_key=session_key,
+            form_lease_token=lease_token,
+        ),
+    )
+
+    outcome = execution.result
+    if outcome["outcome"] == SAVE_OUTCOME_ACCEPTED:
+        return outcome["payload"]
+    error = outcome["error"]
+    if error["code"] == FORM_AUTHORING_LEASE_LOST_CODE:
+        raise FormAuthoringLeaseLostAPIError(invalid_params=error["invalidParams"])
+    if error["code"] == WorkflowDraftRevisionConflictError.default_code:
+        raise WorkflowDraftRevisionConflictError(invalid_params=error["invalidParams"])
+    raise WorkflowDraftValidationAPIError(invalid_params=error["invalidParams"])
+
+
 def validate_workflow_publication(
     *,
     tenant_context: TenantContext,
@@ -454,6 +518,9 @@ def _save_workflow_draft_side_effects(
     workflow_id,
     expected_revision: str,
     draft: dict[str, Any],
+    form_task_element_id: str | None = None,
+    form_session_key: str | None = None,
+    form_lease_token: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     workflow_draft = (
         WorkflowDraft.objects.select_related("workflow")
@@ -461,6 +528,28 @@ def _save_workflow_draft_side_effects(
         .get(workflow_id=workflow_id, organization_id=tenant_context.organization_id)
     )
     workflow = workflow_draft.workflow
+
+    if form_task_element_id is not None and (
+        form_session_key is None
+        or form_lease_token is None
+        or not enforce_form_authoring_lease(
+            tenant_context=tenant_context,
+            workflow_id=workflow_id,
+            task_element_id=form_task_element_id,
+            session_key=form_session_key,
+            lease_token=form_lease_token,
+        )
+    ):
+        return _rejected_save_outcome(
+            code=FORM_AUTHORING_LEASE_LOST_CODE,
+            invalid_params=[
+                {
+                    "name": "leaseToken",
+                    "code": "lost",
+                    "reason": "Acquire Form editing access before saving again.",
+                }
+            ],
+        )
 
     if workflow_draft.revision != expected_revision:
         return _rejected_save_outcome(
@@ -502,6 +591,14 @@ def _save_workflow_draft_side_effects(
     }
     try:
         validated_document = validate_workflow_draft_integrity(candidate_document)
+        if form_task_element_id is not None:
+            scope_issues = _form_draft_scope_issues(
+                previous_document=previous_document,
+                candidate_document=validated_document,
+                task_element_id=form_task_element_id,
+            )
+            if scope_issues:
+                raise WorkflowDraftValidationError(scope_issues)
         previous_start_ids = {
             element["id"]
             for element in previous_document["elements"]
@@ -1214,6 +1311,22 @@ def _collect_graph_audit_events(
 
     for binding_id, binding in current_bindings.items():
         if binding_id not in previous_bindings:
+            if binding.get("kind", "field") != "field":
+                events.append(
+                    (
+                        "workflow-design.form-item-added",
+                        {
+                            "workflowId": workflow_id,
+                            "draftId": draft_id,
+                            "revision": next_revision,
+                            "previousRevision": previous_revision,
+                            "itemId": binding_id,
+                            "itemKind": binding["kind"],
+                            "taskElementId": binding["taskElementId"],
+                        },
+                    )
+                )
+                continue
             events.append(
                 (
                     "workflow-design.process-field-bound",
@@ -1228,9 +1341,40 @@ def _collect_graph_audit_events(
                     },
                 )
             )
+        elif previous_bindings[binding_id] != binding:
+            events.append(
+                (
+                    "workflow-design.form-item-updated",
+                    {
+                        "workflowId": workflow_id,
+                        "draftId": draft_id,
+                        "revision": next_revision,
+                        "previousRevision": previous_revision,
+                        "itemId": binding_id,
+                        "itemKind": binding.get("kind", "field"),
+                        "taskElementId": binding["taskElementId"],
+                    },
+                )
+            )
 
     for binding_id, binding in previous_bindings.items():
         if binding_id not in current_bindings:
+            if binding.get("kind", "field") != "field":
+                events.append(
+                    (
+                        "workflow-design.form-item-removed",
+                        {
+                            "workflowId": workflow_id,
+                            "draftId": draft_id,
+                            "revision": next_revision,
+                            "previousRevision": previous_revision,
+                            "itemId": binding_id,
+                            "itemKind": binding["kind"],
+                            "taskElementId": binding["taskElementId"],
+                        },
+                    )
+                )
+                continue
             events.append(
                 (
                     "workflow-design.process-field-unbound",
@@ -1286,6 +1430,97 @@ def _collect_graph_audit_events(
     return events
 
 
+def _form_draft_scope_issues(
+    *,
+    previous_document: dict[str, Any],
+    candidate_document: dict[str, Any],
+    task_element_id: str,
+) -> list[dict[str, str]]:
+    for field_name in ("elements", "connections", "publication", "layout"):
+        if candidate_document[field_name] != previous_document[field_name]:
+            return [
+                {
+                    "field": field_name,
+                    "code": "form_draft_scope_invalid",
+                    "reason": (
+                        "Change Workflow structure and configuration in the "
+                        "Workflow Designer."
+                    ),
+                }
+            ]
+
+    previous_other_items = [
+        item
+        for item in previous_document["formBindings"]
+        if item["taskElementId"] != task_element_id
+    ]
+    candidate_other_items = [
+        item
+        for item in candidate_document["formBindings"]
+        if item["taskElementId"] != task_element_id
+    ]
+    if candidate_other_items != previous_other_items:
+        return [
+            {
+                "field": "formBindings",
+                "code": "form_draft_scope_invalid",
+                "reason": "Edit only the Form for the Task whose editing access you hold.",
+            }
+        ]
+
+    task_field_ids = {
+        item["fieldId"]
+        for document in (previous_document, candidate_document)
+        for item in document["formBindings"]
+        if item["taskElementId"] == task_element_id and item["kind"] == "field"
+    }
+    protected_shared_field_ids = {
+        item["fieldId"]
+        for document in (previous_document, candidate_document)
+        for item in document["formBindings"]
+        if item["taskElementId"] != task_element_id and item["kind"] == "field"
+    }
+    previous_fields_by_id = {
+        field["id"]: field for field in previous_document["processFields"]
+    }
+    candidate_fields_by_id = {
+        field["id"]: field for field in candidate_document["processFields"]
+    }
+    if any(
+        candidate_fields_by_id.get(field_id) != previous_fields_by_id.get(field_id)
+        for field_id in protected_shared_field_ids
+    ):
+        return [
+            {
+                "field": "processFields",
+                "code": "form_draft_scope_invalid",
+                "reason": (
+                    "Create Task-specific field configuration instead of changing "
+                    "a field used by another Task."
+                ),
+            }
+        ]
+    previous_other_fields = {
+        field["id"]: field
+        for field in previous_document["processFields"]
+        if field["id"] not in task_field_ids
+    }
+    candidate_other_fields = {
+        field["id"]: field
+        for field in candidate_document["processFields"]
+        if field["id"] not in task_field_ids
+    }
+    if candidate_other_fields != previous_other_fields:
+        return [
+            {
+                "field": "processFields",
+                "code": "form_draft_scope_invalid",
+                "reason": "Edit only reusable fields used by this Task Form.",
+            }
+        ]
+    return []
+
+
 def _merge_elements(
     *,
     previous_document: dict[str, Any],
@@ -1303,7 +1538,7 @@ def _merge_elements(
     legacy_assignment = draft.get("publication", {}).get("assignment")
     uses_legacy_assignment = (
         isinstance(submitted_schema_version, int)
-        and submitted_schema_version < CURRENT_DRAFT_SCHEMA_VERSION
+        and submitted_schema_version < ASSIGNMENT_DRAFT_SCHEMA_VERSION
         and isinstance(legacy_assignment, dict)
     )
     connections = draft.get("connections", previous_document["connections"])

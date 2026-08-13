@@ -230,3 +230,40 @@ test("TanStack Query is the only server-state cache", async () => {
 
   assert.deepEqual(violations, []);
 });
+
+test("Form and Workflow Designer share entity contracts without deep-importing each other", async () => {
+  const formRoot = join(srcRoot, "features", "form-design");
+  const workflowRoot = join(srcRoot, "features", "workflow-design");
+  const violations = [];
+
+  for (const [root, forbidden] of [
+    [formRoot, /features[\\/]workflow-design[\\/](?!index)/],
+    [workflowRoot, /features[\\/]form-design[\\/]/]
+  ]) {
+    for (const file of await sourceFiles(root)) {
+      const content = await readFile(file, "utf8");
+      if (forbidden.test(content)) violations.push(relative(process.cwd(), file));
+    }
+  }
+
+  const entityContract = await readFile(
+    join(srcRoot, "entities", "workflow", "model", "workflowDocument.ts"),
+    "utf8"
+  );
+  assert.match(entityContract, /WorkflowTaskFormItem/);
+  assert.match(entityContract, /WorkflowDraftDocument/);
+  assert.deepEqual(violations, []);
+});
+
+test("Form Designer owns one local reducer, one explicit save, and lease-only background traffic", async () => {
+  const root = join(srcRoot, "features", "form-design");
+  const controller = await readFile(join(root, "model", "useFormDesigner.ts"), "utf8");
+  const reducer = await readFile(join(root, "model", "formDesigner.ts"), "utf8");
+
+  assert.match(controller, /useReducer/);
+  assert.equal((controller.match(/saveFormDesignerDraft\(/g) ?? []).length, 1);
+  assert.equal((controller.match(/setInterval\(/g) ?? []).length, 1);
+  assert.match(controller, /"heartbeat"/);
+  assert.doesNotMatch(controller, /setTimeout|autosave/i);
+  assert.doesNotMatch(reducer, /createContext|useQuery|QueryClient/);
+});

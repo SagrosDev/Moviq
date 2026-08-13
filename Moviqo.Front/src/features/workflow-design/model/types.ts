@@ -1,72 +1,37 @@
-export type WorkflowElementType = "start" | "task" | "end";
+import type {
+  WorkflowAssignmentConfiguration,
+  WorkflowAssignmentMode,
+  WorkflowConnectionType,
+  WorkflowDraftConnection,
+  WorkflowDraftDocument,
+  WorkflowDraftElement,
+  WorkflowElementType,
+  WorkflowProcessField,
+  WorkflowProcessFieldKind,
+  WorkflowStarterMode,
+  WorkflowTaskFormItem
+} from "../../../entities/workflow";
 
-export type WorkflowConnectionType = "sequence";
-export type WorkflowProcessFieldKind = "shortText";
-
-export type WorkflowDraftElement = {
-  id: string;
-  type: WorkflowElementType;
-  label: string;
-  assignment?: WorkflowAssignmentConfiguration;
+export type {
+  WorkflowAssignmentConfiguration,
+  WorkflowAssignmentMode,
+  WorkflowConnectionType,
+  WorkflowDraftConnection,
+  WorkflowDraftDocument,
+  WorkflowDraftElement,
+  WorkflowElementType,
+  WorkflowProcessField,
+  WorkflowProcessFieldKind,
+  WorkflowStarterMode,
+  WorkflowTaskFormItem
 };
 
-export type WorkflowDraftConnection = {
-  id: string;
-  type: WorkflowConnectionType;
-  sourceId: string;
-  targetId: string;
-  label?: string | null;
-};
-
-export type WorkflowLayoutPosition = {
-  x: number;
-  y: number;
-};
-
-export type WorkflowDraftLayout = {
-  positions: Record<string, WorkflowLayoutPosition>;
-};
-
-export type WorkflowProcessField = {
-  id: string;
-  kind: WorkflowProcessFieldKind;
-  label: string;
-  helpText: string;
-  placeholder: string;
-  defaultValue: string | null;
-  minimumLength: number;
-  maximumLength: number;
-};
-
-export type WorkflowTaskFormControl = {
-  id: string;
-  taskElementId: string;
-  fieldId: string;
-  position: number;
-  width: "full";
-  label: string | null;
-};
-
-export type WorkflowStarterMode =
-  | "unconfigured"
-  | "allActiveMembers"
-  | "selectedTeams"
-  | "selectedMembers";
-
-export type WorkflowAssignmentMode =
-  | "unconfigured"
-  | "workflowInitiator"
-  | "specificMember";
+export type WorkflowTaskFormControl = WorkflowTaskFormItem;
 
 export type WorkflowStarterConfiguration = {
   mode: WorkflowStarterMode;
   teamIds: string[];
   membershipIds: string[];
-};
-
-export type WorkflowAssignmentConfiguration = {
-  mode: WorkflowAssignmentMode;
-  membershipId: string | null;
 };
 
 export type WorkflowPublicationConfiguration = {
@@ -90,20 +55,6 @@ export type WorkflowConfigurationDirectoryTeam = {
 export type WorkflowConfigurationDirectory = {
   memberships: WorkflowConfigurationDirectoryMembership[];
   teams: WorkflowConfigurationDirectoryTeam[];
-};
-
-export type WorkflowDraftDocument = {
-  schemaVersion: number;
-  draftId: string;
-  workflowId: string;
-  name: string;
-  status: string;
-  elements: WorkflowDraftElement[];
-  connections: WorkflowDraftConnection[];
-  processFields: WorkflowProcessField[];
-  formBindings: WorkflowTaskFormControl[];
-  publication?: WorkflowPublicationConfiguration;
-  layout: WorkflowDraftLayout;
 };
 
 export type WorkflowCreationAccepted = {

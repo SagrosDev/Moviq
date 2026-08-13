@@ -7,6 +7,11 @@ import {
 } from "../../../shared/api";
 import type { components } from "../../../shared/api/generated/schema";
 import type {
+  FormItemWidth,
+  StructuralFormItemKind,
+  WorkflowTaskFormItem
+} from "../../../entities/workflow";
+import type {
   WorkflowAssignmentMode,
   WorkflowConnectionType,
   WorkflowCreationAccepted,
@@ -43,6 +48,40 @@ const contractValue = <TValue extends string>(
 const requiredContractString = (value: string | undefined) => {
   if (!value) throw new Error("workflow_contract_invalid");
   return value;
+};
+
+const normalizeGeneratedFormItem = (
+  binding: components["schemas"]["WorkflowFormBinding"]
+): WorkflowTaskFormItem => {
+  const kind = contractValue<"field" | StructuralFormItemKind>(
+    binding.kind ?? "field",
+    ["field", "section", "heading", "instruction", "divider"]
+  );
+  const base = {
+    id: requiredContractString(binding.id),
+    taskElementId: binding.taskElementId,
+    position: binding.position ?? 0,
+    width: contractValue<FormItemWidth>(
+      binding.width ?? "full",
+      ["full", "half", "third", "quarter"]
+    )
+  };
+  if (kind === "field") {
+    return {
+      ...base,
+      kind,
+      fieldId: requiredContractString(binding.fieldId),
+      label: binding.label ?? null
+    };
+  }
+  if (kind === "divider") {
+    return { ...base, kind };
+  }
+  return {
+    ...base,
+    kind,
+    content: binding.content ?? ""
+  };
 };
 
 const normalizeGeneratedDraft = (
@@ -84,14 +123,7 @@ const normalizeGeneratedDraft = (
     minimumLength: field.minimumLength ?? 0,
     maximumLength: field.maximumLength ?? 255
   })),
-  formBindings: (draft.formBindings ?? []).map((binding) => ({
-    id: requiredContractString(binding.id),
-    taskElementId: binding.taskElementId,
-    fieldId: binding.fieldId,
-    position: binding.position ?? 0,
-    width: contractValue(binding.width, ["full"]),
-    label: binding.label ?? null
-  })),
+  formBindings: (draft.formBindings ?? []).map(normalizeGeneratedFormItem),
   layout: {
     positions: Object.fromEntries(
       Object.entries(draft.layout?.positions ?? {}).map(([elementId, position]) => [

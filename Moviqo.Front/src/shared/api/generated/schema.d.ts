@@ -378,12 +378,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workflow-design/workflows/{workflow_id}/tasks/{task_element_id}/form-authoring-lease/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["workflow_design_form_authoring_lease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workflow-design/workflows/{workflow_id}/tasks/{task_element_id}/form-draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["workflow_design_form_draft_save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description * `acquire` - acquire
+         *     * `heartbeat` - heartbeat
+         *     * `takeover` - takeover
+         *     * `release` - release
+         * @enum {string}
+         */
+        ActionEnum: "acquire" | "heartbeat" | "takeover" | "release";
         CsrfTokenResponse: {
             csrfToken: string;
+        };
+        FormAuthoringLeaseHolder: {
+            /** Format: uuid */
+            membershipId: string;
+            displayName: string;
+        };
+        FormAuthoringLeaseRequest: {
+            action: components["schemas"]["ActionEnum"];
+            /** Format: uuid */
+            leaseToken?: string | null;
+        };
+        FormAuthoringLeaseResponse: {
+            /** Format: uuid */
+            workflowId: string;
+            taskElementId: string;
+            mode: components["schemas"]["ModeEnum"];
+            /** Format: uuid */
+            leaseToken: string | null;
+            /** Format: date-time */
+            leaseExpiresAt: string | null;
+            heartbeatAfterSeconds: number;
+            holder: components["schemas"]["FormAuthoringLeaseHolder"] | null;
+        };
+        FormDraftSaveRequest: {
+            expectedRevision: string;
+            draft: components["schemas"]["WorkflowDraftDocument"];
+            /** Format: uuid */
+            leaseToken: string;
         };
         InitialRegistrationRequest: {
             ownerName?: string;
@@ -406,6 +474,12 @@ export interface components {
             email: string;
             language: string;
         };
+        /**
+         * @description * `editable` - editable
+         *     * `readOnly` - readOnly
+         * @enum {string}
+         */
+        ModeEnum: "editable" | "readOnly";
         MyProcessCollection: {
             items: components["schemas"]["MyProcessSummary"][];
             limit: number;
@@ -625,6 +699,7 @@ export interface components {
         };
         TaskFormBody: {
             controls: components["schemas"]["TaskFormControl"][];
+            items: components["schemas"]["TaskFormItem"][];
         };
         TaskFormControl: {
             controlId: string;
@@ -636,6 +711,7 @@ export interface components {
             width: string;
             position: number;
             value: string;
+            required: boolean;
         };
         TaskFormDocument: {
             /** Format: uuid */
@@ -654,6 +730,20 @@ export interface components {
             definitionRevision: string;
             actions: components["schemas"]["TaskFormActions"];
             form: components["schemas"]["TaskFormBody"];
+        };
+        TaskFormItem: {
+            itemId: string;
+            controlId?: string;
+            fieldId?: string;
+            kind: string;
+            label?: string;
+            helpText?: string;
+            placeholder?: string;
+            content?: string;
+            width: string;
+            position: number;
+            value?: string;
+            required?: boolean;
         };
         TaskFormSaveControl: {
             controlId: string;
@@ -745,11 +835,13 @@ export interface components {
         };
         WorkflowFormBinding: {
             id?: string;
+            kind?: string;
             taskElementId: string;
-            fieldId: string;
+            fieldId?: string;
             position?: number;
             width?: string;
             label?: string | null;
+            content?: string;
         };
         WorkflowLayout: {
             positions?: {
@@ -1847,6 +1939,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkflowPublishResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_design_form_authoring_lease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_element_id: string;
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FormAuthoringLeaseRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["FormAuthoringLeaseRequest"];
+                "multipart/form-data": components["schemas"]["FormAuthoringLeaseRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormAuthoringLeaseResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    workflow_design_form_draft_save: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                task_element_id: string;
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FormDraftSaveRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["FormDraftSaveRequest"];
+                "multipart/form-data": components["schemas"]["FormDraftSaveRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowCreateResponse"];
                 };
             };
             400: {

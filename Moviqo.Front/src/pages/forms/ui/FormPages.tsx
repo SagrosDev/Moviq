@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useBlocker, useNavigate, useParams } from "react-router";
 import { useSession } from "../../../features/authentication";
+import { FormDesignerWorkspace } from "../../../features/form-design";
 import {
   canCreateWorkflow,
   formDesignPath,
@@ -8,8 +10,10 @@ import {
   useWorkflowCatalogQuery,
   useWorkflowDraftQuery,
   workflowDesignPath,
+  workflowTaskDesignPath,
   workflowTaskElements
 } from "../../../features/workflow-design";
+import { moviqoQueryKeys } from "../../../shared/api";
 import { useLanguage } from "../../../shared/localization";
 import {
   Alert,
@@ -17,6 +21,7 @@ import {
   Button,
   Card,
   isUnmodifiedPrimaryClick,
+  LoadingState,
   PageHeader,
   SelectField
 } from "../../../shared/ui";
@@ -31,8 +36,7 @@ export const FormLauncherPage = () => {
   const canAuthor = state.status === "authenticated"
     && canCreateWorkflow(state.context.membership.role);
   const catalogQuery = useWorkflowCatalogQuery(organizationId);
-  const showEmptyCatalog = catalogQuery.isError
-    || (catalogQuery.isSuccess && catalogQuery.data.items.length === 0);
+  const showEmptyCatalog = catalogQuery.isSuccess && catalogQuery.data.items.length === 0;
   const [workflowId, setWorkflowId] = useState("");
   const [taskElementId, setTaskElementId] = useState("");
   const draftQuery = useWorkflowDraftQuery(organizationId, workflowId, Boolean(workflowId));
@@ -59,7 +63,13 @@ export const FormLauncherPage = () => {
         title={t("formLauncher.title")}
       />
       {catalogQuery.isPending ? (
-        <Alert announcement="polite">{t("workflowCatalog.loading")}</Alert>
+        <LoadingState>{t("workflowCatalog.loading")}</LoadingState>
+      ) : catalogQuery.isError ? (
+        <Alert announcement="assertive" title={t("formLauncher.catalogError")} tone="error">
+          <Button variant="secondary" onClick={() => void catalogQuery.refetch()}>
+            {t("workflowCatalog.retry")}
+          </Button>
+        </Alert>
       ) : showEmptyCatalog ? (
         <Card labelledBy="forms-empty-title">
           <div className="grid gap-moviqo-4" role="status">
@@ -113,7 +123,9 @@ export const FormLauncherPage = () => {
                 {t("workflowCatalog.retry")}
               </Button>
             </Alert>
-          ) : workflowId && !draftQuery.isPending && tasks.length === 0 ? (
+          ) : workflowId && draftQuery.isPending ? (
+            <LoadingState>{t("workflowDesign.route.loading")}</LoadingState>
+          ) : workflowId && tasks.length === 0 ? (
             <Alert announcement="polite">{t("formLauncher.noTasks")}</Alert>
           ) : null}
           <Button
@@ -136,6 +148,13 @@ export const FormDesignRoutePage = () => {
   const { t } = useLanguage();
   const { state } = useSession();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [isDirty, setIsDirty] = useState(false);
+  const [saveRequestToken, setSaveRequestToken] = useState(0);
+  const [canSave, setCanSave] = useState(false);
+  const allowNavigation = useRef(false);
+  const navigationSaveIntent = useRef(false);
+  const blocker = useBlocker(() => isDirty && !allowNavigation.current);
   const { workflowId = "", taskElementId = "" } = useParams();
   const organizationId = state.status === "authenticated"
     ? state.context.membership.organizationId
@@ -145,8 +164,12 @@ export const FormDesignRoutePage = () => {
     ? resolveTaskElement(draftQuery.data.draft, taskElementId)
     : null;
 
+  useEffect(() => {
+    setCanSave(false);
+  }, [taskElementId, workflowId]);
+
   if (draftQuery.isPending) {
-    return <Alert announcement="polite">{t("workflowDesign.route.loading")}</Alert>;
+    return <LoadingState>{t("workflowDesign.route.loading")}</LoadingState>;
   }
 
   if (draftQuery.isError || !task) {
@@ -180,7 +203,58 @@ export const FormDesignRoutePage = () => {
         eyebrow={t("formDesign.eyebrow")}
         title={t("formDesign.title")}
       />
-      <Alert announcement="polite">{t("formDesign.reserved")}</Alert>
+      {blocker.state === "blocked" ? (
+        <Alert announcement="assertive" title={t("formDesign.leave.title")} tone="warning">
+          <p className="m-0">{t("formDesign.leave.body")}</p>
+          <div className="flex flex-wrap gap-moviqo-2">
+            <Button disabled={!canSave} onClick={() => {
+              navigationSaveIntent.current = true;
+              setSaveRequestToken((token) => token + 1);
+            }}>
+              {t("formDesign.leave.save")}
+            </Button>
+            <Button variant="destructive" onClick={() => {
+              navigationSaveIntent.current = false;
+              blocker.proceed();
+            }}>
+              {t("formDesign.leave.discard")}
+            </Button>
+            <Button variant="secondary" onClick={() => {
+              navigationSaveIntent.current = false;
+              blocker.reset();
+            }}>
+              {t("formDesign.leave.stay")}
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
+      <FormDesignerWorkspace
+        accepted={draftQuery.data}
+        key={`${workflowId}:${taskElementId}`}
+        onDirtyChange={setIsDirty}
+        onSaveAvailabilityChange={setCanSave}
+        taskElementId={taskElementId}
+        onAccepted={(accepted) => {
+          queryClient.setQueryData(
+            moviqoQueryKeys.workflowDraft(organizationId, workflowId),
+            accepted
+          );
+          void queryClient.invalidateQueries({
+            queryKey: moviqoQueryKeys.workflowCatalog(organizationId)
+          });
+        }}
+        onReturn={() => {
+          allowNavigation.current = true;
+          navigate(workflowTaskDesignPath(workflowId, taskElementId));
+        }}
+        onSaveResult={(saved) => {
+          if (saved && navigationSaveIntent.current && blocker.state === "blocked") {
+            navigationSaveIntent.current = false;
+            blocker.proceed();
+          }
+        }}
+        saveRequestToken={saveRequestToken}
+      />
     </div>
   );
 };

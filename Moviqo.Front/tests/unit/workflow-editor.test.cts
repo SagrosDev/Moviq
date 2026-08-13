@@ -169,6 +169,7 @@ test("deleting a Task cascades its graph references but preserves reusable field
   }];
   draft.formBindings = [{
     id: "binding-1",
+    kind: "field",
     taskElementId: "task-1",
     fieldId: "field-1",
     position: 0,

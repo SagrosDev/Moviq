@@ -6,6 +6,7 @@ export {
   canSaveWorkflow,
   clearPublicationChecklist,
   connectWorkflowElements,
+  createSaveIdempotencyKey,
   createWorkflowPublishRequestKey,
   createWorkflowDraftEditorState,
   focusChecklistTarget,
@@ -13,6 +14,7 @@ export {
   publicationIssuesFromInvalidParams,
   publishWorkflow,
   reduceWorkflowDraftEditorState,
+  readWorkflowDraft,
   saveWorkflowDraft,
   setFirstTaskFieldBinding,
   upsertShortTextProcessField,
@@ -51,6 +53,7 @@ export {
   formDesignPath,
   resolveTaskElement,
   workflowDesignPath,
+  workflowTaskDesignPath,
   workflowTaskElements
 } from "./model/navigation";
 export {

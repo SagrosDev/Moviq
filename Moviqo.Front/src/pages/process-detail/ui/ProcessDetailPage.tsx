@@ -14,6 +14,7 @@ import {
   Button,
   Card,
   isUnmodifiedPrimaryClick,
+  LoadingState,
   PageHeader
 } from "../../../shared/ui";
 
@@ -55,7 +56,7 @@ export const ProcessDetailPage = ({ processId }: ProcessDetailPageProps) => {
   });
 
   if (state.status !== "authenticated" || query.isPending) {
-    return <Alert announcement="polite">{t("processDetail.loading")}</Alert>;
+    return <LoadingState>{t("processDetail.loading")}</LoadingState>;
   }
 
   if (query.isError) {

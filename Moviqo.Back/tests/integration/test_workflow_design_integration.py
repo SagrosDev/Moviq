@@ -9,6 +9,7 @@ import pytest
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import close_old_connections
+from django.test import Client
 
 from moviqo.building_blocks.commands import IdempotencyKeyReuseConflict
 from moviqo.building_blocks.tenancy.runtime import TenantContext
@@ -27,10 +28,168 @@ from moviqo.modules.workflow_design.application.services import (
     WorkflowDraftValidationAPIError,
 )
 from moviqo.modules.workflow_design.models import (
+    FormAuthoringLease,
     WorkflowDefinition,
     WorkflowDraft,
     WorkflowVersion,
 )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_form_authoring_lease_http_flow_uses_postgresql_workflow_row_lock(
+    django_user_model,
+) -> None:
+    _integration_only()
+    first_user = django_user_model.objects.create_user(
+        username=f"lease-owner-{uuid.uuid4().hex[:8]}",
+        display_name="Ana",
+    )
+    second_user = django_user_model.objects.create_user(
+        username=f"lease-taker-{uuid.uuid4().hex[:8]}",
+        display_name="Carlos",
+    )
+    organization = Organization.objects.create(
+        slug=f"lease-org-{uuid.uuid4().hex[:8]}",
+        display_name="Form Lease Org",
+    )
+    first_membership = Membership.objects.create(
+        organization=organization,
+        user=first_user,
+        role=MembershipRole.DESIGNER,
+    )
+    second_membership = Membership.objects.create(
+        organization=organization,
+        user=second_user,
+        role=MembershipRole.DESIGNER,
+    )
+    first_client = Client()
+    second_client = Client()
+    first_client.force_login(first_user)
+    second_client.force_login(second_user)
+
+    created_response = first_client.post(
+        "/api/v1/workflow-design/workflows/",
+        data={"name": "PostgreSQL leased Form"},
+        content_type="application/json",
+        headers={"Idempotency-Key": "postgres-form-lease-create"},
+    )
+    assert created_response.status_code == 201
+    created = created_response.json()
+    workflow_id = created["workflowId"]
+    prepared_response = first_client.put(
+        f"/api/v1/workflow-design/workflows/{workflow_id}/draft/",
+        data={
+            "expectedRevision": "1",
+            "draft": {
+                **created["draft"],
+                "elements": [
+                    {"id": "start-1", "type": "start", "label": "Start"},
+                    {"id": "task-1", "type": "task", "label": "Review"},
+                ],
+            },
+        },
+        content_type="application/json",
+        headers={"Idempotency-Key": "postgres-form-lease-prepare"},
+    )
+    assert prepared_response.status_code == 200
+
+    lease_path = (
+        f"/api/v1/workflow-design/workflows/{workflow_id}/tasks/"
+        "task-1/form-authoring-lease/"
+    )
+    first_lease = first_client.post(
+        lease_path,
+        data={"action": "acquire"},
+        content_type="application/json",
+    )
+    secondary_lease = second_client.post(
+        lease_path,
+        data={"action": "acquire"},
+        content_type="application/json",
+    )
+    takeover = second_client.post(
+        lease_path,
+        data={"action": "takeover"},
+        content_type="application/json",
+    )
+
+    assert first_lease.status_code == 200
+    assert first_lease.json()["mode"] == "editable"
+    assert first_lease.json()["holder"]["membershipId"] == str(first_membership.id)
+    assert secondary_lease.status_code == 200
+    assert secondary_lease.json()["mode"] == "readOnly"
+    assert secondary_lease.json()["leaseToken"] is None
+    assert takeover.status_code == 200
+    assert takeover.json()["mode"] == "editable"
+    assert takeover.json()["leaseToken"] != first_lease.json()["leaseToken"]
+    assert takeover.json()["holder"]["membershipId"] == str(second_membership.id)
+
+    stale_heartbeat = first_client.post(
+        lease_path,
+        data={
+            "action": "heartbeat",
+            "leaseToken": first_lease.json()["leaseToken"],
+        },
+        content_type="application/json",
+    )
+    assert stale_heartbeat.status_code == 409
+    assert stale_heartbeat.json()["code"] == "form_authoring_lease_lost"
+
+    release = second_client.post(
+        lease_path,
+        data={
+            "action": "release",
+            "leaseToken": takeover.json()["leaseToken"],
+        },
+        content_type="application/json",
+    )
+    assert release.status_code == 200
+    assert release.json()["holder"] is None
+    assert not FormAuthoringLease.objects.filter(workflow_id=workflow_id).exists()
+
+    start_gate = threading.Barrier(2)
+
+    def acquire_concurrently(client: Client, owner: str) -> tuple[str, int, dict[str, object]]:
+        close_old_connections()
+        try:
+            start_gate.wait(timeout=5)
+            response = client.post(
+                lease_path,
+                data={"action": "acquire"},
+                content_type="application/json",
+            )
+            return owner, response.status_code, response.json()
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        concurrent_results = [
+            future.result(timeout=10)
+            for future in (
+                executor.submit(acquire_concurrently, first_client, "first"),
+                executor.submit(acquire_concurrently, second_client, "second"),
+            )
+        ]
+
+    assert [status for _, status, _ in concurrent_results] == [200, 200]
+    assert sorted(body["mode"] for _, _, body in concurrent_results) == [
+        "editable",
+        "readOnly",
+    ]
+    winner, _, editable_body = next(
+        result for result in concurrent_results if result[2]["mode"] == "editable"
+    )
+    winner_client = first_client if winner == "first" else second_client
+    concurrent_release = winner_client.post(
+        lease_path,
+        data={
+            "action": "release",
+            "leaseToken": editable_body["leaseToken"],
+        },
+        content_type="application/json",
+    )
+    assert concurrent_release.status_code == 200
+    assert not FormAuthoringLease.objects.filter(workflow_id=workflow_id).exists()
 
 
 def _integration_only() -> None:

@@ -98,6 +98,24 @@ test("workflow creation, dirty navigation, form launch, and deep-link reload sta
       body: JSON.stringify(acceptedWorkflow)
     });
   });
+  await page.route("**/api/v1/workflow-design/workflows/*/tasks/*/form-authoring-lease/", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        workflowId,
+        taskElementId,
+        mode: "editable",
+        leaseToken: "01987df4-ae8a-7000-8000-000000000119",
+        leaseExpiresAt: "2026-08-13T12:01:00Z",
+        heartbeatAfterSeconds: 20,
+        holder: {
+          membershipId: authenticatedSession.membership.id,
+          displayName: authenticatedSession.user.displayName,
+        },
+      }),
+    });
+  });
 
   await page.goto("/workflows");
   await expect(page.getByRole("heading", { level: 1, name: "Flujos" })).toBeVisible();
@@ -107,8 +125,8 @@ test("workflow creation, dirty navigation, form launch, and deep-link reload sta
   await page.getByRole("button", { name: "Crear flujo" }).click();
 
   await expect(page).toHaveURL(new RegExp(`/workflows/${workflowId}/design$`));
-  await expect(page.getByRole("heading", { level: 1, name: "Diseña tu flujo de trabajo" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: acceptedWorkflow.name })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Diseña tu flujo de trabajo" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: acceptedWorkflow.name })).toBeVisible();
   await expect(page.getByLabel("Nombre del flujo")).toHaveCount(0);
 
   await page.getByRole("group", { name: /Tarea: Revisar solicitud/ }).click();
@@ -143,7 +161,10 @@ test("workflow creation, dirty navigation, form launch, and deep-link reload sta
     new RegExp(`/workflows/${workflowId}/tasks/${taskElementId}/form$`)
   );
   await expect(page.getByRole("heading", { level: 1, name: "Diseñador de formulario" })).toBeVisible();
-  await expect(page.getByText(/Aquí podrás diseñar el formulario de esta tarea/)).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Campos" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Lienzo del formulario" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Propiedades" })).toBeVisible();
+  await expect(page.getByText("Borrador guardado")).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Diseñador de formulario" })).toBeVisible();

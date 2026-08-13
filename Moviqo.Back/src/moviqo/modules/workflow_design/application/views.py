@@ -23,8 +23,13 @@ from moviqo.modules.organizations.application import (
     resolve_tenant_context,
 )
 from moviqo.modules.organizations.application.views import AuthenticatedRequestPermission
+from moviqo.modules.workflow_design.application.form_authoring_leases import (
+    FormAuthoringLeaseLostError,
+    change_form_authoring_lease,
+)
 from moviqo.modules.workflow_design.application.schema import MAXIMUM_LAYOUT_COORDINATE
 from moviqo.modules.workflow_design.application.services import (
+    FormAuthoringLeaseLostAPIError,
     WorkflowDraftRevisionConflictError,
     WorkflowDraftValidationAPIError,
     WorkflowNameConflictError,
@@ -33,6 +38,7 @@ from moviqo.modules.workflow_design.application.services import (
     list_workflow_catalog,
     publish_workflow_version,
     read_workflow_draft,
+    save_form_workflow_draft,
     save_workflow_draft,
     validate_workflow_publication,
 )
@@ -140,11 +146,13 @@ class WorkflowDraftDocumentSerializer(serializers.Serializer):
 
     class WorkflowFormBindingSerializer(serializers.Serializer):
         id = serializers.CharField(required=False, allow_blank=True)
+        kind = serializers.CharField(required=False, allow_blank=True)
         taskElementId = serializers.CharField(allow_blank=True)
-        fieldId = serializers.CharField(allow_blank=True)
+        fieldId = serializers.CharField(required=False, allow_blank=True)
         position = serializers.IntegerField(required=False, min_value=0)
         width = serializers.CharField(required=False, allow_blank=True)
         label = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+        content = serializers.CharField(required=False, allow_blank=True)
 
     elements = WorkflowElementSerializer(many=True, required=False)
     connections = WorkflowConnectionSerializer(many=True, required=False)
@@ -157,6 +165,37 @@ class WorkflowDraftDocumentSerializer(serializers.Serializer):
 class WorkflowDraftSaveRequestSerializer(serializers.Serializer):
     expectedRevision = serializers.CharField()
     draft = WorkflowDraftDocumentSerializer()
+
+
+class FormDraftSaveRequestSerializer(WorkflowDraftSaveRequestSerializer):
+    leaseToken = serializers.UUIDField()
+
+
+class FormAuthoringLeaseRequestSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(
+        choices=("acquire", "heartbeat", "takeover", "release")
+    )
+    leaseToken = serializers.UUIDField(required=False, allow_null=True)
+
+    def validate(self, attrs):
+        if attrs["action"] in {"heartbeat", "release"} and not attrs.get("leaseToken"):
+            raise serializers.ValidationError({"leaseToken": "required"})
+        return attrs
+
+
+class FormAuthoringLeaseHolderSerializer(serializers.Serializer):
+    membershipId = serializers.UUIDField()
+    displayName = serializers.CharField(allow_blank=True)
+
+
+class FormAuthoringLeaseResponseSerializer(serializers.Serializer):
+    workflowId = serializers.UUIDField()
+    taskElementId = serializers.CharField()
+    mode = serializers.ChoiceField(choices=("editable", "readOnly"))
+    leaseToken = serializers.UUIDField(allow_null=True)
+    leaseExpiresAt = serializers.DateTimeField(allow_null=True)
+    heartbeatAfterSeconds = serializers.IntegerField(min_value=1)
+    holder = FormAuthoringLeaseHolderSerializer(allow_null=True)
 
 
 class WorkflowPublicationValidationRequestSerializer(serializers.Serializer):
@@ -454,6 +493,190 @@ class WorkflowDraftDetailView(APIView):
         return Response(result, status=200)
 
 
+class FormAuthoringLeaseView(APIView):
+    permission_classes = [AuthenticatedRequestPermission]
+
+    @extend_schema(
+        operation_id="workflow_design_form_authoring_lease",
+        request=FormAuthoringLeaseRequestSerializer,
+        responses={
+            200: FormAuthoringLeaseResponseSerializer,
+            (400, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (403, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (404, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (409, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def post(self, request, workflow_id: UUID, task_element_id: str) -> Response:
+        serializer = FormAuthoringLeaseRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    400,
+                    "form_authoring_lease_invalid",
+                    "Form editing access request failed",
+                ),
+                invalid_params=[
+                    {
+                        "name": "leaseToken"
+                        if "leaseToken" in serializer.errors
+                        else "action",
+                        "code": "required"
+                        if "leaseToken" in serializer.errors
+                        else "invalid",
+                        "reason": "Send a supported Form editing access request.",
+                    }
+                ],
+            )
+        try:
+            tenant_context, _membership = _require_design_membership(request)
+        except WorkflowDesignForbidden:
+            return _workflow_design_forbidden_response(request)
+        session_key = _current_session_key(request)
+        try:
+            result = change_form_authoring_lease(
+                tenant_context=tenant_context,
+                workflow_id=workflow_id,
+                task_element_id=task_element_id,
+                action=serializer.validated_data["action"],
+                session_key=session_key,
+                session_expires_at=request.session.get_expiry_date(),
+                lease_token=serializer.validated_data.get("leaseToken"),
+            )
+        except FormAuthoringLeaseLostError:
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    409,
+                    "form_authoring_lease_lost",
+                    "Form editing access was lost",
+                ),
+                invalid_params=[
+                    {
+                        "name": "leaseToken",
+                        "code": "lost",
+                        "reason": "Acquire Form editing access before continuing.",
+                    }
+                ],
+            )
+        if result is None:
+            raise NotFound("workflow-task")
+        return Response(result, status=200)
+
+
+class FormDraftSaveView(APIView):
+    permission_classes = [AuthenticatedRequestPermission]
+
+    @extend_schema(
+        operation_id="workflow_design_form_draft_save",
+        request=FormDraftSaveRequestSerializer,
+        parameters=[
+            OpenApiParameter(
+                name="Idempotency-Key",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                required=True,
+            )
+        ],
+        responses={
+            200: WorkflowCreateResponseSerializer,
+            (400, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (403, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (404, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+            (409, "application/problem+json"): OpenApiResponse(ProblemDetailsSerializer),
+        },
+    )
+    def put(self, request, workflow_id: UUID, task_element_id: str) -> Response:
+        unexpected_response = _reject_unexpected_request_fields(
+            request,
+            allowed_fields={"expectedRevision", "draft", "leaseToken"},
+            title="Form draft save failed",
+            reason="Remove this unsupported Form draft field.",
+        )
+        if unexpected_response is not None:
+            return unexpected_response
+        serializer = FormDraftSaveRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            invalid_params = _workflow_draft_invalid_params(serializer.errors)
+            if "leaseToken" in serializer.errors:
+                invalid_params = [
+                    {
+                        "name": "leaseToken",
+                        "code": "required",
+                        "reason": "Acquire Form editing access before saving.",
+                    }
+                ]
+            return problem_response(
+                request,
+                ProblemTemplate(400, "workflow_draft_invalid", "Form draft save failed"),
+                invalid_params=invalid_params,
+            )
+        idempotency_key = request.headers.get("Idempotency-Key")
+        if not idempotency_key:
+            return problem_response(
+                request,
+                ProblemTemplate(400, "workflow_draft_invalid", "Form draft save failed"),
+                invalid_params=[
+                    {
+                        "name": "idempotencyKey",
+                        "code": "required",
+                        "reason": "Provide an idempotency key to continue.",
+                    }
+                ],
+            )
+        try:
+            tenant_context, _membership = _require_design_membership(request)
+        except WorkflowDesignForbidden:
+            return _workflow_design_forbidden_response(request)
+        try:
+            result = save_form_workflow_draft(
+                tenant_context=tenant_context,
+                workflow_id=workflow_id,
+                task_element_id=task_element_id,
+                session_key=_current_session_key(request),
+                lease_token=serializer.validated_data["leaseToken"],
+                expected_revision=serializer.validated_data["expectedRevision"],
+                draft=serializer.validated_data["draft"],
+                idempotency_key=idempotency_key,
+                request_hash=_workflow_request_hash(serializer.validated_data),
+            )
+        except FormAuthoringLeaseLostAPIError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    409,
+                    "form_authoring_lease_lost",
+                    "Form draft save failed",
+                ),
+                invalid_params=exc.invalid_params,
+            )
+        except WorkflowDraftValidationAPIError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(400, "workflow_draft_invalid", "Form draft save failed"),
+                invalid_params=exc.invalid_params,
+            )
+        except WorkflowDraftRevisionConflictError as exc:
+            return problem_response(
+                request,
+                ProblemTemplate(
+                    409,
+                    "workflow_draft_revision_conflict",
+                    "Form draft save failed",
+                ),
+                invalid_params=exc.invalid_params,
+            )
+        except IdempotencyKeyReuseConflict:
+            return problem_response(
+                request,
+                ProblemTemplate(409, "idempotency_key_reused", "Conflict"),
+            )
+        if result is None:
+            raise NotFound("workflow")
+        return Response(result, status=200)
+
+
 class WorkflowPublicationValidationView(APIView):
     permission_classes = [AuthenticatedRequestPermission]
 
@@ -693,8 +916,14 @@ def _workflow_design_forbidden_response(request) -> Response:
 
 
 def _workflow_request_hash(payload: dict[str, object]) -> str:
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _current_session_key(request) -> str:
+    if request.session.session_key is None:
+        request.session.save()
+    return request.session.session_key
 
 
 def _reject_unexpected_request_fields(

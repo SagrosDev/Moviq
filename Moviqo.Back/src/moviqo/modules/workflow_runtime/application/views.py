@@ -144,6 +144,7 @@ class TaskFormControlSerializer(serializers.Serializer):
     width = serializers.CharField()
     position = serializers.IntegerField(min_value=0)
     value = serializers.CharField(allow_blank=True)
+    required = serializers.BooleanField()
 
 
 class TaskFormActionsSerializer(serializers.Serializer):
@@ -153,6 +154,22 @@ class TaskFormActionsSerializer(serializers.Serializer):
 
 class TaskFormBodySerializer(serializers.Serializer):
     controls = TaskFormControlSerializer(many=True)
+
+    class TaskFormItemSerializer(serializers.Serializer):
+        itemId = serializers.CharField()
+        controlId = serializers.CharField(required=False)
+        fieldId = serializers.CharField(required=False)
+        kind = serializers.CharField()
+        label = serializers.CharField(required=False)
+        helpText = serializers.CharField(required=False, allow_blank=True)
+        placeholder = serializers.CharField(required=False, allow_blank=True)
+        content = serializers.CharField(required=False, allow_blank=True)
+        width = serializers.CharField()
+        position = serializers.IntegerField(min_value=0)
+        value = serializers.CharField(required=False, allow_blank=True)
+        required = serializers.BooleanField(required=False)
+
+    items = TaskFormItemSerializer(many=True)
 
 
 class TaskFormDocumentSerializer(serializers.Serializer):

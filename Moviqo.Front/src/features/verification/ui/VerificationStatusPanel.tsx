@@ -1,5 +1,5 @@
 import { useLanguage } from "../../../shared/localization";
-import { ActionBar, Alert, ButtonLink, Card } from "../../../shared/ui";
+import { ActionBar, Alert, ButtonLink, Card, LoadingState } from "../../../shared/ui";
 
 export type VerificationViewState =
   | { kind: "loading" }
@@ -53,7 +53,7 @@ export const VerificationStatusPanel = ({
       <h2 className="m-0 text-moviqo-heading font-semibold" id="verification-status-title">
         {t("verification.loading.title")}
       </h2>
-      <Alert announcement="polite" tone="info">{t("verification.loading.body")}</Alert>
+      <LoadingState>{t("verification.loading.body")}</LoadingState>
     </Card>
   );
 };

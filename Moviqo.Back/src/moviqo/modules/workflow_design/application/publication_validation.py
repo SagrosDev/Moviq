@@ -131,11 +131,26 @@ def validate_workflow_for_publication(
 
     process_field_by_id = {field["id"]: field for field in document["processFields"]}
     task_bindings: list[dict[str, Any]] = []
+    for item in document["formBindings"]:
+        if item.get("kind", "field") in {"section", "heading", "instruction"} and not (
+            item.get("content") or ""
+        ).strip():
+            issues.append(
+                _issue(
+                    code="form_item_content_missing",
+                    target=f"formBindings.{item['id']}.content",
+                    element_id=item["taskElementId"],
+                    binding_id=item["id"],
+                    message="Add visible content to this Form item before publishing.",
+                    action_label="Open Task form",
+                )
+            )
     for task in tasks:
         bindings = [
             binding
             for binding in document["formBindings"]
             if binding["taskElementId"] == task["id"]
+            and binding.get("kind", "field") == "field"
         ]
         task_bindings.extend(bindings)
         if not bindings:
@@ -270,6 +285,7 @@ def _deduplicate_and_sort(issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "task_form_missing": 10,
         "task_binding_missing_field": 11,
         "task_form_decorative": 12,
+        "form_item_content_missing": 13,
     }
     seen: set[tuple[Any, ...]] = set()
     deduplicated: list[dict[str, Any]] = []

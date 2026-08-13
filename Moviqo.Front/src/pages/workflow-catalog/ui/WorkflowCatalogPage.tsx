@@ -6,7 +6,7 @@ import {
   useWorkflowCatalogQuery
 } from "../../../features/workflow-design";
 import { useLanguage } from "../../../shared/localization";
-import { Button, Card, PageHeader } from "../../../shared/ui";
+import { Button, Card, LoadingState, PageHeader } from "../../../shared/ui";
 
 export const WorkflowCatalogPage = () => {
   const { t } = useLanguage();
@@ -33,7 +33,7 @@ export const WorkflowCatalogPage = () => {
         title={t("workflowCatalog.title")}
       />
       {query.isPending ? (
-        <p role="status">{t("workflowCatalog.loading")}</p>
+        <LoadingState>{t("workflowCatalog.loading")}</LoadingState>
       ) : showEmpty ? (
         <Card labelledBy="workflows-empty-title">
           <div className="grid gap-moviqo-4" role="status">

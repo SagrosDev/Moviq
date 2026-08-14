@@ -269,7 +269,9 @@ def _complete_task_side_effects(
         "definitionRevision": task.definition_revision,
         "routeTargetId": route_target,
         "completedAt": completed_at.isoformat(),
-        "destinationRoute": "/my-work",
+        "destinationRoute": (
+            f"/my-work/processes/{process.id}" if next_task is None else "/my-work"
+        ),
         "handoffMessage": (
             "The task is complete and the next task is assigned."
             if next_task is not None

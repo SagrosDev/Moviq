@@ -988,6 +988,7 @@ def test_my_work_dashboard_returns_completed_process_summaries_for_authorized_pa
             "workflowVersionNumber": 1,
             "involvement": "Initiator",
             "currentStep": "End",
+            "currentStepKind": "end",
             "systemStatus": "completed",
             "startedAt": owner_dashboard.json()["myProcesses"]["items"][0]["startedAt"],
             "completedAt": owner_dashboard.json()["myProcesses"]["items"][0]["completedAt"],
@@ -1007,6 +1008,7 @@ def test_my_work_dashboard_returns_completed_process_summaries_for_authorized_pa
             "workflowVersionNumber": 1,
             "involvement": "Previous participant",
             "currentStep": "End",
+            "currentStepKind": "end",
             "systemStatus": "completed",
             "startedAt": participant_dashboard.json()["myProcesses"]["items"][0]["startedAt"],
             "completedAt": participant_dashboard.json()["myProcesses"]["items"][0]["completedAt"],
@@ -1094,7 +1096,7 @@ def test_process_detail_returns_authorized_header_and_safe_timeline(active_membe
         email="timeline-participant@example.com",
         password="a-secure-password-123",
         is_active=True,
-        display_name="Ana Perez",
+        display_name="Authorized member",
     )
     participant_membership = Membership.objects.create(
         organization=organization,
@@ -1164,6 +1166,7 @@ def test_process_detail_returns_authorized_header_and_safe_timeline(active_membe
         "workflowVersionNumber": 1,
         "systemStatus": "completed",
         "currentStep": "End",
+        "currentStepKind": "end",
         "startedAt": detail_response.json()["header"]["startedAt"],
         "completedAt": detail_response.json()["header"]["completedAt"],
         "lastActivityAt": detail_response.json()["header"]["lastActivityAt"],
@@ -1179,9 +1182,14 @@ def test_process_detail_returns_authorized_header_and_safe_timeline(active_membe
         "process_completed",
     ]
     assert detail_response.json()["timeline"][0]["actorDisplay"] == "Owner"
-    assert detail_response.json()["timeline"][1]["actorDisplay"] == "Ana Perez"
+    assert detail_response.json()["timeline"][0]["actorDisplayKind"] == "member"
+    assert detail_response.json()["timeline"][1]["actorDisplay"] == "Authorized member"
+    assert detail_response.json()["timeline"][1]["actorDisplayKind"] == "member"
     assert detail_response.json()["timeline"][1]["label"] == "Task progress saved"
     assert detail_response.json()["timeline"][2]["taskPosition"] == "Task"
+    assert detail_response.json()["timeline"][2]["taskPositionKind"] == "taskLabel"
+    assert detail_response.json()["timeline"][0]["taskPositionKind"] == "start"
+    assert detail_response.json()["timeline"][3]["taskPositionKind"] == "end"
     assert "fieldValues" not in str(detail_response.json())
     assert "routeTargetId" not in str(detail_response.json())
     assert "workflow-runtime.task-completed" not in str(detail_response.json())

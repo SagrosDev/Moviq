@@ -14,3 +14,9 @@ export {
 } from "./model/myWork";
 export { useMyWorkDashboard } from "./model/useMyWorkDashboard";
 export { MyWorkShell } from "./ui/MyWorkShell";
+export {
+  processActorLabelFor,
+  processContributionLabelFor,
+  processInvolvementLabelFor,
+  processPositionLabelFor
+} from "./ui/processPresentation";

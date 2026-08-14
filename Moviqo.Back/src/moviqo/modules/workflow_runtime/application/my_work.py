@@ -53,6 +53,7 @@ class AuthorizedProcessSummary:
     workflow_name: str
     workflow_version_number: int
     current_step: str
+    current_step_kind: str
     involvement: str
     contribution_summary: dict[str, str]
 
@@ -207,6 +208,7 @@ def read_process_detail(
             "workflowVersionNumber": summary.workflow_version_number,
             "systemStatus": summary.process.status,
             "currentStep": summary.current_step,
+            "currentStepKind": summary.current_step_kind,
             "startedAt": summary.process.started_at.isoformat(),
             "completedAt": (
                 summary.process.completed_at.isoformat()
@@ -308,6 +310,10 @@ def _build_authorized_process_summary(
     if involvement is None or contribution_summary is None:
         return None
 
+    current_step, current_step_kind = _resolve_process_current_step(
+        process=process,
+        document=document,
+    )
     return AuthorizedProcessSummary(
         process=process,
         workflow_name=_workflow_name_from_document(
@@ -315,7 +321,8 @@ def _build_authorized_process_summary(
             fallback=process.workflow.name,
         ),
         workflow_version_number=process.workflow_version.version_number,
-        current_step=_resolve_process_current_step(process=process, document=document),
+        current_step=current_step,
+        current_step_kind=current_step_kind,
         involvement=involvement,
         contribution_summary=contribution_summary,
     )
@@ -391,7 +398,7 @@ def _resolve_process_current_step(
     *,
     process: ProcessInstance,
     document: dict[str, object],
-) -> str:
+) -> tuple[str, str]:
     process_completed_audit = find_latest_transactional_audit(
         organization_id=process.organization_id,
         event_type="workflow-runtime.process-completed",
@@ -400,8 +407,11 @@ def _resolve_process_current_step(
     if process_completed_audit is not None:
         route_target_id = str(process_completed_audit.payload.get("routeTargetId", "")).strip()
         if route_target_id:
-            return _element_label_for_id(document=document, element_id=route_target_id) or "End"
-    return "Completed"
+            return (
+                _element_label_for_id(document=document, element_id=route_target_id) or "End",
+                "end",
+            )
+    return "Completed", "completed"
 
 
 def _serialize_process_summary(summary: AuthorizedProcessSummary) -> dict[str, object]:
@@ -412,6 +422,7 @@ def _serialize_process_summary(summary: AuthorizedProcessSummary) -> dict[str, o
         "workflowVersionNumber": summary.workflow_version_number,
         "involvement": summary.involvement,
         "currentStep": summary.current_step,
+        "currentStepKind": summary.current_step_kind,
         "systemStatus": summary.process.status,
         "startedAt": summary.process.started_at.isoformat(),
         "completedAt": (
@@ -462,21 +473,22 @@ def _build_process_timeline(
         label = TIMELINE_EVENT_LABEL_MAP.get(audit.event_type)
         if event_kind is None or label is None:
             continue
-        task_position = _timeline_task_position(
+        task_position, task_position_kind = _timeline_task_position(
             audit=audit,
             process=process,
             document=document,
         )
+        actor_membership_id = str(audit.actor_membership_id)
+        actor_display = actor_display_names.get(actor_membership_id)
         timeline.append(
             {
                 "eventKind": event_kind,
                 "label": label,
-                "actorDisplay": actor_display_names.get(
-                    str(audit.actor_membership_id),
-                    "Authorized member",
-                ),
+                "actorDisplay": actor_display or "Authorized member",
+                "actorDisplayKind": "member" if actor_display else "authorizedMember",
                 "occurredAt": audit.created_at.isoformat(),
                 "taskPosition": task_position,
+                "taskPositionKind": task_position_kind,
             }
         )
     return timeline
@@ -500,25 +512,32 @@ def _timeline_task_position(
     audit: TransactionalAuditRecord,
     process: ProcessInstance,
     document: dict[str, object] | None,
-) -> str:
+) -> tuple[str, str]:
     if audit.event_type == "workflow-runtime.process-completed":
         route_target_id = str(audit.payload.get("routeTargetId", "")).strip()
-        return _element_label_for_id(document=document, element_id=route_target_id) or "End"
+        return (
+            _element_label_for_id(document=document, element_id=route_target_id) or "End",
+            "end",
+        )
+
+    if audit.event_type == "workflow-runtime.process-started":
+        return "Start", "start"
 
     task_id = str(audit.payload.get("taskId", "")).strip()
     if not task_id:
-        return "Start"
+        return "Start", "start"
     task = process.tasks.filter(id=task_id).first()
     if task is None:
-        return "Task"
+        return "Task", "taskFallback"
     if document is None:
         authoritative = _load_authoritative_task_document(task)
     else:
         authoritative = document
-    return _element_label_for_id(
+    task_label = _element_label_for_id(
         document=authoritative,
         element_id=task.task_element_id,
-    ) or "Task"
+    )
+    return (task_label, "taskLabel") if task_label else ("Task", "taskFallback")
 
 
 def _workflow_name_from_document(*, document: dict[str, object], fallback: str) -> str:

@@ -187,6 +187,9 @@ test("Form Designer persists explicit pointer and keyboard composition with runt
   await expect(page.getByText("Solicitudes · Revisar solicitud")).toBeVisible();
 
   await page.getByRole("button", { name: "Texto corto" }).click();
+  await expect(page.locator("[data-form-add-feedback]")).toHaveText(
+    "El elemento se agregó y está seleccionado. Revisa sus propiedades."
+  );
   await expect(page.getByLabel("Etiqueta")).toHaveValue("Texto corto");
   await page.getByLabel("Etiqueta").fill("Nombre de la persona solicitante");
   await page.getByLabel("Texto de ayuda").fill("Usa el nombre completo.");
@@ -351,7 +354,8 @@ test("Form Designer persists explicit pointer and keyboard composition with runt
   }).click();
   await page.getByLabel("Etiqueta").fill("");
   await expect(page.getByLabel("Etiqueta")).toHaveValue("");
-  await expect(page.getByRole("button", { exact: true, name: "Texto corto" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Campos" })
+    .getByRole("button", { exact: true, name: "Texto corto" })).toBeVisible();
   const previewLabel = page.locator('label[for="task-form-binding-1"]');
   await expect(previewLabel.locator(".sr-only")).toHaveText("Texto corto");
   await expect(previewLabel.locator('[aria-hidden="true"]')).toHaveText(" *");
@@ -362,7 +366,8 @@ test("Form Designer persists explicit pointer and keyboard composition with runt
   )?.label).toBe("");
 
   await page.reload();
-  await page.getByRole("button", { exact: true, name: "Texto corto" }).click();
+  await page.locator('[data-form-designer-item-id="binding-1"]')
+    .getByRole("button", { exact: true, name: "Texto corto" }).click();
   await expect(page.getByLabel("Etiqueta")).toHaveValue("");
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

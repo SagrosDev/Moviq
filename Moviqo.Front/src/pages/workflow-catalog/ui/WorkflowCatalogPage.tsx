@@ -6,7 +6,7 @@ import {
   useWorkflowCatalogQuery
 } from "../../../features/workflow-design";
 import { useLanguage } from "../../../shared/localization";
-import { Button, Card, LoadingState, PageHeader } from "../../../shared/ui";
+import { Alert, Button, Card, LoadingState, PageHeader } from "../../../shared/ui";
 
 export const WorkflowCatalogPage = () => {
   const { t } = useLanguage();
@@ -19,12 +19,11 @@ export const WorkflowCatalogPage = () => {
   const canAuthor = state.status === "authenticated"
     && canCreateWorkflow(state.context.membership.role);
   const isEmpty = query.isSuccess && query.data.items.length === 0;
-  const showEmpty = query.isError || isEmpty;
 
   return (
     <div className="grid gap-moviqo-6">
       <PageHeader
-        actions={canAuthor && !showEmpty ? (
+        actions={canAuthor && !query.isError && !isEmpty ? (
           <Button onClick={() => navigate("/workflows/new")}>
             {t("workflowCatalog.create")}
           </Button>
@@ -34,7 +33,13 @@ export const WorkflowCatalogPage = () => {
       />
       {query.isPending ? (
         <LoadingState>{t("workflowCatalog.loading")}</LoadingState>
-      ) : showEmpty ? (
+      ) : query.isError ? (
+        <Alert announcement="assertive" title={t("workflowCatalog.error")} tone="error">
+          <Button variant="secondary" onClick={() => void query.refetch()}>
+            {t("workflowCatalog.retry")}
+          </Button>
+        </Alert>
+      ) : isEmpty ? (
         <Card labelledBy="workflows-empty-title">
           <div className="grid gap-moviqo-4" role="status">
             <div className="grid gap-moviqo-2">

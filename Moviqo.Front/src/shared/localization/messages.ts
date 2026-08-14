@@ -23,12 +23,6 @@ export type MessageKey =
   | "route.notFound.back"
   | "route.error.title"
   | "route.error.body"
-  | "dashboard.title"
-  | "dashboard.lede"
-  | "dashboard.tasks"
-  | "dashboard.processes"
-  | "dashboard.startProcess"
-  | "dashboard.authoring"
   | "workflowCatalog.title"
   | "workflowCatalog.lede"
   | "workflowCatalog.emptyTitle"
@@ -60,6 +54,7 @@ export type MessageKey =
   | "formDesign.backToForms"
   | "formDesign.backToWorkflow"
   | "formDesign.palette"
+  | "formDesign.addAccepted"
   | "formDesign.fields"
   | "formDesign.layout"
   | "formDesign.shortText"
@@ -280,6 +275,12 @@ export type MessageKey =
   | "myWork.myProcesses.status"
   | "myWork.myProcesses.step"
   | "myWork.myProcesses.involvement"
+  | "myWork.myProcesses.involvement.initiator"
+  | "myWork.myProcesses.involvement.previousParticipant"
+  | "myWork.myProcesses.involvement.participant"
+  | "myWork.myProcesses.contribution.initiated"
+  | "myWork.myProcesses.contribution.completedTask"
+  | "myWork.myProcesses.contribution.participated"
   | "myWork.myProcesses.lastActivity"
   | "myWork.myProcesses.searchLabel"
   | "myWork.myProcesses.searchPlaceholder"
@@ -304,6 +305,12 @@ export type MessageKey =
   | "processDetail.contribution"
   | "processDetail.timelineTitle"
   | "processDetail.timelineEmpty"
+  | "processDetail.actor"
+  | "processDetail.actor.authorizedMember"
+  | "processDetail.taskPosition"
+  | "processDetail.position.start"
+  | "processDetail.position.end"
+  | "processDetail.position.task"
   | "processDetail.event.processStarted"
   | "processDetail.event.taskProgressSaved"
   | "processDetail.event.taskCompleted"
@@ -504,12 +511,17 @@ export type MessageKey =
   | "taskForm.saveSuccess"
   | "taskForm.completing"
   | "taskForm.completeSuccess"
+  | "taskForm.taskCompleteSuccess"
   | "taskForm.completeError"
   | "taskForm.completeHandoff"
+  | "taskForm.taskCompleteHandoff"
   | "taskForm.processComplete"
+  | "taskForm.processContinues"
   | "taskForm.saveError"
   | "taskForm.complete"
   | "taskForm.back"
+  | "taskForm.viewProcess"
+  | "taskForm.viewWork"
   | "taskForm.loading"
   | "taskForm.loadError"
   | "taskForm.unsupportedItem"
@@ -612,21 +624,15 @@ export const spanishMessages: MessageDictionary = {
   "app.loading": "Cargando tu espacio de trabajo...",
   "route.notFound.title": "No encontramos esta página",
   "route.notFound.body": "La dirección puede estar desactualizada. Vuelve a un módulo disponible.",
-  "route.notFound.back": "Volver al resumen",
+  "route.notFound.back": "Volver a Mi trabajo",
   "route.error.title": "No pudimos abrir este módulo",
-  "route.error.body": "Vuelve al resumen e inténtalo de nuevo.",
-  "dashboard.title": "Resumen",
-  "dashboard.lede": "Elige el módulo donde quieres continuar tu trabajo.",
-  "dashboard.tasks": "Revisar tareas asignadas",
-  "dashboard.processes": "Consultar mis procesos",
-  "dashboard.startProcess": "Iniciar un proceso",
-  "dashboard.authoring": "Diseñar flujos y formularios",
+  "route.error.body": "Vuelve a Mi trabajo e inténtalo de nuevo.",
   "workflowCatalog.title": "Flujos",
   "workflowCatalog.lede": "Abre un flujo existente o crea uno nuevo.",
   "workflowCatalog.emptyTitle": "Crea tu primer flujo",
   "workflowCatalog.empty": "Aún no tienes flujos. Crea el primero para configurar tu proceso.",
   "workflowCatalog.loading": "Cargando tus flujos...",
-  "workflowCatalog.error": "Aún no tienes flujos. Crea el primero para configurar tu proceso.",
+  "workflowCatalog.error": "No pudimos cargar tus flujos",
   "workflowCatalog.retry": "Actualizar",
   "workflowCatalog.open": "Diseñar flujo",
   "workflowCatalog.create": "Crear flujo",
@@ -652,6 +658,7 @@ export const spanishMessages: MessageDictionary = {
   "formDesign.backToForms": "Volver a formularios",
   "formDesign.backToWorkflow": "Volver al flujo",
   "formDesign.palette": "Paleta del formulario",
+  "formDesign.addAccepted": "El elemento se agregó y está seleccionado. Revisa sus propiedades.",
   "formDesign.fields": "Campos",
   "formDesign.layout": "Diseño",
   "formDesign.shortText": "Texto corto",
@@ -872,7 +879,7 @@ export const spanishMessages: MessageDictionary = {
   "myWork.startWorkflows.error": "No pudimos cargar los flujos disponibles. Intenta de nuevo en unos momentos.",
   "myWork.startWorkflows.version": "Versión",
   "myWork.startWorkflows.start": "Iniciar",
-  "myWork.startWorkflows.starting": "Iniciando",
+  "myWork.startWorkflows.starting": "Iniciando el proceso...",
   "myWork.startWorkflows.startError": "No pudimos iniciar este proceso. Intenta de nuevo.",
   "myWork.startWorkflows.openingTask": "Abriremos la primera tarea del proceso.",
   "myWork.myProcesses.title": "Mis procesos",
@@ -894,6 +901,12 @@ export const spanishMessages: MessageDictionary = {
   "myWork.myProcesses.status": "Estado:",
   "myWork.myProcesses.step": "Paso actual:",
   "myWork.myProcesses.involvement": "Tu participación:",
+  "myWork.myProcesses.involvement.initiator": "Iniciaste este proceso",
+  "myWork.myProcesses.involvement.previousParticipant": "Participaste anteriormente",
+  "myWork.myProcesses.involvement.participant": "Participaste en este proceso",
+  "myWork.myProcesses.contribution.initiated": "Iniciaste este proceso.",
+  "myWork.myProcesses.contribution.completedTask": "Completaste una tarea autorizada.",
+  "myWork.myProcesses.contribution.participated": "Participaste en este proceso.",
   "myWork.myProcesses.lastActivity": "Última actividad:",
   "myWork.myProcesses.searchLabel": "Buscar procesos completados",
   "myWork.myProcesses.searchPlaceholder": "Busca por proceso, flujo o participación",
@@ -904,7 +917,7 @@ export const spanishMessages: MessageDictionary = {
   "myWork.myProcesses.view": "Ver proceso",
   "processDetail.eyebrow": "Proceso completado",
   "processDetail.title": "Detalle del proceso",
-  "processDetail.back": "Volver a Mi trabajo",
+  "processDetail.back": "Volver a Mis procesos",
   "processDetail.loading": "Cargando el seguimiento del proceso.",
   "processDetail.loadError": "No pudimos cargar este proceso. Selecciona Actualizar para volver a cargarlo.",
   "processDetail.retry": "Actualizar",
@@ -918,6 +931,12 @@ export const spanishMessages: MessageDictionary = {
   "processDetail.contribution": "Tu aporte:",
   "processDetail.timelineTitle": "Línea de tiempo",
   "processDetail.timelineEmpty": "Aún no hay actividad para mostrar.",
+  "processDetail.actor": "Persona",
+  "processDetail.actor.authorizedMember": "Miembro autorizado",
+  "processDetail.taskPosition": "Tarea",
+  "processDetail.position.start": "Inicio",
+  "processDetail.position.end": "Fin",
+  "processDetail.position.task": "Tarea",
   "processDetail.event.processStarted": "Proceso iniciado",
   "processDetail.event.taskProgressSaved": "Avance de tarea guardado",
   "processDetail.event.taskCompleted": "Tarea completada",
@@ -1162,12 +1181,17 @@ export const spanishMessages: MessageDictionary = {
   "taskForm.saveSuccess": "El avance se guardó correctamente.",
   "taskForm.completing": "Completando tarea",
   "taskForm.completeSuccess": "La tarea quedó completa y el proceso llegó a su fin.",
+  "taskForm.taskCompleteSuccess": "La tarea quedó completa.",
   "taskForm.completeError": "No pudimos completar esta tarea. Corrige los datos y vuelve a intentarlo.",
-  "taskForm.completeHandoff": "Al terminar, volverás a Mi trabajo.",
+  "taskForm.completeHandoff": "La línea de tiempo del proceso ya está disponible para revisión.",
+  "taskForm.taskCompleteHandoff": "El proceso continúa con la siguiente tarea. Revisa Mi trabajo para ver si tienes alguna tarea asignada.",
   "taskForm.processComplete": "Proceso: Completado",
+  "taskForm.processContinues": "Proceso: En curso",
   "taskForm.saveError": "No pudimos guardar este formulario. Corrige los datos e intenta de nuevo.",
   "taskForm.complete": "Completar tarea",
   "taskForm.back": "Volver a Mi trabajo",
+  "taskForm.viewProcess": "Ver línea de tiempo",
+  "taskForm.viewWork": "Ver Mi trabajo",
   "taskForm.loading": "Cargando la tarea.",
   "taskForm.loadError": "No pudimos cargar esta tarea. Selecciona Actualizar para volver a cargarla.",
   "taskForm.unsupportedItem": "Este elemento del formulario no es compatible. Vuelve al diseñador y corrígelo.",
@@ -1271,21 +1295,15 @@ export const englishMessages: Partial<MessageDictionary> = {
   "app.loading": "Loading your workspace...",
   "route.notFound.title": "We could not find this page",
   "route.notFound.body": "The address may be out of date. Return to an available module.",
-  "route.notFound.back": "Back to dashboard",
+  "route.notFound.back": "Back to My work",
   "route.error.title": "We could not open this module",
-  "route.error.body": "Return to the dashboard and try again.",
-  "dashboard.title": "Dashboard",
-  "dashboard.lede": "Choose the module where you want to continue working.",
-  "dashboard.tasks": "Review assigned tasks",
-  "dashboard.processes": "View my processes",
-  "dashboard.startProcess": "Start an authorized process",
-  "dashboard.authoring": "Design workflows and forms",
+  "route.error.body": "Return to My work and try again.",
   "workflowCatalog.title": "Workflows",
   "workflowCatalog.lede": "Open an existing workflow or create a new one.",
   "workflowCatalog.emptyTitle": "Create your first workflow",
   "workflowCatalog.empty": "You do not have any workflows yet. Create the first one to configure your process.",
   "workflowCatalog.loading": "Loading your workflows...",
-  "workflowCatalog.error": "You do not have any workflows yet. Create the first one to configure your process.",
+  "workflowCatalog.error": "We could not load your workflows",
   "workflowCatalog.retry": "Refresh",
   "workflowCatalog.open": "Design workflow",
   "workflowCatalog.create": "Create workflow",
@@ -1311,6 +1329,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "formDesign.backToForms": "Back to forms",
   "formDesign.backToWorkflow": "Back to workflow",
   "formDesign.palette": "Form palette",
+  "formDesign.addAccepted": "The item was added and selected. Review its properties.",
   "formDesign.fields": "Fields",
   "formDesign.layout": "Layout",
   "formDesign.shortText": "Short text",
@@ -1532,7 +1551,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.startWorkflows.error": "We could not load the available workflows. Try again in a few moments.",
   "myWork.startWorkflows.version": "Version",
   "myWork.startWorkflows.start": "Start",
-  "myWork.startWorkflows.starting": "Starting",
+  "myWork.startWorkflows.starting": "Starting the process...",
   "myWork.startWorkflows.startError": "We could not start this process. Try again.",
   "myWork.startWorkflows.openingTask": "Opening the first authorized task.",
   "myWork.myProcesses.title": "My processes",
@@ -1554,6 +1573,12 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.myProcesses.status": "Status:",
   "myWork.myProcesses.step": "Current step:",
   "myWork.myProcesses.involvement": "Your involvement:",
+  "myWork.myProcesses.involvement.initiator": "You started this process",
+  "myWork.myProcesses.involvement.previousParticipant": "Previous participant",
+  "myWork.myProcesses.involvement.participant": "Process participant",
+  "myWork.myProcesses.contribution.initiated": "You started this process.",
+  "myWork.myProcesses.contribution.completedTask": "You completed one authorized task.",
+  "myWork.myProcesses.contribution.participated": "You participated in this process.",
   "myWork.myProcesses.lastActivity": "Last activity:",
   "myWork.myProcesses.searchLabel": "Search completed processes",
   "myWork.myProcesses.searchPlaceholder": "Search by process, workflow, or involvement",
@@ -1564,7 +1589,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.myProcesses.view": "View process",
   "processDetail.eyebrow": "Completed process",
   "processDetail.title": "Process detail",
-  "processDetail.back": "Back to My work",
+  "processDetail.back": "Back to My processes",
   "processDetail.loading": "Loading the authorized process timeline.",
   "processDetail.loadError": "We could not load this authorized process. Try again.",
   "processDetail.retry": "Retry",
@@ -1578,6 +1603,12 @@ export const englishMessages: Partial<MessageDictionary> = {
   "processDetail.contribution": "Your contribution:",
   "processDetail.timelineTitle": "Timeline",
   "processDetail.timelineEmpty": "There are no authorized events to show yet.",
+  "processDetail.actor": "Person",
+  "processDetail.actor.authorizedMember": "Authorized member",
+  "processDetail.taskPosition": "Task",
+  "processDetail.position.start": "Start",
+  "processDetail.position.end": "End",
+  "processDetail.position.task": "Task",
   "processDetail.event.processStarted": "Process started",
   "processDetail.event.taskProgressSaved": "Task progress saved",
   "processDetail.event.taskCompleted": "Task completed",
@@ -1823,12 +1854,17 @@ export const englishMessages: Partial<MessageDictionary> = {
   "taskForm.saveSuccess": "The server saved the authorized progress.",
   "taskForm.completing": "Completing task",
   "taskForm.completeSuccess": "The task is complete and the process reached its end.",
+  "taskForm.taskCompleteSuccess": "The task is complete.",
   "taskForm.completeError": "We could not complete this task. Correct the values and try again.",
-  "taskForm.completeHandoff": "We will return you to My work after confirming the authorized result.",
+  "taskForm.completeHandoff": "The process timeline is now available for review.",
+  "taskForm.taskCompleteHandoff": "The process continues with its next task. Review My work for any task assigned to you.",
   "taskForm.processComplete": "Process: Completed",
+  "taskForm.processContinues": "Process: In progress",
   "taskForm.saveError": "We could not save this form. Correct the values and try again.",
   "taskForm.complete": "Complete task",
   "taskForm.back": "Back to My work",
+  "taskForm.viewProcess": "View process timeline",
+  "taskForm.viewWork": "View My work",
   "taskForm.loading": "Loading the authorized task.",
   "taskForm.loadError": "We could not load this authorized task. Try again.",
   "taskForm.unsupportedItem": "This Form item is not supported. Return to the designer and correct it.",

@@ -493,6 +493,7 @@ export interface components {
             workflowVersionNumber: number;
             involvement: string;
             currentStep: string;
+            currentStepKind: string;
             systemStatus: string;
             /** Format: date-time */
             startedAt: string;
@@ -562,6 +563,7 @@ export interface components {
             workflowVersionNumber: number;
             systemStatus: string;
             currentStep: string;
+            currentStepKind: string;
             /** Format: date-time */
             startedAt: string;
             /** Format: date-time */
@@ -576,9 +578,11 @@ export interface components {
             eventKind: string;
             label: string;
             actorDisplay: string;
+            actorDisplayKind: string;
             /** Format: date-time */
             occurredAt: string;
             taskPosition: string;
+            taskPositionKind: string;
         };
         ProtectedMembership: {
             /** Format: uuid */

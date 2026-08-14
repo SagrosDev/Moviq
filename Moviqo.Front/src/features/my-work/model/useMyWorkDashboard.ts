@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   moviqoQueryKeys,
   type NormalizedApiProblem,
@@ -25,6 +25,7 @@ export const useMyWorkDashboard = (
       query.page,
       query.search
     ),
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const response = await readMyWorkDashboard(query);
       if (!response.ok) {

@@ -716,7 +716,7 @@ def test_task_form_complete_finishes_the_task_and_process_once(
         "definitionRevision": "2",
         "routeTargetId": "end-1",
         "completedAt": response.json()["completedAt"],
-        "destinationRoute": "/my-work",
+        "destinationRoute": f"/my-work/processes/{task.process_id}",
         "handoffMessage": "The task is complete and this process reached its end.",
     }
     task.refresh_from_db()
@@ -920,6 +920,8 @@ def test_completing_a_task_assigns_the_next_linear_task_from_its_own_assignment(
         task_element_id="task-2",
     )
     assert task.process.status == "active"
+    assert response.json()["processStatus"] == "active"
+    assert response.json()["destinationRoute"] == "/my-work"
     assert next_task.status == "assigned"
     assert next_task.assignee_membership_id == membership.id
     assert TaskProcessFieldValue.objects.get(

@@ -241,6 +241,7 @@ def test_completed_process_tracking_reads_committed_audit_order(
             "workflowVersionNumber": 1,
             "involvement": "Initiator",
             "currentStep": "End",
+            "currentStepKind": "end",
             "systemStatus": "completed",
             "startedAt": dashboard["myProcesses"]["items"][0]["startedAt"],
             "completedAt": dashboard["myProcesses"]["items"][0]["completedAt"],

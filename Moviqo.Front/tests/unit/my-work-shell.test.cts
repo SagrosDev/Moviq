@@ -9,11 +9,18 @@ import {
 import {
   buildMyWorkDashboardQuery,
   MyWorkShell,
-  defaultMyProcessesQuery
+  defaultMyProcessesQuery,
+  processActorLabelFor,
+  processPositionLabelFor
 } from "../../src/features/my-work";
 import { resolveProcessDetailPageView } from "../../src/pages/process-detail/ui/ProcessDetailPage";
 import type { NormalizedApiProblem, QuerySnapshot } from "../../src/shared/api";
-import { LanguageProvider, memoryLanguagePreferenceAdapter } from "../../src/shared/localization";
+import {
+  LanguageProvider,
+  memoryLanguagePreferenceAdapter,
+  translate,
+  type MessageKey
+} from "../../src/shared/localization";
 import type { MyWorkDashboard } from "../../src/features/my-work";
 
 const renderShell = (
@@ -98,11 +105,22 @@ test("my-work regions expose contextual loading states with a visual spinner", (
     showHeading: false,
     showRegionNavigation: false
   });
+  const processesMarkup = renderShell({ status: "loading" }, {
+    regions: ["myProcesses"],
+    showHeading: false,
+    showRegionNavigation: false
+  });
 
   assert.match(tasksMarkup, /Cargando tus tareas asignadas/);
   assert.match(startMarkup, /Buscando flujos que puedes iniciar/);
-  assert.match(tasksMarkup, /role="status"/);
-  assert.match(tasksMarkup, /animate-spin/);
+  assert.match(processesMarkup, /Cargando tus procesos/);
+
+  for (const markup of [tasksMarkup, startMarkup, processesMarkup]) {
+    assert.match(markup, /role="status"/);
+    assert.match(markup, /aria-live="polite"/);
+    assert.match(markup, /animate-spin/);
+    assert.doesNotMatch(markup, /<button|<input/);
+  }
 });
 
 test("my-work pagination uses the generated endpoint query contract", () => {
@@ -212,7 +230,25 @@ test("my-work shell does not mislabel malformed server errors as an expired sess
   assert.match(markup, /Actualizar/);
 });
 
-test("my-work shell renders startable workflow cards with the start action and feedback", () => {
+test("my-work shell distinguishes offline recovery from a server failure", () => {
+  const markup = renderShell({
+    status: "error",
+    error: {
+      type: "about:blank",
+      title: "Network failure",
+      status: 0,
+      code: "api_error",
+      correlationId: "",
+      invalidParams: []
+    },
+    updatedAt: Date.now()
+  }, { regions: ["myTasks"], showHeading: false, showRegionNavigation: false });
+
+  assert.match(markup, /No pudimos conectarnos/);
+  assert.doesNotMatch(markup, /Network failure|Actualiza para cargar tus tareas/);
+});
+
+test("my-work shell replaces process-start actions with shared in-progress feedback", () => {
   const markup = renderShell({
     status: "success",
     data: {
@@ -226,24 +262,33 @@ test("my-work shell renders startable workflow cards with the start action and f
             description: "",
             availability: "Disponible para miembros activos de tu organizacion.",
             versionNumber: 3
+          },
+          {
+            workflowId: "workflow-2",
+            title: "Revisión de contratos",
+            description: "",
+            availability: "Disponible para miembros activos de tu organizacion.",
+            versionNumber: 1
           }
         ],
         limit: 6,
-        hasMore: false
+        hasMore: true
       }
     },
     updatedAt: Date.now()
   }, {
-    startFeedbackByWorkflowId: {
-      "workflow-1": "Abriremos la primera tarea autorizada."
-    },
+    regions: ["startWorkflows"],
+    showHeading: false,
+    showRegionNavigation: false,
     startingWorkflowId: "workflow-1"
   });
 
-  assert.match(markup, /Aprobaciones/);
-  assert.match(markup, /Versión 3/);
-  assert.match(markup, /Iniciando/);
-  assert.match(markup, /Abriremos la primera tarea autorizada/);
+  assert.match(markup, /role="status"/);
+  assert.match(markup, /aria-live="polite"/);
+  assert.match(markup, /animate-spin/);
+  assert.match(markup, /Iniciando el proceso/);
+  assert.doesNotMatch(markup, /Aprobaciones|Revisión de contratos/);
+  assert.doesNotMatch(markup, /<button/);
 });
 
 test("my-work shell renders assigned task cards with one open-task action", () => {
@@ -291,6 +336,7 @@ test("my-work shell renders completed processes as a semantic desktop table and 
             workflowVersionNumber: 1,
             involvement: "Initiator",
             currentStep: "End",
+            currentStepKind: "end",
             systemStatus: "completed",
             startedAt: "2026-08-05T00:00:00+00:00",
             completedAt: "2026-08-05T01:00:00+00:00",
@@ -325,7 +371,7 @@ test("my-work shell renders completed processes as a semantic desktop table and 
   assert.match(markup, /data-process-layout="table"/);
   assert.match(markup, /data-process-layout="cards"/);
   assert.match(markup, /Proceso: process-/);
-  assert.match(markup, /Paso actual: End/);
+  assert.match(markup, /Paso actual: Fin/);
   assert.match(markup, /Ver proceso/);
   assert.match(markup, /Página anterior/);
   assert.match(markup, /Página siguiente/);
@@ -344,6 +390,7 @@ test("process detail page view resolves loading, error, and ready states", () =>
         workflowVersionNumber: 1,
         systemStatus: "completed",
         currentStep: "End",
+        currentStepKind: "end",
         startedAt: "2026-08-05T00:00:00+00:00",
         completedAt: "2026-08-05T01:00:00+00:00",
         lastActivityAt: "2026-08-05T01:00:00+00:00",
@@ -355,5 +402,20 @@ test("process detail page view resolves loading, error, and ready states", () =>
       timeline: []
     }),
     "ready"
+  );
+});
+
+test("process presentation localizes semantic fallbacks without replacing owned display text", () => {
+  const t = (key: MessageKey) => translate("es", key);
+
+  assert.equal(processPositionLabelFor("End", "end", t), "Fin");
+  assert.equal(processPositionLabelFor("End", "taskLabel", t), "End");
+  assert.equal(
+    processActorLabelFor("Authorized member", "authorizedMember", t),
+    "Miembro autorizado"
+  );
+  assert.equal(
+    processActorLabelFor("Authorized member", "member", t),
+    "Authorized member"
   );
 });

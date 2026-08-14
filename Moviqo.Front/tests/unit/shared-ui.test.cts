@@ -329,6 +329,8 @@ test("LoadingState exposes one polite named status and a decorative visual spinn
   assert.match(markup, /aria-atomic="true"/);
   assert.match(markup, /aria-hidden="true"/);
   assert.match(markup, /animate-spin/);
+  assert.match(markup, /size-8/);
+  assert.match(markup, /border-4/);
   assert.match(markup, /motion-reduce:animate-none/);
   assert.equal((markup.match(/Loading assigned tasks\./g) ?? []).length, 1);
 });

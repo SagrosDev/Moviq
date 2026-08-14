@@ -309,29 +309,14 @@ test("deployed first workflow journey covers registration through completed time
     await journeyExpect(
       page.getByText(copy("taskForm.completeSuccess"))
     ).toBeVisible();
+      await page.getByRole("link", { name: copy("taskForm.viewProcess") }).click();
       await assertNoAccessibilityViolations(page, axePath);
     });
     recordJourneyEvent(journeyTrace, startedAt, "save and complete task");
 
     recordJourneyEvent(journeyTrace, startedAt, "inspect timeline", "started");
     await test.step("inspect the completed process timeline", async () => {
-    await page.goto("/my-work");
-    const processNavigation = page.getByRole("navigation", {
-      name: copy("myWork.regionNav")
-    });
-    await processNavigation.getByRole("link", { name: copy("myWork.myProcesses.title") }).click();
-
-    const processRegion = page.getByRole("region", { name: copy("myWork.myProcesses.title") });
-    const processCard = processRegion.getByRole("article").filter({
-      has: page.getByRole("heading", { name: workflowName, exact: true })
-    });
-    await journeyExpect(processCard).toHaveCount(1);
-    await performApiAction(
-      page,
-      "GET",
-      /\/api\/v1\/my-work\/processes\/[^/]+\/$/,
-      () => processCard.getByRole("link", { name: copy("myWork.myProcesses.view") }).click()
-    );
+    await journeyExpect(page).toHaveURL(/\/my-work\/processes\/[^/]+$/);
     await journeyExpect(
       page.getByRole("heading", { name: workflowName, exact: true })
     ).toBeVisible();

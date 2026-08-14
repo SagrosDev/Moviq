@@ -1,6 +1,15 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useLanguage } from "../../../shared/localization";
-import { Button, ErrorSummary } from "../../../shared/ui";
+import {
+  ActionBar,
+  Alert,
+  Badge,
+  Button,
+  ButtonLink,
+  Card,
+  ErrorSummary,
+  PageHeader
+} from "../../../shared/ui";
 import type { TaskFormEditorState } from "../model/taskForm";
 import { taskFormErrorSummary, taskFormRetryTarget } from "../model/taskForm";
 import { TaskFormRenderer } from "./TaskFormRenderer";
@@ -12,6 +21,7 @@ type TaskFormPanelProps = {
   onComplete: () => void;
   onRetrySave: () => void;
   onReloadLatest: () => void;
+  breadcrumb?: ReactNode;
 };
 
 const toProcessReference = (processId: string) => processId.slice(0, 8);
@@ -34,7 +44,8 @@ export const TaskFormPanel = ({
   onSave,
   onComplete,
   onRetrySave,
-  onReloadLatest
+  onReloadLatest,
+  breadcrumb
 }: TaskFormPanelProps) => {
   const { t } = useLanguage();
   const inputsDisabled = state.saveStatus === "saving" || state.completionStatus === "completing";
@@ -59,40 +70,55 @@ export const TaskFormPanel = ({
     });
   }, [state.errorMessages, summary.errors]);
 
+  const header = (
+    <PageHeader
+      breadcrumb={breadcrumb}
+      description={state.workflowName}
+      eyebrow={t("taskForm.eyebrow")}
+      title={state.taskTitle}
+      titleId="task-form-title"
+    />
+  );
+
   if (state.completionStatus === "success" && state.completionResult) {
-    return <section className="task-form-shell" aria-labelledby="task-form-title">
-      <header className="page-heading">
-        <p className="eyebrow">{t("taskForm.eyebrow")}</p>
-        <h1 id="task-form-title">{state.taskTitle}</h1>
-        <p className="lede">{state.workflowName}</p>
-      </header>
-      <article className="task-form-panel">
-        <p className="success-message">{t("taskForm.completeSuccess")}</p>
-        <p>{state.completionResult.handoffMessage}</p>
-        <div className="task-form-panel__meta">
-          <span>{t("taskForm.status")} {statusLabelFor(state.status, t)}</span>
-          <span>{t("taskForm.processComplete")}</span>
+    const processCompleted = state.completionResult.processStatus === "completed";
+    return <section className="grid gap-moviqo-5" aria-labelledby="task-form-title">
+      {header}
+      <Card>
+        <Alert announcement="polite" tone="success">
+          {t(processCompleted ? "taskForm.completeSuccess" : "taskForm.taskCompleteSuccess")}
+        </Alert>
+        <p className="m-0 text-moviqo-ink-secondary">
+          {t(processCompleted ? "taskForm.completeHandoff" : "taskForm.taskCompleteHandoff")}
+        </p>
+        <div className="flex flex-wrap gap-moviqo-2">
+          <Badge tone="success">
+            {t("taskForm.status")} {statusLabelFor(state.status, t)}
+          </Badge>
+          <Badge tone={processCompleted ? "success" : "info"}>
+            {t(processCompleted ? "taskForm.processComplete" : "taskForm.processContinues")}
+          </Badge>
         </div>
-        <div className="task-form-actions">
-          <a className="button" href={state.completionResult.destinationRoute}>
-            {t("taskForm.back")}
-          </a>
-        </div>
-      </article>
+        <ActionBar align="start">
+          <ButtonLink href={state.completionResult.destinationRoute}>
+            {t(processCompleted ? "taskForm.viewProcess" : "taskForm.viewWork")}
+          </ButtonLink>
+        </ActionBar>
+      </Card>
     </section>;
   }
 
-  return <section className="task-form-shell" aria-labelledby="task-form-title">
-    <header className="page-heading">
-      <p className="eyebrow">{t("taskForm.eyebrow")}</p>
-      <h1 id="task-form-title">{state.taskTitle}</h1>
-      <p className="lede">{state.workflowName}</p>
-      <p>{`${t("taskForm.process")} ${toProcessReference(state.processId)}`}</p>
-    </header>
-    <article className="task-form-panel">
-      <div className="task-form-panel__meta">
-        <span>{t("taskForm.status")} {statusLabelFor(state.status, t)}</span>
-        <span>{t("taskForm.revision")} {state.taskRevision}</span>
+  return <section className="grid gap-moviqo-5" aria-labelledby="task-form-title">
+    {header}
+    <Card>
+      <div className="flex flex-wrap gap-moviqo-2">
+        <Badge tone="info">
+          {t("taskForm.process")} {toProcessReference(state.processId)}
+        </Badge>
+        <Badge tone="info">
+          {t("taskForm.status")} {statusLabelFor(state.status, t)}
+        </Badge>
+        <Badge>{t("taskForm.revision")} {state.taskRevision}</Badge>
       </div>
       {state.errorMessages.length > 0 ? <div className="grid gap-moviqo-3">
         <ErrorSummary
@@ -101,7 +127,7 @@ export const TaskFormPanel = ({
           ref={summaryRef}
           title={t("taskForm.errorTitle")}
         />
-        <div className="button-row">
+        <ActionBar align="start">
           <Button
             variant="secondary"
             onClick={retryTarget === "complete" ? onComplete : onRetrySave}
@@ -111,7 +137,7 @@ export const TaskFormPanel = ({
           <Button variant="secondary" onClick={onReloadLatest}>
             {t("taskForm.reloadLatest")}
           </Button>
-        </div>
+        </ActionBar>
       </div> : null}
       <TaskFormRenderer
         disabled={inputsDisabled}
@@ -120,10 +146,9 @@ export const TaskFormPanel = ({
         items={state.items}
         onValueChange={onValueChange}
       />
-      <div className="task-form-actions">
-        <button
-          className="button"
-          type="button"
+      <ActionBar align="end">
+        <Button
+          variant="secondary"
           disabled={
             !state.actions.saveDraft
             || !state.hasLocalChanges
@@ -133,11 +158,8 @@ export const TaskFormPanel = ({
           onClick={onSave}
         >
           {state.saveStatus === "saving" ? t("taskForm.saving") : t("taskForm.save")}
-        </button>
-        <button
-          className="button"
-          data-variant="secondary"
-          type="button"
+        </Button>
+        <Button
           disabled={
             !state.actions.complete
             || state.saveStatus === "saving"
@@ -146,11 +168,11 @@ export const TaskFormPanel = ({
           onClick={onComplete}
         >
           {state.completionStatus === "completing" ? t("taskForm.completing") : t("taskForm.complete")}
-        </button>
-      </div>
+        </Button>
+      </ActionBar>
       {state.saveStatus === "success" ? (
-        <p className="success-message">{t("taskForm.saveSuccess")}</p>
+        <Alert announcement="polite" tone="success">{t("taskForm.saveSuccess")}</Alert>
       ) : null}
-    </article>
+    </Card>
   </section>;
 };

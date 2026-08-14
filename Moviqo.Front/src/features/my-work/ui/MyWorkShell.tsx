@@ -16,6 +16,11 @@ import type {
   MyWorkTask
 } from "../model/myWork";
 import { formatDateTimeInTimeZone } from "../model/myWork";
+import {
+  processContributionLabelFor,
+  processInvolvementLabelFor,
+  processPositionLabelFor
+} from "./processPresentation";
 
 type MyWorkShellProps = {
   snapshot: QuerySnapshot<MyWorkDashboard, NormalizedApiProblem>;
@@ -73,6 +78,9 @@ const errorMessageFor = (
   }
   if (snapshot.error.code === "permission_denied") {
     return t("myWork.permissionDenied");
+  }
+  if (snapshot.error.status === 0) {
+    return t("myWork.networkError");
   }
   return ({
     myTasks: t("myWork.myTasks.unavailable"),
@@ -252,6 +260,10 @@ const renderMyTasks = (
   onPageChange: (page: number) => void,
   onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void
 ) => {
+  if (snapshot.status === "idle" || snapshot.status === "loading") {
+    return <LoadingState>{t("myWork.myTasks.loading")}</LoadingState>;
+  }
+
   const controls = <form
     className="my-work-search"
     onSubmit={(event) => {
@@ -318,6 +330,10 @@ const renderStartWorkflows = (
   workflowCreationHref?: string | null,
   onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void
 ) => {
+  if (startingWorkflowId !== null) {
+    return <LoadingState>{t("myWork.startWorkflows.starting")}</LoadingState>;
+  }
+
   return renderRegionState<MyWorkStartWorkflow>(
     snapshot,
     <div className="status-panel" role="status">
@@ -345,12 +361,9 @@ const renderStartWorkflows = (
       <p>{item.availability}</p>
       <div className="button-row">
         <Button
-          disabled={startingWorkflowId === item.workflowId}
           onClick={() => onStartWorkflow(item.workflowId)}
         >
-          {startingWorkflowId === item.workflowId
-            ? t("myWork.startWorkflows.starting")
-            : t("myWork.startWorkflows.start")}
+          {t("myWork.startWorkflows.start")}
         </Button>
       </div>
       {startFeedbackByWorkflowId[item.workflowId] ? (
@@ -374,6 +387,10 @@ const renderMyProcesses = (
   onPageChange: (page: number) => void,
   onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void
 ) => {
+  if (snapshot.status === "idle" || snapshot.status === "loading") {
+    return <LoadingState>{t("myWork.myProcesses.loading")}</LoadingState>;
+  }
+
   const controls = <div>
     <form
       className="my-work-search"
@@ -396,13 +413,6 @@ const renderMyProcesses = (
     </form>
     <p>{t("myWork.myProcesses.discoveryHint")}</p>
   </div>;
-
-  if (snapshot.status === "idle" || snapshot.status === "loading") {
-    return <div>
-      {controls}
-      <LoadingState>{t("myWork.myProcesses.loading")}</LoadingState>
-    </div>;
-  }
 
   if (snapshot.status === "error") {
     if (isMissingMyWork(snapshot)) {
@@ -465,10 +475,14 @@ const renderMyProcesses = (
                 <th className="border-b border-moviqo-border p-moviqo-3 text-left align-top font-semibold" scope="row">{item.workflowName}</th>
                 <td className="border-b border-moviqo-border p-moviqo-3 align-top">{item.processNumber}</td>
                 <td className="border-b border-moviqo-border p-moviqo-3 align-top">{statusLabelFor(item.systemStatus, t)}</td>
-                <td className="border-b border-moviqo-border p-moviqo-3 align-top">{item.currentStep}</td>
                 <td className="border-b border-moviqo-border p-moviqo-3 align-top">
-                  <span>{item.involvement}</span>
-                  <small className="mt-moviqo-1 block text-moviqo-ink-secondary">{item.contributionSummary.label}</small>
+                  {processPositionLabelFor(item.currentStep, item.currentStepKind, t)}
+                </td>
+                <td className="border-b border-moviqo-border p-moviqo-3 align-top">
+                  <span>{processInvolvementLabelFor(item.involvement, t)}</span>
+                  <small className="mt-moviqo-1 block text-moviqo-ink-secondary">
+                    {processContributionLabelFor(item.contributionSummary, t)}
+                  </small>
                 </td>
                 <td className="border-b border-moviqo-border p-moviqo-3 align-top">{formatDateTimeInTimeZone(item.completedAt ?? item.lastActivityAt, timeZone)}</td>
                 <td className="border-b border-moviqo-border p-moviqo-3 align-top">
@@ -492,10 +506,14 @@ const renderMyProcesses = (
           <h3>{item.workflowName}</h3>
           <p>{`${t("myWork.myProcesses.reference")} ${item.processNumber}`}</p>
           <p>{`${t("myWork.myProcesses.status")} ${statusLabelFor(item.systemStatus, t)}`}</p>
-          <p>{`${t("myWork.myProcesses.step")} ${item.currentStep}`}</p>
-          <p>{`${t("myWork.myProcesses.involvement")} ${item.involvement}`}</p>
+          <p>{`${t("myWork.myProcesses.step")} ${processPositionLabelFor(
+            item.currentStep,
+            item.currentStepKind,
+            t
+          )}`}</p>
+          <p>{`${t("myWork.myProcesses.involvement")} ${processInvolvementLabelFor(item.involvement, t)}`}</p>
           <p>{`${t("myWork.myProcesses.lastActivity")} ${formatDateTimeInTimeZone(item.completedAt ?? item.lastActivityAt, timeZone)}`}</p>
-          <p>{item.contributionSummary.label}</p>
+          <p>{processContributionLabelFor(item.contributionSummary, t)}</p>
           <div className="button-row">
             <ButtonLink
               href={item.viewRoute}

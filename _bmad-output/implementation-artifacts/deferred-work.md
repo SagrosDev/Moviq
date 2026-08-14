@@ -73,3 +73,11 @@ These items are not outstanding work for the active Story 1.34. Compatibility, r
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-37-allow-blank-short-text-label.md`
   summary: Carry publication issue binding identity into the Form Designer and select/focus the exact affected item.
   evidence: The existing publication checklist navigation passes only the Task element ID, so any Form issue on a later binding opens the Task form with its first item selected.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-38-my-work-tabs.md`
+  summary: Bound process-start requests so a non-settling endpoint cannot leave the Start Process module indefinitely locked.
+  evidence: The existing start command awaits the transport without an application timeout, so a request that never settles leaves the pending UI active until the browser or network stack aborts it.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-38-my-work-tabs.md`
+  summary: Prevent a late successful process-start response from redirecting after the user has navigated away.
+  evidence: The existing asynchronous start handler calls navigate after success without checking whether its page is still mounted, so a user who leaves during the request can be redirected from the newer destination.

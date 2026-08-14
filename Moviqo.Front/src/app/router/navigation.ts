@@ -57,8 +57,8 @@ export const authenticatedPageTitleKey = (pathname: string): MessageKey => {
   const normalizedPathname = normalizePathname(pathname);
   if (normalizedPathname === "/my-work") return "app.nav.dashboard";
   if (normalizedPathname === "/processes/start") return "app.nav.startProcess";
-  if (normalizedPathname.startsWith("/my-work/tasks")) return "app.nav.work";
-  if (normalizedPathname.startsWith("/my-work/processes")) return "app.nav.work";
+  if (normalizedPathname.startsWith("/my-work/tasks")) return "app.nav.dashboard";
+  if (normalizedPathname.startsWith("/my-work/processes")) return "app.nav.dashboard";
   if (
     normalizedPathname === "/forms"
     || /\/tasks\/[^/]+\/form$/.test(normalizedPathname)

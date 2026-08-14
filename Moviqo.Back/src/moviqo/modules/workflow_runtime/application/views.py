@@ -76,6 +76,7 @@ class MyProcessSummarySerializer(serializers.Serializer):
     workflowVersionNumber = serializers.IntegerField(min_value=1)
     involvement = serializers.CharField()
     currentStep = serializers.CharField()
+    currentStepKind = serializers.CharField()
     systemStatus = serializers.CharField()
     startedAt = serializers.DateTimeField()
     completedAt = serializers.DateTimeField(allow_null=True)
@@ -115,6 +116,7 @@ class ProcessDetailHeaderSerializer(serializers.Serializer):
     workflowVersionNumber = serializers.IntegerField(min_value=1)
     systemStatus = serializers.CharField()
     currentStep = serializers.CharField()
+    currentStepKind = serializers.CharField()
     startedAt = serializers.DateTimeField()
     completedAt = serializers.DateTimeField(allow_null=True)
     lastActivityAt = serializers.DateTimeField()
@@ -125,8 +127,10 @@ class ProcessTimelineEventSerializer(serializers.Serializer):
     eventKind = serializers.CharField()
     label = serializers.CharField()
     actorDisplay = serializers.CharField()
+    actorDisplayKind = serializers.CharField()
     occurredAt = serializers.DateTimeField()
     taskPosition = serializers.CharField()
+    taskPositionKind = serializers.CharField()
 
 
 class ProcessDetailSerializer(serializers.Serializer):

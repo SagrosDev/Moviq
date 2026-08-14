@@ -2202,6 +2202,9 @@
                     "currentStep": {
                         "type": "string"
                     },
+                    "currentStepKind": {
+                        "type": "string"
+                    },
                     "systemStatus": {
                         "type": "string"
                     },
@@ -2232,6 +2235,7 @@
                     "completedAt",
                     "contributionSummary",
                     "currentStep",
+                    "currentStepKind",
                     "involvement",
                     "lastActivityAt",
                     "processId",
@@ -2445,6 +2449,9 @@
                     "currentStep": {
                         "type": "string"
                     },
+                    "currentStepKind": {
+                        "type": "string"
+                    },
                     "startedAt": {
                         "type": "string",
                         "format": "date-time"
@@ -2469,6 +2476,7 @@
                     "completedAt",
                     "contributionSummary",
                     "currentStep",
+                    "currentStepKind",
                     "lastActivityAt",
                     "processId",
                     "processNumber",
@@ -2490,20 +2498,28 @@
                     "actorDisplay": {
                         "type": "string"
                     },
+                    "actorDisplayKind": {
+                        "type": "string"
+                    },
                     "occurredAt": {
                         "type": "string",
                         "format": "date-time"
                     },
                     "taskPosition": {
                         "type": "string"
+                    },
+                    "taskPositionKind": {
+                        "type": "string"
                     }
                 },
                 "required": [
                     "actorDisplay",
+                    "actorDisplayKind",
                     "eventKind",
                     "label",
                     "occurredAt",
-                    "taskPosition"
+                    "taskPosition",
+                    "taskPositionKind"
                 ]
             },
             "ProtectedMembership": {

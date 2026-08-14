@@ -156,6 +156,7 @@ export type MessageKey =
   | "status.needsAttention"
   | "status.assigned"
   | "status.inProgress"
+  | "status.active"
   | "status.completed"
   | "validation.required"
   | "validation.generic"
@@ -240,6 +241,14 @@ export type MessageKey =
   | "myWork.myTasks.error"
   | "myWork.myTasks.status"
   | "myWork.myTasks.process"
+  | "myWork.myTasks.tableRegion"
+  | "myWork.myTasks.taskColumn"
+  | "myWork.myTasks.workflowColumn"
+  | "myWork.myTasks.processColumn"
+  | "myWork.myTasks.statusColumn"
+  | "myWork.myTasks.assignedColumn"
+  | "myWork.myTasks.actionsColumn"
+  | "myWork.myTasks.assigned"
   | "myWork.myTasks.open"
   | "myWork.startWorkflows.title"
   | "myWork.startWorkflows.pageLede"
@@ -289,7 +298,11 @@ export type MessageKey =
   | "myWork.myProcesses.previousPage"
   | "myWork.myProcesses.nextPage"
   | "myWork.myProcesses.view"
+  | "myWork.refreshing"
+  | "myWork.pagination.page"
+  | "myWork.pagination.of"
   | "processDetail.eyebrow"
+  | "processDetail.eyebrowActive"
   | "processDetail.title"
   | "processDetail.back"
   | "processDetail.loading"
@@ -500,6 +513,8 @@ export type MessageKey =
   | "workflowDesign.editor.fieldSummaryPrefix"
   | "workflowDesign.editor.fieldEmpty"
   | "taskForm.eyebrow"
+  | "taskForm.breadcrumb"
+  | "taskForm.workflow"
   | "taskForm.process"
   | "taskForm.status"
   | "taskForm.revision"
@@ -766,6 +781,7 @@ export const spanishMessages: MessageDictionary = {
   "status.needsAttention": "Necesita atención",
   "status.assigned": "Asignada",
   "status.inProgress": "En curso",
+  "status.active": "Activo",
   "status.completed": "Completada",
   "validation.required": "Completa este campo para continuar.",
   "validation.generic": "Revisa este campo e intenta de nuevo.",
@@ -866,6 +882,14 @@ export const spanishMessages: MessageDictionary = {
   "myWork.myTasks.error": "No pudimos cargar tus tareas. Intenta de nuevo en unos momentos.",
   "myWork.myTasks.status": "Estado:",
   "myWork.myTasks.process": "Proceso:",
+  "myWork.myTasks.tableRegion": "Tabla de tareas; puedes desplazarla horizontalmente si es necesario",
+  "myWork.myTasks.taskColumn": "Tarea",
+  "myWork.myTasks.workflowColumn": "Flujo",
+  "myWork.myTasks.processColumn": "Proceso",
+  "myWork.myTasks.statusColumn": "Estado",
+  "myWork.myTasks.assignedColumn": "Asignada",
+  "myWork.myTasks.actionsColumn": "Acciones",
+  "myWork.myTasks.assigned": "Asignada:",
   "myWork.myTasks.open": "Abrir tarea",
   "myWork.startWorkflows.title": "Iniciar un proceso",
   "myWork.startWorkflows.pageLede": "Elige un flujo publicado para iniciar un proceso nuevo.",
@@ -901,21 +925,25 @@ export const spanishMessages: MessageDictionary = {
   "myWork.myProcesses.status": "Estado:",
   "myWork.myProcesses.step": "Paso actual:",
   "myWork.myProcesses.involvement": "Tu participación:",
-  "myWork.myProcesses.involvement.initiator": "Iniciaste este proceso",
-  "myWork.myProcesses.involvement.previousParticipant": "Participaste anteriormente",
-  "myWork.myProcesses.involvement.participant": "Participaste en este proceso",
+  "myWork.myProcesses.involvement.initiator": "Iniciador",
+  "myWork.myProcesses.involvement.previousParticipant": "Participante anterior",
+  "myWork.myProcesses.involvement.participant": "Participante",
   "myWork.myProcesses.contribution.initiated": "Iniciaste este proceso.",
   "myWork.myProcesses.contribution.completedTask": "Completaste una tarea autorizada.",
   "myWork.myProcesses.contribution.participated": "Participaste en este proceso.",
   "myWork.myProcesses.lastActivity": "Última actividad:",
-  "myWork.myProcesses.searchLabel": "Buscar procesos completados",
+  "myWork.myProcesses.searchLabel": "Buscar procesos",
   "myWork.myProcesses.searchPlaceholder": "Busca por proceso, flujo o participación",
   "myWork.myProcesses.searchAction": "Buscar",
-  "myWork.myProcesses.discoveryHint": "Usa la búsqueda o cambia de página para encontrar procesos completados anteriores.",
+  "myWork.myProcesses.discoveryHint": "Usa la búsqueda o cambia de página para encontrar procesos anteriores.",
   "myWork.myProcesses.previousPage": "Página anterior",
   "myWork.myProcesses.nextPage": "Página siguiente",
   "myWork.myProcesses.view": "Ver proceso",
+  "myWork.refreshing": "Actualizando resultados.",
+  "myWork.pagination.page": "Página",
+  "myWork.pagination.of": "de",
   "processDetail.eyebrow": "Proceso completado",
+  "processDetail.eyebrowActive": "Proceso activo",
   "processDetail.title": "Detalle del proceso",
   "processDetail.back": "Volver a Mis procesos",
   "processDetail.loading": "Cargando el seguimiento del proceso.",
@@ -1170,6 +1198,8 @@ export const spanishMessages: MessageDictionary = {
   "workflowDesign.editor.fieldSummaryPrefix": "Campo listo:",
   "workflowDesign.editor.fieldEmpty": "Todavía no has creado un campo reutilizable.",
   "taskForm.eyebrow": "Tarea activa",
+  "taskForm.breadcrumb": "Ruta de la tarea",
+  "taskForm.workflow": "Flujo:",
   "taskForm.process": "Proceso:",
   "taskForm.status": "Estado:",
   "taskForm.revision": "Revisión:",
@@ -1437,6 +1467,7 @@ export const englishMessages: Partial<MessageDictionary> = {
   "status.needsAttention": "Needs attention",
   "status.assigned": "Assigned",
   "status.inProgress": "In progress",
+  "status.active": "Active",
   "status.completed": "Completed",
   "validation.required": "Complete this field to continue.",
   "validation.generic": "Review this field and try again.",
@@ -1538,6 +1569,14 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.myTasks.error": "We could not load your tasks. Try again in a few moments.",
   "myWork.myTasks.status": "Status:",
   "myWork.myTasks.process": "Process:",
+  "myWork.myTasks.tableRegion": "Task table; scroll horizontally if needed",
+  "myWork.myTasks.taskColumn": "Task",
+  "myWork.myTasks.workflowColumn": "Workflow",
+  "myWork.myTasks.processColumn": "Process",
+  "myWork.myTasks.statusColumn": "Status",
+  "myWork.myTasks.assignedColumn": "Assigned",
+  "myWork.myTasks.actionsColumn": "Actions",
+  "myWork.myTasks.assigned": "Assigned:",
   "myWork.myTasks.open": "Open task",
   "myWork.startWorkflows.title": "Start a process",
   "myWork.startWorkflows.pageLede": "Choose a published workflow to start a new process.",
@@ -1573,21 +1612,25 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.myProcesses.status": "Status:",
   "myWork.myProcesses.step": "Current step:",
   "myWork.myProcesses.involvement": "Your involvement:",
-  "myWork.myProcesses.involvement.initiator": "You started this process",
+  "myWork.myProcesses.involvement.initiator": "Initiator",
   "myWork.myProcesses.involvement.previousParticipant": "Previous participant",
-  "myWork.myProcesses.involvement.participant": "Process participant",
+  "myWork.myProcesses.involvement.participant": "Participant",
   "myWork.myProcesses.contribution.initiated": "You started this process.",
   "myWork.myProcesses.contribution.completedTask": "You completed one authorized task.",
   "myWork.myProcesses.contribution.participated": "You participated in this process.",
   "myWork.myProcesses.lastActivity": "Last activity:",
-  "myWork.myProcesses.searchLabel": "Search completed processes",
+  "myWork.myProcesses.searchLabel": "Search processes",
   "myWork.myProcesses.searchPlaceholder": "Search by process, workflow, or involvement",
   "myWork.myProcesses.searchAction": "Search",
-  "myWork.myProcesses.discoveryHint": "Use search or change the page to find older completed processes.",
+  "myWork.myProcesses.discoveryHint": "Use search or change the page to find older processes.",
   "myWork.myProcesses.previousPage": "Previous page",
   "myWork.myProcesses.nextPage": "Next page",
   "myWork.myProcesses.view": "View process",
+  "myWork.refreshing": "Updating results.",
+  "myWork.pagination.page": "Page",
+  "myWork.pagination.of": "of",
   "processDetail.eyebrow": "Completed process",
+  "processDetail.eyebrowActive": "Active process",
   "processDetail.title": "Process detail",
   "processDetail.back": "Back to My processes",
   "processDetail.loading": "Loading the authorized process timeline.",
@@ -1843,6 +1886,8 @@ export const englishMessages: Partial<MessageDictionary> = {
   "workflowDesign.editor.fieldSummaryPrefix": "Field ready:",
   "workflowDesign.editor.fieldEmpty": "You have not created a reusable field yet.",
   "taskForm.eyebrow": "Active task",
+  "taskForm.breadcrumb": "Task breadcrumb",
+  "taskForm.workflow": "Workflow:",
   "taskForm.process": "Process:",
   "taskForm.status": "Status:",
   "taskForm.revision": "Revision:",

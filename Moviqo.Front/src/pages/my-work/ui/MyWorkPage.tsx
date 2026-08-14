@@ -49,7 +49,7 @@ export const MyWorkPage = ({ module }: { module: MyWorkModule }) => {
   const organizationId = state.status === "authenticated"
     ? state.context.membership.organizationId
     : "";
-  const { retry, snapshot } = useMyWorkDashboard(
+  const { isRefreshing, retry, snapshot } = useMyWorkDashboard(
     myProcessesQuery,
     organizationId,
     state.status === "authenticated"
@@ -129,6 +129,7 @@ export const MyWorkPage = ({ module }: { module: MyWorkModule }) => {
         </nav>
       ) : null}
       <MyWorkShell
+        isRefreshing={isRefreshing}
         myProcessesQuery={myProcessesQuery}
         myTasksSearchDraft={myTasksSearchDraft}
         myProcessesSearchDraft={myProcessesSearchDraft}

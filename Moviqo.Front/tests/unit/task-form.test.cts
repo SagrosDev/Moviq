@@ -481,7 +481,9 @@ test("task form panel renders label, help, input, save, and disabled complete af
   assert.match(markup, /Requester name/);
   assert.match(markup, /Use the full name/);
   assert.match(markup, /01987df4/);
-  assert.match(markup, /Status: Assigned|Estado: Asignada/);
+  assert.match(markup, /Workflow: Workflow intake|Flujo: Workflow intake/);
+  assert.match(markup, /<dt[^>]*>Status:<\/dt><dd[^>]*>Assigned<\/dd>|<dt[^>]*>Estado:<\/dt><dd[^>]*>Asignada<\/dd>/);
+  assert.doesNotMatch(markup, /Active task|Tarea activa|Revision:|RevisiÃ³n:/);
   assert.match(markup, /placeholder="Example: Ana Perez"/);
   assert.match(markup, /Save draft|Guardar borrador/);
   assert.match(markup, /Complete task|Completar tarea/);

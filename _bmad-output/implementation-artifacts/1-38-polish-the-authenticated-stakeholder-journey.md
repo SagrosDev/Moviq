@@ -112,6 +112,11 @@ Traceability: UX-DR3-UX-DR24, AD-9, AD-12, AD-16, NFR16, NFR30.
 - Code-review patches added session-scoped Task completion recovery, explicit Process position/actor presentation kinds, accurate cross-assignee handoff guidance, generated-contract coverage, and collision tests that preserve Designer-authored Task labels and real member display names.
 - Post-review validation passed: Ruff; focused backend contract/integration (`25 passed, 3 skipped`); the full backend run reached `307 passed, 58 skipped` with one overlapping temp-schema artifact failure, then the isolated schema contract passed (`3 passed`); frontend typecheck, architecture, complete unit suite, deterministic generated client, production Vite build/static scan, five-case Chromium My Work journey, and the bilingual preview matrix (`20 passed, 8 profile-specific skipped`).
 - Refreshed all four Spanish Story 1.38 captures from the patched worktree on 2026-08-14; pixel review confirms Mi trabajo, localized Inicio/Fin runtime positions, and current authoring navigation. The human exact-build walkthrough remains pending.
+- Reworked Mis tareas and Mis procesos into compact semantic desktop reports with equivalent narrow-screen definition-list cards and explicit page totals; active authorized processes now appear in the same safe process read model and open their authorized timeline.
+- Simplified the Task page hierarchy to one Task H1, a parent breadcrumb, Workflow subtitle, and Process/Status metadata; removed the visible runtime revision and redundant active-task eyebrow.
+- Restored visibly changing loading feedback for reduced-motion environments with a non-spatial opacity pulse while retaining normal ring rotation, then refreshed the Spanish desktop/mobile My Work captures. The human exact-build walkthrough remains pending.
+- Independent review corrected active Process detail/status copy, mixed open/completed participation precedence, completed-process step fallback, bilingual semantic process search, uniquely named process actions, retained Start Process refresh safety, and 390px Process-card coverage.
+- Final focused validation passed: backend Ruff and My Work contract (`27 passed`); frontend typecheck, complete unit suite, production Vite/static scan, all six Chromium My Work scenarios across the combined run, and four bilingual desktop/mobile evidence profiles. Eight Spanish runtime/report captures were visually inspected; manual acceptance remains pending.
 
 ### File List
 
@@ -124,9 +129,12 @@ Traceability: UX-DR3-UX-DR24, AD-9, AD-12, AD-16, NFR16, NFR30.
 - `Moviqo.Back/tests/contract/test_task_form_contract.py`
 - `Moviqo.Back/tests/integration/test_workflow_runtime_integration.py`
 - `Moviqo.Front/package.json`
+- `Moviqo.Front/src/app/styles.css`
 - `Moviqo.Front/src/app/router/routes.tsx`
 - `Moviqo.Front/src/app/router/navigation.ts`
 - `Moviqo.Front/src/features/my-work/index.ts`
+- `Moviqo.Front/src/features/my-work/model/myWork.ts`
+- `Moviqo.Front/src/features/my-work/model/useMyWorkDashboard.ts`
 - `Moviqo.Front/src/features/my-work/ui/MyWorkShell.tsx`
 - `Moviqo.Front/src/features/my-work/ui/processPresentation.ts`
 - `Moviqo.Front/src/features/form-design/ui/FormDesignerWorkspace.tsx`
@@ -140,6 +148,7 @@ Traceability: UX-DR3-UX-DR24, AD-9, AD-12, AD-16, NFR16, NFR30.
 - `Moviqo.Front/src/pages/workflow-catalog/ui/WorkflowCatalogPage.tsx`
 - `Moviqo.Front/src/shared/localization/messages.ts`
 - `Moviqo.Front/src/shared/api/generated/schema.d.ts`
+- `Moviqo.Front/src/shared/ui/feedback.tsx`
 - `Moviqo.Front/tests/e2e/my-work.spec.ts`
 - `Moviqo.Front/tests/e2e/form-designer.spec.ts`
 - `Moviqo.Front/tests/e2e/first-workflow-journey.spec.ts`
@@ -149,11 +158,19 @@ Traceability: UX-DR3-UX-DR24, AD-9, AD-12, AD-16, NFR16, NFR30.
 - `Moviqo.Front/tests/unit/application-routing.test.cts`
 - `Moviqo.Front/tests/unit/localization.test.cts`
 - `Moviqo.Front/tests/unit/my-work-shell.test.cts`
+- `Moviqo.Front/tests/unit/shared-ui.test.cts`
 - `Moviqo.Front/tests/unit/task-form.test.cts`
+- `Moviqo.Front/tests/unit/verification-flow.test.cts`
 - `_bmad-output/implementation-artifacts/screenshots/story-1-38/authoring-desktop-es.png`
 - `_bmad-output/implementation-artifacts/screenshots/story-1-38/operational-desktop-es.png`
+- `_bmad-output/implementation-artifacts/screenshots/story-1-38/operational-desktop-processes-es.png`
+- `_bmad-output/implementation-artifacts/screenshots/story-1-38/operational-desktop-task-es.png`
 - `_bmad-output/implementation-artifacts/screenshots/story-1-38/operational-mobile-es.png`
 - `_bmad-output/implementation-artifacts/screenshots/story-1-38/operational-mobile-my-work-es.png`
+- `_bmad-output/implementation-artifacts/screenshots/story-1-38/operational-mobile-processes-es.png`
+- `_bmad-output/implementation-artifacts/screenshots/story-1-38/operational-mobile-task-es.png`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
 - `_bmad-output/implementation-artifacts/epic-1-context.md`
 - `_bmad-output/implementation-artifacts/spec-1-38-my-work-tabs.md`
+- `_bmad-output/implementation-artifacts/spec-1-38-scalable-my-work-experience.md`
 - `docs/api/openapi-v1.json`

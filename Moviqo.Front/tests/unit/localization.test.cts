@@ -68,6 +68,8 @@ test("Moviqo-owned labels, navigation, statuses, validation, help, and catalog c
   );
   assert.equal(translate("es", "status.needsAttention"), "Necesita atención");
   assert.equal(translate("en", "status.needsAttention"), "Needs attention");
+  assert.equal(translate("es", "status.active"), "Activo");
+  assert.equal(translate("en", "status.active"), "Active");
   assert.equal(translate("es", "validation.required"), "Completa este campo para continuar.");
   assert.equal(translate("en", "help.requiredField"), "Use a short and clear description.");
   assert.equal(translate("es", "catalog.task.title"), "Tarjeta de tarea");

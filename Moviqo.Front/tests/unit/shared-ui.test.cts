@@ -331,7 +331,8 @@ test("LoadingState exposes one polite named status and a decorative visual spinn
   assert.match(markup, /animate-spin/);
   assert.match(markup, /size-8/);
   assert.match(markup, /border-4/);
-  assert.match(markup, /motion-reduce:animate-none/);
+  assert.match(markup, /moviqo-loading-indicator/);
+  assert.doesNotMatch(markup, /motion-reduce:animate-none/);
   assert.equal((markup.match(/Loading assigned tasks\./g) ?? []).length, 1);
 });
 

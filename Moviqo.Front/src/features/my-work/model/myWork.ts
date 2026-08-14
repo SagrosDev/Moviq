@@ -14,6 +14,9 @@ export type MyWorkCollection<TItem> = {
   items: TItem[];
   limit: number;
   hasMore: boolean;
+  page: number;
+  totalItems: number;
+  totalPages: number;
 };
 
 export type MyProcessesQuery = {

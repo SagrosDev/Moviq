@@ -365,10 +365,9 @@ export const TaskFormPage = ({ taskId }: TaskFormPageProps) => {
         breadcrumb={(
           <Breadcrumbs
             items={[
-              { href: "/my-work/tasks", label: t("myWork.myTasks.title") },
-              { current: true, label: query.data?.taskTitle ?? editorState.taskTitle }
+              { href: "/my-work/tasks", label: t("myWork.myTasks.title") }
             ]}
-            label={t("app.nav.primary")}
+            label={t("taskForm.breadcrumb")}
             onNavigate={(href, event) => {
               if (!isUnmodifiedPrimaryClick(event)) return;
               event.preventDefault();

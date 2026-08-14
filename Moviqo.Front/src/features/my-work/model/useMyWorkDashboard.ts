@@ -50,6 +50,7 @@ export const useMyWorkDashboard = (
         };
 
   return {
+    isRefreshing: result.isFetching && !result.isPending,
     snapshot,
     retry: () => result.refetch()
   };

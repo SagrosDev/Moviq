@@ -120,7 +120,7 @@ export const LoadingState = ({ children }: LoadingStateProps) => {
     >
       <span
         aria-hidden="true"
-        className="size-8 shrink-0 animate-spin rounded-moviqo-pill border-4 border-moviqo-control-border border-t-moviqo-primary motion-reduce:animate-none"
+        className="moviqo-loading-indicator size-8 shrink-0 animate-spin rounded-moviqo-pill border-4 border-moviqo-control-border border-t-moviqo-primary"
       />
       <span className="font-semibold">{children}</span>
     </div>

@@ -81,3 +81,15 @@ These items are not outstanding work for the active Story 1.34. Compatibility, r
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-38-my-work-tabs.md`
   summary: Prevent a late successful process-start response from redirecting after the user has navigated away.
   evidence: The existing asynchronous start handler calls navigate after success without checking whether its page is still mounted, so a user who leaves during the request can be redirected from the newer destination.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-38-scalable-my-work-experience.md`
+  summary: Paginate and prefetch the authorized process read model before projecting per-process workflow, audit, task, and contribution data.
+  evidence: The pre-existing process collection materializes and enriches every authorized process before Django pagination, creating an unbounded N+1 query path as process history grows.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-38-scalable-my-work-experience.md`
+  summary: Query an authorized process detail directly instead of scanning every process visible to the viewer.
+  evidence: The pre-existing detail lookup reuses the full process-summary loader and iterates all authorized summaries before matching the requested process ID.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-38-scalable-my-work-experience.md`
+  summary: Paginate authorized Task occurrences before loading and projecting authoritative workflow documents.
+  evidence: The pre-existing Task collection resolves every open assignment and its Workflow snapshot before slicing the requested 12-row page, so request cost grows with the full inbox.

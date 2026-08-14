@@ -71,13 +71,26 @@ export const TaskFormPanel = ({
   }, [state.errorMessages, summary.errors]);
 
   const header = (
-    <PageHeader
-      breadcrumb={breadcrumb}
-      description={state.workflowName}
-      eyebrow={t("taskForm.eyebrow")}
-      title={state.taskTitle}
-      titleId="task-form-title"
-    />
+    <div className="grid gap-moviqo-4">
+      {breadcrumb}
+      <PageHeader
+        description={`${t("taskForm.workflow")} ${state.workflowName}`}
+        title={state.taskTitle}
+        titleId="task-form-title"
+      />
+      <dl className="m-0 flex flex-wrap gap-x-moviqo-6 gap-y-moviqo-2 text-moviqo-body">
+        <div className="flex min-w-0 items-baseline gap-moviqo-2">
+          <dt className="font-semibold text-moviqo-ink-primary">{t("taskForm.process")}</dt>
+          <dd className="m-0 wrap-anywhere text-moviqo-ink-secondary">
+            {toProcessReference(state.processId)}
+          </dd>
+        </div>
+        <div className="flex min-w-0 items-baseline gap-moviqo-2">
+          <dt className="font-semibold text-moviqo-ink-primary">{t("taskForm.status")}</dt>
+          <dd className="m-0 text-moviqo-ink-secondary">{statusLabelFor(state.status, t)}</dd>
+        </div>
+      </dl>
+    </div>
   );
 
   if (state.completionStatus === "success" && state.completionResult) {
@@ -111,15 +124,6 @@ export const TaskFormPanel = ({
   return <section className="grid gap-moviqo-5" aria-labelledby="task-form-title">
     {header}
     <Card>
-      <div className="flex flex-wrap gap-moviqo-2">
-        <Badge tone="info">
-          {t("taskForm.process")} {toProcessReference(state.processId)}
-        </Badge>
-        <Badge tone="info">
-          {t("taskForm.status")} {statusLabelFor(state.status, t)}
-        </Badge>
-        <Badge>{t("taskForm.revision")} {state.taskRevision}</Badge>
-      </div>
       {state.errorMessages.length > 0 ? <div className="grid gap-moviqo-3">
         <ErrorSummary
           errors={summary.errors}

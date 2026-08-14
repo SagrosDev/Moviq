@@ -89,18 +89,27 @@ class StartWorkflowCollectionSerializer(serializers.Serializer):
     items = StartWorkflowSummarySerializer(many=True)
     limit = serializers.IntegerField(min_value=1)
     hasMore = serializers.BooleanField()
+    page = serializers.IntegerField(min_value=1)
+    totalItems = serializers.IntegerField(min_value=0)
+    totalPages = serializers.IntegerField(min_value=1)
 
 
 class MyTaskCollectionSerializer(serializers.Serializer):
     items = MyTaskSummarySerializer(many=True)
     limit = serializers.IntegerField(min_value=1)
     hasMore = serializers.BooleanField()
+    page = serializers.IntegerField(min_value=1)
+    totalItems = serializers.IntegerField(min_value=0)
+    totalPages = serializers.IntegerField(min_value=1)
 
 
 class MyProcessCollectionSerializer(serializers.Serializer):
     items = MyProcessSummarySerializer(many=True)
     limit = serializers.IntegerField(min_value=1)
     hasMore = serializers.BooleanField()
+    page = serializers.IntegerField(min_value=1)
+    totalItems = serializers.IntegerField(min_value=0)
+    totalPages = serializers.IntegerField(min_value=1)
 
 
 class MyWorkDashboardSerializer(serializers.Serializer):
@@ -253,14 +262,14 @@ class MyWorkDashboardView(APIView):
                 type=int,
                 location=OpenApiParameter.QUERY,
                 required=False,
-                description="One-based page of authorized completed processes.",
+                description="One-based page of authorized active and completed processes.",
             ),
             OpenApiParameter(
                 name="myProcessesSearch",
                 type=str,
                 location=OpenApiParameter.QUERY,
                 required=False,
-                description="Search authorized completed process summaries.",
+                description="Search authorized active and completed process summaries.",
             ),
         ],
         responses={

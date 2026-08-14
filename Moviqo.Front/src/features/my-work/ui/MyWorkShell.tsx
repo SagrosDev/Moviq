@@ -24,6 +24,7 @@ import {
 
 type MyWorkShellProps = {
   snapshot: QuerySnapshot<MyWorkDashboard, NormalizedApiProblem>;
+  isRefreshing?: boolean;
   onRetry(): void;
   onStartWorkflow(workflowId: string): void;
   startFeedbackByWorkflowId: Record<string, string | undefined>;
@@ -52,12 +53,24 @@ type MyWorkSnapshot = QuerySnapshot<MyWorkDashboard, NormalizedApiProblem>;
 
 const regionOrder: MyWorkRegion[] = ["myTasks", "startWorkflows", "myProcesses"];
 const toProcessReference = (processId: string) => processId.slice(0, 8);
+const reportHeadingClasses = "border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold";
+const reportCellClasses = "border-b border-moviqo-border p-moviqo-3 text-left align-top wrap-anywhere";
+
+const ReportCardValue = ({ label, value }: { label: string; value: string }) => (
+  <div className="grid min-w-0 grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] gap-moviqo-2">
+    <dt className="font-semibold text-moviqo-ink-primary">{label}</dt>
+    <dd className="m-0 min-w-0 wrap-anywhere text-moviqo-ink-secondary">{value}</dd>
+  </div>
+);
 const statusLabelFor = (status: string, t: Translate) => {
   if (status === "assigned") {
     return t("status.assigned");
   }
   if (status === "in_progress") {
     return t("status.inProgress");
+  }
+  if (status === "active") {
+    return t("status.active");
   }
   if (status === "completed") {
     return t("status.completed");
@@ -102,6 +115,7 @@ const isMissingMyWork = (snapshot: MyWorkSnapshot) => (
 
 export const MyWorkShell = ({
   snapshot,
+  isRefreshing = false,
   onStartWorkflow,
   onRetry,
   startFeedbackByWorkflowId,
@@ -173,6 +187,8 @@ export const MyWorkShell = ({
           onMyTasksSearchChange,
           onMyTasksSearchSubmit,
           onMyTasksPageChange,
+          myProcessesTimeZone,
+          isRefreshing,
           onNavigate
         )}
       </MyWorkRegionSection> : null}
@@ -193,6 +209,7 @@ export const MyWorkShell = ({
           onStartWorkflowsPageChange,
           showWorkflowCreation,
           workflowCreationHref,
+          isRefreshing,
           onNavigate
         )}
       </MyWorkRegionSection> : null}
@@ -212,6 +229,7 @@ export const MyWorkShell = ({
           onMyProcessesSearchChange,
           onMyProcessesSearchSubmit,
           onMyProcessesPageChange,
+          isRefreshing,
           onNavigate
         )}
       </MyWorkRegionSection> : null}
@@ -258,6 +276,8 @@ const renderMyTasks = (
   onSearchChange: (value: string) => void,
   onSearchSubmit: () => void,
   onPageChange: (page: number) => void,
+  timeZone: string,
+  isRefreshing: boolean,
   onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void
 ) => {
   if (snapshot.status === "idle" || snapshot.status === "loading") {
@@ -283,38 +303,84 @@ const renderMyTasks = (
       {t("myWork.myTasks.searchAction")}
     </Button>
   </form>;
-  const content = renderRegionState<MyWorkTask>(
-    snapshot,
-    query.taskSearch
-      ? t("myWork.myTasks.noMatches")
-      : t("myWork.myTasks.empty"),
-    errorMessageFor(snapshot, "myTasks", t),
-    t("myWork.myTasks.loading"),
-    t("myWork.retry"),
-    onRetry,
-    (item) => <article key={item.taskId} className="my-work-card">
-      <h3>{item.title}</h3>
-      <p>{item.workflowName}</p>
-      <p>{`${t("myWork.myTasks.status")} ${statusLabelFor(item.status, t)}`}</p>
-      <p>{`${t("myWork.myTasks.process")} ${toProcessReference(item.processId)}`}</p>
-      <div className="button-row">
-        <ButtonLink
-          href={item.openTaskRoute}
-          onClick={(event) => onNavigate?.(item.openTaskRoute, event)}
-        >
-          {t("myWork.myTasks.open")}
-        </ButtonLink>
+  if (snapshot.status === "error") {
+    if (isMissingMyWork(snapshot)) {
+      return <div>{controls}<p className="status-panel" role="status">
+        {query.taskSearch ? t("myWork.myTasks.noMatches") : t("myWork.myTasks.empty")}
+      </p></div>;
+    }
+    return <div>{controls}<div className="status-panel" role="alert" data-error-code={snapshot.error.code}>
+      <p>{errorMessageFor(snapshot, "myTasks", t)}</p>
+      {canRetryMyWorkError(snapshot) ? <Button onClick={onRetry}>{t("myWork.retry")}</Button> : null}
+    </div></div>;
+  }
+
+  const collection = snapshot.data.myTasks;
+  return <div className="grid gap-moviqo-4" aria-busy={isRefreshing || undefined}>
+    {controls}
+    {isRefreshing ? <p className="m-0 text-sm font-semibold text-moviqo-primary" role="status">
+      {t("myWork.refreshing")}
+    </p> : null}
+    {collection.items.length === 0 ? (
+      <p className="status-panel" role="status">
+        {query.taskSearch ? t("myWork.myTasks.noMatches") : t("myWork.myTasks.empty")}
+      </p>
+    ) : <>
+      <div
+        className="hidden max-w-full overflow-x-auto rounded-moviqo-control border border-moviqo-border focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-moviqo-focus desktop:block"
+        data-task-layout="table"
+        role="region"
+        aria-label={t("myWork.myTasks.tableRegion")}
+        tabIndex={0}
+      >
+        <table className="w-full border-collapse">
+          <caption className="sr-only">{t("myWork.myTasks.title")}</caption>
+          <thead><tr>
+            <th className={reportHeadingClasses} scope="col">{t("myWork.myTasks.taskColumn")}</th>
+            <th className={reportHeadingClasses} scope="col">{t("myWork.myTasks.workflowColumn")}</th>
+            <th className={reportHeadingClasses} scope="col">{t("myWork.myTasks.processColumn")}</th>
+            <th className={reportHeadingClasses} scope="col">{t("myWork.myTasks.statusColumn")}</th>
+            <th className={reportHeadingClasses} scope="col">{t("myWork.myTasks.assignedColumn")}</th>
+            <th className={reportHeadingClasses} scope="col">{t("myWork.myTasks.actionsColumn")}</th>
+          </tr></thead>
+          <tbody>{collection.items.map((item) => <tr key={item.taskId}>
+            <th className={`${reportCellClasses} font-semibold`} scope="row">{item.title}</th>
+            <td className={reportCellClasses}>{item.workflowName}</td>
+            <td className={reportCellClasses}>{toProcessReference(item.processId)}</td>
+            <td className={reportCellClasses}>{statusLabelFor(item.status, t)}</td>
+            <td className={reportCellClasses}>{formatDateTimeInTimeZone(item.activatedAt, timeZone)}</td>
+            <td className={reportCellClasses}>
+              <ButtonLink
+                aria-label={`${t("myWork.myTasks.open")}: ${item.title}`}
+                href={item.openTaskRoute}
+                variant="secondary"
+                onClick={(event) => onNavigate?.(item.openTaskRoute, event)}
+              >{t("myWork.myTasks.open")}</ButtonLink>
+            </td>
+          </tr>)}</tbody>
+        </table>
       </div>
-    </article>,
-    (dashboard) => dashboard.myTasks,
-    (collection) => renderCollectionPagination(
-      query.myTasksPage,
-      collection.hasMore,
-      onPageChange,
-      t
-    )
-  );
-  return <div>{controls}{content}</div>;
+      <div className="grid min-w-0 gap-moviqo-3 break-words desktop:hidden" data-task-layout="cards">
+        {collection.items.map((item) => <article key={item.taskId} className="my-work-card">
+          <h3 className="m-0">{item.title}</h3>
+          <dl className="m-0 grid gap-moviqo-2">
+            <ReportCardValue label={t("myWork.myTasks.workflowColumn")} value={item.workflowName} />
+            <ReportCardValue label={t("myWork.myTasks.processColumn")} value={toProcessReference(item.processId)} />
+            <ReportCardValue label={t("myWork.myTasks.statusColumn")} value={statusLabelFor(item.status, t)} />
+            <ReportCardValue label={t("myWork.myTasks.assignedColumn")} value={formatDateTimeInTimeZone(item.activatedAt, timeZone)} />
+          </dl>
+          <ButtonLink
+            aria-label={`${t("myWork.myTasks.open")}: ${item.title}`}
+            href={item.openTaskRoute}
+            variant="secondary"
+            width="full"
+            onClick={(event) => onNavigate?.(item.openTaskRoute, event)}
+          >{t("myWork.myTasks.open")}</ButtonLink>
+        </article>)}
+      </div>
+    </>}
+    {renderCollectionPagination(collection, onPageChange, t)}
+  </div>;
 };
 
 const renderStartWorkflows = (
@@ -328,13 +394,14 @@ const renderStartWorkflows = (
   onPageChange: (page: number) => void,
   showWorkflowCreation: boolean,
   workflowCreationHref?: string | null,
+  isRefreshing = false,
   onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void
 ) => {
   if (startingWorkflowId !== null) {
     return <LoadingState>{t("myWork.startWorkflows.starting")}</LoadingState>;
   }
 
-  return renderRegionState<MyWorkStartWorkflow>(
+  const content = renderRegionState<MyWorkStartWorkflow>(
     snapshot,
     <div className="status-panel" role="status">
       <strong>{showWorkflowCreation
@@ -361,6 +428,7 @@ const renderStartWorkflows = (
       <p>{item.availability}</p>
       <div className="button-row">
         <Button
+          disabled={isRefreshing}
           onClick={() => onStartWorkflow(item.workflowId)}
         >
           {t("myWork.startWorkflows.start")}
@@ -371,8 +439,14 @@ const renderStartWorkflows = (
       ) : null}
     </article>,
     (dashboard) => dashboard.startWorkflows,
-    (collection) => renderCollectionPagination(page, collection.hasMore, onPageChange, t)
+    (collection) => renderCollectionPagination(collection, onPageChange, t)
   );
+  return <div className="grid gap-moviqo-4" aria-busy={isRefreshing || undefined}>
+    {isRefreshing ? <p className="m-0 text-sm font-semibold text-moviqo-primary" role="status">
+      {t("myWork.refreshing")}
+    </p> : null}
+    {content}
+  </div>;
 };
 
 const renderMyProcesses = (
@@ -385,6 +459,7 @@ const renderMyProcesses = (
   onSearchChange: (value: string) => void,
   onSearchSubmit: () => void,
   onPageChange: (page: number) => void,
+  isRefreshing: boolean,
   onNavigate?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void
 ) => {
   if (snapshot.status === "idle" || snapshot.status === "loading") {
@@ -437,11 +512,11 @@ const renderMyProcesses = (
   }
 
   const collection = snapshot.data.myProcesses;
-  const hasPreviousPage = query.page > 1;
-  const hasNextPage = collection.hasMore;
-
-  return <div>
+  return <div className="grid gap-moviqo-4" aria-busy={isRefreshing || undefined}>
     {controls}
+    {isRefreshing ? <p className="m-0 text-sm font-semibold text-moviqo-primary" role="status">
+      {t("myWork.refreshing")}
+    </p> : null}
     {collection.items.length === 0 ? (
       <p className="status-panel" role="status">
         {query.search
@@ -461,32 +536,33 @@ const renderMyProcesses = (
             <caption className="sr-only">{t("myWork.myProcesses.title")}</caption>
             <thead>
               <tr>
-                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.workflowColumn")}</th>
-                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.referenceColumn")}</th>
-                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.statusColumn")}</th>
-                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.stepColumn")}</th>
-                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.involvementColumn")}</th>
-                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.lastActivityColumn")}</th>
-                <th className="border-b border-moviqo-border bg-moviqo-surface-soft p-moviqo-3 text-left text-moviqo-label font-bold" scope="col">{t("myWork.myProcesses.actionsColumn")}</th>
+                <th className={reportHeadingClasses} scope="col">{t("myWork.myProcesses.workflowColumn")}</th>
+                <th className={reportHeadingClasses} scope="col">{t("myWork.myProcesses.referenceColumn")}</th>
+                <th className={reportHeadingClasses} scope="col">{t("myWork.myProcesses.statusColumn")}</th>
+                <th className={reportHeadingClasses} scope="col">{t("myWork.myProcesses.stepColumn")}</th>
+                <th className={reportHeadingClasses} scope="col">{t("myWork.myProcesses.involvementColumn")}</th>
+                <th className={reportHeadingClasses} scope="col">{t("myWork.myProcesses.lastActivityColumn")}</th>
+                <th className={reportHeadingClasses} scope="col">{t("myWork.myProcesses.actionsColumn")}</th>
               </tr>
             </thead>
             <tbody>
               {collection.items.map((item) => <tr key={item.processId}>
-                <th className="border-b border-moviqo-border p-moviqo-3 text-left align-top font-semibold" scope="row">{item.workflowName}</th>
-                <td className="border-b border-moviqo-border p-moviqo-3 align-top">{item.processNumber}</td>
-                <td className="border-b border-moviqo-border p-moviqo-3 align-top">{statusLabelFor(item.systemStatus, t)}</td>
-                <td className="border-b border-moviqo-border p-moviqo-3 align-top">
+                <th className={`${reportCellClasses} font-semibold`} scope="row">{item.workflowName}</th>
+                <td className={reportCellClasses}>{item.processNumber}</td>
+                <td className={reportCellClasses}>{statusLabelFor(item.systemStatus, t)}</td>
+                <td className={reportCellClasses}>
                   {processPositionLabelFor(item.currentStep, item.currentStepKind, t)}
                 </td>
-                <td className="border-b border-moviqo-border p-moviqo-3 align-top">
+                <td className={reportCellClasses}>
                   <span>{processInvolvementLabelFor(item.involvement, t)}</span>
                   <small className="mt-moviqo-1 block text-moviqo-ink-secondary">
                     {processContributionLabelFor(item.contributionSummary, t)}
                   </small>
                 </td>
-                <td className="border-b border-moviqo-border p-moviqo-3 align-top">{formatDateTimeInTimeZone(item.completedAt ?? item.lastActivityAt, timeZone)}</td>
-                <td className="border-b border-moviqo-border p-moviqo-3 align-top">
+                <td className={reportCellClasses}>{formatDateTimeInTimeZone(item.lastActivityAt, timeZone)}</td>
+                <td className={reportCellClasses}>
                   <ButtonLink
+                    aria-label={`${t("myWork.myProcesses.view")}: ${item.workflowName} ${item.processNumber}`}
                     href={item.viewRoute}
                     variant="secondary"
                     onClick={(event) => onNavigate?.(item.viewRoute, event)}
@@ -503,46 +579,29 @@ const renderMyProcesses = (
           data-process-layout="cards"
         >
           {collection.items.map((item) => <article key={item.processId} className="my-work-card">
-          <h3>{item.workflowName}</h3>
-          <p>{`${t("myWork.myProcesses.reference")} ${item.processNumber}`}</p>
-          <p>{`${t("myWork.myProcesses.status")} ${statusLabelFor(item.systemStatus, t)}`}</p>
-          <p>{`${t("myWork.myProcesses.step")} ${processPositionLabelFor(
-            item.currentStep,
-            item.currentStepKind,
-            t
-          )}`}</p>
-          <p>{`${t("myWork.myProcesses.involvement")} ${processInvolvementLabelFor(item.involvement, t)}`}</p>
-          <p>{`${t("myWork.myProcesses.lastActivity")} ${formatDateTimeInTimeZone(item.completedAt ?? item.lastActivityAt, timeZone)}`}</p>
-          <p>{processContributionLabelFor(item.contributionSummary, t)}</p>
-          <div className="button-row">
+          <h3 className="m-0">{item.workflowName}</h3>
+          <dl className="m-0 grid gap-moviqo-2">
+            <ReportCardValue label={t("myWork.myProcesses.referenceColumn")} value={item.processNumber} />
+            <ReportCardValue label={t("myWork.myProcesses.statusColumn")} value={statusLabelFor(item.systemStatus, t)} />
+            <ReportCardValue label={t("myWork.myProcesses.stepColumn")} value={processPositionLabelFor(item.currentStep, item.currentStepKind, t)} />
+            <ReportCardValue label={t("myWork.myProcesses.involvementColumn")} value={processInvolvementLabelFor(item.involvement, t)} />
+            <ReportCardValue label={t("myWork.myProcesses.lastActivityColumn")} value={formatDateTimeInTimeZone(item.lastActivityAt, timeZone)} />
+          </dl>
+          <p className="m-0 text-moviqo-ink-secondary">{processContributionLabelFor(item.contributionSummary, t)}</p>
             <ButtonLink
+              aria-label={`${t("myWork.myProcesses.view")}: ${item.workflowName} ${item.processNumber}`}
               href={item.viewRoute}
               variant="secondary"
+              width="full"
               onClick={(event) => onNavigate?.(item.viewRoute, event)}
             >
               {t("myWork.myProcesses.view")}
             </ButtonLink>
-          </div>
         </article>)}
         </div>
       </>
     )}
-    <div className="button-row">
-      <Button
-        variant="secondary"
-        disabled={!hasPreviousPage}
-        onClick={() => onPageChange(query.page - 1)}
-      >
-        {t("myWork.myProcesses.previousPage")}
-      </Button>
-      <Button
-        variant="secondary"
-        disabled={!hasNextPage}
-        onClick={() => onPageChange(query.page + 1)}
-      >
-        {t("myWork.myProcesses.nextPage")}
-      </Button>
-    </div>
+    {renderCollectionPagination(collection, onPageChange, t)}
   </div>;
 };
 
@@ -590,11 +649,16 @@ const renderRegionState = <TItem,>(
 };
 
 const renderCollectionPagination = (
-  page: number,
-  hasMore: boolean,
+  collection: MyWorkCollection<unknown>,
   onPageChange: (page: number) => void,
   t: Translate
-) => <div className="button-row">
+) => {
+  const page = collection.page;
+  const totalPages = collection.totalPages;
+  return <nav
+    className="flex flex-wrap items-center justify-between gap-moviqo-3"
+    aria-label={`${t("myWork.pagination.page")} ${page} ${t("myWork.pagination.of")} ${totalPages}`}
+  >
   <Button
     variant="secondary"
     disabled={page <= 1}
@@ -602,11 +666,15 @@ const renderCollectionPagination = (
   >
     {t("myWork.myProcesses.previousPage")}
   </Button>
+  <span className="text-sm font-semibold text-moviqo-ink-secondary">
+    {t("myWork.pagination.page")} {page} {t("myWork.pagination.of")} {totalPages}
+  </span>
   <Button
     variant="secondary"
-    disabled={!hasMore}
+    disabled={!collection.hasMore}
     onClick={() => onPageChange(page + 1)}
   >
     {t("myWork.myProcesses.nextPage")}
   </Button>
-</div>;
+</nav>;
+};

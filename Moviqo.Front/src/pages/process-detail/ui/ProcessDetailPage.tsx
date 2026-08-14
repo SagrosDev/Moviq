@@ -40,7 +40,8 @@ const timelineMessageKeyByKind = {
 
 const statusLabelFor = (status: string, t: ReturnType<typeof useLanguage>["t"]) => {
   if (status === "completed") return t("status.completed");
-  if (status === "active" || status === "in_progress") return t("status.inProgress");
+  if (status === "active") return t("status.active");
+  if (status === "in_progress") return t("status.inProgress");
   return status;
 };
 
@@ -115,7 +116,9 @@ export const ProcessDetailPage = ({ processId }: ProcessDetailPageProps) => {
           </Button>
         )}
         description={t("processDetail.title")}
-        eyebrow={t("processDetail.eyebrow")}
+        eyebrow={t(detailDocument.header.systemStatus === "completed"
+          ? "processDetail.eyebrow"
+          : "processDetail.eyebrowActive")}
         title={detailDocument.header.workflowName}
       />
       <Card>

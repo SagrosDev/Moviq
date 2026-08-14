@@ -177,17 +177,20 @@ test("Mi trabajo opens assigned tasks with a sibling process tab", async ({ page
       body: JSON.stringify({
         myProcesses: {
           hasMore: false,
+          page: 1,
+          totalItems: 1,
+          totalPages: 1,
           items: [{
             completedAt: null,
             contributionSummary: { kind: "initiated", label: "Iniciaste este proceso." },
             currentStep: "Revisión",
             currentStepKind: "taskLabel",
-            involvement: "Iniciadora",
+            involvement: "Initiator",
             lastActivityAt: "2026-08-12T14:30:00Z",
             processId: "01987df4-ae8a-7000-8000-000000000211",
             processNumber: "01987df4",
             startedAt: "2026-08-12T14:00:00Z",
-            systemStatus: "in_progress",
+            systemStatus: "active",
             viewRoute: "/my-work/processes/01987df4-ae8a-7000-8000-000000000211",
             workflowName,
             workflowVersionNumber: 1
@@ -196,6 +199,9 @@ test("Mi trabajo opens assigned tasks with a sibling process tab", async ({ page
         },
         myTasks: {
           hasMore: false,
+          page: 1,
+          totalItems: 1,
+          totalPages: 1,
           items: [{
             activatedAt: "2026-08-12T14:10:00Z",
             openTaskRoute: "/my-work/tasks/01987df4-ae8a-7000-8000-000000000301",
@@ -209,6 +215,9 @@ test("Mi trabajo opens assigned tasks with a sibling process tab", async ({ page
         },
         startWorkflows: {
           hasMore: false,
+          page: 1,
+          totalItems: 1,
+          totalPages: 1,
           items: [{
             description: "Ruta aprobada para nuevas solicitudes.",
             name: workflowName,
@@ -217,6 +226,37 @@ test("Mi trabajo opens assigned tasks with a sibling process tab", async ({ page
             workflowId: "01987df4-ae8a-7000-8000-000000000110"
           }],
           limit: 6
+        }
+      }),
+      contentType: "application/json",
+      status: 200
+    });
+  });
+  await page.route("**/api/v1/my-work/tasks/01987df4-ae8a-7000-8000-000000000301/form/", async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        taskId: "01987df4-ae8a-7000-8000-000000000301",
+        processId: "01987df4-ae8a-7000-8000-000000000211",
+        workflowId: "01987df4-ae8a-7000-8000-000000000110",
+        workflowName,
+        taskTitle: "Revisar solicitud",
+        taskElementId: "task-1",
+        status: "assigned",
+        taskRevision: "1",
+        definitionRevision: "1",
+        actions: { saveDraft: true, complete: true },
+        form: {
+          controls: [{
+            controlId: "binding-1",
+            fieldId: "field-1",
+            kind: "shortText",
+            label: "Nombre del solicitante",
+            helpText: "Usa el nombre completo.",
+            placeholder: "Ejemplo: Ana Pérez",
+            width: "full",
+            position: 0,
+            value: ""
+          }]
         }
       }),
       contentType: "application/json",
@@ -233,7 +273,10 @@ test("Mi trabajo opens assigned tasks with a sibling process tab", async ({ page
     name: translate(language, "myWork.myTasks.title"),
     exact: true
   })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("heading", { level: 3, name: "Revisar solicitud" })).toBeVisible();
+  await expect(profile.fullAuthoring
+    ? page.getByRole("rowheader", { name: "Revisar solicitud" })
+    : page.getByRole("heading", { level: 3, name: "Revisar solicitud" })
+  ).toBeVisible();
   await expect(page.locator("#main-content").getByRole("link", {
     name: translate(language, "app.nav.startProcess")
   })).toHaveCount(0);
@@ -243,6 +286,34 @@ test("Mi trabajo opens assigned tasks with a sibling process tab", async ({ page
     page,
     testInfo,
     profile.fullAuthoring ? "operational-desktop" : "operational-mobile-my-work"
+  );
+
+  await page.getByRole("link", {
+    name: translate(language, "myWork.myProcesses.title"),
+    exact: true
+  }).click();
+  await expect((profile.fullAuthoring
+    ? page.getByRole("table")
+    : page.locator("[data-process-layout='cards']")
+  ).getByText(translate(language, "status.active"), { exact: true })).toBeVisible();
+  await captureStoryVisualEvidence(
+    page,
+    testInfo,
+    profile.fullAuthoring ? "operational-desktop-processes" : "operational-mobile-processes"
+  );
+
+  await page.getByRole("link", {
+    name: translate(language, "myWork.myTasks.title"),
+    exact: true
+  }).click();
+  await page.getByRole("link", { name: /Abrir tarea|Open task/ }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Revisar solicitud" })).toBeVisible();
+  await expect(page.getByText(translate(language, "taskForm.eyebrow"), { exact: true })).toHaveCount(0);
+  await expect(page.getByText(translate(language, "taskForm.revision"))).toHaveCount(0);
+  await captureStoryVisualEvidence(
+    page,
+    testInfo,
+    profile.fullAuthoring ? "operational-desktop-task" : "operational-mobile-task"
   );
 });
 

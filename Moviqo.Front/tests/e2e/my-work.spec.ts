@@ -31,9 +31,9 @@ const authenticatedSession = {
 };
 
 const emptyDashboard = {
-  myProcesses: { items: [], limit: 12, hasMore: false },
-  myTasks: { items: [], limit: 12, hasMore: false },
-  startWorkflows: { items: [], limit: 6, hasMore: false }
+  myProcesses: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+  myTasks: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+  startWorkflows: { items: [], limit: 6, hasMore: false, page: 1, totalItems: 0, totalPages: 1 }
 };
 
 test("Mi trabajo opens Tasks directly and switches to Processes while Start Process stays separate", async ({
@@ -59,7 +59,10 @@ test("Mi trabajo opens Tasks directly and switches to Processes while Start Proc
               openTaskRoute: "/my-work/tasks/01987df4-ae8a-7000-8000-000000000301"
             }],
             limit: 12,
-            hasMore: false
+            hasMore: false,
+            page: 1,
+            totalItems: 1,
+            totalPages: 1
           }
         }
       : emptyDashboard;
@@ -78,7 +81,7 @@ test("Mi trabajo opens Tasks directly and switches to Processes while Start Proc
   await expect(page.getByText(/No tienes tareas pendientes/)).toBeVisible();
   await page.getByLabel("Buscar tareas").fill("revisar");
   await page.getByRole("button", { name: "Buscar", exact: true }).click();
-  await expect(page.getByRole("heading", { level: 3, name: "Revisar solicitud" })).toBeVisible();
+  await expect(page.getByRole("rowheader", { name: "Revisar solicitud" })).toBeVisible();
 
   await page.getByRole("link", { name: "Mis procesos", exact: true }).click();
   await expect(page).toHaveURL(/\/my-work\/processes$/);
@@ -153,7 +156,10 @@ test("starting a process shows shared progress feedback and blocks competing sta
             }
           ],
           limit: 6,
-          hasMore: true
+          hasMore: true,
+          page: 1,
+          totalItems: 7,
+          totalPages: 2
         }
       })
     });
@@ -192,11 +198,27 @@ test("starting a process shows shared progress feedback and blocks competing sta
   expect(startRequestCount).toBe(1);
 });
 
-test("process history switches between a semantic desktop table and equivalent mobile cards", async ({
+test("work reports switch between semantic desktop tables and equivalent mobile cards", async ({
   page
 }) => {
   const dashboard = {
     ...emptyDashboard,
+    myTasks: {
+      items: [{
+        taskId: "01987df4-ae8a-7000-8000-000000000301",
+        title: "Revisar solicitud",
+        workflowName: "Aprobaciones",
+        status: "assigned",
+        processId: "01987df4-ae8a-7000-8000-000000000211",
+        activatedAt: "2026-08-05T00:15:00Z",
+        openTaskRoute: "/my-work/tasks/01987df4-ae8a-7000-8000-000000000301"
+      }],
+      limit: 12,
+      hasMore: false,
+      page: 1,
+      totalItems: 1,
+      totalPages: 1
+    },
     myProcesses: {
       items: [
         {
@@ -204,19 +226,22 @@ test("process history switches between a semantic desktop table and equivalent m
           processNumber: "01987df4",
           workflowName: "Aprobaciones",
           workflowVersionNumber: 1,
-          involvement: "Iniciadora",
-          currentStep: "End",
-          currentStepKind: "end",
-          systemStatus: "completed",
+          involvement: "Initiator",
+          currentStep: "Revisión",
+          currentStepKind: "taskLabel",
+          systemStatus: "active",
           startedAt: "2026-08-05T00:00:00Z",
-          completedAt: "2026-08-05T01:00:00Z",
+          completedAt: null,
           lastActivityAt: "2026-08-05T01:00:00Z",
           viewRoute: "/my-work/processes/01987df4-ae8a-7000-8000-000000000211",
           contributionSummary: { kind: "initiated", label: "Iniciaste este proceso." }
         }
       ],
       limit: 12,
-      hasMore: false
+      hasMore: false,
+      page: 1,
+      totalItems: 1,
+      totalPages: 1
     }
   };
 
@@ -226,24 +251,71 @@ test("process history switches between a semantic desktop table and equivalent m
   await page.route("**/api/v1/my-work/", async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(dashboard) });
   });
+  await page.route("**/api/v1/my-work/processes/01987df4-ae8a-7000-8000-000000000211/", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        header: {
+          ...dashboard.myProcesses.items[0]
+        },
+        timeline: [{
+          eventKind: "process_started",
+          label: "Raw event label",
+          actorDisplay: "Authorized member",
+          actorDisplayKind: "member",
+          taskPosition: "Start",
+          taskPositionKind: "start",
+          occurredAt: "2026-08-05T00:00:00Z"
+        }]
+      })
+    });
+  });
 
   await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/my-work/tasks");
+  await expect(page.getByRole("table", { name: "Mis tareas" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Tarea" })).toBeVisible();
+  await expect(page.getByRole("rowheader", { name: "Revisar solicitud" })).toBeVisible();
+  await expect(page.locator("[data-task-layout='cards']")).toBeHidden();
+  await expect(page.getByRole("region", { name: /Tabla de tareas/ })).toHaveAttribute("tabindex", "0");
+  await expectNoAccessibilityViolations(page);
+
   await page.goto("/my-work/processes");
   await expect(page.getByRole("table")).toBeVisible();
-  await expect(page.getByRole("table")).toContainText("Fin");
+  await expect(page.getByRole("table")).toContainText("Revisión");
+  await expect(page.getByRole("table")).toContainText("Activo");
   await expect(page.getByRole("columnheader", { name: "Flujo" })).toBeVisible();
   await expect(page.locator("[data-process-layout='cards']")).toBeHidden();
   await expect(page.getByRole("region", { name: /Tabla de procesos/ })).toHaveAttribute("tabindex", "0");
   await expectNoAccessibilityViolations(page);
 
+  await page.getByRole("link", { name: /Ver proceso: Aprobaciones 01987df4/ }).click();
+  await expect(page.getByText("Proceso activo", { exact: true })).toBeVisible();
+  await expect(page.locator("#main-content span.inline-flex").filter({ hasText: "Activo" })).toBeVisible();
+  await page.goto("/my-work/processes");
+
   await page.setViewportSize({ width: 900, height: 800 });
   await expect(page.getByRole("table")).toBeHidden();
   await expect(page.locator("[data-process-layout='cards']")).toBeVisible();
 
+  await page.goto("/my-work/tasks");
+  await expect(page.getByRole("table")).toBeHidden();
+  await expect(page.locator("[data-task-layout='cards']")).toBeVisible();
+  await expect(page.locator("[data-task-layout='cards']").getByRole("link", { name: /Abrir tarea/ })).toBeVisible();
+
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole("table")).toBeHidden();
+  await expect(page.locator("[data-task-layout='cards']")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  await expectNoAccessibilityViolations(page);
+
+  await page.goto("/my-work/processes");
+  await expect(page.getByRole("table")).toBeHidden();
   await expect(page.locator("[data-process-layout='cards']")).toBeVisible();
-  await expect(page.locator("[data-process-layout='cards']").getByRole("link", { name: "Ver proceso" })).toBeVisible();
+  await expect(page.locator("[data-process-layout='cards']").getByRole("link", {
+    name: /Ver proceso: Aprobaciones 01987df4/
+  })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expectNoAccessibilityViolations(page);
 });
@@ -294,7 +366,7 @@ test("my-work shows loading, safe retry, mobile resilience, and revoked-session 
   await expect(loadingStatus).toBeVisible();
   const loadingSpinner = loadingStatus.locator("[aria-hidden='true']");
   await expect(loadingSpinner).toBeVisible();
-  expect(await loadingSpinner.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
+  expect(await loadingSpinner.evaluate((element) => getComputedStyle(element).animationName)).toBe("moviqo-loading-pulse");
   await expect(page.getByRole("alert").getByText("Actualiza para cargar tus tareas.").first()).toBeVisible();
   await page.getByRole("button", { name: "Actualizar" }).first().click();
 
@@ -443,7 +515,7 @@ test("assigned task opens from my-work and saves authorized progress without fal
     }
   };
   const dashboard = {
-    myProcesses: { items: [], limit: 12, hasMore: false },
+    myProcesses: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
     myTasks: {
       items: [
         {
@@ -457,9 +529,12 @@ test("assigned task opens from my-work and saves authorized progress without fal
         }
       ],
       limit: 12,
-      hasMore: false
+      hasMore: false,
+      page: 1,
+      totalItems: 1,
+      totalPages: 1
     },
-    startWorkflows: { items: [], limit: 6, hasMore: false }
+    startWorkflows: { items: [], limit: 6, hasMore: false, page: 1, totalItems: 0, totalPages: 1 }
   };
   let saveRequestSeen = false;
 
@@ -486,7 +561,7 @@ test("assigned task opens from my-work and saves authorized progress without fal
 
   await expect(page).toHaveURL(new RegExp(`/my-work/tasks/${taskDocument.taskId}$`));
   await expect(page.getByRole("heading", { name: "Revisar solicitud" })).toBeVisible();
-  await expect(page.getByText("Proceso: 01987df4")).toBeVisible();
+  await expect(page.locator("dt", { hasText: "Proceso:" }).locator("+ dd")).toHaveText("01987df4");
 
   await page.getByRole("textbox", { name: "Nombre del solicitante" }).fill("Ana Perez");
   await page.getByRole("button", { name: "Guardar borrador" }).click();

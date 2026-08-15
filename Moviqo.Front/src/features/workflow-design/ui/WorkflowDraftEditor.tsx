@@ -198,6 +198,11 @@ export const WorkflowDraftEditor = ({
         onReapplyChanges={controller.reapplyChanges}
         onInvalidTarget={handleInvalidTarget}
       />
+      {state.lastOperation?.kind === "add" && state.lastOperation.status === "accepted" ? (
+        <Alert tone="success">
+          <span data-workflow-add-feedback>{announcement}</span>
+        </Alert>
+      ) : null}
       {firstInvalidTask ? (
         <Alert
           announcement="assertive"

@@ -181,6 +181,24 @@ textarea:focus-visible {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+
+  .moviqo-loading-indicator {
+    animation-duration: 1.4s !important;
+    animation-iteration-count: infinite !important;
+    animation-name: moviqo-loading-pulse !important;
+    animation-timing-function: ease-in-out !important;
+  }
+}
+
+@keyframes moviqo-loading-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .sr-only {

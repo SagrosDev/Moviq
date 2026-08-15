@@ -9,11 +9,18 @@ import {
 import {
   buildMyWorkDashboardQuery,
   MyWorkShell,
-  defaultMyProcessesQuery
+  defaultMyProcessesQuery,
+  processActorLabelFor,
+  processPositionLabelFor
 } from "../../src/features/my-work";
 import { resolveProcessDetailPageView } from "../../src/pages/process-detail/ui/ProcessDetailPage";
 import type { NormalizedApiProblem, QuerySnapshot } from "../../src/shared/api";
-import { LanguageProvider, memoryLanguagePreferenceAdapter } from "../../src/shared/localization";
+import {
+  LanguageProvider,
+  memoryLanguagePreferenceAdapter,
+  translate,
+  type MessageKey
+} from "../../src/shared/localization";
 import type { MyWorkDashboard } from "../../src/features/my-work";
 
 const renderShell = (
@@ -51,6 +58,17 @@ const renderShell = (
     )
   );
 
+type LegacyMyWorkDashboard = {
+  [TRegion in keyof MyWorkDashboard]: Pick<
+    MyWorkDashboard[TRegion],
+    "items" | "limit" | "hasMore"
+  >;
+};
+
+const asLegacyMyWorkDashboard = (dashboard: LegacyMyWorkDashboard) => (
+  dashboard as MyWorkDashboard
+);
+
 test("protected authentication entry path targets the my-work route", () => {
   assert.equal(protectedEntryPath, "/my-work");
   assert.equal(resolveProtectedRedirectPath("/my-work"), "/sign-in");
@@ -62,9 +80,9 @@ test("my-work shell renders semantic regions and localized empty states", () => 
     {
       status: "success",
       data: {
-        myProcesses: { items: [], limit: 12, hasMore: false },
-        myTasks: { items: [], limit: 12, hasMore: false },
-        startWorkflows: { items: [], limit: 6, hasMore: false }
+        myProcesses: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+        myTasks: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+        startWorkflows: { items: [], limit: 6, hasMore: false, page: 1, totalItems: 0, totalPages: 1 }
       },
       updatedAt: Date.now()
     },
@@ -83,7 +101,7 @@ test("my-work shell renders semantic regions and localized empty states", () => 
   assert.match(markup, /Crea un flujo para iniciar/);
   assert.match(markup, /href="\/workflows\/new"/);
   assert.match(markup, /Aún no hay procesos relacionados contigo/);
-  assert.match(markup, /Buscar procesos completados/);
+  assert.match(markup, /Buscar procesos/);
   assert.match(markup, /Buscar tareas/);
 });
 
@@ -98,11 +116,22 @@ test("my-work regions expose contextual loading states with a visual spinner", (
     showHeading: false,
     showRegionNavigation: false
   });
+  const processesMarkup = renderShell({ status: "loading" }, {
+    regions: ["myProcesses"],
+    showHeading: false,
+    showRegionNavigation: false
+  });
 
   assert.match(tasksMarkup, /Cargando tus tareas asignadas/);
   assert.match(startMarkup, /Buscando flujos que puedes iniciar/);
-  assert.match(tasksMarkup, /role="status"/);
-  assert.match(tasksMarkup, /animate-spin/);
+  assert.match(processesMarkup, /Cargando tus procesos/);
+
+  for (const markup of [tasksMarkup, startMarkup, processesMarkup]) {
+    assert.match(markup, /role="status"/);
+    assert.match(markup, /aria-live="polite"/);
+    assert.match(markup, /animate-spin/);
+    assert.doesNotMatch(markup, /<button|<input/);
+  }
 });
 
 test("my-work pagination uses the generated endpoint query contract", () => {
@@ -121,14 +150,84 @@ test("my-work pagination uses the generated endpoint query contract", () => {
   });
 });
 
+test("my-work pagination always renders concrete requested pages for legacy collections", () => {
+  const legacyDashboard = asLegacyMyWorkDashboard({
+    myProcesses: { items: [], limit: 12, hasMore: false },
+    myTasks: { items: [], limit: 12, hasMore: false },
+    startWorkflows: { items: [], limit: 6, hasMore: true }
+  });
+  const query = {
+    ...defaultMyProcessesQuery,
+    myTasksPage: 2,
+    page: 3,
+    startWorkflowsPage: 4
+  };
+  const cases = [
+    { region: "myTasks", accessibleLabel: "Mis tareas: Página 2 de 2", visibleLabel: "Página 2 de 2" },
+    { region: "myProcesses", accessibleLabel: "Mis procesos: Página 3 de 3", visibleLabel: "Página 3 de 3" },
+    { region: "startWorkflows", accessibleLabel: "Iniciar un proceso: Página 4", visibleLabel: "Página 4" }
+  ] as const;
+
+  for (const paginationCase of cases) {
+    const markup = renderShell({
+      status: "success",
+      data: legacyDashboard,
+      updatedAt: Date.now()
+    }, {
+      myProcessesQuery: query,
+      regions: [paginationCase.region],
+      showHeading: false,
+      showRegionNavigation: false
+    });
+
+    assert.match(markup, new RegExp(`aria-label="${paginationCase.accessibleLabel}"`));
+    assert.match(markup, new RegExp(`<span[^>]*>${paginationCase.visibleLabel}</span>`));
+  }
+});
+
+test("start workflow cards omit backend authority copy without hiding useful content", () => {
+  const markup = renderShell({
+    status: "success",
+    data: {
+      myProcesses: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+      myTasks: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+      startWorkflows: {
+        items: [{
+          workflowId: "workflow-1",
+          title: "Aprobaciones",
+          description: "Revisa solicitudes de compra.",
+          availability: "AUTHORITY-COPY-MUST-NOT-RENDER",
+          versionNumber: 1
+        }],
+        limit: 6,
+        hasMore: false,
+        page: 1,
+        totalItems: 1,
+        totalPages: 1
+      }
+    },
+    updatedAt: Date.now()
+  }, {
+    regions: ["startWorkflows"],
+    showHeading: false,
+    showRegionNavigation: false
+  });
+
+  assert.match(markup, /Aprobaciones/);
+  assert.match(markup, /Versión 1/);
+  assert.match(markup, /Revisa solicitudes de compra/);
+  assert.match(markup, />Iniciar</);
+  assert.doesNotMatch(markup, /AUTHORITY-COPY-MUST-NOT-RENDER/);
+});
+
 test("dedicated my-work modules retain an accessible region name", () => {
   const markup = renderShell(
     {
       status: "success",
       data: {
-        myProcesses: { items: [], limit: 12, hasMore: false },
-        myTasks: { items: [], limit: 12, hasMore: false },
-        startWorkflows: { items: [], limit: 6, hasMore: false }
+        myProcesses: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+        myTasks: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+        startWorkflows: { items: [], limit: 6, hasMore: false, page: 1, totalItems: 0, totalPages: 1 }
       },
       updatedAt: Date.now()
     },
@@ -212,12 +311,30 @@ test("my-work shell does not mislabel malformed server errors as an expired sess
   assert.match(markup, /Actualizar/);
 });
 
-test("my-work shell renders startable workflow cards with the start action and feedback", () => {
+test("my-work shell distinguishes offline recovery from a server failure", () => {
+  const markup = renderShell({
+    status: "error",
+    error: {
+      type: "about:blank",
+      title: "Network failure",
+      status: 0,
+      code: "api_error",
+      correlationId: "",
+      invalidParams: []
+    },
+    updatedAt: Date.now()
+  }, { regions: ["myTasks"], showHeading: false, showRegionNavigation: false });
+
+  assert.match(markup, /No pudimos conectarnos/);
+  assert.doesNotMatch(markup, /Network failure|Actualiza para cargar tus tareas/);
+});
+
+test("my-work shell replaces process-start actions with shared in-progress feedback", () => {
   const markup = renderShell({
     status: "success",
     data: {
-      myProcesses: { items: [], limit: 12, hasMore: false },
-      myTasks: { items: [], limit: 12, hasMore: false },
+      myProcesses: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+      myTasks: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
       startWorkflows: {
         items: [
           {
@@ -226,31 +343,43 @@ test("my-work shell renders startable workflow cards with the start action and f
             description: "",
             availability: "Disponible para miembros activos de tu organizacion.",
             versionNumber: 3
+          },
+          {
+            workflowId: "workflow-2",
+            title: "Revisión de contratos",
+            description: "",
+            availability: "Disponible para miembros activos de tu organizacion.",
+            versionNumber: 1
           }
         ],
         limit: 6,
-        hasMore: false
+        hasMore: true,
+        page: 1,
+        totalItems: 7,
+        totalPages: 2
       }
     },
     updatedAt: Date.now()
   }, {
-    startFeedbackByWorkflowId: {
-      "workflow-1": "Abriremos la primera tarea autorizada."
-    },
+    regions: ["startWorkflows"],
+    showHeading: false,
+    showRegionNavigation: false,
     startingWorkflowId: "workflow-1"
   });
 
-  assert.match(markup, /Aprobaciones/);
-  assert.match(markup, /Versión 3/);
-  assert.match(markup, /Iniciando/);
-  assert.match(markup, /Abriremos la primera tarea autorizada/);
+  assert.match(markup, /role="status"/);
+  assert.match(markup, /aria-live="polite"/);
+  assert.match(markup, /animate-spin/);
+  assert.match(markup, /Iniciando el proceso/);
+  assert.doesNotMatch(markup, /Aprobaciones|Revisión de contratos/);
+  assert.doesNotMatch(markup, /<button/);
 });
 
-test("my-work shell renders assigned task cards with one open-task action", () => {
+test("my-work shell renders assigned tasks as a semantic desktop table and mobile cards", () => {
   const markup = renderShell({
     status: "success",
     data: {
-      myProcesses: { items: [], limit: 12, hasMore: false },
+      myProcesses: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
       myTasks: {
         items: [
           {
@@ -264,17 +393,26 @@ test("my-work shell renders assigned task cards with one open-task action", () =
           }
         ],
         limit: 12,
-        hasMore: false
+        hasMore: false,
+        page: 1,
+        totalItems: 1,
+        totalPages: 1
       },
-      startWorkflows: { items: [], limit: 6, hasMore: false }
+      startWorkflows: { items: [], limit: 6, hasMore: false, page: 1, totalItems: 0, totalPages: 1 }
     },
     updatedAt: Date.now()
   });
 
   assert.match(markup, /Revisar solicitud/);
-  assert.match(markup, /Estado: Asignada/);
-  assert.match(markup, /Proceso: process-/);
+  assert.match(markup, /<caption class="sr-only">Mis tareas<\/caption>/);
+  assert.match(markup, /<th[^>]*scope="col"[^>]*>Tarea<\/th>/);
+  assert.match(markup, /<th[^>]*scope="row"[^>]*>Revisar solicitud<\/th>/);
+  assert.match(markup, /data-task-layout="table"/);
+  assert.match(markup, /data-task-layout="cards"/);
+  assert.match(markup, /<dt[^>]*>Estado<\/dt><dd[^>]*>Asignada<\/dd>/);
+  assert.match(markup, /<dt[^>]*>Proceso<\/dt><dd[^>]*>process-<\/dd>/);
   assert.match(markup, /Abrir tarea/);
+  assert.match(markup, /aria-label="Abrir tarea: Revisar solicitud"/);
   assert.match(markup, /href="\/my-work\/tasks\/task-1"/);
 });
 
@@ -291,6 +429,7 @@ test("my-work shell renders completed processes as a semantic desktop table and 
             workflowVersionNumber: 1,
             involvement: "Initiator",
             currentStep: "End",
+            currentStepKind: "end",
             systemStatus: "completed",
             startedAt: "2026-08-05T00:00:00+00:00",
             completedAt: "2026-08-05T01:00:00+00:00",
@@ -303,10 +442,13 @@ test("my-work shell renders completed processes as a semantic desktop table and 
           }
         ],
         limit: 12,
-        hasMore: false
+        hasMore: false,
+        page: 2,
+        totalItems: 13,
+        totalPages: 2
       },
-      myTasks: { items: [], limit: 12, hasMore: false },
-      startWorkflows: { items: [], limit: 6, hasMore: false }
+      myTasks: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+      startWorkflows: { items: [], limit: 6, hasMore: false, page: 1, totalItems: 0, totalPages: 1 }
     },
     updatedAt: Date.now()
   }, {
@@ -324,12 +466,65 @@ test("my-work shell renders completed processes as a semantic desktop table and 
   assert.match(markup, /<th[^>]*scope="col"[^>]*>Proceso<\/th>/);
   assert.match(markup, /data-process-layout="table"/);
   assert.match(markup, /data-process-layout="cards"/);
-  assert.match(markup, /Proceso: process-/);
-  assert.match(markup, /Paso actual: End/);
+  assert.match(markup, /<dt[^>]*>Proceso<\/dt><dd[^>]*>process-<\/dd>/);
+  assert.match(markup, /<dt[^>]*>Paso actual<\/dt><dd[^>]*>Fin<\/dd>/);
   assert.match(markup, /Ver proceso/);
   assert.match(markup, /Página anterior/);
   assert.match(markup, /Página siguiente/);
   assert.match(markup, /href="\/my-work\/processes\/process-1"/);
+});
+
+test("my-work shell identifies retained results as busy while refreshing", () => {
+  const markup = renderShell({
+    status: "success",
+    data: {
+      myProcesses: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+      myTasks: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+      startWorkflows: { items: [], limit: 6, hasMore: false, page: 1, totalItems: 0, totalPages: 1 }
+    },
+    updatedAt: Date.now()
+  }, {
+    isRefreshing: true,
+    regions: ["myTasks"],
+    showHeading: false,
+    showRegionNavigation: false
+  });
+
+  assert.match(markup, /aria-busy="true"/);
+  assert.match(markup, /role="status"/);
+  assert.match(markup, /Actualizando resultados/);
+
+  const startMarkup = renderShell({
+    status: "success",
+    data: {
+      myProcesses: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+      myTasks: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+      startWorkflows: {
+        items: [{
+          workflowId: "workflow-1",
+          title: "Aprobaciones",
+          description: "",
+          availability: "Disponible para miembros activos.",
+          versionNumber: 1
+        }],
+        limit: 6,
+        hasMore: false,
+        page: 1,
+        totalItems: 1,
+        totalPages: 1
+      }
+    },
+    updatedAt: Date.now()
+  }, {
+    isRefreshing: true,
+    regions: ["startWorkflows"],
+    showHeading: false,
+    showRegionNavigation: false
+  });
+
+  assert.match(startMarkup, /aria-busy="true"/);
+  assert.match(startMarkup, /Actualizando resultados/);
+  assert.match(startMarkup, /<button[^>]*disabled=""/);
 });
 
 test("process detail page view resolves loading, error, and ready states", () => {
@@ -344,6 +539,7 @@ test("process detail page view resolves loading, error, and ready states", () =>
         workflowVersionNumber: 1,
         systemStatus: "completed",
         currentStep: "End",
+        currentStepKind: "end",
         startedAt: "2026-08-05T00:00:00+00:00",
         completedAt: "2026-08-05T01:00:00+00:00",
         lastActivityAt: "2026-08-05T01:00:00+00:00",
@@ -355,5 +551,20 @@ test("process detail page view resolves loading, error, and ready states", () =>
       timeline: []
     }),
     "ready"
+  );
+});
+
+test("process presentation localizes semantic fallbacks without replacing owned display text", () => {
+  const t = (key: MessageKey) => translate("es", key);
+
+  assert.equal(processPositionLabelFor("End", "end", t), "Fin");
+  assert.equal(processPositionLabelFor("End", "taskLabel", t), "End");
+  assert.equal(
+    processActorLabelFor("Authorized member", "authorizedMember", t),
+    "Miembro autorizado"
+  );
+  assert.equal(
+    processActorLabelFor("Authorized member", "member", t),
+    "Authorized member"
   );
 });

@@ -71,9 +71,30 @@ def test_my_work_dashboard_returns_tenant_scoped_empty_contract(active_member) -
     assert response.status_code == 200
     payload = response.json()
     assert payload == {
-        "startWorkflows": {"items": [], "limit": 6, "hasMore": False},
-        "myTasks": {"items": [], "limit": 12, "hasMore": False},
-        "myProcesses": {"items": [], "limit": 12, "hasMore": False},
+        "startWorkflows": {
+            "items": [],
+            "limit": 6,
+            "hasMore": False,
+            "page": 1,
+            "totalItems": 0,
+            "totalPages": 1,
+        },
+        "myTasks": {
+            "items": [],
+            "limit": 12,
+            "hasMore": False,
+            "page": 1,
+            "totalItems": 0,
+            "totalPages": 1,
+        },
+        "myProcesses": {
+            "items": [],
+            "limit": 12,
+            "hasMore": False,
+            "page": 1,
+            "totalItems": 0,
+            "totalPages": 1,
+        },
     }
     assert "organizationId" not in str(payload)
     assert "membershipId" not in str(payload)
@@ -684,25 +705,30 @@ def test_my_work_dashboard_pages_every_direct_assigned_open_task(active_member) 
     first_page = client.get("/api/v1/my-work/?myTasksPage=0")
     second_page = client.get("/api/v1/my-work/?myTasksPage=2")
     searched_page = client.get(
-        f"/api/v1/my-work/?myTasksSearch={process_ids[0][:8]}&myTasksPage=2"
+        "/api/v1/my-work/?myTasksSearch=no-such-task&myTasksPage=2"
     )
 
     assert first_page.status_code == 200
     assert first_page.json()["myTasks"]["limit"] == 12
     assert first_page.json()["myTasks"]["hasMore"] is True
+    assert first_page.json()["myTasks"]["page"] == 1
+    assert first_page.json()["myTasks"]["totalItems"] == 13
+    assert first_page.json()["myTasks"]["totalPages"] == 2
     assert [item["taskId"] for item in first_page.json()["myTasks"]["items"]] == list(
         reversed(task_ids[1:])
     )
     assert second_page.status_code == 200
     assert second_page.json()["myTasks"]["hasMore"] is False
+    assert second_page.json()["myTasks"]["page"] == 2
     assert [item["taskId"] for item in second_page.json()["myTasks"]["items"]] == [
         task_ids[0]
     ]
     assert searched_page.status_code == 200
     assert searched_page.json()["myTasks"]["hasMore"] is False
-    assert [item["taskId"] for item in searched_page.json()["myTasks"]["items"]] == [
-        task_ids[0]
-    ]
+    assert searched_page.json()["myTasks"]["page"] == 1
+    assert searched_page.json()["myTasks"]["totalItems"] == 0
+    assert searched_page.json()["myTasks"]["totalPages"] == 1
+    assert searched_page.json()["myTasks"]["items"] == []
 
 
 @pytest.mark.django_db
@@ -746,6 +772,172 @@ def test_my_work_dashboard_hides_tasks_assigned_to_another_member(active_member)
     assert [item["taskId"] for item in assignee_dashboard.json()["myTasks"]["items"]] == [
         start_response.json()["taskId"]
     ]
+
+
+@pytest.mark.django_db
+def test_my_work_dashboard_and_detail_include_authorized_active_processes(active_member) -> None:
+    user, organization, owner_membership = active_member
+    participant = user.__class__.objects.create_user(
+        username="active-process-participant",
+        email="active-process-participant@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+        display_name="Active Participant",
+    )
+    outsider = user.__class__.objects.create_user(
+        username="active-process-outsider",
+        email="active-process-outsider@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+    )
+    participant_membership = Membership.objects.create(
+        organization=organization,
+        user=participant,
+        role=MembershipRole.MEMBER,
+    )
+    Membership.objects.create(
+        organization=organization,
+        user=outsider,
+        role=MembershipRole.MEMBER,
+    )
+    workflow_id = _publish_workflow(
+        membership=owner_membership,
+        name="Active process tracking",
+        starter_mode="selectedMembers",
+        starter_membership_ids=[str(owner_membership.id)],
+        assignment_mode="specificMember",
+        assignment_membership_id=str(participant_membership.id),
+    )
+    owner_client = Client()
+    owner_client.force_login(user)
+    participant_client = Client()
+    participant_client.force_login(participant)
+    outsider_client = Client()
+    outsider_client.force_login(outsider)
+
+    started = owner_client.post(
+        f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-start-active-tracking"},
+    )
+    open_task = TaskOccurrence.objects.get(id=started.json()["taskId"])
+    TaskOccurrence.objects.create(
+        organization=open_task.organization,
+        workflow=open_task.workflow,
+        workflow_version=open_task.workflow_version,
+        process=open_task.process,
+        task_element_id=open_task.task_element_id,
+        assignee_membership_id=open_task.assignee_membership_id,
+        assignee_user_id=open_task.assignee_user_id,
+        status="completed",
+    )
+    owner_dashboard = owner_client.get("/api/v1/my-work/")
+    participant_dashboard = participant_client.get("/api/v1/my-work/")
+    participant_spanish_search = participant_client.get(
+        "/api/v1/my-work/?myProcessesSearch=participaste"
+    )
+    participant_detail = participant_client.get(
+        f"/api/v1/my-work/processes/{started.json()['processId']}/"
+    )
+    outsider_detail = outsider_client.get(
+        f"/api/v1/my-work/processes/{started.json()['processId']}/"
+    )
+
+    assert started.status_code == 200
+    assert owner_dashboard.json()["myProcesses"]["items"][0] == {
+        **owner_dashboard.json()["myProcesses"]["items"][0],
+        "processId": started.json()["processId"],
+        "workflowName": "Active process tracking",
+        "involvement": "Initiator",
+        "currentStep": "Task",
+        "currentStepKind": "taskLabel",
+        "systemStatus": "active",
+        "completedAt": None,
+        "contributionSummary": {
+            "kind": "initiated",
+            "label": "You started this process.",
+        },
+    }
+    assert participant_dashboard.json()["myProcesses"]["items"][0] == {
+        **participant_dashboard.json()["myProcesses"]["items"][0],
+        "processId": started.json()["processId"],
+        "involvement": "Participant",
+        "currentStep": "Task",
+        "currentStepKind": "taskLabel",
+        "systemStatus": "active",
+        "completedAt": None,
+        "contributionSummary": {
+            "kind": "participated",
+            "label": "You participate in this process.",
+        },
+    }
+    assert participant_spanish_search.json()["myProcesses"]["totalItems"] == 1
+    assert participant_detail.status_code == 200
+    assert participant_detail.json()["header"]["systemStatus"] == "active"
+    assert participant_detail.json()["header"]["currentStep"] == "Task"
+    assert participant_detail.json()["header"]["currentStepKind"] == "taskLabel"
+    assert outsider_detail.status_code == 404
+
+    TaskOccurrence.objects.filter(id=started.json()["taskId"]).update(
+        task_element_id="missing-task-element"
+    )
+    fallback_dashboard = owner_client.get("/api/v1/my-work/")
+
+    assert fallback_dashboard.json()["myProcesses"]["items"][0]["currentStep"] == "Task"
+    assert fallback_dashboard.json()["myProcesses"]["items"][0][
+        "currentStepKind"
+    ] == "taskFallback"
+
+    ProcessInstance.objects.filter(id=started.json()["processId"]).update(status="completed")
+    completed_without_audit = owner_client.get("/api/v1/my-work/")
+
+    assert completed_without_audit.json()["myProcesses"]["items"][0][
+        "currentStep"
+    ] == "Completed"
+    assert completed_without_audit.json()["myProcesses"]["items"][0][
+        "currentStepKind"
+    ] == "completed"
+
+
+@pytest.mark.django_db
+def test_active_process_authorization_requires_matching_membership_and_user(active_member) -> None:
+    user, organization, owner_membership = active_member
+    other_user = user.__class__.objects.create_user(
+        username="active-process-drift-user",
+        email="active-process-drift-user@example.com",
+        password="a-secure-password-123",
+        is_active=True,
+    )
+    Membership.objects.create(
+        organization=organization,
+        user=other_user,
+        role=MembershipRole.MEMBER,
+    )
+    workflow_id = _publish_workflow(
+        membership=owner_membership,
+        name="Drifted active process",
+        starter_mode="allActiveMembers",
+    )
+    client = Client()
+    client.force_login(user)
+    started = client.post(
+        f"/api/v1/my-work/start-workflows/{workflow_id}/start/",
+        content_type="application/json",
+        **{"HTTP_IDEMPOTENCY_KEY": "workflow-start-active-drift"},
+    )
+
+    ProcessInstance.objects.filter(id=started.json()["processId"]).update(
+        initiator_user_id=other_user.id
+    )
+    TaskOccurrence.objects.filter(id=started.json()["taskId"]).update(
+        assignee_user_id=other_user.id
+    )
+    dashboard = client.get("/api/v1/my-work/")
+    detail = client.get(f"/api/v1/my-work/processes/{started.json()['processId']}/")
+
+    assert dashboard.status_code == 200
+    assert dashboard.json()["myProcesses"]["items"] == []
+    assert detail.status_code == 404
 
 
 @pytest.mark.django_db
@@ -988,6 +1180,7 @@ def test_my_work_dashboard_returns_completed_process_summaries_for_authorized_pa
             "workflowVersionNumber": 1,
             "involvement": "Initiator",
             "currentStep": "End",
+            "currentStepKind": "end",
             "systemStatus": "completed",
             "startedAt": owner_dashboard.json()["myProcesses"]["items"][0]["startedAt"],
             "completedAt": owner_dashboard.json()["myProcesses"]["items"][0]["completedAt"],
@@ -1007,6 +1200,7 @@ def test_my_work_dashboard_returns_completed_process_summaries_for_authorized_pa
             "workflowVersionNumber": 1,
             "involvement": "Previous participant",
             "currentStep": "End",
+            "currentStepKind": "end",
             "systemStatus": "completed",
             "startedAt": participant_dashboard.json()["myProcesses"]["items"][0]["startedAt"],
             "completedAt": participant_dashboard.json()["myProcesses"]["items"][0]["completedAt"],
@@ -1066,6 +1260,9 @@ def test_my_work_dashboard_supports_completed_process_search_and_pagination(acti
     assert normalized_workflow_page.status_code == 200
     assert default_response.json()["myProcesses"]["limit"] == 12
     assert default_response.json()["myProcesses"]["hasMore"] is True
+    assert default_response.json()["myProcesses"]["page"] == 1
+    assert default_response.json()["myProcesses"]["totalItems"] == 13
+    assert default_response.json()["myProcesses"]["totalPages"] == 2
     assert len(default_response.json()["myProcesses"]["items"]) == 12
     assert default_response.json()["myProcesses"]["items"][0]["processId"] == process_ids[-1]
     assert searched_response.json()["myProcesses"]["items"] == [
@@ -1077,10 +1274,17 @@ def test_my_work_dashboard_supports_completed_process_search_and_pagination(acti
     assert [item["processId"] for item in paged_response.json()["myProcesses"]["items"]] == [
         process_ids[0]
     ]
+    assert paged_response.json()["myProcesses"]["page"] == 2
+    assert searched_response.json()["myProcesses"]["totalItems"] == 1
+    assert searched_response.json()["myProcesses"]["totalPages"] == 1
     assert len(second_workflow_page.json()["startWorkflows"]["items"]) == 6
     assert second_workflow_page.json()["startWorkflows"]["hasMore"] is True
+    assert second_workflow_page.json()["startWorkflows"]["page"] == 2
+    assert second_workflow_page.json()["startWorkflows"]["totalItems"] == 13
+    assert second_workflow_page.json()["startWorkflows"]["totalPages"] == 3
     assert len(third_workflow_page.json()["startWorkflows"]["items"]) == 1
     assert third_workflow_page.json()["startWorkflows"]["hasMore"] is False
+    assert third_workflow_page.json()["startWorkflows"]["page"] == 3
     assert normalized_workflow_page.json()["startWorkflows"] == default_response.json()[
         "startWorkflows"
     ]
@@ -1094,7 +1298,7 @@ def test_process_detail_returns_authorized_header_and_safe_timeline(active_membe
         email="timeline-participant@example.com",
         password="a-secure-password-123",
         is_active=True,
-        display_name="Ana Perez",
+        display_name="Authorized member",
     )
     participant_membership = Membership.objects.create(
         organization=organization,
@@ -1164,6 +1368,7 @@ def test_process_detail_returns_authorized_header_and_safe_timeline(active_membe
         "workflowVersionNumber": 1,
         "systemStatus": "completed",
         "currentStep": "End",
+        "currentStepKind": "end",
         "startedAt": detail_response.json()["header"]["startedAt"],
         "completedAt": detail_response.json()["header"]["completedAt"],
         "lastActivityAt": detail_response.json()["header"]["lastActivityAt"],
@@ -1179,9 +1384,14 @@ def test_process_detail_returns_authorized_header_and_safe_timeline(active_membe
         "process_completed",
     ]
     assert detail_response.json()["timeline"][0]["actorDisplay"] == "Owner"
-    assert detail_response.json()["timeline"][1]["actorDisplay"] == "Ana Perez"
+    assert detail_response.json()["timeline"][0]["actorDisplayKind"] == "member"
+    assert detail_response.json()["timeline"][1]["actorDisplay"] == "Authorized member"
+    assert detail_response.json()["timeline"][1]["actorDisplayKind"] == "member"
     assert detail_response.json()["timeline"][1]["label"] == "Task progress saved"
     assert detail_response.json()["timeline"][2]["taskPosition"] == "Task"
+    assert detail_response.json()["timeline"][2]["taskPositionKind"] == "taskLabel"
+    assert detail_response.json()["timeline"][0]["taskPositionKind"] == "start"
+    assert detail_response.json()["timeline"][3]["taskPositionKind"] == "end"
     assert "fieldValues" not in str(detail_response.json())
     assert "routeTargetId" not in str(detail_response.json())
     assert "workflow-runtime.task-completed" not in str(detail_response.json())

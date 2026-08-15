@@ -19,11 +19,14 @@ import {
   saveTaskFormDocument,
   taskFormErrorSummary,
   taskFormRetryTarget,
+  type TaskCompletionDocument,
   type TaskFormDocument,
   type TaskFormRuntimeItem,
 } from "../../src/features/task-form";
 import {
   resolveTaskFormPageView,
+  persistTaskCompletion,
+  readPersistedTaskCompletion,
   refreshTaskCompletionReadModels,
   taskFormDocumentFromSuccessfulRefetch,
   shouldAcceptTaskFormSnapshot
@@ -59,6 +62,68 @@ const taskFormDocument: TaskFormDocument = {
     ],
   },
 };
+
+const taskCompletionDocument: TaskCompletionDocument = {
+  taskId: taskFormDocument.taskId,
+  processId: taskFormDocument.processId,
+  workflowId: taskFormDocument.workflowId,
+  workflowVersionId: taskFormDocument.workflowVersionId,
+  workflowName: taskFormDocument.workflowName,
+  taskTitle: taskFormDocument.taskTitle,
+  taskStatus: "completed",
+  processStatus: "completed",
+  taskRevision: "2",
+  definitionRevision: "2",
+  routeTargetId: "end-1",
+  completedAt: "2026-08-05T12:30:00Z",
+  destinationRoute: `/my-work/processes/${taskFormDocument.processId}`,
+  handoffMessage: "The task is complete and this process reached its end."
+};
+
+test("accepted task completion is recoverable only within its organization and membership scope", () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value)
+  };
+
+  persistTaskCompletion(storage, "organization-1", "membership-1", taskCompletionDocument);
+
+  assert.deepEqual(
+    readPersistedTaskCompletion(
+      storage,
+      "organization-1",
+      "membership-1",
+      taskCompletionDocument.taskId
+    ),
+    taskCompletionDocument
+  );
+  assert.equal(
+    readPersistedTaskCompletion(
+      storage,
+      "organization-1",
+      "membership-2",
+      taskCompletionDocument.taskId
+    ),
+    null
+  );
+
+  const storedKey = values.keys().next().value;
+  assert.ok(storedKey);
+  values.set(storedKey, JSON.stringify({
+    ...taskCompletionDocument,
+    destinationRoute: "javascript:alert(1)"
+  }));
+  assert.equal(
+    readPersistedTaskCompletion(
+      storage,
+      "organization-1",
+      "membership-1",
+      taskCompletionDocument.taskId
+    ),
+    null
+  );
+});
 
 test("task form editor keeps the current value in sync for controlled input state", () => {
   const initial = createTaskFormEditorState(taskFormDocument);
@@ -259,6 +324,7 @@ test("task form query revisions are accepted only while the editor is clean", ()
   assert.equal(shouldAcceptTaskFormSnapshot(clean, taskFormDocument, false), true);
   assert.equal(shouldAcceptTaskFormSnapshot(clean, newer, true), true);
   assert.equal(shouldAcceptTaskFormSnapshot(dirty, newer, true), false);
+  assert.equal(shouldAcceptTaskFormSnapshot(clean, newer, true, true), false);
 });
 
 test("failed refetches with retained data never overwrite the local task form", () => {
@@ -415,11 +481,15 @@ test("task form panel renders label, help, input, save, and disabled complete af
   assert.match(markup, /Requester name/);
   assert.match(markup, /Use the full name/);
   assert.match(markup, /01987df4/);
-  assert.match(markup, /Status: Assigned|Estado: Asignada/);
+  assert.match(markup, /Workflow: Workflow intake|Flujo: Workflow intake/);
+  assert.match(markup, /<dt[^>]*>Status:<\/dt><dd[^>]*>Assigned<\/dd>|<dt[^>]*>Estado:<\/dt><dd[^>]*>Asignada<\/dd>/);
+  assert.doesNotMatch(markup, /Active task|Tarea activa|Revision:|RevisiÃ³n:/);
   assert.match(markup, /placeholder="Example: Ana Perez"/);
   assert.match(markup, /Save draft|Guardar borrador/);
   assert.match(markup, /Complete task|Completar tarea/);
   assert.match(markup, /disabled=""/);
+  assert.match(markup, /data-variant="secondary"/);
+  assert.doesNotMatch(markup, /class="button"|task-form-actions/);
 });
 
 test("task form panel exposes separate retry-save and reload-latest actions on errors", () => {
@@ -501,7 +571,7 @@ test("task form completion success disables follow-up editing and shows the hand
       definitionRevision: "2",
       routeTargetId: "end-1",
       completedAt: "2026-08-05T12:30:00Z",
-      destinationRoute: "/my-work",
+      destinationRoute: `/my-work/processes/${taskFormDocument.processId}`,
       handoffMessage: "The task is complete and this process reached its end.",
     },
   });
@@ -525,8 +595,54 @@ test("task form completion success disables follow-up editing and shows the hand
 
   assert.equal(completed.actions.complete, false);
   assert.equal(completed.completionStatus, "success");
-  assert.match(markup, /process reached its end|proceso llego a su fin/i);
-  assert.match(markup, /Back to My work|Volver a Mi trabajo/);
+  assert.match(markup, /process reached its end|proceso llegó a su fin/i);
+  assert.match(markup, /View process timeline|Ver línea de tiempo/);
+  assert.match(markup, new RegExp(`/my-work/processes/${taskFormDocument.processId}`));
+  assert.doesNotMatch(markup, /The task is complete and this process reached its end\./);
+
+  const continued = reduceTaskFormEditorState(createTaskFormEditorState(taskFormDocument), {
+    type: "complete-succeeded",
+    document: {
+      taskId: taskFormDocument.taskId,
+      processId: taskFormDocument.processId,
+      workflowId: taskFormDocument.workflowId,
+      workflowVersionId: taskFormDocument.workflowVersionId,
+      workflowName: taskFormDocument.workflowName,
+      taskTitle: taskFormDocument.taskTitle,
+      taskStatus: "completed",
+      processStatus: "active",
+      taskRevision: "2",
+      definitionRevision: "2",
+      routeTargetId: "task-2",
+      completedAt: "2026-08-05T12:30:00Z",
+      destinationRoute: "/my-work",
+      handoffMessage: "The task is complete and the next task is assigned."
+    }
+  });
+  const continuedMarkup = renderToStaticMarkup(
+    createElement(
+      LanguageProvider,
+      {
+        adapter: memoryLanguagePreferenceAdapter(),
+        browserLanguages: [],
+        children: createElement(TaskFormPanel, {
+          state: continued,
+          onComplete: () => undefined,
+          onRetrySave: () => undefined,
+          onReloadLatest: () => undefined,
+          onSave: () => undefined,
+          onValueChange: () => undefined
+        })
+      }
+    )
+  );
+
+  assert.match(continuedMarkup, /The task is complete\.|La tarea quedó completa\./);
+  assert.match(continuedMarkup, /Process: In progress|Proceso: En curso/);
+  assert.match(continuedMarkup, /any task assigned|alguna tarea asignada/);
+  assert.match(continuedMarkup, /View My work|Ver Mi trabajo/);
+  assert.match(continuedMarkup, /href="\/my-work"/);
+  assert.doesNotMatch(continuedMarkup, /process reached its end|proceso llegó a su fin/i);
 });
 
 test("task form panel disables completion while a draft save is pending", () => {

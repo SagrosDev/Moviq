@@ -1,5 +1,7 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { resolve } from "node:path";
 import { translate } from "../../src/shared/localization";
 import { assertNoAccessibilityViolations } from "./support/deployedJourney";
 import { mockCsrfBootstrap } from "./support/mockCsrf";
@@ -26,6 +28,14 @@ const authenticatedSession = {
 
 const workflowName = "Caso bilingue / Bilingual case";
 const fieldLabel = "Referencia conservada / Preserved reference";
+const visualEvidenceDirectory = resolve(
+  process.cwd(),
+  "..",
+  "_bmad-output",
+  "implementation-artifacts",
+  "screenshots",
+  "story-1-38"
+);
 
 const workflowAccepted = {
   workflowId: "01987df4-ae8a-7000-8000-000000000110",
@@ -60,12 +70,12 @@ const workflowAccepted = {
 const interfaceCopy = {
   en: {
     create: "Create workflow",
-    fieldLabel: "Label",
+    fieldLabel: "Task name",
     language: "Language"
   },
   es: {
     create: "Crear flujo",
-    fieldLabel: "Etiqueta",
+    fieldLabel: "Nombre de la tarea",
     language: "Idioma"
   }
 } as const;
@@ -132,7 +142,7 @@ const expectPracticalTarget = async (page: Page, selector: ReturnType<Page["getB
 
 const expectReducedMotion = async (page: Page) => {
   expect(await page.emulateMedia({ reducedMotion: "reduce" }).then(async () =>
-    page.locator(".button").first().evaluate((element) => {
+    page.locator("[data-variant]").first().evaluate((element) => {
       const style = window.getComputedStyle(element);
       const durationInSeconds = (value: string) => Number.parseFloat(value);
       return window.matchMedia("(prefers-reduced-motion: reduce)").matches &&
@@ -141,6 +151,171 @@ const expectReducedMotion = async (page: Page) => {
     })
   )).toBe(true);
 };
+
+const captureStoryVisualEvidence = async (
+  page: Page,
+  testInfo: TestInfo,
+  evidenceName: string
+) => {
+  const { language } = qualificationContext(testInfo);
+  if (process.env.MOVIQO_CAPTURE_STORY_1_38 !== "1" || language !== "es") return;
+
+  await mkdir(visualEvidenceDirectory, { recursive: true });
+  await page.screenshot({
+    animations: "disabled",
+    fullPage: true,
+    path: resolve(visualEvidenceDirectory, `${evidenceName}-${language}.png`)
+  });
+};
+
+test("Mi trabajo opens assigned tasks with a sibling process tab", async ({ page }, testInfo) => {
+  const { language, profile } = qualificationContext(testInfo);
+
+  await mockAuthenticatedSession(page);
+  await page.route(/\/api\/v1\/my-work\/(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        myProcesses: {
+          hasMore: false,
+          page: 1,
+          totalItems: 1,
+          totalPages: 1,
+          items: [{
+            completedAt: null,
+            contributionSummary: { kind: "initiated", label: "Iniciaste este proceso." },
+            currentStep: "Revisión",
+            currentStepKind: "taskLabel",
+            involvement: "Initiator",
+            lastActivityAt: "2026-08-12T14:30:00Z",
+            processId: "01987df4-ae8a-7000-8000-000000000211",
+            processNumber: "01987df4",
+            startedAt: "2026-08-12T14:00:00Z",
+            systemStatus: "active",
+            viewRoute: "/my-work/processes/01987df4-ae8a-7000-8000-000000000211",
+            workflowName,
+            workflowVersionNumber: 1
+          }],
+          limit: 12
+        },
+        myTasks: {
+          hasMore: false,
+          page: 1,
+          totalItems: 1,
+          totalPages: 1,
+          items: [{
+            activatedAt: "2026-08-12T14:10:00Z",
+            openTaskRoute: "/my-work/tasks/01987df4-ae8a-7000-8000-000000000301",
+            processId: "01987df4-ae8a-7000-8000-000000000211",
+            status: "assigned",
+            taskId: "01987df4-ae8a-7000-8000-000000000301",
+            title: "Revisar solicitud",
+            workflowName
+          }],
+          limit: 12
+        },
+        startWorkflows: {
+          hasMore: false,
+          page: 1,
+          totalItems: 1,
+          totalPages: 1,
+          items: [{
+            description: "Ruta aprobada para nuevas solicitudes.",
+            name: workflowName,
+            startRoute: "/processes/start/01987df4-ae8a-7000-8000-000000000110",
+            versionNumber: 1,
+            workflowId: "01987df4-ae8a-7000-8000-000000000110"
+          }],
+          limit: 6
+        }
+      }),
+      contentType: "application/json",
+      status: 200
+    });
+  });
+  await page.route("**/api/v1/my-work/tasks/01987df4-ae8a-7000-8000-000000000301/form/", async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        taskId: "01987df4-ae8a-7000-8000-000000000301",
+        processId: "01987df4-ae8a-7000-8000-000000000211",
+        workflowId: "01987df4-ae8a-7000-8000-000000000110",
+        workflowName,
+        taskTitle: "Revisar solicitud",
+        taskElementId: "task-1",
+        status: "assigned",
+        taskRevision: "1",
+        definitionRevision: "1",
+        actions: { saveDraft: true, complete: true },
+        form: {
+          controls: [{
+            controlId: "binding-1",
+            fieldId: "field-1",
+            kind: "shortText",
+            label: "Nombre del solicitante",
+            helpText: "Usa el nombre completo.",
+            placeholder: "Ejemplo: Ana Pérez",
+            width: "full",
+            position: 0,
+            value: ""
+          }]
+        }
+      }),
+      contentType: "application/json",
+      status: 200
+    });
+  });
+
+  await page.goto(`/my-work?lang=${language}`);
+  await expect(page.getByRole("heading", {
+    level: 1,
+    name: translate(language, "app.nav.dashboard")
+  })).toBeVisible();
+  await expect(page.getByRole("link", {
+    name: translate(language, "myWork.myTasks.title"),
+    exact: true
+  })).toHaveAttribute("aria-current", "page");
+  await expect(profile.fullAuthoring
+    ? page.getByRole("rowheader", { name: "Revisar solicitud" })
+    : page.getByRole("heading", { level: 3, name: "Revisar solicitud" })
+  ).toBeVisible();
+  await expect(page.locator("#main-content").getByRole("link", {
+    name: translate(language, "app.nav.startProcess")
+  })).toHaveCount(0);
+  await expect(page.locator("[data-dashboard-summary]")).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+  await captureStoryVisualEvidence(
+    page,
+    testInfo,
+    profile.fullAuthoring ? "operational-desktop" : "operational-mobile-my-work"
+  );
+
+  await page.getByRole("link", {
+    name: translate(language, "myWork.myProcesses.title"),
+    exact: true
+  }).click();
+  await expect((profile.fullAuthoring
+    ? page.getByRole("table")
+    : page.locator("[data-process-layout='cards']")
+  ).getByText(translate(language, "status.active"), { exact: true })).toBeVisible();
+  await captureStoryVisualEvidence(
+    page,
+    testInfo,
+    profile.fullAuthoring ? "operational-desktop-processes" : "operational-mobile-processes"
+  );
+
+  await page.getByRole("link", {
+    name: translate(language, "myWork.myTasks.title"),
+    exact: true
+  }).click();
+  await page.getByRole("link", { name: /Abrir tarea|Open task/ }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Revisar solicitud" })).toBeVisible();
+  await expect(page.getByText(translate(language, "taskForm.eyebrow"), { exact: true })).toHaveCount(0);
+  await expect(page.getByText(translate(language, "taskForm.revision"))).toHaveCount(0);
+  await captureStoryVisualEvidence(
+    page,
+    testInfo,
+    profile.fullAuthoring ? "operational-desktop-task" : "operational-mobile-task"
+  );
+});
 
 test("desktop authoring localizes owned copy and preserves Designer content", async ({ page }, testInfo) => {
   const { language, profile } = qualificationContext(testInfo);
@@ -155,8 +330,17 @@ test("desktop authoring localizes owned copy and preserves Designer content", as
   await expect(page.getByRole("heading", { level: 1, name: copy.create })).toBeVisible();
   await page.getByLabel(copy.create === "Crear flujo" ? "Nombre del flujo" : "Workflow name").fill(workflowName);
   await page.getByRole("button", { name: copy.create }).click();
-  await expect(page.getByRole("heading", { name: /inicio, tarea y fin|start, task, and end/i })).toBeVisible();
+  await expect(page.getByRole("heading", {
+    name: translate(language, "workflowDesign.editor.title")
+  })).toBeVisible();
+  await page.getByRole("button", {
+    name: translate(language, "workflowDesign.editor.addTask")
+  }).click();
+  await expect(page.locator("[data-workflow-add-feedback]")).toHaveText(
+    translate(language, "workflowDesign.editor.addAccepted")
+  );
   await page.getByLabel(copy.fieldLabel).fill(fieldLabel);
+  await captureStoryVisualEvidence(page, testInfo, "authoring-desktop");
 
   await page.locator('[data-language-trigger="true"]').click();
   await page.getByRole("option", {
@@ -164,7 +348,7 @@ test("desktop authoring localizes owned copy and preserves Designer content", as
   }).click();
 
   await expect(page.getByRole("heading", {
-    level: 1,
+    level: 2,
     name: translate(nextLanguage, "workflowDesign.editor.title")
   })).toBeVisible();
   await expect(page.getByLabel(nextCopy.fieldLabel)).toHaveValue(fieldLabel);
@@ -195,6 +379,7 @@ test("mobile participant timeline reflows and preserves Designer content", async
           completedAt: "2026-08-10T15:00:00Z",
           contributionSummary: { kind: "initiated", label: "Started by Ana" },
           currentStep: "End",
+          currentStepKind: "end",
           lastActivityAt: "2026-08-10T15:00:00Z",
           processId,
           processNumber: "process-",
@@ -206,17 +391,21 @@ test("mobile participant timeline reflows and preserves Designer content", async
         timeline: [
           {
             actorDisplay: "Ana",
-            eventKind: "workflow-runtime.process-started",
+            actorDisplayKind: "member",
+            eventKind: "process_started",
             label: "Process started",
             occurredAt: "2026-08-10T14:00:00Z",
-            taskPosition: "Start"
+            taskPosition: "Start",
+            taskPositionKind: "start"
           },
           {
             actorDisplay: "Ana",
-            eventKind: "workflow-runtime.process-completed",
+            actorDisplayKind: "member",
+            eventKind: "process_completed",
             label: "Process completed",
             occurredAt: "2026-08-10T15:00:00Z",
-            taskPosition: "End"
+            taskPosition: "End",
+            taskPositionKind: "end"
           }
         ]
       }),
@@ -226,9 +415,15 @@ test("mobile participant timeline reflows and preserves Designer content", async
   });
 
   await page.goto(`/my-work/processes/${processId}?lang=${language}`);
+  await expect(page.getByRole("heading", { level: 1, name: workflowName })).toBeVisible();
+  await expect(page.getByText(translate(
+    language,
+    "myWork.myProcesses.contribution.initiated"
+  ))).toBeVisible();
+  await expect(page.getByText("Started by Ana")).toHaveCount(0);
+  await captureStoryVisualEvidence(page, testInfo, "operational-mobile");
   await page.addStyleTag({ content: "html { font-size: 200%; }" });
 
-  await expect(page.getByRole("heading", { level: 1, name: workflowName })).toBeVisible();
   const timeline = page.getByRole("region", { name: translate(language, "processDetail.timelineTitle") });
   await expect(timeline.getByText(translate(language, "processDetail.event.processStarted"))).toBeVisible();
   await expect(timeline.getByText(translate(language, "processDetail.event.processCompleted"))).toBeVisible();
@@ -247,7 +442,7 @@ test("qualification profile records an automated accessibility baseline", async 
   await page.goto(`/workflows/new?lang=${language}`);
   await page.addStyleTag({ content: "html { font-size: 200%; }" });
 
-  const workLink = page.getByRole("link", { name: language === "es" ? "Resumen" : "Dashboard" });
+  const workLink = page.getByRole("link", { name: translate(language, "app.nav.dashboard") });
   await workLink.focus();
   await expect(workLink).toBeFocused();
   expect(await workLink.evaluate((element) => window.getComputedStyle(element).outlineWidth)).not.toBe("0px");
@@ -317,7 +512,8 @@ test("unexpected workflow failure preserves work and suppresses a duplicate acti
   await expect(page.getByRole("button", { name: translate(language, "workflowDesign.create.submitting") })).toBeDisabled();
   await expect(page.getByRole("heading", { name: translate(language, "workflowDesign.editor.title") })).toHaveCount(0);
   await expect(page.getByRole("alert")).toContainText(translate(language, "workflowDesign.create.error"));
-  await expect(page.getByRole("alert")).toHaveAttribute("data-error-code", "api_error");
+  await expect(page.getByRole("alert").locator("[data-error-code]"))
+    .toHaveAttribute("data-error-code", "api_error");
   await expect(page.getByRole("alert")).not.toContainText("Unsafe internal failure detail");
   await expect(nameInput).toHaveValue(workflowName);
   expect(createCalls).toBe(1);

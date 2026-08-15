@@ -266,8 +266,13 @@ export const reduceTaskFormEditorState = (
   if (action.type === "complete-succeeded") {
     return {
       ...state,
+      taskId: action.document.taskId,
+      processId: action.document.processId,
+      workflowName: action.document.workflowName,
+      taskTitle: action.document.taskTitle,
       status: action.document.taskStatus,
       taskRevision: action.document.taskRevision,
+      definitionRevision: action.document.definitionRevision,
       hasLocalChanges: false,
       saveStatus: "idle",
       saveRequestKey: null,

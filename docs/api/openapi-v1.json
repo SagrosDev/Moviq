@@ -238,7 +238,7 @@
                         "schema": {
                             "type": "integer"
                         },
-                        "description": "One-based page of authorized completed processes."
+                        "description": "One-based page of authorized active and completed processes."
                     },
                     {
                         "in": "query",
@@ -246,7 +246,7 @@
                         "schema": {
                             "type": "string"
                         },
-                        "description": "Search authorized completed process summaries."
+                        "description": "Search authorized active and completed process summaries."
                     },
                     {
                         "in": "query",
@@ -2171,12 +2171,27 @@
                     },
                     "hasMore": {
                         "type": "boolean"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "totalItems": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "minimum": 1
                     }
                 },
                 "required": [
                     "hasMore",
                     "items",
-                    "limit"
+                    "limit",
+                    "page",
+                    "totalItems",
+                    "totalPages"
                 ]
             },
             "MyProcessSummary": {
@@ -2200,6 +2215,9 @@
                         "type": "string"
                     },
                     "currentStep": {
+                        "type": "string"
+                    },
+                    "currentStepKind": {
                         "type": "string"
                     },
                     "systemStatus": {
@@ -2232,6 +2250,7 @@
                     "completedAt",
                     "contributionSummary",
                     "currentStep",
+                    "currentStepKind",
                     "involvement",
                     "lastActivityAt",
                     "processId",
@@ -2258,12 +2277,27 @@
                     },
                     "hasMore": {
                         "type": "boolean"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "totalItems": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "minimum": 1
                     }
                 },
                 "required": [
                     "hasMore",
                     "items",
-                    "limit"
+                    "limit",
+                    "page",
+                    "totalItems",
+                    "totalPages"
                 ]
             },
             "MyTaskSummary": {
@@ -2445,6 +2479,9 @@
                     "currentStep": {
                         "type": "string"
                     },
+                    "currentStepKind": {
+                        "type": "string"
+                    },
                     "startedAt": {
                         "type": "string",
                         "format": "date-time"
@@ -2469,6 +2506,7 @@
                     "completedAt",
                     "contributionSummary",
                     "currentStep",
+                    "currentStepKind",
                     "lastActivityAt",
                     "processId",
                     "processNumber",
@@ -2490,20 +2528,28 @@
                     "actorDisplay": {
                         "type": "string"
                     },
+                    "actorDisplayKind": {
+                        "type": "string"
+                    },
                     "occurredAt": {
                         "type": "string",
                         "format": "date-time"
                     },
                     "taskPosition": {
                         "type": "string"
+                    },
+                    "taskPositionKind": {
+                        "type": "string"
                     }
                 },
                 "required": [
                     "actorDisplay",
+                    "actorDisplayKind",
                     "eventKind",
                     "label",
                     "occurredAt",
-                    "taskPosition"
+                    "taskPosition",
+                    "taskPositionKind"
                 ]
             },
             "ProtectedMembership": {
@@ -2702,12 +2748,27 @@
                     },
                     "hasMore": {
                         "type": "boolean"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "totalItems": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "minimum": 1
                     }
                 },
                 "required": [
                     "hasMore",
                     "items",
-                    "limit"
+                    "limit",
+                    "page",
+                    "totalItems",
+                    "totalPages"
                 ]
             },
             "StartWorkflowSummary": {

@@ -239,6 +239,9 @@ test("workflow editor saves optionally and publishes the current design directly
 
   await expect(page.getByRole("button", { name: "Agregar Inicio" })).toHaveCount(0);
   await page.getByRole("button", { name: "Agregar Tarea" }).click();
+  await expect(page.locator("[data-workflow-add-feedback]")).toHaveText(
+    "El elemento se agregó y está seleccionado."
+  );
   await expect(compactSaveStatus).toContainText("Cambios sin guardar");
   await page.getByLabel("Nombre de la tarea").fill("   ");
   await expect(page.getByText("Escribe un nombre para la tarea antes de guardar.", { exact: true })).toBeVisible();

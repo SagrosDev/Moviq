@@ -484,6 +484,9 @@ export interface components {
             items: components["schemas"]["MyProcessSummary"][];
             limit: number;
             hasMore: boolean;
+            page: number;
+            totalItems: number;
+            totalPages: number;
         };
         MyProcessSummary: {
             /** Format: uuid */
@@ -493,6 +496,7 @@ export interface components {
             workflowVersionNumber: number;
             involvement: string;
             currentStep: string;
+            currentStepKind: string;
             systemStatus: string;
             /** Format: date-time */
             startedAt: string;
@@ -509,6 +513,9 @@ export interface components {
             items: components["schemas"]["MyTaskSummary"][];
             limit: number;
             hasMore: boolean;
+            page: number;
+            totalItems: number;
+            totalPages: number;
         };
         MyTaskSummary: {
             /** Format: uuid */
@@ -562,6 +569,7 @@ export interface components {
             workflowVersionNumber: number;
             systemStatus: string;
             currentStep: string;
+            currentStepKind: string;
             /** Format: date-time */
             startedAt: string;
             /** Format: date-time */
@@ -576,9 +584,11 @@ export interface components {
             eventKind: string;
             label: string;
             actorDisplay: string;
+            actorDisplayKind: string;
             /** Format: date-time */
             occurredAt: string;
             taskPosition: string;
+            taskPositionKind: string;
         };
         ProtectedMembership: {
             /** Format: uuid */
@@ -638,6 +648,9 @@ export interface components {
             items: components["schemas"]["StartWorkflowSummary"][];
             limit: number;
             hasMore: boolean;
+            page: number;
+            totalItems: number;
+            totalPages: number;
         };
         StartWorkflowSummary: {
             /** Format: uuid */
@@ -1093,9 +1106,9 @@ export interface operations {
     workflow_runtime_my_work_dashboard: {
         parameters: {
             query?: {
-                /** @description One-based page of authorized completed processes. */
+                /** @description One-based page of authorized active and completed processes. */
                 myProcessesPage?: number;
-                /** @description Search authorized completed process summaries. */
+                /** @description Search authorized active and completed process summaries. */
                 myProcessesSearch?: string;
                 /** @description One-based page of directly assigned open tasks. */
                 myTasksPage?: number;

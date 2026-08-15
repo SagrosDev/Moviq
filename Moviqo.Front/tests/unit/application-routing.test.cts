@@ -28,7 +28,7 @@ test("canonical public and authenticated deep links match dedicated route module
     ["/password-recovery", "password-recovery"],
     ["/password-reset", "password-reset"],
     ["/design-system", "design-system"],
-    ["/my-work", "dashboard"],
+    ["/my-work", "my-work"],
     ["/my-work/tasks", "tasks"],
     ["/my-work/tasks/task-1", "task-form"],
     ["/my-work/processes", "processes"],
@@ -96,8 +96,8 @@ test("authoring navigation is role-aware and exposes current location", () => {
     "start-process"
   ]);
   assert.equal(memberItems.find((item) => item.id === "dashboard")?.current, true);
-  assert.equal(authenticatedPageTitleKey("/my-work/tasks"), "app.nav.work");
-  assert.equal(authenticatedPageTitleKey("/my-work/processes"), "app.nav.work");
+  assert.equal(authenticatedPageTitleKey("/my-work/tasks"), "app.nav.dashboard");
+  assert.equal(authenticatedPageTitleKey("/my-work/processes"), "app.nav.dashboard");
 
   const formItems = authenticatedNavigationForRole(
     "designer",

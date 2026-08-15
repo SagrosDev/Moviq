@@ -68,6 +68,8 @@ test("Moviqo-owned labels, navigation, statuses, validation, help, and catalog c
   );
   assert.equal(translate("es", "status.needsAttention"), "Necesita atención");
   assert.equal(translate("en", "status.needsAttention"), "Needs attention");
+  assert.equal(translate("es", "status.active"), "Activo");
+  assert.equal(translate("en", "status.active"), "Active");
   assert.equal(translate("es", "validation.required"), "Completa este campo para continuar.");
   assert.equal(translate("en", "help.requiredField"), "Use a short and clear description.");
   assert.equal(translate("es", "catalog.task.title"), "Tarjeta de tarea");
@@ -81,6 +83,28 @@ test("Moviqo-owned labels, navigation, statuses, validation, help, and catalog c
     "Crea un flujo para iniciar"
   );
   assert.equal(translate("es", "formLauncher.noWorkflows"), "Aún no tienes formularios");
+  assert.equal(translate("es", "app.nav.dashboard"), "Mi trabajo");
+  assert.equal(translate("en", "app.nav.dashboard"), "My work");
+  assert.equal(
+    translate("es", "formDesign.addAccepted"),
+    "El elemento se agregó y está seleccionado. Revisa sus propiedades."
+  );
+  assert.equal(
+    translate("en", "formDesign.addAccepted"),
+    "The item was added and selected. Review its properties."
+  );
+  assert.equal(translate("es", "taskForm.viewProcess"), "Ver línea de tiempo");
+  assert.equal(translate("en", "taskForm.viewProcess"), "View process timeline");
+  assert.equal(translate("es", "taskForm.viewWork"), "Ver Mi trabajo");
+  assert.equal(translate("en", "taskForm.viewWork"), "View My work");
+  assert.equal(
+    translate("es", "taskForm.taskCompleteHandoff"),
+    "El proceso continúa con la siguiente tarea. Revisa Mi trabajo para ver si tienes alguna tarea asignada."
+  );
+  assert.equal(
+    translate("en", "taskForm.taskCompleteHandoff"),
+    "The process continues with its next task. Review My work for any task assigned to you."
+  );
   assert.equal(
     translate("es", "myWork.startWorkflows.pageLede"),
     "Elige un flujo publicado para iniciar un proceso nuevo."
@@ -113,6 +137,10 @@ test("public and onboarding Spanish copy preserves required spelling and accents
     ["verification.eyebrow", "Verificación de correo"],
     ["signIn.email", "Correo electrónico"],
     ["processDetail.timelineTitle", "Línea de tiempo"],
+    ["processDetail.actor.authorizedMember", "Miembro autorizado"],
+    ["myWork.myProcesses.contribution.initiated", "Iniciaste este proceso."],
+    ["taskForm.completeHandoff", "La línea de tiempo del proceso ya está disponible para revisión."],
+    ["workflowDesign.editor.addAccepted", "El elemento se agregó y está seleccionado."],
     ["workflowDesign.create.eyebrow", "Diseño de flujos"],
     ["workflowDesign.create.body", "Usa un nombre claro para identificar el flujo. Después podrás agregar las tareas y definir quién participa."],
     ["workflowDesign.editor.title", "Diseña tu flujo de trabajo"],
@@ -139,6 +167,18 @@ test("reviewed English onboarding copy describes current behavior", () => {
   assert.equal(translate("en", "workflowDesign.editor.title"), "Design your workflow");
   assert.equal(translate("en", "workflowDesign.editor.canvasTitle"), "Workflow canvas");
   assert.equal(translate("en", "workflowDesign.editor.saveSuccess"), "Changes saved");
+  assert.equal(
+    translate("en", "taskForm.completeHandoff"),
+    "The process timeline is now available for review."
+  );
+  assert.equal(
+    translate("en", "myWork.myProcesses.contribution.completedTask"),
+    "You completed one authorized task."
+  );
+  assert.equal(
+    translate("en", "workflowCatalog.error"),
+    "We could not load your workflows"
+  );
 });
 
 test("missing English resources fall back to Spanish instead of internal keys", () => {

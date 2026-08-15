@@ -70,7 +70,7 @@ Deliver a polished, persistent, synthetic-only internal environment where compan
 
 ## UX & Interaction Patterns
 
-Use dedicated, reload-safe modules for each catalog, editor, Task, and Process surface. Keep one primary action per region, preserve recoverable input, and present linked plain-language error summaries with associated field errors. Separate Workflow palette/canvas/outline/properties/actions; use a twelve-column Form grid with one-column operational reflow. Apply the approved tokens, shared components, bilingual copy, and compact synthetic-only indicator throughout.
+Use dedicated, reload-safe modules for each catalog, editor, Task, and Process surface. Keep My Work focused on task/process discovery while Start Process remains a distinct primary module. Keep one primary action per region, preserve recoverable input, and present linked plain-language error summaries with associated field errors. Separate Workflow palette/canvas/outline/properties/actions; use a twelve-column Form grid with one-column operational reflow. Apply the approved tokens, shared components, bilingual copy, and compact synthetic-only indicator throughout.
 
 ## Cross-Story Dependencies
 

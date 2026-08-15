@@ -76,6 +76,7 @@ class MyProcessSummarySerializer(serializers.Serializer):
     workflowVersionNumber = serializers.IntegerField(min_value=1)
     involvement = serializers.CharField()
     currentStep = serializers.CharField()
+    currentStepKind = serializers.CharField()
     systemStatus = serializers.CharField()
     startedAt = serializers.DateTimeField()
     completedAt = serializers.DateTimeField(allow_null=True)
@@ -88,18 +89,27 @@ class StartWorkflowCollectionSerializer(serializers.Serializer):
     items = StartWorkflowSummarySerializer(many=True)
     limit = serializers.IntegerField(min_value=1)
     hasMore = serializers.BooleanField()
+    page = serializers.IntegerField(min_value=1)
+    totalItems = serializers.IntegerField(min_value=0)
+    totalPages = serializers.IntegerField(min_value=1)
 
 
 class MyTaskCollectionSerializer(serializers.Serializer):
     items = MyTaskSummarySerializer(many=True)
     limit = serializers.IntegerField(min_value=1)
     hasMore = serializers.BooleanField()
+    page = serializers.IntegerField(min_value=1)
+    totalItems = serializers.IntegerField(min_value=0)
+    totalPages = serializers.IntegerField(min_value=1)
 
 
 class MyProcessCollectionSerializer(serializers.Serializer):
     items = MyProcessSummarySerializer(many=True)
     limit = serializers.IntegerField(min_value=1)
     hasMore = serializers.BooleanField()
+    page = serializers.IntegerField(min_value=1)
+    totalItems = serializers.IntegerField(min_value=0)
+    totalPages = serializers.IntegerField(min_value=1)
 
 
 class MyWorkDashboardSerializer(serializers.Serializer):
@@ -115,6 +125,7 @@ class ProcessDetailHeaderSerializer(serializers.Serializer):
     workflowVersionNumber = serializers.IntegerField(min_value=1)
     systemStatus = serializers.CharField()
     currentStep = serializers.CharField()
+    currentStepKind = serializers.CharField()
     startedAt = serializers.DateTimeField()
     completedAt = serializers.DateTimeField(allow_null=True)
     lastActivityAt = serializers.DateTimeField()
@@ -125,8 +136,10 @@ class ProcessTimelineEventSerializer(serializers.Serializer):
     eventKind = serializers.CharField()
     label = serializers.CharField()
     actorDisplay = serializers.CharField()
+    actorDisplayKind = serializers.CharField()
     occurredAt = serializers.DateTimeField()
     taskPosition = serializers.CharField()
+    taskPositionKind = serializers.CharField()
 
 
 class ProcessDetailSerializer(serializers.Serializer):
@@ -249,14 +262,14 @@ class MyWorkDashboardView(APIView):
                 type=int,
                 location=OpenApiParameter.QUERY,
                 required=False,
-                description="One-based page of authorized completed processes.",
+                description="One-based page of authorized active and completed processes.",
             ),
             OpenApiParameter(
                 name="myProcessesSearch",
                 type=str,
                 location=OpenApiParameter.QUERY,
                 required=False,
-                description="Search authorized completed process summaries.",
+                description="Search authorized active and completed process summaries.",
             ),
         ],
         responses={

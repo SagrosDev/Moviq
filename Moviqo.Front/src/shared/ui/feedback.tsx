@@ -113,16 +113,16 @@ export const Badge = ({ children, tone = "neutral" }: BadgeProps) => {
 export const LoadingState = ({ children }: LoadingStateProps) => {
   return (
     <div
-      className="flex min-h-20 items-center gap-moviqo-3 rounded-moviqo-guidance border border-moviqo-border bg-moviqo-surface-raised p-moviqo-4 text-moviqo-ink-primary"
+      className="flex min-h-32 items-center justify-center gap-moviqo-3 rounded-moviqo-guidance border border-moviqo-border bg-moviqo-surface-soft p-moviqo-5 text-moviqo-ink-primary"
       role="status"
       aria-live="polite"
       aria-atomic="true"
     >
       <span
         aria-hidden="true"
-        className="size-6 shrink-0 animate-spin rounded-moviqo-pill border-2 border-moviqo-border border-t-moviqo-primary motion-reduce:animate-none"
+        className="moviqo-loading-indicator size-8 shrink-0 animate-spin rounded-moviqo-pill border-4 border-moviqo-control-border border-t-moviqo-primary"
       />
-      <span>{children}</span>
+      <span className="font-semibold">{children}</span>
     </div>
   );
 };

@@ -73,3 +73,23 @@ These items are not outstanding work for the active Story 1.34. Compatibility, r
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-37-allow-blank-short-text-label.md`
   summary: Carry publication issue binding identity into the Form Designer and select/focus the exact affected item.
   evidence: The existing publication checklist navigation passes only the Task element ID, so any Form issue on a later binding opens the Task form with its first item selected.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-38-my-work-tabs.md`
+  summary: Bound process-start requests so a non-settling endpoint cannot leave the Start Process module indefinitely locked.
+  evidence: The existing start command awaits the transport without an application timeout, so a request that never settles leaves the pending UI active until the browser or network stack aborts it.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-38-my-work-tabs.md`
+  summary: Prevent a late successful process-start response from redirecting after the user has navigated away.
+  evidence: The existing asynchronous start handler calls navigate after success without checking whether its page is still mounted, so a user who leaves during the request can be redirected from the newer destination.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-38-scalable-my-work-experience.md`
+  summary: Paginate and prefetch the authorized process read model before projecting per-process workflow, audit, task, and contribution data.
+  evidence: The pre-existing process collection materializes and enriches every authorized process before Django pagination, creating an unbounded N+1 query path as process history grows.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-38-scalable-my-work-experience.md`
+  summary: Query an authorized process detail directly instead of scanning every process visible to the viewer.
+  evidence: The pre-existing detail lookup reuses the full process-summary loader and iterates all authorized summaries before matching the requested process ID.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-38-scalable-my-work-experience.md`
+  summary: Paginate authorized Task occurrences before loading and projecting authoritative workflow documents.
+  evidence: The pre-existing Task collection resolves every open assignment and its Workflow snapshot before slicing the requested 12-row page, so request cost grows with the full inbox.

@@ -185,20 +185,22 @@ export const FormDesignRoutePage = () => {
 
   return (
     <div className="grid gap-moviqo-6">
-      <Breadcrumbs
-        items={[
-          { href: "/forms", label: t("formLauncher.title") },
-          { href: workflowDesignPath(workflowId), label: draftQuery.data.name },
-          { current: true, label: task.label }
-        ]}
-        label={t("app.nav.primary")}
-        onNavigate={(href, event) => {
-          if (!isUnmodifiedPrimaryClick(event)) return;
-          event.preventDefault();
-          navigate(href);
-        }}
-      />
       <PageHeader
+        breadcrumb={(
+          <Breadcrumbs
+            items={[
+              { href: "/forms", label: t("formLauncher.title") },
+              { href: workflowDesignPath(workflowId), label: draftQuery.data.name },
+              { current: true, label: task.label }
+            ]}
+            label={t("app.nav.primary")}
+            onNavigate={(href, event) => {
+              if (!isUnmodifiedPrimaryClick(event)) return;
+              event.preventDefault();
+              navigate(href);
+            }}
+          />
+        )}
         description={`${draftQuery.data.name} · ${task.label}`}
         eyebrow={t("formDesign.eyebrow")}
         title={t("formDesign.title")}

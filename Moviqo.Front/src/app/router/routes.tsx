@@ -70,7 +70,7 @@ export const appRoutes: RouteObject[] = [
     element: <AuthenticatedLayout />,
     errorElement: <RouteErrorPage />,
     children: [
-      { id: "dashboard", path: "my-work", element: <MyWorkPage module="dashboard" /> },
+      { id: "my-work", path: "my-work", element: <MyWorkPage module="tasks" /> },
       { id: "tasks", path: "my-work/tasks", element: <MyWorkPage module="tasks" /> },
       { id: "task-form", path: "my-work/tasks/:taskId", element: <TaskFormRoute /> },
       { id: "processes", path: "my-work/processes", element: <MyWorkPage module="processes" /> },

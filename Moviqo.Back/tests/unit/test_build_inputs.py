@@ -57,6 +57,22 @@ def test_verification_commands_are_declared() -> None:
     assert "uv run pytest tests/integration --ds=moviqo.settings.integration" in commands
 
 
+def test_local_integration_hosts_support_vite_origins_and_ipv4_database() -> None:
+    environment_script = (PROJECT_ROOT / "scripts" / "use-integration-env.ps1").read_text(
+        encoding="utf-8"
+    )
+    integration_settings = (
+        PROJECT_ROOT / "src" / "moviqo" / "settings" / "integration.py"
+    ).read_text(encoding="utf-8")
+
+    expected_hosts = "localhost,127.0.0.1,testserver"
+    for contract in (environment_script, integration_settings):
+        assert expected_hosts in contract
+        assert 'MOVIQO_DB_HOST", "127.0.0.1"' in contract or (
+            'MOVIQO_DB_HOST = "127.0.0.1"' in contract
+        )
+
+
 def test_container_build_uses_locked_dependency_inputs() -> None:
     dockerfile = (PROJECT_ROOT / "Dockerfile").read_text(encoding="utf-8")
 

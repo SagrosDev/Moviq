@@ -21,7 +21,14 @@ import type { StructuralFormItemKind } from "../../../entities/workflow";
 import { TaskFormRenderer } from "../../task-form";
 import type { WorkflowCreationAccepted } from "../../workflow-design";
 import { useLanguage } from "../../../shared/localization";
-import { Alert, Button, Card, ErrorSummary, LoadingState } from "../../../shared/ui";
+import {
+  ActionBar,
+  Alert,
+  Button,
+  Card,
+  ErrorSummary,
+  LoadingState
+} from "../../../shared/ui";
 import {
   formDesignerDropIndex,
   formDesignerErrorSummary,
@@ -132,7 +139,9 @@ export const FormDesignerWorkspace = ({
   const summaryRef = useRef<HTMLDivElement>(null);
   const keyboardDropIndexRef = useRef<number | null>(null);
   const pointerDragRef = useRef(false);
+  const pendingAddedRevealRef = useRef(false);
   const [confirmTakeover, setConfirmTakeover] = useState(false);
+  const [addFeedbackSequence, setAddFeedbackSequence] = useState(0);
   const [activeCanvasDrag, setActiveCanvasDrag] = useState<ActiveCanvasDrag | null>(null);
   const [activeDropTargetId, setActiveDropTargetId] = useState<string | null>(null);
   const items = formItemsForTask(state.localDraft, taskElementId);
@@ -194,6 +203,8 @@ export const FormDesignerWorkspace = ({
   };
 
   const addPaletteItem = (kind: FormDesignerPaletteItemKind, toIndex?: number) => {
+    pendingAddedRevealRef.current = true;
+    setAddFeedbackSequence((current) => current + 1);
     if (kind === "shortText") {
       dispatch({ type: "short-text-added", label: t("formDesign.shortText"), toIndex });
       return;
@@ -287,6 +298,19 @@ export const FormDesignerWorkspace = ({
   }, [onDirtyChange, state.hasLocalChanges]);
 
   useEffect(() => {
+    if (!pendingAddedRevealRef.current || !state.selectedItemId) return;
+    pendingAddedRevealRef.current = false;
+    window.requestAnimationFrame(() => {
+      document.getElementById(`form-designer-item-${state.selectedItemId}`)
+        ?.scrollIntoView({ block: "nearest", behavior: "auto" });
+    });
+  }, [state.selectedItemId]);
+
+  useEffect(() => {
+    if (!state.hasLocalChanges) setAddFeedbackSequence(0);
+  }, [state.hasLocalChanges]);
+
+  useEffect(() => {
     onSaveAvailabilityChange?.(
       leaseState.status === "editable" && state.saveStatus !== "saving"
     );
@@ -343,44 +367,54 @@ export const FormDesignerWorkspace = ({
           ) : null}
         </Alert>
       ) : null}
-      <div className="flex flex-wrap items-center justify-between gap-moviqo-3">
-        {leaseState.status === "acquiring" ? null : <FormDesignerSaveStatus state={state} />}
-        <div className="flex flex-wrap gap-moviqo-2">
-          <Button
-            disabled={!state.hasLocalChanges || disabled}
-            onClick={() => void saveDraft()}
-          >
-            {t("formDesign.save")}
-          </Button>
-          {state.saveStatus === "error" ? (
-            <Button disabled={disabled} variant="secondary" onClick={() => void saveDraft()}>
-              {t("formDesign.retry")}
+      <div
+        className="rounded-moviqo-guidance border border-moviqo-border bg-moviqo-surface-raised p-moviqo-4"
+        data-form-designer-action-bar="true"
+      >
+        <ActionBar align="between">
+          {leaseState.status === "acquiring" ? null : <FormDesignerSaveStatus state={state} />}
+          <div className="flex flex-wrap gap-moviqo-2">
+            <Button
+              disabled={!state.hasLocalChanges || disabled}
+              onClick={() => void saveDraft()}
+            >
+              {t("formDesign.save")}
             </Button>
-          ) : null}
-          {state.saveStatus === "conflict" ? (
-            <Button disabled={disabled} variant="secondary" onClick={() => void reloadLatestAndReapply()}>
-              {t("formDesign.reloadAndReapply")}
+            {state.saveStatus === "error" ? (
+              <Button disabled={disabled} variant="secondary" onClick={() => void saveDraft()}>
+                {t("formDesign.retry")}
+              </Button>
+            ) : null}
+            {state.saveStatus === "conflict" ? (
+              <Button disabled={disabled} variant="secondary" onClick={() => void reloadLatestAndReapply()}>
+                {t("formDesign.reloadAndReapply")}
+              </Button>
+            ) : null}
+            <Button
+              disabled={disabled}
+              variant="secondary"
+              onClick={() => {
+                if (!state.hasLocalChanges) {
+                  void releaseLease().then(onReturn);
+                } else {
+                  void saveDraft().then(async (saved) => {
+                    if (!saved) return;
+                    await releaseLease();
+                    onReturn();
+                  });
+                }
+              }}
+            >
+              {t("formDesign.saveAndReturn")}
             </Button>
-          ) : null}
-          <Button
-            disabled={disabled}
-            variant="secondary"
-            onClick={() => {
-              if (!state.hasLocalChanges) {
-                void releaseLease().then(onReturn);
-              } else {
-                void saveDraft().then(async (saved) => {
-                  if (!saved) return;
-                  await releaseLease();
-                  onReturn();
-                });
-              }
-            }}
-          >
-            {t("formDesign.saveAndReturn")}
-          </Button>
-        </div>
+          </div>
+        </ActionBar>
       </div>
+      {addFeedbackSequence > 0 ? (
+        <Alert key={addFeedbackSequence} announcement="polite" tone="success">
+          <span data-form-add-feedback>{t("formDesign.addAccepted")}</span>
+        </Alert>
+      ) : null}
       {validationErrors.length > 0 ? (
         <ErrorSummary
           errors={validationErrors.map((error) => ({
@@ -445,7 +479,10 @@ export const FormDesignerWorkspace = ({
               items={items}
               selectedItemId={state.selectedItemId}
               onMove={(itemId, toIndex) => dispatch({ type: "item-moved", itemId, toIndex })}
-              onSelect={(itemId) => dispatch({ type: "item-selected", itemId })}
+              onSelect={(itemId) => {
+                setAddFeedbackSequence(0);
+                dispatch({ type: "item-selected", itemId });
+              }}
             />
             <Card labelledBy="form-designer-preview-title">
               <h2 className="m-0 text-moviqo-heading" id="form-designer-preview-title">

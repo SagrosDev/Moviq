@@ -102,6 +102,7 @@ test("verification pending state uses the shared visual loading status", () => {
 
   assert.match(markup, /role="status"/);
   assert.match(markup, /animate-spin/);
-  assert.match(markup, /motion-reduce:animate-none/);
+  assert.match(markup, /moviqo-loading-indicator/);
+  assert.doesNotMatch(markup, /motion-reduce:animate-none/);
   assert.match(markup, /Estamos validando este enlace seguro/);
 });

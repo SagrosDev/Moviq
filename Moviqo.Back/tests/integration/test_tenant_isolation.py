@@ -1177,9 +1177,30 @@ def test_my_work_endpoint_ignores_hostile_tenant_identifiers_under_rls(
 
     assert response.status_code == 200
     assert response.json() == {
-        "startWorkflows": {"items": [], "limit": 6, "hasMore": False},
-        "myTasks": {"items": [], "limit": 12, "hasMore": False},
-        "myProcesses": {"items": [], "limit": 12, "hasMore": False},
+        "startWorkflows": {
+            "items": [],
+            "limit": 6,
+            "hasMore": False,
+            "page": 1,
+            "totalItems": 0,
+            "totalPages": 1,
+        },
+        "myTasks": {
+            "items": [],
+            "limit": 12,
+            "hasMore": False,
+            "page": 1,
+            "totalItems": 0,
+            "totalPages": 1,
+        },
+        "myProcesses": {
+            "items": [],
+            "limit": 12,
+            "hasMore": False,
+            "page": 1,
+            "totalItems": 0,
+            "totalPages": 1,
+        },
     }
     payload = response.content.decode("utf-8")
     assert str(organization_b.id) not in payload

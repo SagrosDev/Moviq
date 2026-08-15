@@ -53,6 +53,7 @@ class AuthorizedProcessSummary:
     workflow_name: str
     workflow_version_number: int
     current_step: str
+    current_step_kind: str
     involvement: str
     contribution_summary: dict[str, str]
 
@@ -62,6 +63,19 @@ def _empty_collection(limit: int) -> dict[str, object]:
         "items": [],
         "limit": limit,
         "hasMore": False,
+        "page": 1,
+        "totalItems": 0,
+        "totalPages": 1,
+    }
+
+
+def _pagination_metadata(page_object) -> dict[str, int | bool]:
+    return {
+        "limit": page_object.paginator.per_page,
+        "hasMore": page_object.has_next(),
+        "page": page_object.number,
+        "totalItems": page_object.paginator.count,
+        "totalPages": page_object.paginator.num_pages,
     }
 
 
@@ -103,8 +117,7 @@ def read_my_work_dashboard(
                 }
                 for item in start_workflows_page_object.object_list
             ],
-            "limit": START_WORKFLOW_LIMIT,
-            "hasMore": start_workflows_page_object.has_next(),
+            **_pagination_metadata(start_workflows_page_object),
         },
         "myTasks": {
             "items": [
@@ -119,8 +132,7 @@ def read_my_work_dashboard(
                 }
                 for item in my_tasks_page_object.object_list
             ],
-            "limit": MY_TASK_LIMIT,
-            "hasMore": my_tasks_page_object.has_next(),
+            **_pagination_metadata(my_tasks_page_object),
         },
         "myProcesses": my_processes,
     }
@@ -178,8 +190,7 @@ def list_my_processes(
     page_object = paginator.get_page(page_number)
     return {
         "items": [_serialize_process_summary(summary) for summary in page_object.object_list],
-        "limit": MY_PROCESS_LIMIT,
-        "hasMore": page_object.has_next(),
+        **_pagination_metadata(page_object),
     }
 
 
@@ -207,6 +218,7 @@ def read_process_detail(
             "workflowVersionNumber": summary.workflow_version_number,
             "systemStatus": summary.process.status,
             "currentStep": summary.current_step,
+            "currentStepKind": summary.current_step_kind,
             "startedAt": summary.process.started_at.isoformat(),
             "completedAt": (
                 summary.process.completed_at.isoformat()
@@ -258,11 +270,18 @@ def _load_authorized_process_summaries(
         ProcessInstance.objects.select_related("workflow", "workflow_version")
         .filter(
             organization_id=tenant_context.organization_id,
-            status="completed",
+            status__in=("active", "completed"),
         )
         .filter(
-            Q(initiator_membership_id=tenant_context.membership_id)
-            | Q(tasks__assignee_membership_id=tenant_context.membership_id)
+            Q(
+                initiator_membership_id=tenant_context.membership_id,
+                initiator_user_id=tenant_context.user_id,
+            )
+            | Q(
+                tasks__organization_id=tenant_context.organization_id,
+                tasks__assignee_membership_id=tenant_context.membership_id,
+                tasks__assignee_user_id=tenant_context.user_id,
+            )
         )
         .distinct()
         .order_by("-last_activity_at", "-id")
@@ -274,6 +293,7 @@ def _load_authorized_process_summaries(
             summary := _build_authorized_process_summary(
                 process=process,
                 viewer_membership_id=str(tenant_context.membership_id),
+                viewer_user_id=tenant_context.user_id,
             )
         )
         is not None
@@ -295,6 +315,7 @@ def _build_authorized_process_summary(
     *,
     process: ProcessInstance,
     viewer_membership_id: str,
+    viewer_user_id: int,
 ) -> AuthorizedProcessSummary | None:
     document = _load_authoritative_process_document(process)
     if document is None:
@@ -303,11 +324,16 @@ def _build_authorized_process_summary(
     involvement, contribution_summary = _resolve_process_involvement(
         process=process,
         viewer_membership_id=viewer_membership_id,
+        viewer_user_id=viewer_user_id,
         document=document,
     )
     if involvement is None or contribution_summary is None:
         return None
 
+    current_step, current_step_kind = _resolve_process_current_step(
+        process=process,
+        document=document,
+    )
     return AuthorizedProcessSummary(
         process=process,
         workflow_name=_workflow_name_from_document(
@@ -315,7 +341,8 @@ def _build_authorized_process_summary(
             fallback=process.workflow.name,
         ),
         workflow_version_number=process.workflow_version.version_number,
-        current_step=_resolve_process_current_step(process=process, document=document),
+        current_step=current_step,
+        current_step_kind=current_step_kind,
         involvement=involvement,
         contribution_summary=contribution_summary,
     )
@@ -325,9 +352,13 @@ def _resolve_process_involvement(
     *,
     process: ProcessInstance,
     viewer_membership_id: str,
+    viewer_user_id: int,
     document: dict[str, object],
 ) -> tuple[str | None, dict[str, str] | None]:
-    if str(process.initiator_membership_id) == viewer_membership_id:
+    if (
+        str(process.initiator_membership_id) == viewer_membership_id
+        and process.initiator_user_id == viewer_user_id
+    ):
         return (
             "Initiator",
             {
@@ -336,13 +367,23 @@ def _resolve_process_involvement(
             },
         )
 
-    completed_task = (
-        TaskOccurrence.objects.filter(
-            process=process,
-            organization_id=process.organization_id,
-            assignee_membership_id=viewer_membership_id,
-            status="completed",
+    assigned_tasks = TaskOccurrence.objects.filter(
+        process=process,
+        organization_id=process.organization_id,
+        assignee_membership_id=viewer_membership_id,
+        assignee_user_id=viewer_user_id,
+    )
+    if assigned_tasks.filter(status__in=OPEN_TASK_STATUSES).exists():
+        return (
+            "Participant",
+            {
+                "kind": "participated",
+                "label": "You participate in this process.",
+            },
         )
+
+    completed_task = (
+        assigned_tasks.filter(status="completed")
         .order_by("-completed_at", "-id")
         .first()
     )
@@ -391,7 +432,7 @@ def _resolve_process_current_step(
     *,
     process: ProcessInstance,
     document: dict[str, object],
-) -> str:
+) -> tuple[str, str]:
     process_completed_audit = find_latest_transactional_audit(
         organization_id=process.organization_id,
         event_type="workflow-runtime.process-completed",
@@ -400,8 +441,30 @@ def _resolve_process_current_step(
     if process_completed_audit is not None:
         route_target_id = str(process_completed_audit.payload.get("routeTargetId", "")).strip()
         if route_target_id:
-            return _element_label_for_id(document=document, element_id=route_target_id) or "End"
-    return "Completed"
+            return (
+                _element_label_for_id(document=document, element_id=route_target_id) or "End",
+                "end",
+            )
+    if process.status == "completed":
+        return "Completed", "completed"
+
+    active_task = (
+        process.tasks.filter(
+            organization_id=process.organization_id,
+            status__in=OPEN_TASK_STATUSES,
+        )
+        .order_by("-created_at", "-id")
+        .first()
+    )
+    if active_task is not None:
+        task_label = _element_label_for_id(
+            document=document,
+            element_id=active_task.task_element_id,
+        )
+        return (task_label, "taskLabel") if task_label else ("Task", "taskFallback")
+    if process.status == "active":
+        return "Task", "taskFallback"
+    return "Completed", "completed"
 
 
 def _serialize_process_summary(summary: AuthorizedProcessSummary) -> dict[str, object]:
@@ -412,6 +475,7 @@ def _serialize_process_summary(summary: AuthorizedProcessSummary) -> dict[str, o
         "workflowVersionNumber": summary.workflow_version_number,
         "involvement": summary.involvement,
         "currentStep": summary.current_step,
+        "currentStepKind": summary.current_step_kind,
         "systemStatus": summary.process.status,
         "startedAt": summary.process.started_at.isoformat(),
         "completedAt": (
@@ -433,12 +497,40 @@ def _matches_process_search(
     normalized_search = search.strip().lower()
     if not normalized_search:
         return True
+    semantic_aliases = {
+        "Initiator": (
+            "initiator",
+            "iniciador",
+            "you started this process",
+            "iniciaste este proceso",
+        ),
+        "Previous participant": (
+            "previous participant",
+            "participante anterior",
+            "participaste anteriormente",
+            "completed task",
+            "tarea completada",
+        ),
+        "Participant": (
+            "participant",
+            "process participant",
+            "participaste en este proceso",
+            "participante",
+        ),
+    }.get(summary.involvement, ())
+    step_aliases = {
+        "taskFallback": ("task", "tarea"),
+        "completed": ("completed", "completada"),
+        "end": ("end", "fin"),
+    }.get(summary.current_step_kind, ())
     haystacks = (
         str(summary.process.id)[:8].lower(),
         summary.workflow_name.lower(),
         summary.current_step.lower(),
         summary.involvement.lower(),
         summary.contribution_summary["label"].lower(),
+        *(alias.lower() for alias in semantic_aliases),
+        *(alias.lower() for alias in step_aliases),
     )
     return any(normalized_search in haystack for haystack in haystacks)
 
@@ -462,21 +554,22 @@ def _build_process_timeline(
         label = TIMELINE_EVENT_LABEL_MAP.get(audit.event_type)
         if event_kind is None or label is None:
             continue
-        task_position = _timeline_task_position(
+        task_position, task_position_kind = _timeline_task_position(
             audit=audit,
             process=process,
             document=document,
         )
+        actor_membership_id = str(audit.actor_membership_id)
+        actor_display = actor_display_names.get(actor_membership_id)
         timeline.append(
             {
                 "eventKind": event_kind,
                 "label": label,
-                "actorDisplay": actor_display_names.get(
-                    str(audit.actor_membership_id),
-                    "Authorized member",
-                ),
+                "actorDisplay": actor_display or "Authorized member",
+                "actorDisplayKind": "member" if actor_display else "authorizedMember",
                 "occurredAt": audit.created_at.isoformat(),
                 "taskPosition": task_position,
+                "taskPositionKind": task_position_kind,
             }
         )
     return timeline
@@ -500,25 +593,32 @@ def _timeline_task_position(
     audit: TransactionalAuditRecord,
     process: ProcessInstance,
     document: dict[str, object] | None,
-) -> str:
+) -> tuple[str, str]:
     if audit.event_type == "workflow-runtime.process-completed":
         route_target_id = str(audit.payload.get("routeTargetId", "")).strip()
-        return _element_label_for_id(document=document, element_id=route_target_id) or "End"
+        return (
+            _element_label_for_id(document=document, element_id=route_target_id) or "End",
+            "end",
+        )
+
+    if audit.event_type == "workflow-runtime.process-started":
+        return "Start", "start"
 
     task_id = str(audit.payload.get("taskId", "")).strip()
     if not task_id:
-        return "Start"
+        return "Start", "start"
     task = process.tasks.filter(id=task_id).first()
     if task is None:
-        return "Task"
+        return "Task", "taskFallback"
     if document is None:
         authoritative = _load_authoritative_task_document(task)
     else:
         authoritative = document
-    return _element_label_for_id(
+    task_label = _element_label_for_id(
         document=authoritative,
         element_id=task.task_element_id,
-    ) or "Task"
+    )
+    return (task_label, "taskLabel") if task_label else ("Task", "taskFallback")
 
 
 def _workflow_name_from_document(*, document: dict[str, object], fallback: str) -> str:

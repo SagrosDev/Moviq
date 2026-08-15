@@ -379,7 +379,14 @@ const renderMyTasks = (
         </article>)}
       </div>
     </>}
-    {renderCollectionPagination(collection, onPageChange, t)}
+    {renderCollectionPagination(
+      collection,
+      onPageChange,
+      t,
+      query.myTasksPage,
+      t("myWork.myTasks.title"),
+      isRefreshing
+    )}
   </div>;
 };
 
@@ -425,7 +432,6 @@ const renderStartWorkflows = (
       <h3>{item.title}</h3>
       <p>{`${t("myWork.startWorkflows.version")} ${item.versionNumber}`}</p>
       {item.description ? <p>{item.description}</p> : null}
-      <p>{item.availability}</p>
       <div className="button-row">
         <Button
           disabled={isRefreshing}
@@ -439,7 +445,14 @@ const renderStartWorkflows = (
       ) : null}
     </article>,
     (dashboard) => dashboard.startWorkflows,
-    (collection) => renderCollectionPagination(collection, onPageChange, t)
+    (collection) => renderCollectionPagination(
+      collection,
+      onPageChange,
+      t,
+      page,
+      t("myWork.startWorkflows.title"),
+      isRefreshing
+    )
   );
   return <div className="grid gap-moviqo-4" aria-busy={isRefreshing || undefined}>
     {isRefreshing ? <p className="m-0 text-sm font-semibold text-moviqo-primary" role="status">
@@ -601,7 +614,14 @@ const renderMyProcesses = (
         </div>
       </>
     )}
-    {renderCollectionPagination(collection, onPageChange, t)}
+    {renderCollectionPagination(
+      collection,
+      onPageChange,
+      t,
+      query.page,
+      t("myWork.myProcesses.title"),
+      isRefreshing
+    )}
   </div>;
 };
 
@@ -651,30 +671,52 @@ const renderRegionState = <TItem,>(
 const renderCollectionPagination = (
   collection: MyWorkCollection<unknown>,
   onPageChange: (page: number) => void,
-  t: Translate
+  t: Translate,
+  requestedPage: number,
+  regionLabel: string,
+  isRefreshing: boolean
 ) => {
-  const page = collection.page;
-  const totalPages = collection.totalPages;
+  const safeRequestedPage = Number.isInteger(requestedPage) && requestedPage > 0
+    ? requestedPage
+    : 1;
+  const page = Number.isInteger(collection.page) && collection.page > 0
+    ? collection.page
+    : safeRequestedPage;
+  const reportedTotalPages = Number.isInteger(collection.totalPages) && collection.totalPages >= page
+    ? collection.totalPages
+    : null;
+  const calculatedTotalPages = Number.isInteger(collection.totalItems)
+    && collection.totalItems >= 0
+    && Number.isInteger(collection.limit)
+    && collection.limit > 0
+    ? Math.max(1, Math.ceil(collection.totalItems / collection.limit))
+    : null;
+  const totalPages = reportedTotalPages
+    ?? (calculatedTotalPages !== null && calculatedTotalPages >= page ? calculatedTotalPages : null)
+    ?? (collection.hasMore ? null : page);
+  const paginationLabel = totalPages === null
+    ? `${t("myWork.pagination.page")} ${page}`
+    : `${t("myWork.pagination.page")} ${page} ${t("myWork.pagination.of")} ${totalPages}`;
   return <nav
     className="flex flex-wrap items-center justify-between gap-moviqo-3"
-    aria-label={`${t("myWork.pagination.page")} ${page} ${t("myWork.pagination.of")} ${totalPages}`}
+    aria-label={`${regionLabel}: ${paginationLabel}`}
   >
   <Button
     variant="secondary"
-    disabled={page <= 1}
+    disabled={isRefreshing || page <= 1}
     onClick={() => onPageChange(page - 1)}
   >
-    {t("myWork.myProcesses.previousPage")}
+    {t("myWork.pagination.previousPage")}
   </Button>
   <span className="text-sm font-semibold text-moviqo-ink-secondary">
-    {t("myWork.pagination.page")} {page} {t("myWork.pagination.of")} {totalPages}
+    {paginationLabel}
   </span>
   <Button
     variant="secondary"
-    disabled={!collection.hasMore}
+    disabled={isRefreshing || !collection.hasMore}
     onClick={() => onPageChange(page + 1)}
   >
-    {t("myWork.myProcesses.nextPage")}
+    {t("myWork.pagination.nextPage")}
   </Button>
 </nav>;
 };

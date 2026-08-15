@@ -36,6 +36,12 @@ const emptyDashboard = {
   startWorkflows: { items: [], limit: 6, hasMore: false, page: 1, totalItems: 0, totalPages: 1 }
 };
 
+const legacyEmptyDashboard = {
+  myProcesses: { items: [], limit: 12, hasMore: false },
+  myTasks: { items: [], limit: 12, hasMore: false },
+  startWorkflows: { items: [], limit: 6, hasMore: false }
+};
+
 test("Mi trabajo opens Tasks directly and switches to Processes while Start Process stays separate", async ({
   browserName,
   page
@@ -47,7 +53,7 @@ test("Mi trabajo opens Tasks directly and switches to Processes while Start Proc
     const taskSearch = new URL(route.request().url()).searchParams.get("myTasksSearch");
     const dashboard = taskSearch === "revisar"
       ? {
-          ...emptyDashboard,
+          ...legacyEmptyDashboard,
           myTasks: {
             items: [{
               taskId: "01987df4-ae8a-7000-8000-000000000301",
@@ -65,7 +71,7 @@ test("Mi trabajo opens Tasks directly and switches to Processes while Start Proc
             totalPages: 1
           }
         }
-      : emptyDashboard;
+      : legacyEmptyDashboard;
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(dashboard) });
   });
 
@@ -79,6 +85,7 @@ test("Mi trabajo opens Tasks directly and switches to Processes while Start Proc
   await expect(page.locator("#main-content").getByRole("link", { name: "Iniciar proceso" })).toHaveCount(0);
   await expect(page.locator("[data-dashboard-summary]")).toHaveCount(0);
   await expect(page.getByText(/No tienes tareas pendientes/)).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Mis tareas: Página 1 de 1" })).toBeVisible();
   await page.getByLabel("Buscar tareas").fill("revisar");
   await page.getByRole("button", { name: "Buscar", exact: true }).click();
   await expect(page.getByRole("rowheader", { name: "Revisar solicitud" })).toBeVisible();
@@ -89,6 +96,7 @@ test("Mi trabajo opens Tasks directly and switches to Processes while Start Proc
   await expect(page.getByRole("heading", { level: 2, name: "Mis procesos" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Mis procesos", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText(/Aún no hay procesos relacionados contigo/)).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Mis procesos: Página 1 de 1" })).toBeVisible();
 
   await page.getByRole("link", { name: "Mis tareas", exact: true }).click();
   await expect(page).toHaveURL(/\/my-work\/tasks$/);
@@ -99,6 +107,7 @@ test("Mi trabajo opens Tasks directly and switches to Processes while Start Proc
   await expect(page).toHaveURL(/\/processes\/start$/);
   await expect(page.getByRole("heading", { level: 1, name: "Iniciar un proceso" })).toBeVisible();
   await expect(page.getByText("Crea un flujo para iniciar")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Iniciar un proceso: Página 1 de 1" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Crear flujo" })).toHaveAttribute("href", "/workflows/new");
   await expect(page.locator("#main-content")).toBeFocused();
   const workspaceWidth = await page.locator("#main-content > div").evaluate((element) => (
@@ -143,8 +152,8 @@ test("starting a process shows shared progress feedback and blocks competing sta
             {
               workflowId,
               title: "Aprobación Cartas",
-              description: "",
-              availability: "Disponible para miembros activos de tu organización.",
+              description: "Revisa solicitudes de compra.",
+              availability: "AUTHORITY-COPY-MUST-NOT-RENDER",
               versionNumber: 1
             },
             {
@@ -185,6 +194,11 @@ test("starting a process shows shared progress feedback and blocks competing sta
 
   await page.goto("/processes/start");
   const startRegion = page.locator("section[aria-labelledby='my-work-startWorkflows-title']");
+  await expect(startRegion.getByText("Aprobación Cartas")).toBeVisible();
+  await expect(startRegion.getByText("Versión 1").first()).toBeVisible();
+  await expect(startRegion.getByText("Revisa solicitudes de compra.")).toBeVisible();
+  await expect(startRegion.getByText("AUTHORITY-COPY-MUST-NOT-RENDER")).toHaveCount(0);
+  await expect(startRegion.getByRole("button", { name: "Iniciar", exact: true })).toHaveCount(2);
   await startRegion.getByRole("button", { name: "Iniciar", exact: true }).first().click();
 
   await expect(startRegion.getByRole("status")).toContainText("Iniciando el proceso");

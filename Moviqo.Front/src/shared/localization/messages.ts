@@ -301,6 +301,8 @@ export type MessageKey =
   | "myWork.refreshing"
   | "myWork.pagination.page"
   | "myWork.pagination.of"
+  | "myWork.pagination.previousPage"
+  | "myWork.pagination.nextPage"
   | "processDetail.eyebrow"
   | "processDetail.eyebrowActive"
   | "processDetail.title"
@@ -942,6 +944,8 @@ export const spanishMessages: MessageDictionary = {
   "myWork.refreshing": "Actualizando resultados.",
   "myWork.pagination.page": "Página",
   "myWork.pagination.of": "de",
+  "myWork.pagination.previousPage": "Página anterior",
+  "myWork.pagination.nextPage": "Página siguiente",
   "processDetail.eyebrow": "Proceso completado",
   "processDetail.eyebrowActive": "Proceso activo",
   "processDetail.title": "Detalle del proceso",
@@ -1629,6 +1633,8 @@ export const englishMessages: Partial<MessageDictionary> = {
   "myWork.refreshing": "Updating results.",
   "myWork.pagination.page": "Page",
   "myWork.pagination.of": "of",
+  "myWork.pagination.previousPage": "Previous page",
+  "myWork.pagination.nextPage": "Next page",
   "processDetail.eyebrow": "Completed process",
   "processDetail.eyebrowActive": "Active process",
   "processDetail.title": "Process detail",

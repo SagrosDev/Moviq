@@ -58,6 +58,17 @@ const renderShell = (
     )
   );
 
+type LegacyMyWorkDashboard = {
+  [TRegion in keyof MyWorkDashboard]: Pick<
+    MyWorkDashboard[TRegion],
+    "items" | "limit" | "hasMore"
+  >;
+};
+
+const asLegacyMyWorkDashboard = (dashboard: LegacyMyWorkDashboard) => (
+  dashboard as MyWorkDashboard
+);
+
 test("protected authentication entry path targets the my-work route", () => {
   assert.equal(protectedEntryPath, "/my-work");
   assert.equal(resolveProtectedRedirectPath("/my-work"), "/sign-in");
@@ -137,6 +148,76 @@ test("my-work pagination uses the generated endpoint query contract", () => {
     myTasksSearch: "review",
     startWorkflowsPage: 4
   });
+});
+
+test("my-work pagination always renders concrete requested pages for legacy collections", () => {
+  const legacyDashboard = asLegacyMyWorkDashboard({
+    myProcesses: { items: [], limit: 12, hasMore: false },
+    myTasks: { items: [], limit: 12, hasMore: false },
+    startWorkflows: { items: [], limit: 6, hasMore: true }
+  });
+  const query = {
+    ...defaultMyProcessesQuery,
+    myTasksPage: 2,
+    page: 3,
+    startWorkflowsPage: 4
+  };
+  const cases = [
+    { region: "myTasks", accessibleLabel: "Mis tareas: Página 2 de 2", visibleLabel: "Página 2 de 2" },
+    { region: "myProcesses", accessibleLabel: "Mis procesos: Página 3 de 3", visibleLabel: "Página 3 de 3" },
+    { region: "startWorkflows", accessibleLabel: "Iniciar un proceso: Página 4", visibleLabel: "Página 4" }
+  ] as const;
+
+  for (const paginationCase of cases) {
+    const markup = renderShell({
+      status: "success",
+      data: legacyDashboard,
+      updatedAt: Date.now()
+    }, {
+      myProcessesQuery: query,
+      regions: [paginationCase.region],
+      showHeading: false,
+      showRegionNavigation: false
+    });
+
+    assert.match(markup, new RegExp(`aria-label="${paginationCase.accessibleLabel}"`));
+    assert.match(markup, new RegExp(`<span[^>]*>${paginationCase.visibleLabel}</span>`));
+  }
+});
+
+test("start workflow cards omit backend authority copy without hiding useful content", () => {
+  const markup = renderShell({
+    status: "success",
+    data: {
+      myProcesses: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+      myTasks: { items: [], limit: 12, hasMore: false, page: 1, totalItems: 0, totalPages: 1 },
+      startWorkflows: {
+        items: [{
+          workflowId: "workflow-1",
+          title: "Aprobaciones",
+          description: "Revisa solicitudes de compra.",
+          availability: "AUTHORITY-COPY-MUST-NOT-RENDER",
+          versionNumber: 1
+        }],
+        limit: 6,
+        hasMore: false,
+        page: 1,
+        totalItems: 1,
+        totalPages: 1
+      }
+    },
+    updatedAt: Date.now()
+  }, {
+    regions: ["startWorkflows"],
+    showHeading: false,
+    showRegionNavigation: false
+  });
+
+  assert.match(markup, /Aprobaciones/);
+  assert.match(markup, /Versión 1/);
+  assert.match(markup, /Revisa solicitudes de compra/);
+  assert.match(markup, />Iniciar</);
+  assert.doesNotMatch(markup, /AUTHORITY-COPY-MUST-NOT-RENDER/);
 });
 
 test("dedicated my-work modules retain an accessible region name", () => {

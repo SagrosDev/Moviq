@@ -1,9 +1,9 @@
 $env:MOVIQO_SECRET_KEY = "ci-only-contract-key-with-sufficient-length-and-entropy-2026"
-$env:MOVIQO_ALLOWED_HOSTS = "localhost,testserver"
+$env:MOVIQO_ALLOWED_HOSTS = "localhost,127.0.0.1,testserver"
 $env:MOVIQO_DB_NAME = "moviqo"
 $env:MOVIQO_DB_USER = "moviqo"
 $env:MOVIQO_DB_PASSWORD = "moviqo"
-$env:MOVIQO_DB_HOST = "localhost"
+$env:MOVIQO_DB_HOST = "127.0.0.1"
 $env:MOVIQO_DB_PORT = "5432"
 $env:DJANGO_SETTINGS_MODULE = "moviqo.settings.integration"
 

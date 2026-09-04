@@ -45,7 +45,6 @@ export type JourneyTraceEvent = {
 
 type HttpResponse = APIResponse | Response;
 
-const deployedAssertionTimeoutMs = 15_000;
 const syntheticLinkAttempts = 90;
 const syntheticLinkPollIntervalMs = 2_000;
 export const deployedJourneyTimeoutMs =
@@ -250,25 +249,6 @@ export const performApiAction = async (
   ]);
   await expectApiOk(response);
   return response;
-};
-
-export const waitForWorkflowPublicationReady = async (
-  page: Page,
-  copy: {
-    assignmentIssue: string;
-    publishButton: string;
-    starterIssue: string;
-  }
-) => {
-  await expect(page.getByText(copy.starterIssue)).toHaveCount(0, {
-    timeout: deployedAssertionTimeoutMs
-  });
-  await expect(page.getByText(copy.assignmentIssue)).toHaveCount(0, {
-    timeout: deployedAssertionTimeoutMs
-  });
-  await expect(page.getByRole("button", { name: copy.publishButton })).toBeEnabled({
-    timeout: deployedAssertionTimeoutMs
-  });
 };
 
 export const assertNoAccessibilityViolations = async (

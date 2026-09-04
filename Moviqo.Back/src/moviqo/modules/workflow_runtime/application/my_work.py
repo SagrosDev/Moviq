@@ -514,6 +514,7 @@ def _matches_process_search(
         "Participant": (
             "participant",
             "process participant",
+            "participas en este proceso",
             "participaste en este proceso",
             "participante",
         ),

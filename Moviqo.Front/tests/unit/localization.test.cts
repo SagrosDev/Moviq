@@ -114,6 +114,14 @@ test("Moviqo-owned labels, navigation, statuses, validation, help, and catalog c
     "Loading your processes."
   );
   assert.equal(
+    translate("es", "myWork.myProcesses.contribution.participated"),
+    "Participas en este proceso."
+  );
+  assert.equal(
+    translate("en", "myWork.myProcesses.contribution.participated"),
+    "You participate in this process."
+  );
+  assert.equal(
     translate("en", "myWork.permissionDenied"),
     "You do not have permission to view this work. Your session remains active."
   );

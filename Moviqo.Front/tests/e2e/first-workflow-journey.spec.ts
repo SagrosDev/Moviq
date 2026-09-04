@@ -21,7 +21,6 @@ import {
   rotateSyntheticJourneyRun,
   safeReference,
   verifyDeployedBuild,
-  waitForWorkflowPublicationReady,
   type JourneyTraceEvent
 } from "./support/deployedJourney";
 import {
@@ -56,17 +55,21 @@ test("deployed first workflow journey covers registration through completed time
   const startedAt = Date.now();
   const syntheticKey = readRequiredEnvironment("MOVIQO_E2E_SYNTHETIC_KEY");
   const baseUrl = readRequiredEnvironment("MOVIQO_E2E_BASE_URL");
-  const buildId = process.env.MOVIQO_E2E_BUILD_ID ?? "local-e2e";
+  const buildId = readRequiredEnvironment("MOVIQO_E2E_BUILD_ID");
   const identity = createSyntheticIdentity();
   const language = journeyLanguageFromProject(testInfo.project.metadata);
   const copy = (key: MessageKey) => journeyCopy(language, key);
+  const selectedLanguageName = copy(
+    language === "en" ? "app.language.english" : "app.language.spanish"
+  );
   const workflowName = `Primer flujo / First workflow ${identity.runId}`;
+  const taskName = copy("workflowDesign.editor.taskLabel");
   const fieldLabel = `Referencia / Reference ${identity.runId}`;
   const journeyTrace: JourneyTraceEvent[] = [];
   const evidence = {
     buildId,
     durationMs: 0,
-    host: new URL(baseUrl).host,
+    host: "",
     organizationRef: "",
     processRef: "",
     qualification: createPreviewQualificationEvidence({
@@ -86,6 +89,9 @@ test("deployed first workflow journey covers registration through completed time
 
   try {
     recordJourneyEvent(journeyTrace, startedAt, "verify deployed build", "started");
+    const deployedUrl = new URL(baseUrl);
+    expect(deployedUrl.href).toBe("https://moviqo-uat-synthetic.web.app/");
+    evidence.host = deployedUrl.host;
     await verifyDeployedBuild(request, buildId);
     recordJourneyEvent(journeyTrace, startedAt, "verify deployed build");
     runToken = await createSyntheticJourneyRun(request, {
@@ -96,22 +102,27 @@ test("deployed first workflow journey covers registration through completed time
     recordJourneyEvent(journeyTrace, startedAt, "register owner", "started");
     await test.step("register a clean synthetic owner organization", async () => {
     await page.goto(`/?lang=${language}`);
-    await journeyExpect(page.getByRole("combobox", { name: /language|idioma/i })).toHaveValue(language);
+    await journeyExpect(page.getByRole("button", {
+      exact: true,
+      name: `${copy("app.language.label")}: ${selectedLanguageName}`
+    })).toBeVisible();
     const registrationLink = page
-      .getByRole("link", { name: copy("home.cta.register") })
-      .first();
+      .locator('section[aria-labelledby="landing-title"]')
+      .getByRole("link", { name: copy("home.cta.register") });
     await journeyExpect(registrationLink).toBeVisible();
     await registrationLink.click();
 
     await journeyExpect(
       page.getByRole("heading", {
+        exact: true,
+        level: 1,
         name: copy("registration.title")
       })
     ).toBeVisible();
     await page.getByLabel(copy("registration.ownerName.label")).fill(identity.ownerName);
     await page.getByLabel(copy("registration.organizationName.label")).fill(identity.organizationName);
     await page.getByLabel(copy("registration.email.label")).fill(identity.email);
-    await page.locator("#registration-password").fill(identity.password);
+    await page.getByLabel(copy("registration.password.label")).fill(identity.password);
     await page.getByLabel(copy("registration.region.label")).fill("CO");
     await page.getByLabel(copy("registration.timezone.label")).fill("America/Bogota");
     await page.getByLabel(copy("registration.currency.label")).fill("COP");
@@ -124,7 +135,9 @@ test("deployed first workflow journey covers registration through completed time
       "/api/v1/organizations/registrations/",
       () => page.getByRole("button", { name: copy("registration.submit") }).click()
     );
-    await journeyExpect(page.locator(".success-message")).toContainText(identity.email);
+    await journeyExpect(
+      page.getByRole("status").filter({ hasText: identity.email })
+    ).toContainText(copy("registration.success"));
     await assertNoAccessibilityViolations(page, axePath);
     });
     recordJourneyEvent(journeyTrace, startedAt, "register owner");
@@ -145,9 +158,13 @@ test("deployed first workflow journey covers registration through completed time
           () => openSyntheticVerificationLink(page, verificationToken)
         );
         await journeyExpect(
-          page.getByRole("heading", { name: copy("verification.success.title") })
+          page.getByRole("heading", {
+            exact: true,
+            level: 2,
+            name: copy("verification.success.title")
+          })
         ).toBeVisible();
-        await journeyExpect(page.getByText(new RegExp(identity.email, "i"))).toBeVisible();
+        await journeyExpect(page.getByText(identity.email, { exact: true })).toBeVisible();
         await clearSyntheticVerificationLink(page);
         await assertNoAccessibilityViolations(page, axePath);
       } finally {
@@ -160,7 +177,7 @@ test("deployed first workflow journey covers registration through completed time
     await test.step("sign in with the verified owner", async () => {
       await page.goto(`/sign-in?lang=${language}`);
       await page.getByLabel(copy("signIn.email")).fill(identity.email);
-      await page.locator("#sign-in-password").fill(identity.password);
+      await page.getByLabel(copy("signIn.password")).fill(identity.password);
       await performApiAction(
         page,
         "POST",
@@ -168,7 +185,11 @@ test("deployed first workflow journey covers registration through completed time
         () => page.getByRole("button", { name: copy("signIn.submit") }).click()
       );
       await journeyExpect(page).toHaveURL(/\/my-work$/);
-      await journeyExpect(page.getByRole("heading", { name: copy("myWork.title") })).toBeVisible();
+      await journeyExpect(page.getByRole("heading", {
+        exact: true,
+        level: 1,
+        name: copy("app.nav.dashboard")
+      })).toBeVisible();
       const sessionResponse = await page.request.get("/api/v1/auth/session/");
       await expectApiOk(sessionResponse);
       const session = (await sessionResponse.json()) as Partial<{
@@ -186,26 +207,32 @@ test("deployed first workflow journey covers registration through completed time
     await page.getByRole("link", { name: copy("app.nav.workflows") }).click();
     await page.getByRole("button", { name: copy("workflowCatalog.create") }).click();
     await journeyExpect(page).toHaveURL(/\/workflows\/new$/);
-    await page.getByLabel(/workflow name|nombre del flujo/i).fill(workflowName);
+    await page.getByLabel(copy("workflowDesign.create.name")).fill(workflowName);
     await performApiAction(
       page,
       "POST",
       "/api/v1/workflow-design/workflows/",
-      () => page.getByRole("button", { name: "Crear flujo" }).click()
+      () => page.getByRole("button", { name: copy("workflowDesign.create.submit") }).click()
     );
     await journeyExpect(
-      page.getByRole("heading", { name: copy("workflowDesign.editor.title") })
+      page.getByRole("heading", { exact: true, level: 1, name: workflowName })
     ).toBeVisible();
     await journeyExpect(page).toHaveURL(/\/workflows\/[^/]+\/design$/);
 
     await page.getByRole("button", { name: copy("workflowDesign.editor.addTask") }).click();
     await page.getByRole("button", { name: copy("workflowDesign.editor.addEnd") }).click();
-    await page.getByLabel(copy("workflowDesign.editor.connectionSource")).selectOption("start-1");
-    await page.getByLabel(copy("workflowDesign.editor.connectionTarget")).selectOption("task-1");
-    await page.getByRole("button", { name: copy("workflowDesign.editor.connectLabel") }).click();
-    await page.getByLabel(copy("workflowDesign.editor.connectionSource")).selectOption("task-1");
-    await page.getByLabel(copy("workflowDesign.editor.connectionTarget")).selectOption("end-1");
-    await page.getByRole("button", { name: copy("workflowDesign.editor.connectLabel") }).click();
+    await page.locator("#workflow-element-start-1")
+      .getByRole("button", { name: copy("workflowDesign.editor.outgoingHandle") })
+      .press("Enter");
+    await page.locator("#workflow-element-task-1")
+      .getByRole("button", { name: copy("workflowDesign.editor.incomingHandle") })
+      .press("Enter");
+    await page.locator("#workflow-element-task-1")
+      .getByRole("button", { name: copy("workflowDesign.editor.outgoingHandle") })
+      .press("Enter");
+    await page.locator("#workflow-element-end-1")
+      .getByRole("button", { name: copy("workflowDesign.editor.incomingHandle") })
+      .press("Enter");
     await performApiAction(
       page,
       "PUT",
@@ -218,46 +245,97 @@ test("deployed first workflow journey covers registration through completed time
 
     recordJourneyEvent(journeyTrace, startedAt, "repair and publish", "started");
     await test.step("repair publication blockers and publish", async () => {
-    const validationPath =
-      /\/api\/v1\/workflow-design\/workflows\/[^/]+\/publication-validation\/$/;
-    await performApiAction(
-      page,
-      "POST",
-      validationPath,
-      () => page.getByRole("button", { name: copy("workflowDesign.editor.validatePublication") }).click()
+    const [blockedPublicationResponse] = await Promise.all([
+      page.waitForResponse((response) => (
+        response.request().method() === "POST"
+        && /\/api\/v1\/workflow-design\/workflows\/[^/]+\/publish\/$/.test(
+          new URL(response.url()).pathname
+        )
+      )),
+      page.getByRole("button", {
+        name: copy("workflowDesign.editor.publishWorkflow")
+      }).click()
+    ]);
+    expect(blockedPublicationResponse.status()).toBe(400);
+    expect(blockedPublicationResponse.headers()["content-type"]).toContain(
+      "application/problem+json"
     );
+    const blockedPublicationProblem = await blockedPublicationResponse.json() as Partial<{
+      code: string;
+      invalidParams: Array<{ code?: string }>;
+    }>;
+    expect(blockedPublicationProblem.code).toBe("workflow_draft_invalid");
+    const blockerCodes = new Set(
+      blockedPublicationProblem.invalidParams?.map((invalidParam) => invalidParam.code)
+    );
+    expect(blockerCodes.has("starter_missing")).toBe(true);
+    expect(blockerCodes.has("assignment_missing")).toBe(true);
+    expect(blockerCodes.has("task_form_missing")).toBe(true);
     await journeyExpect(page.getByText(copy("workflowDesign.editor.issue.starterMissing"))).toBeVisible();
     await journeyExpect(page.getByText(copy("workflowDesign.editor.issue.assignmentMissing"))).toBeVisible();
+    await journeyExpect(page.getByText(copy("workflowDesign.editor.issue.taskFormMissing"))).toBeVisible();
       await assertNoAccessibilityViolations(page, axePath);
 
-    await page.getByRole("radio", { name: copy("workflowDesign.editor.starterAllActiveMembers") }).check();
-    await page.getByRole("radio", { name: copy("workflowDesign.editor.assignmentWorkflowInitiator") }).check();
-    await page.getByLabel(copy("workflowDesign.editor.fieldLabel")).fill(fieldLabel);
-    await page.getByRole("button", { name: copy("workflowDesign.editor.addShortText") }).click();
-    await page.getByRole("button", { name: copy("workflowDesign.editor.addToFirstTask") }).click();
+    await page.getByLabel(copy("workflowDesign.editor.starterSectionTitle"))
+      .selectOption("allActiveMembers");
+    await page.getByRole("group", {
+      exact: true,
+      name: `${taskName}: ${taskName}`
+    }).click();
+    await page.getByLabel(copy("workflowDesign.editor.taskAssignmentTitle"))
+      .selectOption("workflowInitiator");
     await performApiAction(
       page,
       "PUT",
       /\/api\/v1\/workflow-design\/workflows\/[^/]+\/draft\/$/,
       () => page.getByRole("button", { name: copy("workflowDesign.draft.save") }).click()
     );
+
+    await page.getByRole("button", { name: copy("workflowDesign.editor.designForm") }).click();
+    await journeyExpect(page).toHaveURL(/\/workflows\/[^/]+\/tasks\/task-1\/form$/);
+    await page.getByRole("button", { name: copy("formDesign.shortText") }).click();
+    await page.getByLabel(copy("formDesign.label")).fill(fieldLabel);
+    await assertNoAccessibilityViolations(page, axePath);
     await performApiAction(
       page,
-      "POST",
-      validationPath,
-      () => page.getByRole("button", { name: copy("workflowDesign.editor.validatePublication") }).click()
+      "PUT",
+      /\/api\/v1\/workflow-design\/workflows\/[^/]+\/tasks\/task-1\/form-draft\/$/,
+      () => page.getByRole("button", { name: copy("formDesign.saveAndReturn") }).click()
     );
-    await waitForWorkflowPublicationReady(page, {
-      assignmentIssue: copy("workflowDesign.editor.issue.assignmentMissing"),
-      publishButton: copy("workflowDesign.editor.publishWorkflow"),
-      starterIssue: copy("workflowDesign.editor.issue.starterMissing")
-    });
+    await journeyExpect(page).toHaveURL(/\/workflows\/[^/]+\/design\?task=task-1$/);
+    await journeyExpect(
+      page.getByRole("heading", { exact: true, level: 1, name: workflowName })
+    ).toBeVisible();
+    await journeyExpect(page.getByLabel(
+      copy("workflowDesign.editor.starterSectionTitle")
+    )).toHaveValue("allActiveMembers");
+    await journeyExpect(page.getByLabel(
+      copy("workflowDesign.editor.taskAssignmentTitle")
+    )).toHaveValue("workflowInitiator");
+    await journeyExpect(page.getByText(
+      copy("workflowDesign.editor.formReady"),
+      { exact: true }
+    )).toBeVisible();
+    await journeyExpect(page.getByText(
+      copy("workflowDesign.editor.issue.starterMissing")
+    )).toHaveCount(0);
+    await journeyExpect(page.getByText(
+      copy("workflowDesign.editor.issue.assignmentMissing")
+    )).toHaveCount(0);
+    await journeyExpect(page.getByText(
+      copy("workflowDesign.editor.issue.taskFormMissing")
+    )).toHaveCount(0);
     await performApiAction(
       page,
       "POST",
       /\/api\/v1\/workflow-design\/workflows\/[^/]+\/publish\/$/,
       () => page.getByRole("button", { name: copy("workflowDesign.editor.publishWorkflow") }).click()
     );
+    await journeyExpect(
+      page.getByRole("status").filter({
+        hasText: copy("workflowDesign.editor.publishSuccess")
+      })
+    ).toBeVisible();
       await assertNoAccessibilityViolations(page, axePath);
     });
     recordJourneyEvent(journeyTrace, startedAt, "repair and publish");
@@ -266,7 +344,9 @@ test("deployed first workflow journey covers registration through completed time
     await test.step("start the published workflow", async () => {
     await page.goto("/processes/start");
     await journeyExpect(page.getByRole("heading", { level: 1, name: copy("myWork.startWorkflows.title") })).toBeVisible();
-    const startRegion = page.getByRole("region", { name: copy("myWork.startWorkflows.title") });
+    const startRegion = page.locator(
+      "section[aria-labelledby='my-work-startWorkflows-title']"
+    );
     const workflowCard = startRegion.getByRole("article").filter({
       has: page.getByRole("heading", { name: workflowName, exact: true })
     });
@@ -278,7 +358,11 @@ test("deployed first workflow journey covers registration through completed time
       () => workflowCard.getByRole("button", { name: copy("myWork.startWorkflows.start") }).click()
     );
     await journeyExpect(page).toHaveURL(/\/my-work\/tasks\/[^/]+$/);
-    await journeyExpect(page.getByRole("heading", { name: copy("workflowDesign.editor.taskLabel") })).toBeVisible();
+    await journeyExpect(page.getByRole("heading", {
+      exact: true,
+      level: 1,
+      name: taskName
+    })).toBeVisible();
     const taskUrl = new URL(page.url());
     taskReference = safeReference(taskUrl.pathname.split("/").at(-1) ?? "");
       evidence.taskRef = taskReference;
@@ -309,8 +393,8 @@ test("deployed first workflow journey covers registration through completed time
     await journeyExpect(
       page.getByText(copy("taskForm.completeSuccess"))
     ).toBeVisible();
-      await page.getByRole("link", { name: copy("taskForm.viewProcess") }).click();
       await assertNoAccessibilityViolations(page, axePath);
+      await page.getByRole("link", { name: copy("taskForm.viewProcess") }).click();
     });
     recordJourneyEvent(journeyTrace, startedAt, "save and complete task");
 
@@ -320,14 +404,28 @@ test("deployed first workflow journey covers registration through completed time
     await journeyExpect(
       page.getByRole("heading", { name: workflowName, exact: true })
     ).toBeVisible();
+    await journeyExpect(
+      page.getByText(copy("status.completed"), { exact: true })
+    ).toBeVisible();
 
     const timeline = page.getByRole("region", { name: copy("processDetail.timelineTitle") });
     await journeyExpect(timeline).toBeVisible();
-    await journeyExpect(timeline.getByRole("listitem")).toHaveCount(4);
-    await journeyExpect(timeline.getByText(copy("processDetail.event.processStarted"))).toBeVisible();
-    await journeyExpect(timeline.getByText(copy("processDetail.event.taskProgressSaved"))).toBeVisible();
-    await journeyExpect(timeline.getByText(copy("processDetail.event.taskCompleted"))).toBeVisible();
-    await journeyExpect(timeline.getByText(copy("processDetail.event.processCompleted"))).toBeVisible();
+    await journeyExpect(timeline.getByText(
+      copy("processDetail.event.processStarted"),
+      { exact: true }
+    )).toBeVisible();
+    await journeyExpect(timeline.getByText(
+      copy("processDetail.event.taskProgressSaved"),
+      { exact: true }
+    )).toBeVisible();
+    await journeyExpect(timeline.getByText(
+      copy("processDetail.event.taskCompleted"),
+      { exact: true }
+    )).toBeVisible();
+    await journeyExpect(timeline.getByText(
+      copy("processDetail.event.processCompleted"),
+      { exact: true }
+    )).toBeVisible();
       await assertNoAccessibilityViolations(page, axePath);
 
     const processUrl = new URL(page.url());

@@ -4,7 +4,7 @@ baseline_commit: 9f3ad04d28f993234d00d0cd0ef63e2165aab446
 
 # Story 1.38: Polish the Authenticated Stakeholder Journey
 
-Status: review
+Status: in-progress
 
 ## Story
 
@@ -51,7 +51,8 @@ Traceability: UX-DR3-UX-DR24, AD-9, AD-12, AD-16, NFR16, NFR30.
   - [x] Capture representative operational desktop/mobile and desktop authoring screenshots.
   - [x] Resolve visual/navigation defects before Story 1.39.
   - [x] Run affected unit, component, integration, architecture, type, and build/static checks.
-  - [ ] Manually walk the polished public, authoring, and runtime path on the exact built revision and record blocking defects and approval.
+  - [x] Manually walk the polished public, authoring, and runtime path on the exact built revision and record blocking defects and approval — approved by Jortiz on 2026-09-04.
+  - [ ] Pass both deployed-journey language profiles after the matching backend and frontend revisions are live in UAT.
 
 ### Review Findings
 
@@ -61,8 +62,15 @@ Traceability: UX-DR3-UX-DR24, AD-9, AD-12, AD-16, NFR16, NFR30.
 - [x] [Review][Patch] Separate semantic Workflow-position fallbacks from Designer-authored labels so My Processes localizes system values without Process detail overwriting legitimate labels [Moviqo.Front/src/pages/process-detail/ui/ProcessDetailPage.tsx:45]
 - [x] [Review][Patch] Make the non-terminal completion guidance accurate when the next Task belongs to another authorized member [Moviqo.Front/src/shared/localization/messages.ts:1187]
 - [x] [Review][Patch] Stop using the visible actor string "Authorized member" as the fallback sentinel because a real member can have that display name [Moviqo.Front/src/pages/process-detail/ui/ProcessDetailPage.tsx:56]
+- [x] [Review][Patch] Reconcile the bilingual deployed-journey gate with the current language selector, React Flow keyboard connections, authoritative Publish validation, dedicated Form Designer route, and explicit completed-Process handoff [Moviqo.Front/tests/e2e/first-workflow-journey.spec.ts]
 
 - [x] [Manual feedback][Patch] Make Tasks, Processes, and Start Process loading unmistakable, remove competing controls while requests are pending, and prevent duplicate process-start commands [Moviqo.Front/src/features/my-work/ui/MyWorkShell.tsx]
+
+- [x] [Review][Patch] Use present-tense localized contribution copy for a participant who still owns an open Task [Moviqo.Front/src/shared/localization/messages.ts:935]
+- [x] [Review][Defer] Preserve My Work search and page context across list-to-detail navigation [Moviqo.Front/src/pages/my-work/ui/MyWorkPage.tsx:42] — deferred, pre-existing
+- [x] [Review][Defer] Map Task Form validation reasons to localized catalog copy and distinguish completion from save error summaries [Moviqo.Front/src/pages/task-form/ui/TaskFormPage.tsx:267] — deferred, pre-existing
+- [x] [Review][Defer] Clear only the corrected Task Form field error instead of every outstanding validation error [Moviqo.Front/src/features/task-form/model/taskForm.ts:188] — deferred, pre-existing
+- [x] [Review][Defer] Use process-specific Spanish grammar for completed Process status [Moviqo.Front/src/pages/process-detail/ui/ProcessDetailPage.tsx:41] — deferred, pre-existing
 
 ## Dev Notes
 
@@ -117,6 +125,11 @@ Traceability: UX-DR3-UX-DR24, AD-9, AD-12, AD-16, NFR16, NFR30.
 - Restored visibly changing loading feedback for reduced-motion environments with a non-spatial opacity pulse while retaining normal ring rotation, then refreshed the Spanish desktop/mobile My Work captures. The human exact-build walkthrough remains pending.
 - Independent review corrected active Process detail/status copy, mixed open/completed participation precedence, completed-process step fallback, bilingual semantic process search, uniquely named process actions, retained Start Process refresh safety, and 390px Process-card coverage.
 - Final focused validation passed: backend Ruff and My Work contract (`27 passed`); frontend typecheck, complete unit suite, production Vite/static scan, all six Chromium My Work scenarios across the combined run, and four bilingual desktop/mobile evidence profiles. Eight Spanish runtime/report captures were visually inspected; manual acceptance remains pending.
+- Follow-up code review corrected active-participant copy to present tense in Spanish and English and kept the Spanish server-side search alias aligned. `git diff --check` passed; focused frontend validation could not run in this environment because dependencies are absent and Node 22.14.0 does not match the repository-pinned Node 26.7.0. Exact-built-revision manual acceptance remains pending.
+- Jortiz approved the UI after manual checking on 2026-09-04. AC6 remains open because the deployed-journey check is failing after the UI changes and must be reconciled against the deployed revision.
+- Repaired the Spanish and English deployed journey against the approved Story 1.38 UI contract, removed its obsolete publication-readiness helper, and retained API-coupled assertions, accessibility checks, cleanup, and sanitized evidence. AC6 and the story remain in progress until both profiles pass against one exact Cloud Run/Firebase deployed commit.
+- Follow-up review pinned the deployed origin and required build ID, asserted the blocked publication problem codes and all three repaired requirements, verified rendered publication/completion success, and removed an orphaned response-wait risk. `git diff --check` passed; frontend typecheck, unit, and journey discovery remain locally blocked by Node 22.14.0 and absent dependencies instead of the pinned Node 26.7.0/npm 11 toolchain.
+- Independent Quick Dev review tightened the exact UAT URL and problem-details checks, added Form Designer accessibility coverage, asserted repaired starter/assignment/Form state, and covered the current Spanish participation search alias. Automated Firebase build attestation remains deferred; the release runbook must prove the frontend revision before rerunning both deployed profiles.
 
 ### File List
 
@@ -152,6 +165,7 @@ Traceability: UX-DR3-UX-DR24, AD-9, AD-12, AD-16, NFR16, NFR30.
 - `Moviqo.Front/tests/e2e/my-work.spec.ts`
 - `Moviqo.Front/tests/e2e/form-designer.spec.ts`
 - `Moviqo.Front/tests/e2e/first-workflow-journey.spec.ts`
+- `Moviqo.Front/tests/e2e/support/deployedJourney.ts`
 - `Moviqo.Front/tests/e2e/workflow-editor.spec.ts`
 - `Moviqo.Front/tests/e2e/stakeholder-preview-qualification.spec.ts`
 - `Moviqo.Front/tests/unit/authenticated-journey-polish.test.cts`

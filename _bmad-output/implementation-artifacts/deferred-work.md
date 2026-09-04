@@ -93,3 +93,17 @@ These items are not outstanding work for the active Story 1.34. Compatibility, r
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-38-scalable-my-work-experience.md`
   summary: Paginate authorized Task occurrences before loading and projecting authoritative workflow documents.
   evidence: The pre-existing Task collection resolves every open assignment and its Workflow snapshot before slicing the requested 12-row page, so request cost grows with the full inbox.
+
+## Deferred from: code review of `1-38-polish-the-authenticated-stakeholder-journey.md` (2026-09-04)
+
+- Preserve My Work search and page context across list-to-detail navigation. Search terms and page numbers remain component-local, while Task and Process breadcrumbs return to bare collection routes, so returning remounts the list at its defaults.
+- Map Task Form validation reasons to localized catalog copy and distinguish completion from save error summaries. The pre-existing handlers render backend English `invalidParams.reason` values directly, and the shared summary title always refers to saving.
+- Clear only the corrected Task Form field error instead of every outstanding validation error. The pre-existing `value-updated` reducer branch clears both complete validation arrays after any single edit.
+- Use process-specific Spanish grammar for completed Process status. Process reports and detail reuse the Task-oriented `status.completed` translation, producing “Completada” for masculine “proceso.”
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-deployed-journey-ui-contract.md`
+  summary: Add an immutable frontend build attestation that lets deployed-journey prove Firebase Hosting serves the expected commit.
+  evidence: The journey machine-verifies the backend health build ID, but the existing frontend bundle exposes no corresponding commit marker; exact Firebase revision is therefore still established by the UAT release procedure rather than by the automated test.
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-deployed-journey-ui-contract.md`
+  summary: Attach accessibility violation fingerprints for each deployed-journey scan.
+  evidence: The shared helper supports sanitized `accessibility-baseline-results` attachments when given `testInfo`, but the pre-existing journey calls omit it and currently retain only pass/fail enforcement.

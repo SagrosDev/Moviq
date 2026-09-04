@@ -836,6 +836,9 @@ def test_my_work_dashboard_and_detail_include_authorized_active_processes(active
     participant_spanish_search = participant_client.get(
         "/api/v1/my-work/?myProcessesSearch=participaste"
     )
+    participant_current_spanish_search = participant_client.get(
+        "/api/v1/my-work/?myProcessesSearch=participas%20en%20este%20proceso"
+    )
     participant_detail = participant_client.get(
         f"/api/v1/my-work/processes/{started.json()['processId']}/"
     )
@@ -872,6 +875,7 @@ def test_my_work_dashboard_and_detail_include_authorized_active_processes(active
         },
     }
     assert participant_spanish_search.json()["myProcesses"]["totalItems"] == 1
+    assert participant_current_spanish_search.json()["myProcesses"]["totalItems"] == 1
     assert participant_detail.status_code == 200
     assert participant_detail.json()["header"]["systemStatus"] == "active"
     assert participant_detail.json()["header"]["currentStep"] == "Task"
